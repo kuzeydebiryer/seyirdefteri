@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #F5EFE1;
+  color: #1F2421;
+}
+
+/* İmza öğe: defter çizgisi — bölüm ayırıcı */
+.defter-cizgi {
+  height: 1px;
+  background-image: repeating-linear-gradient(to right, #D8CBAA 0, #D8CBAA 6px, transparent 6px, transparent 11px);
+}
+
+/* Gönderi kartı: sol kenarda mühür rengi ince şerit */
+.gonderi-karti {
+  position: relative;
+  background-color: #EDE4CE;
+  border-radius: 2px;
+}
+.gonderi-karti::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: #B33A3A;
+  border-radius: 2px 0 0 2px;
+}
+
+.yildiz {
+  color: #B33A3A;
+}
