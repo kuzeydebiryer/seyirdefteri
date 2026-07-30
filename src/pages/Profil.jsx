@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -196,6 +196,23 @@ export default function Profil() {
         </div>
       )}
 
+      {gonderiler.some((g) => (g.tur === 'sinema' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl)) && (
+        <>
+          <h2 className="font-baslik text-lg text-murekkep mb-3">Poster Duvarı</h2>
+          <div className="mb-8 grid grid-cols-5 gap-2 sm:grid-cols-7">
+            {gonderiler
+              .filter((g) => (g.tur === 'sinema' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl))
+              .map((g) => (
+                <Link key={g.id} to={`/gonderi/${g.id}`} className="block">
+                  <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                    <img src={g.posterUrl || g.ilgiliPosterUrl} alt={g.baslik} className="h-full w-full object-cover" />
+                  </div>
+                </Link>
+              ))}
+          </div>
+        </>
+      )}
+
       <h2 className="font-baslik text-lg text-murekkep mb-3">Güncesi</h2>
       {gonderilerHatasi && (
         <p className="mb-3 text-xs text-muhur">
@@ -204,8 +221,11 @@ export default function Profil() {
         </p>
       )}
       <div className="space-y-4">
-        {gonderiler.map((g) => (
-          <GonderiKarti key={g.id} gonderi={g} />
+        {gonderiler.map((g, i) => (
+          <div key={g.id}>
+            <GonderiKarti gonderi={g} />
+            {i < gonderiler.length - 1 && <div className="defter-cizgi mt-4" />}
+          </div>
         ))}
         {gonderiler.length === 0 && <p className="text-sm text-kraft">Henüz paylaşım yok.</p>}
       </div>

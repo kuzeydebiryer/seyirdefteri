@@ -79,8 +79,11 @@ export default function Anasayfa() {
 
       {!gercektenYukleniyor && (
         <div className="space-y-4">
-          {gonderiler.map((g) => (
-            <GonderiKarti key={g.id} gonderi={g} />
+          {gonderiler.map((g, i) => (
+            <div key={g.id}>
+              <GonderiKarti gonderi={g} />
+              {i < gonderiler.length - 1 && <div className="defter-cizgi mt-4" />}
+            </div>
           ))}
         </div>
       )}
