@@ -370,6 +370,12 @@ export default function TopluluklarDetay() {
                       type="text"
                       value={eserArama}
                       onChange={(e) => setEserArama(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          eserAra(e)
+                        }
+                      }}
                       placeholder="Film/dizi ara..."
                       className="flex-1 rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                     />

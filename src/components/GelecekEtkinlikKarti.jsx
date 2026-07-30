@@ -285,6 +285,12 @@ export default function GelecekEtkinlikKarti({ topluluklId, etkinlik }) {
                   type="text"
                   value={dEserArama}
                   onChange={(e) => setDEserArama(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      dEserAra(e)
+                    }
+                  }}
                   placeholder="Film/dizi ara (opsiyonel)..."
                   className="flex-1 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
                 />
@@ -394,6 +400,12 @@ export default function GelecekEtkinlikKarti({ topluluklId, etkinlik }) {
                         type="text"
                         value={kitapArama}
                         onChange={(e) => setKitapArama(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            kitapAra(e)
+                          }
+                        }}
                         placeholder="Kitap ara..."
                         className="flex-1 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
                       />
