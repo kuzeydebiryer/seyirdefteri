@@ -6,9 +6,12 @@ import YildizPuan from './YildizPuan.jsx'
 import Avatar from './Avatar.jsx'
 import GonderiIcerik from './GonderiIcerik.jsx'
 
-function tarihGoster(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
+function tarihGoster(deger) {
+  if (!deger) return ''
+  // Firestore serverTimestamp() okurken bir Timestamp nesnesi döner (düz string değil),
+  // bu yüzden önce onu gerçek bir Date'e çevirmemiz gerekiyor.
+  const d = typeof deger?.toDate === 'function' ? deger.toDate() : new Date(deger)
+  if (isNaN(d.getTime())) return ''
   return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 

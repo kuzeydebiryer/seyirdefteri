@@ -21,9 +21,10 @@ import YildizPuan from '../components/YildizPuan.jsx'
 import EtkinlikKarti from '../components/EtkinlikKarti.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 
-function tarihGoster(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
+function tarihGoster(deger) {
+  if (!deger) return ''
+  const d = typeof deger?.toDate === 'function' ? deger.toDate() : new Date(deger)
+  if (isNaN(d.getTime())) return ''
   return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
