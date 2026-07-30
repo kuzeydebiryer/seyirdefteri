@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { collection, getDocs, orderBy, query } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-export function useListeOgeleri(topluluklId, listeId) {
-  const [ogeler, setOgeler] = useState([])
+export function useKaynaklar(topluluklId, etkinlikId) {
+  const [kaynaklar, setKaynaklar] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [yenile, setYenile] = useState(0)
 
@@ -12,19 +12,19 @@ export function useListeOgeleri(topluluklId, listeId) {
     async function getir() {
       setYukleniyor(true)
       const q = query(
-        collection(db, 'topluluklar', topluluklId, 'listeler', listeId, 'ogeler'),
-        orderBy('etkinlikTarihi', 'desc')
+        collection(db, 'topluluklar', topluluklId, 'gelecekEtkinlikler', etkinlikId, 'kaynaklar'),
+        orderBy('eklemeTarihi', 'desc')
       )
       const snap = await getDocs(q)
       if (iptal) return
-      setOgeler(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setKaynaklar(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
       setYukleniyor(false)
     }
     getir()
     return () => {
       iptal = true
     }
-  }, [topluluklId, listeId, yenile])
+  }, [topluluklId, etkinlikId, yenile])
 
-  return { ogeler, yukleniyor, yenidenYukle: () => setYenile((n) => n + 1) }
+  return { kaynaklar, yukleniyor, yenidenYukle: () => setYenile((n) => n + 1) }
 }

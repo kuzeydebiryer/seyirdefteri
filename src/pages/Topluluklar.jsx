@@ -15,6 +15,7 @@ export default function Topluluklar() {
   const [ad, setAd] = useState('')
   const [aciklama, setAciklama] = useState('')
   const [tur, setTur] = useState('Sinema')
+  const [kapakUrl, setKapakUrl] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   async function olustur(e) {
@@ -26,6 +27,7 @@ export default function Topluluklar() {
         ad: ad.trim(),
         aciklama,
         tur,
+        kapakUrl,
         kurucuId: kullanici.uid,
         kurucuAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
         kurulmaTarihi: serverTimestamp(),
@@ -35,6 +37,7 @@ export default function Topluluklar() {
       await setDoc(doc(db, 'topluluklar', ref.id, 'uyeler', kullanici.uid), { katilmaTarihi: serverTimestamp() })
       setAd('')
       setAciklama('')
+      setKapakUrl('')
       setFormuAcik(false)
       yenidenYukle()
     } finally {
@@ -91,6 +94,16 @@ export default function Topluluklar() {
               className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
             />
           </div>
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Kapak Görsel URL (opsiyonel)</label>
+            <input
+              type="text"
+              value={kapakUrl}
+              onChange={(e) => setKapakUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
           <button
             type="submit"
             disabled={kaydediliyor}
@@ -109,16 +122,21 @@ export default function Topluluklar() {
           <li key={t.id}>
             <Link
               to={`/topluluk/${t.id}`}
-              className="block rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi hover:ring-muhur"
+              className="flex gap-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi hover:ring-muhur"
             >
-              <div className="flex items-center justify-between">
-                <p className="font-baslik text-lg text-murekkep">{t.ad}</p>
-                <span className="rounded-full bg-kagit px-2 py-0.5 text-[10px] uppercase tracking-wide text-kraft ring-1 ring-cizgi">
-                  {t.tur}
-                </span>
+              {t.kapakUrl && (
+                <img src={t.kapakUrl} alt={t.ad} className="h-16 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi" />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="font-baslik text-lg text-murekkep">{t.ad}</p>
+                  <span className="rounded-full bg-kagit px-2 py-0.5 text-[10px] uppercase tracking-wide text-kraft ring-1 ring-cizgi">
+                    {t.tur}
+                  </span>
+                </div>
+                {t.aciklama && <p className="mt-1 text-sm text-murekkep/90">{t.aciklama}</p>}
+                <p className="mt-2 text-xs text-kraft">{t.uyeSayisi || 0} üye</p>
               </div>
-              {t.aciklama && <p className="mt-1 text-sm text-murekkep/90">{t.aciklama}</p>}
-              <p className="mt-2 text-xs text-kraft">{t.uyeSayisi || 0} üye</p>
             </Link>
           </li>
         ))}

@@ -155,6 +155,24 @@ topluluklar/{id}/listeler/{listeId}/ogeler/{ogeId}
   puanlar: { [uid]: puanDegeri }   // map olarak tutuluyor, her üye kendi puanını günceller
 ```
 
+## Topluluk sayfası: kapak görseli, Gelecek/Geçmiş Etkinlik ayrımı
+- **Kapak görseli:** Topluluk kurulurken veya sonradan (sadece kurucu) bir kapak fotoğrafı URL'i eklenebiliyor.
+- **Gelecek Etkinlikler:** Topluluk üyeleri "+ Etkinlik Ekle" ile tarih/saat + açıklamalı bir buluşma planlayabiliyor, diğer üyeler "Katılacağım" diyebiliyor.
+- **Kaynaklar ("Bunlara göz at"):** Her gelecek etkinliğin altında, hazırlık için yazı/video/makale/diğer türünde link paylaşılabiliyor.
+- **Geçmiş Etkinlikler:** Eski "Listeler" özelliği kavramsal olarak burada — her liste öğesi artık en yeni tarihten en eskiye sıralanıyor (önceden tersti).
+
+### Veri modeli eklemeleri
+```
+topluluklar/{id}
+  kapakUrl   (yeni alan)
+
+topluluklar/{id}/gelecekEtkinlikler/{etkinlikId}
+  baslik, aciklama, tarih, olusturanId, olusturanAdi, olusturmaTarihi, katilacaklar: [uid,...]
+
+topluluklar/{id}/gelecekEtkinlikler/{etkinlikId}/kaynaklar/{kaynakId}
+  tur ("yazi"|"video"|"makale"|"diger"), baslik, url, ekleyenId, ekleyenAdi, eklemeTarihi
+```
+
 ## Faz 3'te bilinçli olarak eksik bırakılanlar (Faz 4+)
 - Topluluklara özel akış/gönderi filtreleme (şu an topluluklar sadece üyelik/keşif amaçlı, kendi gönderi akışları yok)
 - Tartışma etkinliklerinin bir topluluğa bağlanması (`topluluklId` alanı şemada var ama UI'da henüz kullanılmıyor)
