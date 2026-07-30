@@ -126,6 +126,18 @@ gonderiler/{id}  (yeni alanlar, tur "gezi"/"etkinlik" için)
   konum, etkinlikTarihi
 ```
 
+## Eser sayfaları (Film / Dizi / Kitap)
+- **Yeni sayfalar:** `/film/:tmdbId`, `/dizi/:tmdbId`, `/kitap/:googleBooksId` — bir eserin TMDB/Google Books'tan çekilen güncel bilgisini, o esere topluluk üyelerinin verdiği **tüm puanların ortalamasını** ve herkesin yazdığı güncelerin listesini gösteriyor.
+- **Kategori keşif sayfaları:** `/filmler`, `/diziler`, `/kitaplar` — "Bizim Aramızda Popüler" (topluluğun en çok işlediği eserler, kendi verimizden hesaplanıyor) ve film/dizi için ayrıca "TMDB'de Şu An Popüler" (dış kaynak) bölümleri var.
+- **Günce Ekle'ye derin bağlantı:** Eser sayfasındaki "Bu film/dizi/kitap hakkında günce yaz" butonu, Günce Ekle'yi doğrudan o esere önceden doldurulmuş şekilde açıyor (`?tur=sinema&disId=123` gibi bir link üzerinden).
+- **Kişisel günceden eser sayfasına köprü:** Herhangi bir film/dizi/kitap güncesinin detay sayfasında artık "Bu filmin sayfasına git (topluluk ortalamasını gör)" linki var.
+
+### Önemli sınırlama
+Eser sayfasındaki topluluk ortalaması, sadece **bu özellikten sonra paylaşılan** güncelerden hesaplanıyor — çünkü eskiden `tmdbId`/`googleBooksId` saklanmıyordu. Geçmiş paylaşımlar bu ortalamaya dahil olmayacak.
+
+### Veri modeli / mimari not
+`useEser.js` hook'u iki şey sağlıyor: `useEserGonderileri(tur, disId)` (bir esere ait tüm gönderileri ve ortalama puanı getirir) ve `topluluktaPopulerEserler(tur)` (bir kategorideki tüm gönderileri tarayıp tmdbId/googleBooksId'ye göre gruplayarak en çok işlenenleri sıralar — küçük bir topluluk için performanslı, çok büyük veri setlerinde optimize edilmesi gerekebilir).
+
 ## Faz 3'te bilinçli olarak eksik bırakılanlar (Faz 4+)
 - Topluluklara özel akış/gönderi filtreleme (şu an topluluklar sadece üyelik/keşif amaçlı, kendi gönderi akışları yok)
 - Tartışma etkinliklerinin bir topluluğa bağlanması (`topluluklId` alanı şemada var ama UI'da henüz kullanılmıyor)

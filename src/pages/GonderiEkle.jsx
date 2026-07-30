@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -31,6 +31,7 @@ const API_KATEGORILERI = ['sinema', 'dizi', 'kitap']
 export default function GonderiEkle() {
   const { kullanici, profil } = useAuth()
   const navigate = useNavigate()
+  const [aramaParametreleri] = useSearchParams()
 
   const [kategori, setKategori] = useState('sinema')
   const [yaziAltTur, setYaziAltTur] = useState('deneme')
@@ -157,6 +158,71 @@ export default function GonderiEkle() {
       }
     }, 0)
   }
+
+  async function disIdIleGetir(hedefTur, disId) {
+    setDetayYukleniyor(true)
+    try {
+      if (hedefTur === 'sinema' || hedefTur === 'dizi') {
+        if (!TMDB_API_KEY) return
+        const uc = hedefTur === 'sinema' ? 'movie' : 'tv'
+        const url = `https://api.themoviedb.org/3/${uc}/${disId}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error('Eser bilgisi alınamadı')
+        const detay = await res.json()
+        setTmdbId(Number(disId))
+        setBaslik(hedefTur === 'sinema' ? detay.title : detay.name)
+        setYil((hedefTur === 'sinema' ? detay.release_date : detay.first_air_date)?.slice(0, 4) || '')
+        setPosterUrl(detay.poster_path ? `${TMDB_POSTER}${detay.poster_path}` : '')
+        setOzet(detay.overview || '')
+        setDbPuan(detay.vote_average ? detay.vote_average.toFixed(1) : '')
+        setTurler((detay.genres || []).map((g) => g.name).join(', '))
+        if (hedefTur === 'sinema') {
+          setSureDk(detay.runtime || '')
+          const yonetmenler = (detay.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => k.name)
+          setYonetmen(yonetmenler.join(', '))
+        } else {
+          setSezonSayisi(detay.number_of_seasons || '')
+          setBolumSayisi(detay.number_of_episodes || '')
+          setYonetmen((detay.created_by || []).map((k) => k.name).join(', '))
+        }
+        setOyuncular((detay.credits?.cast || []).slice(0, 5).map((k) => k.name).join(', '))
+      } else if (hedefTur === 'kitap') {
+        const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
+        const url = `https://www.googleapis.com/books/v1/volumes/${disId}?${anahtarParcasi}`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error('Eser bilgisi alınamadı')
+        const data = await res.json()
+        const v = data.volumeInfo || {}
+        const kapak = (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
+        setGoogleBooksId(disId)
+        setBaslik(v.title || '')
+        setYazar((v.authors || []).join(', '))
+        setPosterUrl(kapak)
+        setOzet(v.description || '')
+        setTurler((v.categories || []).join(', '))
+        setSayfaSayisi(v.pageCount || '')
+        setYayinevi(v.publisher || '')
+        setYil(v.publishedDate ? v.publishedDate.slice(0, 4) : '')
+        setDbPuan(v.averageRating ? v.averageRating.toFixed(1) : '')
+      }
+    } catch (err) {
+      setAramaHatasi('Eser bilgisi çekilemedi: ' + err.message)
+    } finally {
+      setDetayYukleniyor(false)
+    }
+  }
+
+  // Eser sayfasından "Bu film/dizi/kitap hakkında günce yaz" linkiyle gelindiyse
+  // (?tur=sinema&disId=123 gibi) formu otomatik olarak o esere göre doldur.
+  useEffect(() => {
+    const urlTur = aramaParametreleri.get('tur')
+    const urlDisId = aramaParametreleri.get('disId')
+    if (urlTur && urlDisId) {
+      setKategori(urlTur)
+      disIdIleGetir(urlTur, urlDisId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function ara(e) {
     e.preventDefault()

@@ -6,7 +6,10 @@ import Avatar from './Avatar.jsx'
 const LINKLER = [
   { yol: '/', etiket: 'Akış' },
   { yol: '/gonderi-ekle', etiket: 'Ekle' },
-  { yol: '/kullanicilar', etiket: 'Keşfet' },
+  { yol: '/filmler', etiket: 'Film' },
+  { yol: '/diziler', etiket: 'Dizi' },
+  { yol: '/kitaplar', etiket: 'Kitap' },
+  { yol: '/kullanicilar', etiket: 'Kişiler' },
   { yol: '/etkinlikler', etiket: 'Etkinlikler' },
   { yol: '/topluluklar', etiket: 'Topluluklar' },
 ]
