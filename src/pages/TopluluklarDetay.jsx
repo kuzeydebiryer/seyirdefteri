@@ -4,11 +4,19 @@ import { collection, doc, getDoc, getDocs } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { topluluğaKatil, topluluktanAyril } from '../utils/topluluk.js'
+import { useListeler } from '../hooks/useListeler.js'
+import { listeOlustur } from '../utils/liste.js'
 import Avatar from '../components/Avatar.jsx'
 
 export default function TopluluklarDetay() {
   const { id } = useParams()
   const { kullanici } = useAuth()
+  const { listeler, yukleniyor: listelerYukleniyor, yenidenYukle } = useListeler(id)
+
+  const [listeFormuAcik, setListeFormuAcik] = useState(false)
+  const [listeBaslik, setListeBaslik] = useState('')
+  const [listeAciklama, setListeAciklama] = useState('')
+  const [listeKaydediliyor, setListeKaydediliyor] = useState(false)
 
   const [topluluk, setTopluluk] = useState(null)
   const [uyeler, setUyeler] = useState([])
@@ -64,6 +72,21 @@ export default function TopluluklarDetay() {
     }
   }
 
+  async function listeOlusturTiklandi(e) {
+    e.preventDefault()
+    if (!listeBaslik.trim() || !kullanici) return
+    setListeKaydediliyor(true)
+    try {
+      await listeOlustur(id, { baslik: listeBaslik.trim(), aciklama: listeAciklama, kullanici })
+      setListeBaslik('')
+      setListeAciklama('')
+      setListeFormuAcik(false)
+      yenidenYukle()
+    } finally {
+      setListeKaydediliyor(false)
+    }
+  }
+
   if (yukleniyor) return <p className="text-kraft text-sm">Yükleniyor...</p>
   if (!topluluk) return <p className="text-kraft text-sm">Topluluk bulunamadı.</p>
 
@@ -89,6 +112,72 @@ export default function TopluluklarDetay() {
         >
           {uyeMi ? 'Üyesin' : 'Katıl'}
         </button>
+      </div>
+
+      <div className="defter-cizgi my-6" />
+
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-baslik text-lg text-murekkep">Listeler</h2>
+          {kullanici && (
+            <button
+              onClick={() => setListeFormuAcik((a) => !a)}
+              className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+            >
+              {listeFormuAcik ? 'Vazgeç' : '+ Liste Oluştur'}
+            </button>
+          )}
+        </div>
+
+        {listeFormuAcik && (
+          <form onSubmit={listeOlusturTiklandi} className="mb-4 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Liste Başlığı</label>
+              <input
+                type="text"
+                value={listeBaslik}
+                onChange={(e) => setListeBaslik(e.target.value)}
+                required
+                placeholder="Örn. 200 Film Serüveni"
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Açıklama</label>
+              <textarea
+                value={listeAciklama}
+                onChange={(e) => setListeAciklama(e.target.value)}
+                rows={2}
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={listeKaydediliyor}
+              className="rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+            >
+              {listeKaydediliyor ? 'Oluşturuluyor...' : 'Oluştur'}
+            </button>
+          </form>
+        )}
+
+        {listelerYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
+        {!listelerYukleniyor && listeler.length === 0 && <p className="text-sm text-kraft">Henüz bir liste yok.</p>}
+
+        <ul className="space-y-2">
+          {listeler.map((l) => (
+            <li key={l.id}>
+              <Link
+                to={`/topluluk/${id}/liste/${l.id}`}
+                className="block rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi hover:ring-muhur"
+              >
+                <p className="font-govde text-sm text-murekkep">{l.baslik}</p>
+                {l.aciklama && <p className="text-xs text-kraft">{l.aciklama}</p>}
+                <p className="mt-1 text-xs text-kraft">{l.ogeSayisi || 0} eser</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="defter-cizgi my-6" />

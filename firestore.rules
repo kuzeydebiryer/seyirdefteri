@@ -60,6 +60,22 @@ service cloud.firestore {
         allow read: if true;
         allow write: if request.auth != null && request.auth.uid == uyeUid;
       }
+
+      // Topluluk listeleri (örn. "200 Film Serüveni") — herkes okuyabilir,
+      // giriş yapmış herkes liste oluşturup öğe/puan ekleyebilir.
+      match /listeler/{listeId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.resource.data.olusturanId == request.auth.uid;
+        allow update: if request.auth != null; // ogeSayisi artışı için serbest
+        allow delete: if request.auth != null && resource.data.olusturanId == request.auth.uid;
+
+        match /ogeler/{ogeId} {
+          allow read: if true;
+          allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+          allow update: if request.auth != null; // puanlar map'ine kendi puanını eklemek için serbest
+          allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+        }
+      }
     }
 
     // Tartışma etkinlikleri ("bu film/kitap hakkında konuşalım")

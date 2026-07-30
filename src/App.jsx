@@ -11,6 +11,7 @@ import Kullanicilar from './pages/Kullanicilar.jsx'
 import Etkinlikler from './pages/Etkinlikler.jsx'
 import Topluluklar from './pages/Topluluklar.jsx'
 import TopluluklarDetay from './pages/TopluluklarDetay.jsx'
+import ListeDetay from './pages/ListeDetay.jsx'
 import EserSayfasi from './pages/EserSayfasi.jsx'
 import Filmler from './pages/Filmler.jsx'
 import Diziler from './pages/Diziler.jsx'
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/etkinlikler" element={<OzelRota><Etkinlikler /></OzelRota>} />
           <Route path="/topluluklar" element={<OzelRota><Topluluklar /></OzelRota>} />
           <Route path="/topluluk/:id" element={<OzelRota><TopluluklarDetay /></OzelRota>} />
+          <Route path="/topluluk/:topluluklId/liste/:listeId" element={<OzelRota><ListeDetay /></OzelRota>} />
           <Route path="/filmler" element={<OzelRota><Filmler /></OzelRota>} />
           <Route path="/diziler" element={<OzelRota><Diziler /></OzelRota>} />
           <Route path="/kitaplar" element={<OzelRota><KitaplarKesfet /></OzelRota>} />

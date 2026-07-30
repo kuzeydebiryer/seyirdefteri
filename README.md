@@ -138,6 +138,23 @@ Eser sayfasındaki topluluk ortalaması, sadece **bu özellikten sonra paylaşı
 ### Veri modeli / mimari not
 `useEser.js` hook'u iki şey sağlıyor: `useEserGonderileri(tur, disId)` (bir esere ait tüm gönderileri ve ortalama puanı getirir) ve `topluluktaPopulerEserler(tur)` (bir kategorideki tüm gönderileri tarayıp tmdbId/googleBooksId'ye göre gruplayarak en çok işlenenleri sıralar — küçük bir topluluk için performanslı, çok büyük veri setlerinde optimize edilmesi gerekebilir).
 
+## Topluluk liste özelliği ("200 Film Serüveni" gibi)
+- Her topluluğun sayfasında artık **Listeler** bölümü var — bir liste başlık+açıklamayla oluşturulur (örn. "200 Film Serüveni"), içine film/dizi/kitap eklenir.
+- Her liste öğesi: eserin kartı (poster, başlık, yıl/yazar), **etkinlik tarihi** (topluluğun o eseri ne zaman izlediği/tartıştığı) ve **topluluk üyelerinin verdiği puanların ortalaması**.
+- Üye puanları, o esere daha önce kişisel bir günce yazılmış olmasından bağımsız — liste öğesinin kendi puanlama alanı var, herkes tek tıkla puan verebiliyor (ayrı bir günce yazmaya gerek yok).
+- Geçmişte yapılmış etkinlikleri (senin 200 filmlik örneğin gibi) geriye dönük eklemek istersen, her filmi tek tek "+ Eser Ekle" ile arayıp seçip o zamanki tarihi girerek listeye işleyebilirsin — otomatik bir Letterboxd aktarımı yok, elle giriş gerekiyor.
+
+### Veri modeli eklemeleri
+```
+topluluklar/{id}/listeler/{listeId}
+  baslik, aciklama, olusturanId, olusturanAdi, olusturmaTarihi, ogeSayisi
+
+topluluklar/{id}/listeler/{listeId}/ogeler/{ogeId}
+  tur, tmdbId, googleBooksId, baslik, yil, yazar, posterUrl,
+  etkinlikTarihi, ekleyenId, eklemeTarihi,
+  puanlar: { [uid]: puanDegeri }   // map olarak tutuluyor, her üye kendi puanını günceller
+```
+
 ## Faz 3'te bilinçli olarak eksik bırakılanlar (Faz 4+)
 - Topluluklara özel akış/gönderi filtreleme (şu an topluluklar sadece üyelik/keşif amaçlı, kendi gönderi akışları yok)
 - Tartışma etkinliklerinin bir topluluğa bağlanması (`topluluklId` alanı şemada var ama UI'da henüz kullanılmıyor)
