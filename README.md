@@ -85,7 +85,19 @@ değeriyle kaydediliyor (`yazarAvatarUrl` alanı). Yani profilini sonradan
 değiştirirsen, geçmiş güncelerindeki avatar eski haliyle kalır — bu bilinçli bir
 performans tercihi (her gönderi kartı için ayrı profil sorgusu yapmamak adına).
 
-## Faz 3'te eklenenler
+## Film / Dizi ayrımı ve 10 puanlık gösterim
+- **Sinema kategorisi ikiye ayrıldı:** "Film" (`tur: "sinema"`, geriye dönük uyumluluk için eski isim korundu) ve "Dizi" (`tur: "dizi"`, yeni). Dizi için TMDB'nin ayrı TV arama/detay uçları kullanılıyor: sezon sayısı, bölüm sayısı, yaratıcı (yönetmen yerine) gibi diziye özgü alanlar otomatik geliyor.
+- **Dış kaynak kimliği artık saklanıyor:** `tmdbId` (film/dizi) ve `googleBooksId` (kitap) alanları eklendi — bir sonraki adımda kuracağımız "eser sayfaları" (aynı filme verilen tüm puanların toplandığı ortak sayfa) bu kimlikler üzerinden çalışacak. Bu adımdan önce paylaşılan güncelerde bu alan boş kalacak.
+- **10 puanlık gösterim:** Yıldız arayüzü korunuyor (puan verme deneyimi aynı) ama artık her yerde yanında "X/10" karşılığı da gösteriliyor (yıldız × 2). Örn. 4.5 yıldız → "9.0/10".
+
+### Veri modeli eklemeleri
+```
+gonderiler/{id}  (tur: "dizi" için yeni alanlar, film ile ortak olanlar da var)
+  tmdbId, googleBooksId
+  sezonSayisi, bolumSayisi   (dizi'ye özel, sureDk'nin karşılığı)
+  yonetmen                  (dizi'de "yaratıcı" anlamında kullanılıyor, sadece etiket değişiyor)
+```
+
 - **Yazı içine görsel ekleme:** Yazı yazarken "🖼 Görsel Ekle" butonuyla bir görsel URL'i imlecin bulunduğu yere eklenir. Kural basit: bir görsel linki kendi satırında (boş satırla ayrılmış) durursa otomatik olarak resim olarak gösterilir — özel bir sözdizimi öğrenmeye gerek yok.
 - **Paragraf yapısı korunuyor:** Kopyala-yapıştır yapılan metinlerde paragraf araları artık gösterimde de korunuyor (önceden tek bir bloğa sıkışıyordu).
 - **Yazı kategorisi:** Deneme yazıları veya film/kitap kartı iliştirilmiş incelemeler. "Film İncelemesi" / "Kitap İncelemesi" seçilince TMDB/Google Books'tan hafif bir referans kartı (başlık, yıl/yazar, kapak) eklenebiliyor; "Deneme" bağımsız bir blog yazısı, puan alanı yok.

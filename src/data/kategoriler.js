@@ -1,5 +1,6 @@
 export const KATEGORI_BILGI = {
-  sinema: { etiket: 'Sinema', ikon: '🎬', renk: '#3F6C68', oran: 'dikey' },
+  sinema: { etiket: 'Film', ikon: '🎬', renk: '#3F6C68', oran: 'dikey' },
+  dizi: { etiket: 'Dizi', ikon: '📺', renk: '#2F5D73', oran: 'dikey' },
   kitap: { etiket: 'Kitap', ikon: '📚', renk: '#C9A227', oran: 'dikey' },
   yazi: { etiket: 'Yazı', ikon: '✍️', renk: '#B33A3A', oran: 'dikey' },
   gezi: { etiket: 'Gezi', ikon: '🧭', renk: '#5B6F52', oran: 'yatay' },

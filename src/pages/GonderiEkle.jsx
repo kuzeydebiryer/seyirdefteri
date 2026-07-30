@@ -11,7 +11,8 @@ const YILDIZ_SECENEKLERI = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 const ETKINLIK_TURLERI = ['Tiyatro', 'Konser', 'Mekan', 'Sergi', 'Diğer']
 
 const KATEGORILER = [
-  { id: 'sinema', etiket: 'Sinema' },
+  { id: 'sinema', etiket: 'Film' },
+  { id: 'dizi', etiket: 'Dizi' },
   { id: 'kitap', etiket: 'Kitap' },
   { id: 'yazi', etiket: 'Yazı' },
   { id: 'gezi', etiket: 'Gezi' },
@@ -23,6 +24,9 @@ const YAZI_ALT_TURLERI = [
   { id: 'film-incelemesi', etiket: 'Film İncelemesi' },
   { id: 'kitap-incelemesi', etiket: 'Kitap İncelemesi' },
 ]
+
+// Bir kategori TMDB/Google Books araması kullanıyor mu?
+const API_KATEGORILERI = ['sinema', 'dizi', 'kitap']
 
 export default function GonderiEkle() {
   const { kullanici, profil } = useAuth()
@@ -38,16 +42,20 @@ export default function GonderiEkle() {
   const [detayYukleniyor, setDetayYukleniyor] = useState(false)
 
   const [seciliId, setSeciliId] = useState(null)
+  const [tmdbId, setTmdbId] = useState(null)
+  const [googleBooksId, setGoogleBooksId] = useState(null)
   const [baslik, setBaslik] = useState('')
   const [yil, setYil] = useState('')
   const [yazar, setYazar] = useState('')
   const [posterUrl, setPosterUrl] = useState('')
 
-  // Zengin meta veri (TMDB / Google Books'tan otomatik, elle düzenlenebilir) — sinema/kitap için
+  // Zengin meta veri (TMDB / Google Books'tan otomatik, elle düzenlenebilir)
   const [ozet, setOzet] = useState('')
   const [turler, setTurler] = useState('')
   const [sureDk, setSureDk] = useState('')
-  const [yonetmen, setYonetmen] = useState('')
+  const [sezonSayisi, setSezonSayisi] = useState('')
+  const [bolumSayisi, setBolumSayisi] = useState('')
+  const [yonetmen, setYonetmen] = useState('') // film: yönetmen, dizi: yaratıcı
   const [oyuncular, setOyuncular] = useState('')
   const [dbPuan, setDbPuan] = useState('')
   const [sayfaSayisi, setSayfaSayisi] = useState('')
@@ -63,32 +71,14 @@ export default function GonderiEkle() {
   const [ilgiliYil, setIlgiliYil] = useState('')
   const [ilgiliYazar, setIlgiliYazar] = useState('')
   const [ilgiliPosterUrl, setIlgiliPosterUrl] = useState('')
+  const [ilgiliTmdbId, setIlgiliTmdbId] = useState(null)
 
   const [kullaniciPuani, setKullaniciPuani] = useState(4)
   const [gunce, setGunce] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const gunceRef = useRef(null)
 
-  function gorselEkle() {
-    const url = window.prompt('Görsel URL\'i yapıştır (jpg, png, gif, webp):')
-    if (!url || !url.trim()) return
-    const temizUrl = url.trim()
-    const ta = gunceRef.current
-    const imlecKonumu = ta ? ta.selectionStart : gunce.length
-    const eklenecek = `\n\n${temizUrl}\n\n`
-    const yeniMetin = gunce.slice(0, imlecKonumu) + eklenecek + gunce.slice(imlecKonumu)
-    setGunce(yeniMetin)
-    const yeniKonum = imlecKonumu + eklenecek.length
-    setTimeout(() => {
-      if (ta) {
-        ta.focus()
-        ta.setSelectionRange(yeniKonum, yeniKonum)
-      }
-    }, 0)
-  }
-
-  const apiliKategori = kategori === 'sinema' || kategori === 'kitap'
-  // 'yazi' kategorisinde inceleme alt türü seçiliyse hangi API'nin kullanılacağı
+  const apiliKategori = API_KATEGORILERI.includes(kategori)
   const yaziAramaHedefi =
     kategori === 'yazi'
       ? yaziAltTur === 'film-incelemesi'
@@ -115,6 +105,8 @@ export default function GonderiEkle() {
     setSonuclar([])
     setAramaHatasi('')
     setSeciliId(null)
+    setTmdbId(null)
+    setGoogleBooksId(null)
     setBaslik('')
     setYil('')
     setYazar('')
@@ -122,6 +114,8 @@ export default function GonderiEkle() {
     setOzet('')
     setTurler('')
     setSureDk('')
+    setSezonSayisi('')
+    setBolumSayisi('')
     setYonetmen('')
     setOyuncular('')
     setDbPuan('')
@@ -134,6 +128,7 @@ export default function GonderiEkle() {
     setIlgiliYil('')
     setIlgiliYazar('')
     setIlgiliPosterUrl('')
+    setIlgiliTmdbId(null)
   }
 
   function ilgiliyiKaldir() {
@@ -142,6 +137,25 @@ export default function GonderiEkle() {
     setIlgiliYil('')
     setIlgiliYazar('')
     setIlgiliPosterUrl('')
+    setIlgiliTmdbId(null)
+  }
+
+  function gorselEkle() {
+    const url = window.prompt('Görsel URL\'i yapıştır (jpg, png, gif, webp):')
+    if (!url || !url.trim()) return
+    const temizUrl = url.trim()
+    const ta = gunceRef.current
+    const imlecKonumu = ta ? ta.selectionStart : gunce.length
+    const eklenecek = `\n\n${temizUrl}\n\n`
+    const yeniMetin = gunce.slice(0, imlecKonumu) + eklenecek + gunce.slice(imlecKonumu)
+    setGunce(yeniMetin)
+    const yeniKonum = imlecKonumu + eklenecek.length
+    setTimeout(() => {
+      if (ta) {
+        ta.focus()
+        ta.setSelectionRange(yeniKonum, yeniKonum)
+      }
+    }, 0)
   }
 
   async function ara(e) {
@@ -157,6 +171,17 @@ export default function GonderiEkle() {
           return
         }
         const url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(arama)}`
+        const res = await fetch(url)
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.status_message || `HTTP ${res.status}`)
+        setSonuclar(data.results || [])
+        if ((data.results || []).length === 0) setAramaHatasi('Sonuç bulunamadı.')
+      } else if (hedef === 'dizi') {
+        if (!TMDB_API_KEY) {
+          setAramaHatasi('TMDB API anahtarı tanımlı değil. Aşağıdan elle ekleyebilirsin.')
+          return
+        }
+        const url = `https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(arama)}`
         const res = await fetch(url)
         const data = await res.json()
         if (!res.ok) throw new Error(data.status_message || `HTTP ${res.status}`)
@@ -190,13 +215,14 @@ export default function GonderiEkle() {
       const posterDegeri = item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : ''
 
       if (kategori === 'yazi') {
-        // Yazı için sadece hafif bir referans kartı yeterli, detaylı TMDB isteği gerekmiyor
         setIlgiliBaslik(item.title)
         setIlgiliYil(yilDegeri)
         setIlgiliPosterUrl(posterDegeri)
+        setIlgiliTmdbId(item.id)
         return
       }
 
+      setTmdbId(item.id)
       setBaslik(item.title)
       setYil(yilDegeri)
       setPosterUrl(posterDegeri)
@@ -222,6 +248,37 @@ export default function GonderiEkle() {
       } finally {
         setDetayYukleniyor(false)
       }
+    } else if (hedef === 'dizi') {
+      setSeciliId(item.id)
+      setTmdbId(item.id)
+      const yilDegeri = item.first_air_date ? item.first_air_date.slice(0, 4) : ''
+      const posterDegeri = item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : ''
+      setBaslik(item.name)
+      setYil(yilDegeri)
+      setPosterUrl(posterDegeri)
+      setOzet(item.overview || '')
+      setDbPuan(item.vote_average ? item.vote_average.toFixed(1) : '')
+
+      if (!TMDB_API_KEY) return
+      setDetayYukleniyor(true)
+      try {
+        const url = `https://api.themoviedb.org/3/tv/${item.id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error('Detay isteği başarısız')
+        const detay = await res.json()
+        setTurler((detay.genres || []).map((g) => g.name).join(', '))
+        setSezonSayisi(detay.number_of_seasons || '')
+        setBolumSayisi(detay.number_of_episodes || '')
+        if (detay.overview) setOzet(detay.overview)
+        const yaratanlar = (detay.created_by || []).map((k) => k.name)
+        setYonetmen(yaratanlar.join(', '))
+        const ilkOyuncular = (detay.credits?.cast || []).slice(0, 5).map((k) => k.name)
+        setOyuncular(ilkOyuncular.join(', '))
+      } catch (err) {
+        console.warn('TMDB detay bilgisi çekilemedi:', err.message)
+      } finally {
+        setDetayYukleniyor(false)
+      }
     } else if (hedef === 'kitap') {
       const v = item.volumeInfo || {}
       const kapak = (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
@@ -235,6 +292,7 @@ export default function GonderiEkle() {
       }
 
       setSeciliId(item.id)
+      setGoogleBooksId(item.id)
       setBaslik(v.title || '')
       setYazar((v.authors || []).join(', '))
       setPosterUrl(kapak)
@@ -263,11 +321,15 @@ export default function GonderiEkle() {
         yil: apiliKategori && yil ? Number(yil) : null,
         yazar: kategori === 'kitap' ? yazar : null,
         posterUrl,
+        tmdbId: kategori === 'sinema' || kategori === 'dizi' ? tmdbId : null,
+        googleBooksId: kategori === 'kitap' ? googleBooksId : null,
         ozet: apiliKategori ? ozet || '' : '',
         turler: kategori === 'etkinlik' ? altTur : apiliKategori ? turler || '' : '',
         sureDk: kategori === 'sinema' && sureDk ? Number(sureDk) : null,
-        yonetmen: kategori === 'sinema' ? yonetmen : '',
-        oyuncular: kategori === 'sinema' ? oyuncular : '',
+        sezonSayisi: kategori === 'dizi' && sezonSayisi ? Number(sezonSayisi) : null,
+        bolumSayisi: kategori === 'dizi' && bolumSayisi ? Number(bolumSayisi) : null,
+        yonetmen: kategori === 'sinema' || kategori === 'dizi' ? yonetmen : '',
+        oyuncular: kategori === 'sinema' || kategori === 'dizi' ? oyuncular : '',
         dbPuan: apiliKategori && dbPuan ? Number(dbPuan) : null,
         sayfaSayisi: kategori === 'kitap' && sayfaSayisi ? Number(sayfaSayisi) : null,
         yayinevi: kategori === 'kitap' ? yayinevi : '',
@@ -278,6 +340,7 @@ export default function GonderiEkle() {
         ilgiliYil: kategori === 'yazi' && ilgiliYil ? Number(ilgiliYil) : null,
         ilgiliYazar: kategori === 'yazi' ? ilgiliYazar : '',
         ilgiliPosterUrl: kategori === 'yazi' ? ilgiliPosterUrl : '',
+        ilgiliTmdbId: kategori === 'yazi' ? ilgiliTmdbId : null,
         kullaniciPuani: kategori === 'yazi' && yaziAltTur === 'deneme' ? null : kullaniciPuani,
         gunce,
         tarih: serverTimestamp(),
@@ -357,7 +420,11 @@ export default function GonderiEkle() {
                   value={arama}
                   onChange={(e) => setArama(e.target.value)}
                   placeholder={
-                    (kategori === 'yazi' ? yaziAramaHedefi : kategori) === 'sinema' ? 'Film adı ara...' : 'Kitap adı ara...'
+                    (kategori === 'yazi' ? yaziAramaHedefi : kategori) === 'sinema'
+                      ? 'Film adı ara...'
+                      : (kategori === 'yazi' ? yaziAramaHedefi : kategori) === 'dizi'
+                        ? 'Dizi adı ara...'
+                        : 'Kitap adı ara...'
                   }
                   className="flex-1 rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
@@ -375,13 +442,15 @@ export default function GonderiEkle() {
                     const gorselVeAd =
                       hedef === 'sinema'
                         ? { url: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '', ad: item.title }
-                        : {
-                            url: (item.volumeInfo?.imageLinks?.thumbnail || item.volumeInfo?.imageLinks?.smallThumbnail || '').replace(
-                              'http://',
-                              'https://'
-                            ),
-                            ad: item.volumeInfo?.title,
-                          }
+                        : hedef === 'dizi'
+                          ? { url: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '', ad: item.name }
+                          : {
+                              url: (item.volumeInfo?.imageLinks?.thumbnail || item.volumeInfo?.imageLinks?.smallThumbnail || '').replace(
+                                'http://',
+                                'https://'
+                              ),
+                              ad: item.volumeInfo?.title,
+                            }
                     return (
                       <button
                         key={item.id}
@@ -426,7 +495,7 @@ export default function GonderiEkle() {
                 className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>
-            {kategori === 'sinema' && (
+            {(kategori === 'sinema' || kategori === 'dizi') && (
               <div className="w-24">
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Yıl</label>
                 <input
@@ -517,7 +586,11 @@ export default function GonderiEkle() {
           </div>
         )}
 
-        {detayYukleniyor && <p className="text-xs text-kraft">TMDB'den yönetmen, oyuncular ve tür bilgisi çekiliyor...</p>}
+        {detayYukleniyor && (
+          <p className="text-xs text-kraft">
+            TMDB'den {kategori === 'dizi' ? 'yaratıcı, oyuncular ve sezon' : 'yönetmen, oyuncular ve tür'} bilgisi çekiliyor...
+          </p>
+        )}
 
         {apiliKategori && (
           <>
@@ -541,7 +614,7 @@ export default function GonderiEkle() {
                   className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
               </div>
-              {kategori === 'sinema' ? (
+              {kategori === 'sinema' && (
                 <div className="w-28">
                   <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Süre (dk)</label>
                   <input
@@ -551,7 +624,30 @@ export default function GonderiEkle() {
                     className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                   />
                 </div>
-              ) : (
+              )}
+              {kategori === 'dizi' && (
+                <>
+                  <div className="w-24">
+                    <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Sezon</label>
+                    <input
+                      type="number"
+                      value={sezonSayisi}
+                      onChange={(e) => setSezonSayisi(e.target.value)}
+                      className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                    />
+                  </div>
+                  <div className="w-24">
+                    <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Bölüm</label>
+                    <input
+                      type="number"
+                      value={bolumSayisi}
+                      onChange={(e) => setBolumSayisi(e.target.value)}
+                      className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                    />
+                  </div>
+                </>
+              )}
+              {kategori === 'kitap' && (
                 <div className="w-28">
                   <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Sayfa</label>
                   <input
@@ -564,7 +660,7 @@ export default function GonderiEkle() {
               )}
               <div className="w-28">
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">
-                  {kategori === 'sinema' ? 'TMDB Puanı' : 'Google Puanı'}
+                  {kategori === 'kitap' ? 'Google Puanı' : 'TMDB Puanı'}
                 </label>
                 <input
                   type="text"
@@ -575,10 +671,12 @@ export default function GonderiEkle() {
               </div>
             </div>
 
-            {kategori === 'sinema' ? (
+            {(kategori === 'sinema' || kategori === 'dizi') ? (
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Yönetmen</label>
+                  <label className="block text-xs uppercase tracking-widest text-kraft mb-1">
+                    {kategori === 'dizi' ? 'Yaratıcı' : 'Yönetmen'}
+                  </label>
                   <input
                     type="text"
                     value={yonetmen}
@@ -620,7 +718,7 @@ export default function GonderiEkle() {
             >
               {YILDIZ_SECENEKLERI.map((s) => (
                 <option key={s} value={s}>
-                  {s} ★
+                  {s} ★ ({(s * 2).toFixed(1)}/10)
                 </option>
               ))}
             </select>

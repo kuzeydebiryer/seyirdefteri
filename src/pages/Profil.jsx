@@ -196,12 +196,12 @@ export default function Profil() {
         </div>
       )}
 
-      {gonderiler.some((g) => (g.tur === 'sinema' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl)) && (
+      {gonderiler.some((g) => (g.tur === 'sinema' || g.tur === 'dizi' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl)) && (
         <>
           <h2 className="font-baslik text-lg text-murekkep mb-3">Poster Duvarı</h2>
           <div className="mb-8 grid grid-cols-5 gap-2 sm:grid-cols-7">
             {gonderiler
-              .filter((g) => (g.tur === 'sinema' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl))
+              .filter((g) => (g.tur === 'sinema' || g.tur === 'dizi' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl))
               .map((g) => (
                 <Link key={g.id} to={`/gonderi/${g.id}`} className="block">
                   <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">

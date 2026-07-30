@@ -98,13 +98,20 @@ export default function GonderiKarti({ gonderi }) {
           </p>
         )}
 
-        {(gonderi.tur === 'sinema' || gonderi.tur === 'kitap') && (gonderi.turler || gonderi.sureDk || gonderi.sayfaSayisi) && (
-          <p className="text-[11px] text-kraft">
-            {[gonderi.turler, gonderi.sureDk && `⏱ ${gonderi.sureDk} dk`, gonderi.sayfaSayisi && `📄 ${gonderi.sayfaSayisi} sayfa`]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        )}
+        {(gonderi.tur === 'sinema' || gonderi.tur === 'dizi' || gonderi.tur === 'kitap') &&
+          (gonderi.turler || gonderi.sureDk || gonderi.sezonSayisi || gonderi.sayfaSayisi) && (
+            <p className="text-[11px] text-kraft">
+              {[
+                gonderi.turler,
+                gonderi.sureDk && `⏱ ${gonderi.sureDk} dk`,
+                gonderi.sezonSayisi && `📺 ${gonderi.sezonSayisi} sezon`,
+                gonderi.bolumSayisi && `${gonderi.bolumSayisi} bölüm`,
+                gonderi.sayfaSayisi && `📄 ${gonderi.sayfaSayisi} sayfa`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          )}
 
         {gonderi.kullaniciPuani && <YildizPuan puan={gonderi.kullaniciPuani} boyut="text-sm" />}
 

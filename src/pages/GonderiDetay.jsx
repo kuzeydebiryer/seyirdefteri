@@ -179,19 +179,21 @@ export default function GonderiDetay() {
 
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-kraft">
               {gonderi.turler && <span>{gonderi.turler}</span>}
-              {gonderi.tur === 'sinema' && gonderi.sureDk && <span>{gonderi.sureDk} dk</span>}
-              {gonderi.tur === 'kitap' && gonderi.sayfaSayisi && <span>{gonderi.sayfaSayisi} sayfa</span>}
+              {gonderi.tur === 'sinema' && gonderi.sureDk && <span>⏱ {gonderi.sureDk} dk</span>}
+              {gonderi.tur === 'dizi' && gonderi.sezonSayisi && <span>📺 {gonderi.sezonSayisi} sezon</span>}
+              {gonderi.tur === 'dizi' && gonderi.bolumSayisi && <span>{gonderi.bolumSayisi} bölüm</span>}
+              {gonderi.tur === 'kitap' && gonderi.sayfaSayisi && <span>📄 {gonderi.sayfaSayisi} sayfa</span>}
               {gonderi.tur === 'kitap' && gonderi.yayinevi && <span>{gonderi.yayinevi}</span>}
               {gonderi.dbPuan && <span>{gonderi.tur === 'kitap' ? 'Google' : 'TMDB'} {gonderi.dbPuan}</span>}
             </div>
 
-            {gonderi.tur === 'sinema' && gonderi.yonetmen && (
+            {(gonderi.tur === 'sinema' || gonderi.tur === 'dizi') && gonderi.yonetmen && (
               <p className="mt-1 text-xs text-murekkep">
-                <span className="text-kraft">Yönetmen: </span>
+                <span className="text-kraft">{gonderi.tur === 'dizi' ? 'Yaratıcı: ' : 'Yönetmen: '}</span>
                 {gonderi.yonetmen}
               </p>
             )}
-            {gonderi.tur === 'sinema' && gonderi.oyuncular && (
+            {(gonderi.tur === 'sinema' || gonderi.tur === 'dizi') && gonderi.oyuncular && (
               <p className="text-xs text-murekkep">
                 <span className="text-kraft">Oyuncular: </span>
                 {gonderi.oyuncular}
@@ -235,12 +237,12 @@ export default function GonderiDetay() {
 
       <div className="defter-cizgi my-6" />
 
-      {(gonderi.tur === 'sinema' || gonderi.tur === 'kitap') && (
+      {(gonderi.tur === 'sinema' || gonderi.tur === 'dizi' || gonderi.tur === 'kitap') && (
         <>
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-baslik text-lg text-murekkep">
-                Bu {gonderi.tur === 'kitap' ? 'kitap' : 'film'} hakkında konuşalım
+                Bu {gonderi.tur === 'kitap' ? 'kitap' : gonderi.tur === 'dizi' ? 'dizi' : 'film'} hakkında konuşalım
               </h2>
               {kullanici && (
                 <button
