@@ -208,7 +208,7 @@ export default function GonderiDetay() {
 
             {(gonderi.tmdbId || gonderi.googleBooksId) && (
               <Link
-                to={`/${gonderi.tur === 'kitap' ? 'kitap' : gonderi.tur}/${gonderi.tmdbId || gonderi.googleBooksId}`}
+                to={`/${gonderi.tur === 'kitap' ? 'kitap' : gonderi.tur === 'dizi' ? 'dizi' : 'film'}/${gonderi.tmdbId || gonderi.googleBooksId}`}
                 className="mt-2 inline-block text-xs text-deniz hover:underline"
               >
                 Bu {gonderi.tur === 'kitap' ? 'kitabın' : gonderi.tur === 'dizi' ? 'dizinin' : 'filmin'} sayfasına git
