@@ -173,7 +173,18 @@ topluluklar/{id}/gelecekEtkinlikler/{etkinlikId}/kaynaklar/{kaynakId}
   tur ("yazi"|"video"|"makale"|"diger"), baslik, url, ekleyenId, ekleyenAdi, eklemeTarihi
 ```
 
-## Faz 3'te bilinçli olarak eksik bırakılanlar (Faz 4+)
+## Topluluk sayfası — genişletmeler
+- **Topluluğu Düzenle:** Kurucu artık ad, açıklama, tür ve kapak görselini tek bir panelden düzenleyebiliyor.
+- **Gelecek Etkinlik düzenleme:** Etkinliği oluşturan kişi başlık/tarih/açıklamayı ve bağlı film/diziyi sonradan değiştirebiliyor.
+- **Gelecek Etkinliğe film/dizi bağlama:** Hem oluştururken hem düzenlerken TMDB'den bir film/dizi aranıp bağlanabiliyor; poster, yönetmen/yaratıcı, oyuncular otomatik gösteriliyor.
+- **Kaynaklarda "İlgili Kitaplar":** Kaynak türlerine "Kitap" eklendi — Google Books'tan arayıp seçtiğinde kapak+yazar ile ayrı bir "İlgili Kitaplar" bölümünde gösteriliyor (düz linklerden görsel olarak ayrışıyor).
+- **Geçmiş Etkinlik önizlemesi:** Her liste kartının altında, o listenin en son 10 eserinin poster şeridi görünüyor (listeye tıklamadan hızlı bir önizleme).
+- **Eser sayfasında "Senin Puanın":** Artık hem kişisel günceler hem topluluk listelerindeki puanlar birlikte hesaplanıyor — bir eseri sadece bir topluluk listesinde puanlamış olsan bile, o eserin sayfasında "Senin Puanın" kutusu görünüyor ve topluluk ortalamasına dahil oluyor.
+
+### Önemli — yeni bir Firestore indeksi gerekebilir
+Eser sayfasındaki puan birleştirme, topluluk listeleri arasında arama yapan bir **collectionGroup** sorgusu kullanıyor. Firestore ilk çalıştırıldığında muhtemelen bir indeks oluşturman gerektiğini söyleyecek — tarayıcı konsolundaki (F12) hata mesajında çıkan linke tıklaman yeterli, otomatik olarak doğru indeksi oluşturuyor.
+
+
 - Topluluklara özel akış/gönderi filtreleme (şu an topluluklar sadece üyelik/keşif amaçlı, kendi gönderi akışları yok)
 - Tartışma etkinliklerinin bir topluluğa bağlanması (`topluluklId` alanı şemada var ama UI'da henüz kullanılmıyor)
 - Bildirimler (biri seni takip edince, etkinliğe biri katılınca vb.)

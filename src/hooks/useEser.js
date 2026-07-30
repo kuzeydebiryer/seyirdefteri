@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { collection, collectionGroup, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 // Bir esere (tmdbId veya googleBooksId ile tanımlanan film/dizi/kitap) ait
-// TÜM topluluk üyelerinin paylaştığı güncelerini getirir — eser sayfasında
-// "topluluk ortalaması" ve "kimler ne demiş" listesini oluşturmak için kullanılır.
+// TÜM topluluk üyelerinin paylaştığı güncelerini VE topluluk listelerinde
+// verilen puanları birlikte getirir — eser sayfasında "topluluk ortalaması",
+// "senin puanın" ve "kimler ne demiş" listesini oluşturmak için kullanılır.
 export function useEserGonderileri(tur, disId) {
+  const { kullanici } = useAuth()
   const [gonderiler, setGonderiler] = useState([])
+  const [listePuanlari, setListePuanlari] = useState([]) // [{uid, puan}]
   const [yukleniyor, setYukleniyor] = useState(true)
 
   useEffect(() => {
@@ -19,10 +23,29 @@ export function useEserGonderileri(tur, disId) {
       setYukleniyor(true)
       const alan = tur === 'kitap' ? 'googleBooksId' : 'tmdbId'
       const deger = tur === 'kitap' ? disId : Number(disId)
-      const q = query(collection(db, 'gonderiler'), where('tur', '==', tur), where(alan, '==', deger))
-      const snap = await getDocs(q)
+
+      const gonderilerQ = query(collection(db, 'gonderiler'), where('tur', '==', tur), where(alan, '==', deger))
+      const gonderilerSnap = await getDocs(gonderilerQ)
       if (iptal) return
-      setGonderiler(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setGonderiler(gonderilerSnap.docs.map((d) => ({ id: d.id, ...d.data() })))
+
+      // Topluluk listelerindeki (Geçmiş Etkinlikler) puanları da dahil et.
+      // collectionGroup sorgusu ilk çalıştırıldığında Firestore konsolundan
+      // bir indeks oluşturman istenebilir — tarayıcı konsolundaki linke tıklaman yeterli.
+      try {
+        const ogelerQ = query(collectionGroup(db, 'ogeler'), where('tur', '==', tur), where(alan, '==', deger))
+        const ogelerSnap = await getDocs(ogelerQ)
+        if (iptal) return
+        const hepsi = []
+        ogelerSnap.docs.forEach((d) => {
+          const puanlar = d.data().puanlar || {}
+          Object.entries(puanlar).forEach(([uid, puan]) => hepsi.push({ uid, puan }))
+        })
+        setListePuanlari(hepsi)
+      } catch (e) {
+        console.warn('Topluluk liste puanları alınamadı (indeks gerekebilir):', e.message)
+      }
+
       setYukleniyor(false)
     }
     getir()
@@ -31,10 +54,21 @@ export function useEserGonderileri(tur, disId) {
     }
   }, [tur, disId])
 
-  const puanlar = gonderiler.map((g) => g.kullaniciPuani).filter((p) => p != null)
-  const ortalamaPuan = puanlar.length ? puanlar.reduce((a, b) => a + b, 0) / puanlar.length : null
+  // Aynı kişi hem kişisel günce hem liste üzerinden puan vermiş olabilir —
+  // kullanıcı başına TEK puan sayılsın diye bir map üzerinden birleştiriyoruz.
+  const puanMap = new Map()
+  gonderiler.forEach((g) => {
+    if (g.kullaniciPuani != null) puanMap.set(g.yazarId, g.kullaniciPuani)
+  })
+  listePuanlari.forEach(({ uid, puan }) => {
+    if (puan != null) puanMap.set(uid, puan)
+  })
 
-  return { gonderiler, yukleniyor, ortalamaPuan, puanSayisi: puanlar.length }
+  const puanlar = Array.from(puanMap.values())
+  const ortalamaPuan = puanlar.length ? puanlar.reduce((a, b) => a + b, 0) / puanlar.length : null
+  const kullanicininPuani = kullanici ? puanMap.get(kullanici.uid) ?? null : null
+
+  return { gonderiler, yukleniyor, ortalamaPuan, puanSayisi: puanlar.length, kullanicininPuani }
 }
 
 // Bir kategori için topluluğun en çok işlediği / en yüksek puanlı eserlerini

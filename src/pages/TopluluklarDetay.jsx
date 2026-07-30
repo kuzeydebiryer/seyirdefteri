@@ -10,6 +10,11 @@ import { useGelecekEtkinlikler } from '../hooks/useGelecekEtkinlikler.js'
 import { gelecekEtkinlikOlustur } from '../utils/gelecekEtkinlik.js'
 import Avatar from '../components/Avatar.jsx'
 import GelecekEtkinlikKarti from '../components/GelecekEtkinlikKarti.jsx'
+import ListeOnizleme from '../components/ListeOnizleme.jsx'
+
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
+const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
+const TURLER = ['Sinema', 'Kitap', 'Genel']
 
 export default function TopluluklarDetay() {
   const { id } = useParams()
@@ -26,11 +31,18 @@ export default function TopluluklarDetay() {
   const [etkinlikBaslik, setEtkinlikBaslik] = useState('')
   const [etkinlikAciklama, setEtkinlikAciklama] = useState('')
   const [etkinlikTarihi, setEtkinlikTarihi] = useState('')
+  const [eserKategori, setEserKategori] = useState('sinema')
+  const [eserArama, setEserArama] = useState('')
+  const [eserSonuclari, setEserSonuclari] = useState([])
+  const [seciliEser, setSeciliEser] = useState(null)
   const [etkinlikKaydediliyor, setEtkinlikKaydediliyor] = useState(false)
 
-  const [kapakDuzenleAcik, setKapakDuzenleAcik] = useState(false)
-  const [kapakTaslak, setKapakTaslak] = useState('')
-  const [kapakKaydediliyor, setKapakKaydediliyor] = useState(false)
+  const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
+  const [dAd, setDAd] = useState('')
+  const [dAciklama, setDAciklama] = useState('')
+  const [dTur, setDTur] = useState('Sinema')
+  const [dKapakUrl, setDKapakUrl] = useState('')
+  const [dKaydediliyor, setDKaydediliyor] = useState(false)
 
   const [topluluk, setTopluluk] = useState(null)
   const [uyeler, setUyeler] = useState([])
@@ -44,8 +56,12 @@ export default function TopluluklarDetay() {
       setYukleniyor(true)
       const snap = await getDoc(doc(db, 'topluluklar', id))
       if (!iptal && snap.exists()) {
-        setTopluluk({ id: snap.id, ...snap.data() })
-        setKapakTaslak(snap.data().kapakUrl || '')
+        const veri = snap.data()
+        setTopluluk({ id: snap.id, ...veri })
+        setDAd(veri.ad)
+        setDAciklama(veri.aciklama || '')
+        setDTur(veri.tur)
+        setDKapakUrl(veri.kapakUrl || '')
       }
 
       const uyelerSnap = await getDocs(collection(db, 'topluluklar', id, 'uyeler'))
@@ -88,15 +104,15 @@ export default function TopluluklarDetay() {
     }
   }
 
-  async function kapakKaydet(e) {
+  async function duzenlemeyiKaydet(e) {
     e.preventDefault()
-    setKapakKaydediliyor(true)
+    setDKaydediliyor(true)
     try {
-      await updateDoc(doc(db, 'topluluklar', id), { kapakUrl: kapakTaslak })
-      setTopluluk((onceki) => ({ ...onceki, kapakUrl: kapakTaslak }))
-      setKapakDuzenleAcik(false)
+      await updateDoc(doc(db, 'topluluklar', id), { ad: dAd.trim(), aciklama: dAciklama, tur: dTur, kapakUrl: dKapakUrl })
+      setTopluluk((onceki) => ({ ...onceki, ad: dAd.trim(), aciklama: dAciklama, tur: dTur, kapakUrl: dKapakUrl }))
+      setDuzenlemeAcik(false)
     } finally {
-      setKapakKaydediliyor(false)
+      setDKaydediliyor(false)
     }
   }
 
@@ -115,15 +131,57 @@ export default function TopluluklarDetay() {
     }
   }
 
+  async function eserAra(e) {
+    e.preventDefault()
+    if (!eserArama.trim() || !TMDB_API_KEY) return
+    const uc = eserKategori === 'sinema' ? 'movie' : 'tv'
+    const url = `https://api.themoviedb.org/3/search/${uc}?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(eserArama)}`
+    const res = await fetch(url)
+    const data = await res.json()
+    setEserSonuclari(data.results || [])
+  }
+
+  async function eserSec(item) {
+    const baslik = eserKategori === 'sinema' ? item.title : item.name
+    const yil = (eserKategori === 'sinema' ? item.release_date : item.first_air_date)?.slice(0, 4)
+    const posterUrl = item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : ''
+    let yonetmen = '', oyuncular = ''
+    if (TMDB_API_KEY) {
+      try {
+        const uc = eserKategori === 'sinema' ? 'movie' : 'tv'
+        const url = `https://api.themoviedb.org/3/${uc}/${item.id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits`
+        const res = await fetch(url)
+        const detay = await res.json()
+        yonetmen =
+          eserKategori === 'sinema'
+            ? (detay.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => k.name).join(', ')
+            : (detay.created_by || []).map((k) => k.name).join(', ')
+        oyuncular = (detay.credits?.cast || []).slice(0, 5).map((k) => k.name).join(', ')
+      } catch {
+        // sessizce geç
+      }
+    }
+    setSeciliEser({ eserTur: eserKategori, eserTmdbId: item.id, eserBaslik: baslik, eserYil: yil, eserPosterUrl: posterUrl, yonetmen, oyuncular })
+    setEserSonuclari([])
+    setEserArama('')
+  }
+
   async function etkinlikOlusturTiklandi(e) {
     e.preventDefault()
     if (!etkinlikBaslik.trim() || !etkinlikTarihi || !kullanici) return
     setEtkinlikKaydediliyor(true)
     try {
-      await gelecekEtkinlikOlustur(id, { baslik: etkinlikBaslik.trim(), aciklama: etkinlikAciklama, tarih: etkinlikTarihi, kullanici })
+      await gelecekEtkinlikOlustur(id, {
+        baslik: etkinlikBaslik.trim(),
+        aciklama: etkinlikAciklama,
+        tarih: etkinlikTarihi,
+        eser: seciliEser,
+        kullanici,
+      })
       setEtkinlikBaslik('')
       setEtkinlikAciklama('')
       setEtkinlikTarihi('')
+      setSeciliEser(null)
       setEtkinlikFormuAcik(false)
       etkinlikleriYenile()
     } finally {
@@ -155,28 +213,60 @@ export default function TopluluklarDetay() {
           </p>
           {topluluk.aciklama && <p className="mt-2 text-sm text-murekkep">{topluluk.aciklama}</p>}
           {benimTopluluğumMu && (
-            <button
-              onClick={() => setKapakDuzenleAcik((a) => !a)}
-              className="mt-2 text-xs text-kraft hover:text-murekkep"
-            >
-              {kapakDuzenleAcik ? 'Vazgeç' : topluluk.kapakUrl ? 'Kapak görselini değiştir' : '+ Kapak görseli ekle'}
+            <button onClick={() => setDuzenlemeAcik((a) => !a)} className="mt-2 text-xs text-kraft hover:text-murekkep">
+              {duzenlemeAcik ? 'Vazgeç' : 'Topluluğu Düzenle'}
             </button>
           )}
-          {kapakDuzenleAcik && (
-            <form onSubmit={kapakKaydet} className="mt-2 flex gap-2">
-              <input
-                type="text"
-                value={kapakTaslak}
-                onChange={(e) => setKapakTaslak(e.target.value)}
-                placeholder="https://..."
-                className="flex-1 rounded-sm bg-kagitKoyu px-3 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
-              />
+          {duzenlemeAcik && (
+            <form onSubmit={duzenlemeyiKaydet} className="mt-3 max-w-sm space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Topluluk Adı</label>
+                <input
+                  type="text"
+                  value={dAd}
+                  onChange={(e) => setDAd(e.target.value)}
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Tür</label>
+                <select
+                  value={dTur}
+                  onChange={(e) => setDTur(e.target.value)}
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                >
+                  {TURLER.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Açıklama</label>
+                <textarea
+                  value={dAciklama}
+                  onChange={(e) => setDAciklama(e.target.value)}
+                  rows={2}
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Kapak Görsel URL</label>
+                <input
+                  type="text"
+                  value={dKapakUrl}
+                  onChange={(e) => setDKapakUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
               <button
                 type="submit"
-                disabled={kapakKaydediliyor}
-                className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                disabled={dKaydediliyor}
+                className="rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
               >
-                Kaydet
+                {dKaydediliyor ? 'Kaydediliyor...' : 'Kaydet'}
               </button>
             </form>
           )}
@@ -240,6 +330,70 @@ export default function TopluluklarDetay() {
                 className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">
+                İlgili Film/Dizi (opsiyonel)
+              </label>
+              {seciliEser ? (
+                <div className="flex items-center gap-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
+                  {seciliEser.eserPosterUrl && (
+                    <img src={seciliEser.eserPosterUrl} alt="" className="h-14 w-10 rounded-sm object-cover" />
+                  )}
+                  <p className="flex-1 text-xs text-murekkep">
+                    {seciliEser.eserBaslik} {seciliEser.eserYil && `(${seciliEser.eserYil})`}
+                  </p>
+                  <button type="button" onClick={() => setSeciliEser(null)} className="text-[11px] text-kraft hover:text-muhur">
+                    Kaldır
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEserKategori('sinema')}
+                      className={`rounded-sm px-2 py-1 text-xs ${eserKategori === 'sinema' ? 'bg-deniz text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
+                    >
+                      Film
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEserKategori('dizi')}
+                      className={`rounded-sm px-2 py-1 text-xs ${eserKategori === 'dizi' ? 'bg-deniz text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
+                    >
+                      Dizi
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={eserArama}
+                      onChange={(e) => setEserArama(e.target.value)}
+                      placeholder="Film/dizi ara..."
+                      className="flex-1 rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                    />
+                    <button onClick={eserAra} type="button" className="rounded-sm bg-deniz px-3 py-2 text-xs text-kagit">
+                      Ara
+                    </button>
+                  </div>
+                  {eserSonuclari.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
+                      {eserSonuclari.slice(0, 16).map((item) => (
+                        <button key={item.id} type="button" onClick={() => eserSec(item)} className="text-left">
+                          <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
+                            {item.poster_path && (
+                              <img src={`${TMDB_POSTER}${item.poster_path}`} alt="" className="h-full w-full object-cover" />
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <button
               type="submit"
               disabled={etkinlikKaydediliyor}
@@ -321,6 +475,7 @@ export default function TopluluklarDetay() {
                 <p className="font-govde text-sm text-murekkep">{l.baslik}</p>
                 {l.aciklama && <p className="text-xs text-kraft">{l.aciklama}</p>}
                 <p className="mt-1 text-xs text-kraft">{l.ogeSayisi || 0} eser</p>
+                <ListeOnizleme topluluklId={id} listeId={l.id} adet={10} />
               </Link>
             </li>
           ))}

@@ -16,6 +16,8 @@ export async function listeOlustur(topluluklId, { baslik, aciklama, kullanici })
 export async function ogeEkle(topluluklId, listeId, oge) {
   await addDoc(collection(db, 'topluluklar', topluluklId, 'listeler', listeId, 'ogeler'), {
     ...oge,
+    topluluklId,
+    listeId,
     eklemeTarihi: serverTimestamp(),
     puanlar: {},
   })

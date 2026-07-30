@@ -13,7 +13,7 @@ const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 export default function EserSayfasi({ tur }) {
   const { id } = useParams()
   const { kullanici } = useAuth()
-  const { gonderiler, yukleniyor: gonderilerYukleniyor, ortalamaPuan, puanSayisi } = useEserGonderileri(tur, id)
+  const { gonderiler, yukleniyor: gonderilerYukleniyor, ortalamaPuan, puanSayisi, kullanicininPuani } = useEserGonderileri(tur, id)
 
   const [detay, setDetay] = useState(null)
   const [detayYukleniyor, setDetayYukleniyor] = useState(true)
@@ -124,15 +124,26 @@ export default function EserSayfasi({ tur }) {
           )}
 
           {/* Topluluk ortalaması — bu esere şimdiye kadar verilen tüm puanların ortalaması */}
-          <div className="mt-4 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi inline-block">
-            <p className="text-xs uppercase tracking-widest text-gise">Topluluk Ortalaması</p>
-            {ortalamaPuan != null ? (
-              <div className="mt-1 flex items-center gap-2">
-                <YildizPuan puan={Math.round(ortalamaPuan * 2) / 2} boyut="text-lg" />
-                <span className="text-xs text-kraft">({puanSayisi} kişi puanladı)</span>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <div className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi inline-block">
+              <p className="text-xs uppercase tracking-widest text-gise">Topluluk Ortalaması</p>
+              {ortalamaPuan != null ? (
+                <div className="mt-1 flex items-center gap-2">
+                  <YildizPuan puan={Math.round(ortalamaPuan * 2) / 2} boyut="text-lg" />
+                  <span className="text-xs text-kraft">({puanSayisi} kişi puanladı)</span>
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-kraft">Henüz kimse puanlamadı.</p>
+              )}
+            </div>
+
+            {kullanicininPuani != null && (
+              <div className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi inline-block">
+                <p className="text-xs uppercase tracking-widest text-gise">Senin Puanın</p>
+                <div className="mt-1">
+                  <YildizPuan puan={kullanicininPuani} boyut="text-lg" />
+                </div>
               </div>
-            ) : (
-              <p className="mt-1 text-sm text-kraft">Henüz kimse puanlamadı.</p>
             )}
           </div>
         </div>
