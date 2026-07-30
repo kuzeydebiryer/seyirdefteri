@@ -176,6 +176,7 @@ export default function TopluluklarDetay() {
         aciklama: etkinlikAciklama,
         tarih: etkinlikTarihi,
         eser: seciliEser,
+        topluluk,
         kullanici,
       })
       setEtkinlikBaslik('')

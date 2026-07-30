@@ -193,6 +193,11 @@ export default function GelecekEtkinlikKarti({ topluluklId, etkinlik }) {
           )}
           <div>
             <p className="font-govde text-sm text-murekkep">{etkinlik.baslik}</p>
+            {etkinlik.topluluklAd && (
+              <Link to={`/topluluk/${etkinlik.topluluklId}`} className="text-[11px] text-deniz hover:underline">
+                🏛 {etkinlik.topluluklAd}
+              </Link>
+            )}
             {etkinlik.eserBaslik && (
               <p className="text-xs text-kraft">
                 {eserSayfasiLinki ? (

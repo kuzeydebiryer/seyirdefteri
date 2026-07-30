@@ -1,12 +1,15 @@
 import { addDoc, arrayRemove, arrayUnion, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-export async function gelecekEtkinlikOlustur(topluluklId, { baslik, aciklama, tarih, eser, kullanici }) {
+export async function gelecekEtkinlikOlustur(topluluklId, { baslik, aciklama, tarih, eser, topluluk, kullanici }) {
   await addDoc(collection(db, 'topluluklar', topluluklId, 'gelecekEtkinlikler'), {
     baslik,
     aciklama,
     tarih,
     ...(eser || {}),
+    topluluklId,
+    topluluklAd: topluluk?.ad || '',
+    topluluklTur: topluluk?.tur || 'Genel',
     olusturanId: kullanici.uid,
     olusturanAdi: kullanici.displayName || 'İsimsiz',
     olusturmaTarihi: serverTimestamp(),

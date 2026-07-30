@@ -191,6 +191,20 @@ Eser sayfasındaki puan birleştirme, topluluk listeleri arasında arama yapan b
 - Moderasyon / şikayet mekanizması
 - Gerçek dosya yükleme (avatar/fotoğraf hâlâ URL yapıştırma ile; Firebase Storage entegrasyonu eklenebilir)
 
+## Etkinlikler sayfası: Film Kulübü / Kitap Kulübü ayrımı
+- `/etkinlikler` sayfası artık iki bölüme ayrılıyor: **Film Kulübü** ve **Kitap Kulübü** (bir topluluğun `tur` alanına göre; "Genel" türündeki topluluklar ayrı bir üçüncü bölümde toplanıyor).
+- Her bölümün altında iki alt kısım var: **"Bu film/kitap hakkında konuşmalıyız"** (kişisel günce sayfalarından açılan tartışma etkinlikleri) ve **"Gelecek Etkinlik"** (topluluk sayfalarında oluşturulan buluşmalar).
+- Topluluk etkinlikleri artık **hangi topluluğun düzenlediğini** gösteriyor (🏛 rozeti, topluluk sayfasına link).
+
+### Veri modeli eklemeleri
+```
+topluluklar/{id}/gelecekEtkinlikler/{etkinlikId}
+  topluluklId, topluluklAd, topluluklTur   (yeni alanlar — küresel Etkinlikler sayfasında gruplama/gösterim için)
+```
+
+### Önemli — yeni bir Firestore indeksi gerekebilir
+Bu özellik de bir **collectionGroup** sorgusu kullanıyor (tüm topluluklardaki gelecek etkinlikleri tek seferde çekmek için). İlk çalıştırıldığında Firestore bir indeks oluşturman gerektiğini söyleyebilir — F12 konsolundaki linke tıklaman yeterli.
+
 ## Ölçeklenme notu
 Kişiselleştirilmiş akış, Firestore'un `in` operatörüyle "takip ettiğim herkesin
 gönderileri" sorgusu yapıyor. Bu operatör en fazla 30 değer kabul ediyor —
