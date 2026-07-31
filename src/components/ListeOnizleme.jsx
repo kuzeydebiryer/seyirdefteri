@@ -10,15 +10,19 @@ export default function ListeOnizleme({ topluluklId, listeId, adet = 10 }) {
   useEffect(() => {
     let iptal = false
     async function getir() {
-      const q = query(
-        collection(db, 'listeOgeleri'),
-        where('topluluklId', '==', topluluklId),
-        where('listeId', '==', listeId),
-        orderBy('etkinlikTarihi', 'desc'),
-        limit(adet)
-      )
-      const snap = await getDocs(q)
-      if (!iptal) setOgeler(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      try {
+        const q = query(
+          collection(db, 'listeOgeleri'),
+          where('topluluklId', '==', topluluklId),
+          where('listeId', '==', listeId),
+          orderBy('etkinlikTarihi', 'desc'),
+          limit(adet)
+        )
+        const snap = await getDocs(q)
+        if (!iptal) setOgeler(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      } catch (e) {
+        console.error('ListeOnizleme hata:', e.code, e.message, e)
+      }
     }
     getir()
     return () => {

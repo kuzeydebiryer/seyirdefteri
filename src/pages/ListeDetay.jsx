@@ -15,7 +15,7 @@ const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 export default function ListeDetay() {
   const { topluluklId, listeId } = useParams()
   const { kullanici } = useAuth()
-  const { ogeler, yukleniyor, yenidenYukle } = useListeOgeleri(topluluklId, listeId)
+  const { ogeler, yukleniyor, hata, yenidenYukle } = useListeOgeleri(topluluklId, listeId)
 
   const [liste, setListe] = useState(null)
   const [formuAcik, setFormuAcik] = useState(false)
@@ -220,7 +220,13 @@ export default function ListeDetay() {
       <div className="defter-cizgi my-6" />
 
       {yukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
-      {!yukleniyor && ogeler.length === 0 && <p className="text-sm text-kraft">Bu listede henüz eser yok.</p>}
+      {hata && (
+        <p className="text-sm text-muhur">
+          Eserler yüklenemedi: {hata}
+          {hata.includes('index') && ' — F12 konsolundaki linke tıklayarak indeksi oluşturabilirsin.'}
+        </p>
+      )}
+      {!yukleniyor && !hata && ogeler.length === 0 && <p className="text-sm text-kraft">Bu listede henüz eser yok.</p>}
 
       <div className="space-y-2">
         {ogeler.map((oge) => (
