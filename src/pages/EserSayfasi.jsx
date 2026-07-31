@@ -200,6 +200,26 @@ export default function EserSayfasi({ tur }) {
     }
   }
 
+  // "+ Ekle" + "Okumaya Başla" iki ayrı adımını tek tıka indiren kısayol
+  async function dogrudanOkumayaBasla() {
+    if (!kullanici || !detay) return
+    setIzlenecekIsleniyor(true)
+    try {
+      await izlenecekEkle(kullanici, {
+        tur,
+        disId: id,
+        baslik: detay.baslik,
+        alt: detay.yazar || '',
+        posterUrl: detay.posterUrl,
+        toplamSayfa: detay.sayfaSayisi || null,
+        durum: 'okunuyor',
+      })
+      setIzlenecekKaydi({ durum: 'okunuyor', toplamSayfa: detay.sayfaSayisi || null, suankiSayfa: 0 })
+    } finally {
+      setIzlenecekIsleniyor(false)
+    }
+  }
+
   async function izlenecektenKaldir() {
     if (!kullanici) return
     setIzlenecekIsleniyor(true)
@@ -305,13 +325,22 @@ export default function EserSayfasi({ tur }) {
               </button>
 
               {!izlenecekKaydi && (
-                <button
-                  onClick={izlenecegeEkle}
-                  disabled={izlenecekIsleniyor}
-                  className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi disabled:opacity-40"
-                >
-                  + {tur === 'kitap' ? 'Okuyacaklarıma' : 'İzleyeceklerime'} Ekle
-                </button>
+                <>
+                  <button
+                    onClick={izlenecegeEkle}
+                    disabled={izlenecekIsleniyor}
+                    className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi disabled:opacity-40"
+                  >
+                    + {tur === 'kitap' ? 'Okuyacaklarıma' : 'İzleyeceklerime'} Ekle
+                  </button>
+                  <button
+                    onClick={dogrudanOkumayaBasla}
+                    disabled={izlenecekIsleniyor}
+                    className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                  >
+                    {tur === 'kitap' ? 'Okumaya Başlıyorum' : 'İzlemeye Başlıyorum'}
+                  </button>
+                </>
               )}
 
               {izlenecekKaydi?.durum === 'planlanan' && (

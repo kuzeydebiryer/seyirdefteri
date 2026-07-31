@@ -5,7 +5,7 @@ function izlenecekDokId(uid, tur, disId) {
   return `${uid}_${tur}_${disId}`
 }
 
-export async function izlenecekEkle(kullanici, { tur, disId, baslik, alt, posterUrl, toplamSayfa }) {
+export async function izlenecekEkle(kullanici, { tur, disId, baslik, alt, posterUrl, toplamSayfa, durum }) {
   const id = izlenecekDokId(kullanici.uid, tur, disId)
   await setDoc(doc(db, 'izlenecekler', id), {
     kullaniciId: kullanici.uid,
@@ -14,9 +14,9 @@ export async function izlenecekEkle(kullanici, { tur, disId, baslik, alt, poster
     baslik,
     alt: alt || '',
     posterUrl: posterUrl || '',
-    durum: 'planlanan', // 'planlanan' | 'okunuyor'
+    durum: durum || 'planlanan', // 'planlanan' | 'okunuyor'
     toplamSayfa: toplamSayfa || null,
-    suankiSayfa: null,
+    suankiSayfa: durum === 'okunuyor' ? 0 : null,
     eklemeTarihi: serverTimestamp(),
   })
 }

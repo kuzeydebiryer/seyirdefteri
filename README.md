@@ -350,3 +350,10 @@ Bunu gidermek için:
 
 
 
+
+## Profil sekmelerinde tür ayrımı revizyonu
+"İzlemek" ve "okumak" farklı fiiller — önceki yapı bunları karıştırıyordu (kitaplar "İzleyeceklerim"de görünüyordu gibi). Düzeltildi:
+- **İzlediklerim:** Artık sadece Film/Dizi (Poster Duvarı ve Güncesi de buna göre daraltıldı).
+- **Okuduklarım (yeni sekme):** Sadece Kitap — "Okuma Özeti" kutusu artık burada, "Kitaplığım" poster duvarı ve kitap güncesi de burada.
+- **Şu An:** Tek sekme ama içeride "Şu An İzlediklerim" (Film/Dizi) ve "Şu An Okuduklarım" (Kitap, sayfa ilerlemesiyle) olarak ayrı gruplandı.
+- **İzleyecek/Okuyacaklarım:** Tek sekme ama içeride "İzleyeceklerim" (Film/Dizi) ve "Okuyacaklarım" (Kitap) olarak ayrı gruplandı.

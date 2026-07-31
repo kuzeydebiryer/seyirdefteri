@@ -159,8 +159,9 @@ export default function Profil() {
 
   const SEKMELER = [
     { id: 'izlediklerim', etiket: 'İzlediklerim' },
-    { id: 'suanda', etiket: 'Şu An Okuduklarım' },
-    { id: 'izleyecegim', etiket: 'İzleyeceklerim' },
+    { id: 'okuduklarim', etiket: 'Okuduklarım' },
+    { id: 'suanda', etiket: 'Şu An' },
+    { id: 'izleyecegim', etiket: 'İzleyecek/Okuyacaklarım' },
     { id: 'favoriler', etiket: 'Favoriler' },
     { id: 'raflarim', etiket: 'Raflarım' },
     { id: 'yorumlarim', etiket: 'Yorumlarım' },
@@ -316,8 +317,69 @@ export default function Profil() {
         ))}
       </div>
 
-      {/* İzlediklerim */}
+      {/* İzlediklerim (sadece Film/Dizi) */}
       {sekme === 'izlediklerim' && (
+        <>
+          {(() => {
+            const filmDiziGonderileri = gonderiler.filter((g) => (g.tur === 'sinema' || g.tur === 'dizi') && g.posterUrl)
+            if (filmDiziGonderileri.length === 0) return null
+            return (
+              <>
+                <h2 className="font-baslik text-lg text-murekkep mb-3">Poster Duvarı</h2>
+                {[
+                  { tur: 'sinema', baslik: 'Filmler' },
+                  { tur: 'dizi', baslik: 'Diziler' },
+                ].map(({ tur, baslik }) => {
+                  const buGrup = filmDiziGonderileri.filter((g) => g.tur === tur)
+                  if (buGrup.length === 0) return null
+                  return (
+                    <div key={tur} className="mb-5">
+                      <p className="mb-2 text-xs uppercase tracking-widest text-kraft">{baslik}</p>
+                      <div className="grid grid-cols-5 gap-2 sm:grid-cols-7">
+                        {buGrup.map((g) => (
+                          <Link key={g.id} to={`/gonderi/${g.id}`} className="block">
+                            <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                              <img src={g.posterUrl} alt={g.baslik} className="h-full w-full object-cover" />
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+                <div className="mb-3" />
+              </>
+            )
+          })()}
+
+          <h2 className="font-baslik text-lg text-murekkep mb-3">Güncesi</h2>
+          {gonderilerHatasi && (
+            <p className="mb-3 text-xs text-muhur">
+              Güncelerin yüklenirken hata oldu: {gonderilerHatasi}. Muhtemelen Firestore'da eksik bir indeks var —
+              tarayıcı konsolundaki (F12) linke tıklayarak oluşturabilirsin.
+            </p>
+          )}
+          <div className="space-y-4">
+            {(() => {
+              const filmDizi = gonderiler.filter((g) => g.tur === 'sinema' || g.tur === 'dizi')
+              return (
+                <>
+                  {filmDizi.map((g, i) => (
+                    <div key={g.id}>
+                      <GonderiKarti gonderi={g} />
+                      {i < filmDizi.length - 1 && <div className="defter-cizgi mt-4" />}
+                    </div>
+                  ))}
+                  {filmDizi.length === 0 && <p className="text-sm text-kraft">Henüz bir film/dizi paylaşımı yok.</p>}
+                </>
+              )
+            })()}
+          </div>
+        </>
+      )}
+
+      {/* Okuduklarım (sadece Kitap) */}
+      {sekme === 'okuduklarim' && (
         <>
           {(() => {
             const kitapGonderileri = gonderiler.filter((g) => g.tur === 'kitap')
@@ -362,38 +424,41 @@ export default function Profil() {
             )
           })()}
 
-          {gonderiler.some((g) => (g.tur === 'sinema' || g.tur === 'dizi' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl)) && (
-            <>
-              <h2 className="font-baslik text-lg text-murekkep mb-3">Poster Duvarı</h2>
-              <div className="mb-8 grid grid-cols-5 gap-2 sm:grid-cols-7">
-                {gonderiler
-                  .filter((g) => (g.tur === 'sinema' || g.tur === 'dizi' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl))
-                  .map((g) => (
+          {(() => {
+            const kitapGonderileri = gonderiler.filter((g) => g.tur === 'kitap' && (g.posterUrl || g.ilgiliPosterUrl))
+            if (kitapGonderileri.length === 0) return null
+            return (
+              <>
+                <h2 className="font-baslik text-lg text-murekkep mb-3">Kitaplığım</h2>
+                <div className="mb-8 grid grid-cols-5 gap-2 sm:grid-cols-7">
+                  {kitapGonderileri.map((g) => (
                     <Link key={g.id} to={`/gonderi/${g.id}`} className="block">
                       <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                         <img src={g.posterUrl || g.ilgiliPosterUrl} alt={g.baslik} className="h-full w-full object-cover" />
                       </div>
                     </Link>
                   ))}
-              </div>
-            </>
-          )}
+                </div>
+              </>
+            )
+          })()}
 
           <h2 className="font-baslik text-lg text-murekkep mb-3">Güncesi</h2>
-          {gonderilerHatasi && (
-            <p className="mb-3 text-xs text-muhur">
-              Güncelerin yüklenirken hata oldu: {gonderilerHatasi}. Muhtemelen Firestore'da eksik bir indeks var —
-              tarayıcı konsolundaki (F12) linke tıklayarak oluşturabilirsin.
-            </p>
-          )}
           <div className="space-y-4">
-            {gonderiler.map((g, i) => (
-              <div key={g.id}>
-                <GonderiKarti gonderi={g} />
-                {i < gonderiler.length - 1 && <div className="defter-cizgi mt-4" />}
-              </div>
-            ))}
-            {gonderiler.length === 0 && <p className="text-sm text-kraft">Henüz paylaşım yok.</p>}
+            {(() => {
+              const kitap = gonderiler.filter((g) => g.tur === 'kitap')
+              return (
+                <>
+                  {kitap.map((g, i) => (
+                    <div key={g.id}>
+                      <GonderiKarti gonderi={g} />
+                      {i < kitap.length - 1 && <div className="defter-cizgi mt-4" />}
+                    </div>
+                  ))}
+                  {kitap.length === 0 && <p className="text-sm text-kraft">Henüz bir kitap paylaşımı yok.</p>}
+                </>
+              )
+            })()}
           </div>
         </>
       )}
@@ -401,57 +466,109 @@ export default function Profil() {
       {/* Şu An Okuduklarım */}
       {sekme === 'suanda' && (
         <div>
-          {izlenecekler.filter((i) => i.durum === 'okunuyor').length === 0 && (
-            <p className="text-sm text-kraft">Şu an okunan/izlenen bir şey yok.</p>
-          )}
-          <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
-            {izlenecekler
-              .filter((i) => i.durum === 'okunuyor')
-              .map((i) => (
-                <div key={i.id}>
-                  <PosterKart baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
-                  {i.toplamSayfa ? (
-                    <>
-                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-kagitKoyu ring-1 ring-cizgi">
-                        <div
-                          className="h-full bg-deniz"
-                          style={{ width: `${Math.min(100, Math.round(((i.suankiSayfa || 0) / i.toplamSayfa) * 100))}%` }}
-                        />
-                      </div>
-                      <p className="mt-0.5 text-[11px] text-kraft">
-                        {i.suankiSayfa || 0} / {i.toplamSayfa} sayfa
-                      </p>
-                    </>
-                  ) : null}
-                </div>
-              ))}
-          </div>
+          {(() => {
+            const suanFilmDizi = izlenecekler.filter((i) => i.durum === 'okunuyor' && (i.tur === 'sinema' || i.tur === 'dizi'))
+            const suanKitap = izlenecekler.filter((i) => i.durum === 'okunuyor' && i.tur === 'kitap')
+            if (suanFilmDizi.length === 0 && suanKitap.length === 0) {
+              return <p className="text-sm text-kraft">Şu an okunan/izlenen bir şey yok.</p>
+            }
+            return (
+              <>
+                {suanFilmDizi.length > 0 && (
+                  <div className="mb-8">
+                    <h2 className="font-baslik text-lg text-murekkep mb-3">Şu An İzlediklerim</h2>
+                    <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+                      {suanFilmDizi.map((i) => (
+                        <PosterKart key={i.id} baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {suanKitap.length > 0 && (
+                  <div>
+                    <h2 className="font-baslik text-lg text-murekkep mb-3">Şu An Okuduklarım</h2>
+                    <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+                      {suanKitap.map((i) => (
+                        <div key={i.id}>
+                          <PosterKart baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                          {i.toplamSayfa ? (
+                            <>
+                              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-kagitKoyu ring-1 ring-cizgi">
+                                <div
+                                  className="h-full bg-deniz"
+                                  style={{ width: `${Math.min(100, Math.round(((i.suankiSayfa || 0) / i.toplamSayfa) * 100))}%` }}
+                                />
+                              </div>
+                              <p className="mt-0.5 text-[11px] text-kraft">
+                                {i.suankiSayfa || 0} / {i.toplamSayfa} sayfa
+                              </p>
+                            </>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </div>
       )}
 
-      {/* İzleyeceklerim */}
+      {/* İzleyecek/Okuyacaklarım */}
       {sekme === 'izleyecegim' && (
         <div>
-          {izlenecekler.filter((i) => i.durum !== 'okunuyor').length === 0 && (
-            <p className="text-sm text-kraft">İzleyecekler listesi boş.</p>
-          )}
-          <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
-            {izlenecekler
-              .filter((i) => i.durum !== 'okunuyor')
-              .map((i) => (
-                <div key={i.id} className="relative">
-                  <PosterKart baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
-                  {benimProfilimMi && (
-                    <button
-                      onClick={() => izlenecekSil(i)}
-                      className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-          </div>
+          {(() => {
+            const bekleyenFilmDizi = izlenecekler.filter((i) => i.durum !== 'okunuyor' && (i.tur === 'sinema' || i.tur === 'dizi'))
+            const bekleyenKitap = izlenecekler.filter((i) => i.durum !== 'okunuyor' && i.tur === 'kitap')
+            if (bekleyenFilmDizi.length === 0 && bekleyenKitap.length === 0) {
+              return <p className="text-sm text-kraft">Liste boş.</p>
+            }
+            return (
+              <>
+                {bekleyenFilmDizi.length > 0 && (
+                  <div className="mb-8">
+                    <h2 className="font-baslik text-lg text-murekkep mb-3">İzleyeceklerim</h2>
+                    <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+                      {bekleyenFilmDizi.map((i) => (
+                        <div key={i.id} className="relative">
+                          <PosterKart baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                          {benimProfilimMi && (
+                            <button
+                              onClick={() => izlenecekSil(i)}
+                              className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {bekleyenKitap.length > 0 && (
+                  <div>
+                    <h2 className="font-baslik text-lg text-murekkep mb-3">Okuyacaklarım</h2>
+                    <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+                      {bekleyenKitap.map((i) => (
+                        <div key={i.id} className="relative">
+                          <PosterKart baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                          {benimProfilimMi && (
+                            <button
+                              onClick={() => izlenecekSil(i)}
+                              className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </div>
       )}
 
