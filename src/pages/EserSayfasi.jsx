@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useEserGonderileri } from '../hooks/useEser.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { favoriEkle, favoriKaldir } from '../utils/favori.js'
+import { favoriMi } from '../hooks/useFavoriler.js'
+import { izlenecekEkle, izlenecekKaldir, izlenecekMi } from '../utils/izlenecek.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
@@ -37,6 +40,11 @@ export default function EserSayfasi({ tur }) {
   const [saglayicilar, setSaglayicilar] = useState(null)
   const [detayYukleniyor, setDetayYukleniyor] = useState(true)
   const [hata, setHata] = useState('')
+
+  const [favoriMi_, setFavoriMi_] = useState(false)
+  const [izlenecekMi_, setIzlenecekMi_] = useState(false)
+  const [favoriIsleniyor, setFavoriIsleniyor] = useState(false)
+  const [izlenecekIsleniyor, setIzlenecekIsleniyor] = useState(false)
 
   useEffect(() => {
     let iptal = false
@@ -114,6 +122,68 @@ export default function EserSayfasi({ tur }) {
     }
   }, [tur, id])
 
+  useEffect(() => {
+    let iptal = false
+    async function kontrolEt() {
+      if (!kullanici) {
+        setFavoriMi_(false)
+        setIzlenecekMi_(false)
+        return
+      }
+      const [fav, izl] = await Promise.all([favoriMi(kullanici.uid, tur, id), izlenecekMi(kullanici.uid, tur, id)])
+      if (!iptal) {
+        setFavoriMi_(fav)
+        setIzlenecekMi_(izl)
+      }
+    }
+    kontrolEt()
+    return () => {
+      iptal = true
+    }
+  }, [kullanici, tur, id])
+
+  async function favoriDegistir() {
+    if (!kullanici || !detay) return
+    setFavoriIsleniyor(true)
+    try {
+      if (favoriMi_) {
+        await favoriKaldir(kullanici.uid, tur, id)
+      } else {
+        await favoriEkle(kullanici, {
+          tur,
+          disId: id,
+          baslik: detay.baslik,
+          alt: detay.yazar || '',
+          posterUrl: detay.posterUrl,
+        })
+      }
+      setFavoriMi_(!favoriMi_)
+    } finally {
+      setFavoriIsleniyor(false)
+    }
+  }
+
+  async function izlenecekDegistir() {
+    if (!kullanici || !detay) return
+    setIzlenecekIsleniyor(true)
+    try {
+      if (izlenecekMi_) {
+        await izlenecekKaldir(kullanici.uid, tur, id)
+      } else {
+        await izlenecekEkle(kullanici, {
+          tur,
+          disId: id,
+          baslik: detay.baslik,
+          alt: detay.yazar || '',
+          posterUrl: detay.posterUrl,
+        })
+      }
+      setIzlenecekMi_(!izlenecekMi_)
+    } finally {
+      setIzlenecekIsleniyor(false)
+    }
+  }
+
   const basliklar = { sinema: 'film', dizi: 'dizi', kitap: 'kitap' }
   const eklemeLinki = `/gonderi-ekle?tur=${tur}&disId=${id}`
 
@@ -153,6 +223,29 @@ export default function EserSayfasi({ tur }) {
 
           <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
           <KisiListesi kisiler={detay.oyuncular} etiket="Oyuncular" />
+
+          {kullanici && (
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={favoriDegistir}
+                disabled={favoriIsleniyor}
+                className={`rounded-sm px-3 py-1.5 font-govde text-xs ${
+                  favoriMi_ ? 'bg-muhur text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                } disabled:opacity-40`}
+              >
+                {favoriMi_ ? '★ Favorilerimde' : '☆ Favorilere Ekle'}
+              </button>
+              <button
+                onClick={izlenecekDegistir}
+                disabled={izlenecekIsleniyor}
+                className={`rounded-sm px-3 py-1.5 font-govde text-xs ${
+                  izlenecekMi_ ? 'bg-deniz text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                } disabled:opacity-40`}
+              >
+                {izlenecekMi_ ? '✓ İzlenecekler Listemde' : `+ ${tur === 'kitap' ? 'Okuyacaklarıma' : 'İzleyeceklerime'} Ekle`}
+              </button>
+            </div>
+          )}
 
           {/* Topluluk ortalaması — bu esere şimdiye kadar verilen tüm puanların ortalaması */}
           <div className="mt-4 flex flex-wrap gap-3">

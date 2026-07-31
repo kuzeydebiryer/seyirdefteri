@@ -40,12 +40,38 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;
       allow update: if request.auth != null;
       allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
+    }
 
-      match /yorumlar/{yorumId} {
-        allow read: if true;
-        allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;
-        allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
-      }
+    // Yorumlar: üst seviye koleksiyon (gonderiId alanıyla filtreleniyor) — hem bir
+    // güncenin yorumlarını hem "Yorumlarım" profil sekmesini basit where() ile
+    // sorgulayabilmek için.
+    match /yorumlar/{yorumId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
+    }
+
+    // Favoriler ve İzleyecekler listesi: doküman ID'si `${uid}_${tur}_${disId}` olacak
+    // şekilde sabit, bu yüzden "create" kuralında resource.data üzerinden kullaniciId
+    // kontrolü yeterli; "update" gerekmiyor (setDoc ile üzerine yazılıyor, o da create
+    // olarak değerlendirilir çünkü doküman içeriği tamamen değişiyor).
+    match /favoriler/{favoriId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null;
+    }
+
+    match /izlenecekler/{izlenecekId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null;
+    }
+
+    // Kişi (yönetmen/oyuncu) değerlendirmeleri: doküman ID'si `${kisiTmdbId}_${uid}`
+    // olduğu için her kullanıcı bir kişiye tek değerlendirme bırakabiliyor.
+    match /kisiDegerlendirmeleri/{degerlendirmeId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
     }
 
     // Topluluklar: herkes okuyabilir, sadece kurucu adına oluşturulabilir.

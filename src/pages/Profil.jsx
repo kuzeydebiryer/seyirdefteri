@@ -5,10 +5,41 @@ import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGonderiler } from '../hooks/useGonderiler.js'
 import { useTakip } from '../hooks/useTakip.js'
+import { useFavoriler } from '../hooks/useFavoriler.js'
+import { useIzlenecekler } from '../hooks/useIzlenecekler.js'
+import { useYorumlarim } from '../hooks/useYorumlarim.js'
 import { takipEt, takipBirak } from '../utils/takip.js'
+import { favoriKaldir } from '../utils/favori.js'
+import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import Avatar from '../components/Avatar.jsx'
+
+const FAVORI_TURLERI = [
+  { id: 'sinema', etiket: 'Filmler' },
+  { id: 'dizi', etiket: 'Diziler' },
+  { id: 'kitap', etiket: 'Kitaplar' },
+  { id: 'kisi', etiket: 'Oyuncular/Yönetmenler' },
+]
+
+function esereLink(tur, disId) {
+  if (tur === 'kisi') return `/kisi/${disId}`
+  if (tur === 'kitap') return `/kitap/${disId}`
+  if (tur === 'dizi') return `/dizi/${disId}`
+  return `/film/${disId}`
+}
+
+function PosterKart({ baslik, alt, posterUrl, link }) {
+  return (
+    <Link to={link} className="block">
+      <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+        {posterUrl && <img src={posterUrl} alt={baslik} className="h-full w-full object-cover" />}
+      </div>
+      <p className="mt-1 truncate text-xs text-murekkep">{baslik}</p>
+      {alt && <p className="truncate text-[11px] text-kraft">{alt}</p>}
+    </Link>
+  )
+}
 
 export default function Profil() {
   const { uid } = useParams()
@@ -19,6 +50,12 @@ export default function Profil() {
   const { gonderiler, hata: gonderilerHatasi } = useGonderiler({ yazarId: uid })
   const { takipEdiyorMu, setTakipEdiyorMu, takipciSayisi, takipEdilenSayisi } = useTakip(uid, kullanici?.uid)
   const [takipIsleniyor, setTakipIsleniyor] = useState(false)
+
+  const [sekme, setSekme] = useState('izlediklerim')
+  const [favoriSekmesi, setFavoriSekmesi] = useState('sinema')
+  const { favoriler, yenidenYukle: favorileriYenile } = useFavoriler(uid, favoriSekmesi)
+  const { izlenecekler, yenidenYukle: izlenecekleriYenile } = useIzlenecekler(uid)
+  const { yorumlar: yorumlarim } = useYorumlarim(uid)
 
   const [davetKodlari, setDavetKodlari] = useState([])
   const [uretiliyor, setUretiliyor] = useState(false)
@@ -97,7 +134,24 @@ export default function Profil() {
     }
   }
 
+  async function favoriSil(f) {
+    await favoriKaldir(uid, f.tur, f.disId)
+    favorileriYenile()
+  }
+
+  async function izlenecekSil(i) {
+    await izlenecekKaldir(uid, i.tur, i.disId)
+    izlenecekleriYenile()
+  }
+
   if (!hedefProfil) return <p className="text-kraft text-sm">Yükleniyor...</p>
+
+  const SEKMELER = [
+    { id: 'izlediklerim', etiket: 'İzlediklerim' },
+    { id: 'izleyecegim', etiket: 'İzleyeceklerim' },
+    { id: 'favoriler', etiket: 'Favoriler' },
+    { id: 'yorumlarim', etiket: 'Yorumlarım' },
+  ]
 
   return (
     <div>
@@ -196,39 +250,135 @@ export default function Profil() {
         </div>
       )}
 
-      {gonderiler.some((g) => (g.tur === 'sinema' || g.tur === 'dizi' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl)) && (
+      {/* Sekmeler */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        {SEKMELER.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setSekme(s.id)}
+            className={`rounded-sm px-3 py-1.5 font-govde text-sm transition ${
+              sekme === s.id
+                ? 'bg-murekkep text-kagit font-medium ring-2 ring-murekkep'
+                : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:ring-murekkep/50'
+            }`}
+          >
+            {s.etiket}
+          </button>
+        ))}
+      </div>
+
+      {/* İzlediklerim */}
+      {sekme === 'izlediklerim' && (
         <>
-          <h2 className="font-baslik text-lg text-murekkep mb-3">Poster Duvarı</h2>
-          <div className="mb-8 grid grid-cols-5 gap-2 sm:grid-cols-7">
-            {gonderiler
-              .filter((g) => (g.tur === 'sinema' || g.tur === 'dizi' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl))
-              .map((g) => (
-                <Link key={g.id} to={`/gonderi/${g.id}`} className="block">
-                  <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                    <img src={g.posterUrl || g.ilgiliPosterUrl} alt={g.baslik} className="h-full w-full object-cover" />
-                  </div>
-                </Link>
-              ))}
+          {gonderiler.some((g) => (g.tur === 'sinema' || g.tur === 'dizi' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl)) && (
+            <>
+              <h2 className="font-baslik text-lg text-murekkep mb-3">Poster Duvarı</h2>
+              <div className="mb-8 grid grid-cols-5 gap-2 sm:grid-cols-7">
+                {gonderiler
+                  .filter((g) => (g.tur === 'sinema' || g.tur === 'dizi' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl))
+                  .map((g) => (
+                    <Link key={g.id} to={`/gonderi/${g.id}`} className="block">
+                      <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                        <img src={g.posterUrl || g.ilgiliPosterUrl} alt={g.baslik} className="h-full w-full object-cover" />
+                      </div>
+                    </Link>
+                  ))}
+              </div>
+            </>
+          )}
+
+          <h2 className="font-baslik text-lg text-murekkep mb-3">Güncesi</h2>
+          {gonderilerHatasi && (
+            <p className="mb-3 text-xs text-muhur">
+              Güncelerin yüklenirken hata oldu: {gonderilerHatasi}. Muhtemelen Firestore'da eksik bir indeks var —
+              tarayıcı konsolundaki (F12) linke tıklayarak oluşturabilirsin.
+            </p>
+          )}
+          <div className="space-y-4">
+            {gonderiler.map((g, i) => (
+              <div key={g.id}>
+                <GonderiKarti gonderi={g} />
+                {i < gonderiler.length - 1 && <div className="defter-cizgi mt-4" />}
+              </div>
+            ))}
+            {gonderiler.length === 0 && <p className="text-sm text-kraft">Henüz paylaşım yok.</p>}
           </div>
         </>
       )}
 
-      <h2 className="font-baslik text-lg text-murekkep mb-3">Güncesi</h2>
-      {gonderilerHatasi && (
-        <p className="mb-3 text-xs text-muhur">
-          Güncelerin yüklenirken hata oldu: {gonderilerHatasi}. Muhtemelen Firestore'da eksik bir indeks var —
-          tarayıcı konsolundaki (F12) linke tıklayarak oluşturabilirsin.
-        </p>
-      )}
-      <div className="space-y-4">
-        {gonderiler.map((g, i) => (
-          <div key={g.id}>
-            <GonderiKarti gonderi={g} />
-            {i < gonderiler.length - 1 && <div className="defter-cizgi mt-4" />}
+      {/* İzleyeceklerim */}
+      {sekme === 'izleyecegim' && (
+        <div>
+          {izlenecekler.length === 0 && <p className="text-sm text-kraft">İzleyecekler listesi boş.</p>}
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+            {izlenecekler.map((i) => (
+              <div key={i.id} className="relative">
+                <PosterKart baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                {benimProfilimMi && (
+                  <button
+                    onClick={() => izlenecekSil(i)}
+                    className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-        {gonderiler.length === 0 && <p className="text-sm text-kraft">Henüz paylaşım yok.</p>}
-      </div>
+        </div>
+      )}
+
+      {/* Favoriler */}
+      {sekme === 'favoriler' && (
+        <div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {FAVORI_TURLERI.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setFavoriSekmesi(t.id)}
+                className={`rounded-sm px-3 py-1 font-govde text-xs ${
+                  favoriSekmesi === t.id ? 'bg-deniz text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                }`}
+              >
+                {t.etiket}
+              </button>
+            ))}
+          </div>
+          {favoriler.length === 0 && <p className="text-sm text-kraft">Bu kategoride favori yok.</p>}
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+            {favoriler.map((f) => (
+              <div key={f.id} className="relative">
+                <PosterKart baslik={f.baslik} alt={f.alt} posterUrl={f.posterUrl} link={esereLink(f.tur, f.disId)} />
+                {benimProfilimMi && (
+                  <button
+                    onClick={() => favoriSil(f)}
+                    className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Yorumlarım */}
+      {sekme === 'yorumlarim' && (
+        <div>
+          {yorumlarim.length === 0 && <p className="text-sm text-kraft">Henüz kimseye yorum yapılmamış.</p>}
+          <ul className="space-y-3">
+            {yorumlarim.map((y) => (
+              <li key={y.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+                <Link to={`/gonderi/${y.gonderiId}`} className="text-xs text-deniz hover:underline">
+                  {y.gonderiBasligi || 'Günce'}
+                </Link>
+                <p className="mt-1 text-sm text-murekkep">{y.metin}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

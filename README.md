@@ -240,3 +240,30 @@ yaklaşım yerine "fan-out on write" (paylaşım anında takipçilerin akışın
 kopyalama) mimarisine geçmek gerekir — küçük/orta ölçekli bir topluluk için
 şimdilik bu basit yaklaşım yeterli.
 
+## Favoriler, İzleyeceklerim, Oyuncu Puanlama, Yorumlarım
+- **Favoriler:** Film/dizi/kitap sayfalarında ve kişi sayfalarında "☆ Favorilere Ekle" butonu. Profilde kategoriye göre (Filmler/Diziler/Kitaplar/Oyuncular) ayrılmış bir Favoriler sekmesi var.
+- **İzleyeceklerim:** Film/dizi/kitap sayfalarında "+ İzleyeceklerime Ekle" butonu. Profilde ayrı bir sekme, her öğenin yanında kaldırma (✕) butonu var.
+- **Oyunculara puan/yorum:** Kişi sayfalarında artık 0.5-5 yıldız + kısa yorumla değerlendirme yapılabiliyor, topluluk ortalaması ve herkesin yorumları gösteriliyor (film/dizi eser sayfalarıyla aynı mantık).
+- **Yorumlarım:** Yorumlar artık üst seviye bir koleksiyonda tutuluyor (`gonderiId` alanıyla filtreleniyor), bu sayede profilde "Yorumlarım" sekmesinde başkalarının güncelerine bıraktığın tüm yorumları, ilgili güncenin linkiyle birlikte görebiliyorsun.
+
+### Veri modeli eklemeleri
+```
+favoriler/{uid}_{tur}_{disId}
+  kullaniciId, tur ("sinema"|"dizi"|"kitap"|"kisi"), disId, baslik, alt, posterUrl, eklemeTarihi
+
+izlenecekler/{uid}_{tur}_{disId}
+  kullaniciId, tur, disId, baslik, alt, posterUrl, eklemeTarihi
+
+kisiDegerlendirmeleri/{kisiTmdbId}_{uid}
+  kisiTmdbId, kullaniciId, kullaniciAdi, puan, yorum, tarih
+
+yorumlar/{id}   (artık gonderiler/{id}/yorumlar altında DEĞİL, üst seviyede)
+  gonderiId, gonderiBasligi, yazarId, yazarAdi, metin, tarih
+```
+
+### Önemli — geçmiş yorumlar
+Yorumlar sistemi üst seviye koleksiyona taşındığı için, **bu değişiklikten önce
+yazılmış yorumlar** artık görünmüyor (eski konumda kaldılar, silinmediler).
+Yeni yorumlar sorunsuz çalışacak.
+
+

@@ -12,6 +12,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -51,9 +52,17 @@ export default function GonderiDetay() {
       const snap = await getDoc(doc(db, 'gonderiler', id))
       if (!iptal && snap.exists()) setGonderi({ id: snap.id, ...snap.data() })
 
-      const yq = query(collection(db, 'gonderiler', id, 'yorumlar'), orderBy('tarih', 'asc'))
+      // Yorumlar artık üst seviye bir koleksiyonda (gonderiId alanıyla filtreleniyor) —
+      // bu sayede "Yorumlarım" profil sekmesi için de kolayca sorgulanabiliyor.
+      // orderBy kullanmıyoruz (composite index gerektirmesin diye), sıralamayı
+      // istemci tarafında yapıyoruz.
+      const yq = query(collection(db, 'yorumlar'), where('gonderiId', '==', id))
       const ysnap = await getDocs(yq)
-      if (!iptal) setYorumlar(ysnap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      if (!iptal) {
+        const liste = ysnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        liste.sort((a, b) => (a.tarih?.toMillis?.() || 0) - (b.tarih?.toMillis?.() || 0))
+        setYorumlar(liste)
+      }
       if (!iptal) setYukleniyor(false)
     }
     getir()
@@ -77,7 +86,9 @@ export default function GonderiDetay() {
     if (!yeniYorum.trim() || !kullanici) return
     setGonderiliyor(true)
     try {
-      const yeniYorumRef = await addDoc(collection(db, 'gonderiler', id, 'yorumlar'), {
+      const yeniYorumRef = await addDoc(collection(db, 'yorumlar'), {
+        gonderiId: id,
+        gonderiBasligi: gonderi?.baslik || '',
         yazarId: kullanici.uid,
         yazarAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
         metin: yeniYorum.trim(),
