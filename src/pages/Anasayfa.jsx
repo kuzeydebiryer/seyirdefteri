@@ -40,6 +40,8 @@ export default function Anasayfa() {
 
   return (
     <div>
+      <p className="mb-6 text-sm text-kraft italic">Kültür hayatının ortak günlüğü.</p>
+
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-baslik text-2xl text-murekkep">Akış</h1>
         <Link to="/gonderi-ekle" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-sm text-kagit">

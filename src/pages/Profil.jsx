@@ -168,6 +168,9 @@ export default function Profil() {
                 {duzenlemeAcik ? 'Vazgeç' : 'Profili Düzenle'}
               </button>
             )}
+            <Link to="/kullanicilar" className="text-xs text-deniz hover:underline">
+              Kişileri Keşfet →
+            </Link>
           </div>
           <p className="text-sm text-kraft">@{hedefProfil.kullaniciAdi}</p>
           {!duzenlemeAcik && hedefProfil.bio && <p className="mt-2 text-sm text-murekkep">{hedefProfil.bio}</p>}

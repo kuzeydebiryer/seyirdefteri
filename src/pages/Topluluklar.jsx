@@ -47,7 +47,7 @@ export default function Topluluklar() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-2">
         <h1 className="font-baslik text-2xl text-murekkep">Topluluklar</h1>
         <button
           onClick={() => setFormuAcik((a) => !a)}
@@ -56,6 +56,10 @@ export default function Topluluklar() {
           {formuAcik ? 'Vazgeç' : '+ Topluluk Kur'}
         </button>
       </div>
+      <Link to="/etkinlikler" className="mb-6 inline-block text-sm text-deniz hover:underline">
+        Tüm Etkinlikleri Gör →
+      </Link>
+      <div className="mb-6" />
 
       {formuAcik && (
         <form onSubmit={olustur} className="mb-8 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">

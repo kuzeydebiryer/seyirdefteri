@@ -1,18 +1,17 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import Avatar from './Avatar.jsx'
+import Logo from './Logo.jsx'
 
+// Akış ve Ekle kaldırıldı — Anasayfa'nın kendisi zaten akış ve "Günce Ekle" butonunu
+// içeriyor. Kişiler profile, Etkinlikler Topluluklar sayfasına taşındı (aşağıdaki notlara bakın).
 const LINKLER = [
-  { yol: '/', etiket: 'Akış' },
-  { yol: '/gonderi-ekle', etiket: 'Ekle' },
   { yol: '/filmler', etiket: 'Film' },
   { yol: '/diziler', etiket: 'Dizi' },
   { yol: '/kitaplar', etiket: 'Kitap' },
   { yol: '/oyuncular', etiket: 'Oyuncular' },
   { yol: '/yonetmenler', etiket: 'Yönetmenler' },
-  { yol: '/kullanicilar', etiket: 'Kişiler' },
-  { yol: '/etkinlikler', etiket: 'Etkinlikler' },
   { yol: '/topluluklar', etiket: 'Topluluklar' },
 ]
 
@@ -32,9 +31,9 @@ export default function Nav() {
   return (
     <header className="border-b border-cizgi">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-        <NavLink to="/" className="font-baslik text-2xl text-murekkep" onClick={() => setMenuAcik(false)}>
-          Seyirdefteri
-        </NavLink>
+        <Link to="/" onClick={() => setMenuAcik(false)}>
+          <Logo />
+        </Link>
 
         {kullanici ? (
           <>
