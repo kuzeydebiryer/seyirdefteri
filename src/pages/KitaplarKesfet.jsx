@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { topluluktaPopulerEserler } from '../hooks/useEser.js'
+import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
+import { useHaberler } from '../hooks/useHaberler.js'
 import YildizPuan from '../components/YildizPuan.jsx'
+import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
+import HaberBolumu from '../components/HaberBolumu.jsx'
 
 export default function KitaplarKesfet() {
   const [topluluk, setTopluluk] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
+  const { tavsiyeler, yenidenYukle: tavsiyeleriYenile } = useTavsiyeler('kitap')
+  const { haberler, yenidenYukle: haberleriYenile } = useHaberler('kitap')
 
   useEffect(() => {
     let iptal = false
@@ -25,6 +31,9 @@ export default function KitaplarKesfet() {
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-6">Kitap</h1>
+
+      <TavsiyeBolumu tur="kitap" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
+      <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} />
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Bizim Aramızda Popüler</h2>
       {yukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}

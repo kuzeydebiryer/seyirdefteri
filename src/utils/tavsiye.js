@@ -1,11 +1,12 @@
 import { addDoc, collection, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-export async function tavsiyeEkle({ tur, disId, baslik, posterUrl, not: notMetni, kullanici }) {
+export async function tavsiyeEkle({ tur, disId, baslik, alt, posterUrl, not: notMetni, kullanici }) {
   await addDoc(collection(db, 'tavsiyeler'), {
-    tur, // 'sinema' | 'dizi'
-    disId: Number(disId),
+    tur, // 'sinema' | 'dizi' | 'kitap'
+    disId: tur === 'kitap' ? disId : Number(disId),
     baslik,
+    alt: alt || '',
     posterUrl: posterUrl || '',
     not: notMetni || '',
     ekleyenId: kullanici.uid,

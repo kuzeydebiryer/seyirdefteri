@@ -5,6 +5,7 @@ import { tavsiyeEkle, tavsiyeSil } from '../utils/tavsiye.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342'
+const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
 export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
   const { kullanici } = useAuth()
@@ -17,7 +18,16 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
 
   async function ara(e) {
     e.preventDefault()
-    if (!arama.trim() || !TMDB_API_KEY) return
+    if (!arama.trim()) return
+    if (tur === 'kitap') {
+      const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
+      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(arama)}&maxResults=12${anahtarParcasi}`
+      const res = await fetch(url)
+      const data = await res.json()
+      setSonuclar(data.items || [])
+      return
+    }
+    if (!TMDB_API_KEY) return
     const uc = tur === 'sinema' ? 'movie' : 'tv'
     const url = `https://api.themoviedb.org/3/search/${uc}?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(arama)}`
     const res = await fetch(url)
@@ -26,11 +36,21 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
   }
 
   function sec(item) {
-    setSecili({
-      disId: item.id,
-      baslik: tur === 'sinema' ? item.title : item.name,
-      posterUrl: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '',
-    })
+    if (tur === 'kitap') {
+      const v = item.volumeInfo || {}
+      setSecili({
+        disId: item.id,
+        baslik: v.title || '',
+        alt: (v.authors || []).join(', '),
+        posterUrl: (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://'),
+      })
+    } else {
+      setSecili({
+        disId: item.id,
+        baslik: tur === 'sinema' ? item.title : item.name,
+        posterUrl: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '',
+      })
+    }
     setSonuclar([])
     setArama('')
   }
@@ -56,7 +76,7 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
     yenidenYukle()
   }
 
-  const esereLink = (disId) => (tur === 'dizi' ? `/dizi/${disId}` : `/film/${disId}`)
+  const esereLink = (disId) => (tur === 'dizi' ? `/dizi/${disId}` : tur === 'kitap' ? `/kitap/${disId}` : `/film/${disId}`)
 
   return (
     <div className="mb-10">
@@ -78,7 +98,10 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
             <form onSubmit={gonder} className="space-y-2">
               <div className="flex items-center gap-2">
                 {secili.posterUrl && <img src={secili.posterUrl} alt="" className="h-16 w-11 rounded-sm object-cover" />}
-                <p className="flex-1 text-sm text-murekkep">{secili.baslik}</p>
+                <div className="flex-1">
+                  <p className="text-sm text-murekkep">{secili.baslik}</p>
+                  {secili.alt && <p className="text-xs text-kraft">{secili.alt}</p>}
+                </div>
                 <button type="button" onClick={() => setSecili(null)} className="text-xs text-kraft hover:text-muhur">
                   Değiştir
                 </button>
@@ -105,7 +128,7 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
                   type="text"
                   value={arama}
                   onChange={(e) => setArama(e.target.value)}
-                  placeholder={tur === 'sinema' ? 'Film ara...' : 'Dizi ara...'}
+                  placeholder={tur === 'sinema' ? 'Film ara...' : tur === 'kitap' ? 'Kitap ara...' : 'Dizi ara...'}
                   className="flex-1 rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
                 <button type="submit" className="rounded-sm bg-deniz px-3 py-2 text-xs text-kagit">
@@ -114,15 +137,23 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
               </form>
               {sonuclar.length > 0 && (
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                  {sonuclar.slice(0, 12).map((item) => (
-                    <button key={item.id} type="button" onClick={() => sec(item)} className="text-left">
-                      <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
-                        {item.poster_path && (
-                          <img src={`${TMDB_POSTER}${item.poster_path}`} alt="" className="h-full w-full object-cover" />
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                  {sonuclar.slice(0, 12).map((item) => {
+                    const gorselVeAd =
+                      tur === 'kitap'
+                        ? {
+                            url: (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://'),
+                            ad: item.volumeInfo?.title,
+                          }
+                        : { url: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '', ad: item.title || item.name }
+                    return (
+                      <button key={item.id} type="button" onClick={() => sec(item)} className="text-left">
+                        <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
+                          {gorselVeAd.url && <img src={gorselVeAd.url} alt="" className="h-full w-full object-cover" />}
+                        </div>
+                        <p className="mt-1 truncate text-[11px] text-murekkep">{gorselVeAd.ad}</p>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </>
@@ -141,6 +172,7 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
                   {t.posterUrl && <img src={t.posterUrl} alt={t.baslik} className="h-full w-full object-cover" />}
                 </div>
                 <p className="mt-1 truncate text-xs text-murekkep">{t.baslik}</p>
+                {t.alt && <p className="truncate text-[11px] text-kraft">{t.alt}</p>}
                 <p className="truncate text-[11px] text-kraft">{t.ekleyenAdi} tavsiye etti</p>
               </Link>
               {kullanici?.uid === t.ekleyenId && (

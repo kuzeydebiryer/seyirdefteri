@@ -4,7 +4,13 @@ import { useEserGonderileri } from '../hooks/useEser.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
-import { izlenecekEkle, izlenecekKaldir, izlenecekMi } from '../utils/izlenecek.js'
+import {
+  izlenecekEkle,
+  izlenecekKaldir,
+  izlenecekGetir,
+  okumayaBasla,
+  ilerlemeGuncelle,
+} from '../utils/izlenecek.js'
 import { eserPuanla } from '../utils/eserPuani.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import Avatar from '../components/Avatar.jsx'
@@ -53,7 +59,8 @@ export default function EserSayfasi({ tur }) {
   const [hata, setHata] = useState('')
 
   const [favoriMi_, setFavoriMi_] = useState(false)
-  const [izlenecekMi_, setIzlenecekMi_] = useState(false)
+  const [izlenecekKaydi, setIzlenecekKaydi] = useState(null)
+  const [sayfaTaslak, setSayfaTaslak] = useState(0)
   const [favoriIsleniyor, setFavoriIsleniyor] = useState(false)
   const [izlenecekIsleniyor, setIzlenecekIsleniyor] = useState(false)
 
@@ -138,13 +145,14 @@ export default function EserSayfasi({ tur }) {
     async function kontrolEt() {
       if (!kullanici) {
         setFavoriMi_(false)
-        setIzlenecekMi_(false)
+        setIzlenecekKaydi(null)
         return
       }
-      const [fav, izl] = await Promise.all([favoriMi(kullanici.uid, tur, id), izlenecekMi(kullanici.uid, tur, id)])
+      const [fav, izl] = await Promise.all([favoriMi(kullanici.uid, tur, id), izlenecekGetir(kullanici.uid, tur, id)])
       if (!iptal) {
         setFavoriMi_(fav)
-        setIzlenecekMi_(izl)
+        setIzlenecekKaydi(izl)
+        if (izl?.suankiSayfa != null) setSayfaTaslak(izl.suankiSayfa)
       }
     }
     kontrolEt()
@@ -174,22 +182,53 @@ export default function EserSayfasi({ tur }) {
     }
   }
 
-  async function izlenecekDegistir() {
+  async function izlenecegeEkle() {
     if (!kullanici || !detay) return
     setIzlenecekIsleniyor(true)
     try {
-      if (izlenecekMi_) {
-        await izlenecekKaldir(kullanici.uid, tur, id)
-      } else {
-        await izlenecekEkle(kullanici, {
-          tur,
-          disId: id,
-          baslik: detay.baslik,
-          alt: detay.yazar || '',
-          posterUrl: detay.posterUrl,
-        })
-      }
-      setIzlenecekMi_(!izlenecekMi_)
+      await izlenecekEkle(kullanici, {
+        tur,
+        disId: id,
+        baslik: detay.baslik,
+        alt: detay.yazar || '',
+        posterUrl: detay.posterUrl,
+        toplamSayfa: detay.sayfaSayisi || null,
+      })
+      setIzlenecekKaydi({ durum: 'planlanan' })
+    } finally {
+      setIzlenecekIsleniyor(false)
+    }
+  }
+
+  async function izlenecektenKaldir() {
+    if (!kullanici) return
+    setIzlenecekIsleniyor(true)
+    try {
+      await izlenecekKaldir(kullanici.uid, tur, id)
+      setIzlenecekKaydi(null)
+    } finally {
+      setIzlenecekIsleniyor(false)
+    }
+  }
+
+  async function okumayaBaslaTiklandi() {
+    if (!kullanici) return
+    setIzlenecekIsleniyor(true)
+    try {
+      await okumayaBasla(kullanici.uid, tur, id, detay?.sayfaSayisi || null)
+      setIzlenecekKaydi((onceki) => ({ ...onceki, durum: 'okunuyor', toplamSayfa: detay?.sayfaSayisi || null, suankiSayfa: 0 }))
+    } finally {
+      setIzlenecekIsleniyor(false)
+    }
+  }
+
+  async function ilerlemeyiKaydet(e) {
+    e.preventDefault()
+    if (!kullanici) return
+    setIzlenecekIsleniyor(true)
+    try {
+      await ilerlemeGuncelle(kullanici.uid, tur, id, sayfaTaslak)
+      setIzlenecekKaydi((onceki) => ({ ...onceki, suankiSayfa: sayfaTaslak }))
     } finally {
       setIzlenecekIsleniyor(false)
     }
@@ -232,7 +271,13 @@ export default function EserSayfasi({ tur }) {
           <h1 className="font-baslik text-3xl text-murekkep">
             {detay.baslik} {detay.yil && <span className="text-kraft text-xl">({detay.yil})</span>}
           </h1>
-          {detay.yazar && <p className="text-sm text-kraft mt-1">{detay.yazar}</p>}
+          {detay.yazar && (
+            <p className="text-sm mt-1">
+              <Link to={`/yazar/${encodeURIComponent(detay.yazar)}`} className="text-kraft hover:underline hover:text-deniz">
+                {detay.yazar}
+              </Link>
+            </p>
+          )}
 
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-kraft">
             {detay.turler && <span>{detay.turler}</span>}
@@ -248,7 +293,7 @@ export default function EserSayfasi({ tur }) {
           <KisiListesi kisiler={detay.oyuncular} etiket="Oyuncular" />
 
           {kullanici && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <button
                 onClick={favoriDegistir}
                 disabled={favoriIsleniyor}
@@ -258,14 +303,77 @@ export default function EserSayfasi({ tur }) {
               >
                 {favoriMi_ ? '★ Favorilerimde' : '☆ Favorilere Ekle'}
               </button>
-              <button
-                onClick={izlenecekDegistir}
-                disabled={izlenecekIsleniyor}
-                className={`rounded-sm px-3 py-1.5 font-govde text-xs ${
-                  izlenecekMi_ ? 'bg-deniz text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
-                } disabled:opacity-40`}
-              >
-                {izlenecekMi_ ? '✓ İzlenecekler Listemde' : `+ ${tur === 'kitap' ? 'Okuyacaklarıma' : 'İzleyeceklerime'} Ekle`}
+
+              {!izlenecekKaydi && (
+                <button
+                  onClick={izlenecegeEkle}
+                  disabled={izlenecekIsleniyor}
+                  className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi disabled:opacity-40"
+                >
+                  + {tur === 'kitap' ? 'Okuyacaklarıma' : 'İzleyeceklerime'} Ekle
+                </button>
+              )}
+
+              {izlenecekKaydi?.durum === 'planlanan' && (
+                <>
+                  <button
+                    onClick={okumayaBaslaTiklandi}
+                    disabled={izlenecekIsleniyor}
+                    className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                  >
+                    {tur === 'kitap' ? 'Okumaya Başla' : 'İzlemeye Başla'}
+                  </button>
+                  <button
+                    onClick={izlenecektenKaldir}
+                    disabled={izlenecekIsleniyor}
+                    className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi disabled:opacity-40"
+                  >
+                    Kaldır
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {izlenecekKaydi?.durum === 'okunuyor' && (
+            <div className="mt-3 max-w-xs rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="text-xs uppercase tracking-widest text-gise">
+                {tur === 'kitap' ? 'Şu An Okuyorsun' : 'Şu An İzliyorsun'}
+              </p>
+              {tur === 'kitap' && izlenecekKaydi.toplamSayfa ? (
+                <>
+                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-kagit ring-1 ring-cizgi">
+                    <div
+                      className="h-full bg-deniz"
+                      style={{
+                        width: `${Math.min(100, Math.round(((izlenecekKaydi.suankiSayfa || 0) / izlenecekKaydi.toplamSayfa) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <form onSubmit={ilerlemeyiKaydet} className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max={izlenecekKaydi.toplamSayfa}
+                      value={sayfaTaslak}
+                      onChange={(e) => setSayfaTaslak(Number(e.target.value))}
+                      className="w-20 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                    />
+                    <span className="text-xs text-kraft">/ {izlenecekKaydi.toplamSayfa} sayfa</span>
+                    <button
+                      type="submit"
+                      disabled={izlenecekIsleniyor}
+                      className="rounded-sm bg-muhur px-2 py-1 font-govde text-[11px] text-kagit disabled:opacity-40"
+                    >
+                      Güncelle
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <p className="mt-1 text-xs text-kraft">Sayfa bilgisi yok, ilerleme takip edilemiyor.</p>
+              )}
+              <button onClick={izlenecektenKaldir} className="mt-2 text-[11px] text-kraft hover:text-muhur">
+                Bitirdim, listeden kaldır
               </button>
             </div>
           )}

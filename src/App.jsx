@@ -21,6 +21,8 @@ import Oyuncular from './pages/Oyuncular.jsx'
 import Yazilar from './pages/Yazilar.jsx'
 import Gezi from './pages/Gezi.jsx'
 import YonetmenSayfasi from './pages/YonetmenSayfasi.jsx'
+import YazarSayfasi from './pages/YazarSayfasi.jsx'
+import RafDetay from './pages/RafDetay.jsx'
 
 export default function App() {
   return (
@@ -46,6 +48,8 @@ export default function App() {
           <Route path="/yazilar" element={<OzelRota><Yazilar /></OzelRota>} />
           <Route path="/gezi" element={<OzelRota><Gezi /></OzelRota>} />
           <Route path="/yonetmen/:id" element={<OzelRota><YonetmenSayfasi /></OzelRota>} />
+          <Route path="/yazar/:ad" element={<OzelRota><YazarSayfasi /></OzelRota>} />
+          <Route path="/raf/:id" element={<OzelRota><RafDetay /></OzelRota>} />
           <Route path="/film/:id" element={<OzelRota><EserSayfasi tur="sinema" /></OzelRota>} />
           <Route path="/dizi/:id" element={<OzelRota><EserSayfasi tur="dizi" /></OzelRota>} />
           <Route path="/kitap/:id" element={<OzelRota><EserSayfasi tur="kitap" /></OzelRota>} />

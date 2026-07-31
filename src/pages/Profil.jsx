@@ -8,6 +8,8 @@ import { useTakip } from '../hooks/useTakip.js'
 import { useFavoriler } from '../hooks/useFavoriler.js'
 import { useIzlenecekler } from '../hooks/useIzlenecekler.js'
 import { useYorumlarim } from '../hooks/useYorumlarim.js'
+import { useRaflar } from '../hooks/useRaflar.js'
+import { rafOlustur, rafSil } from '../utils/raf.js'
 import { takipEt, takipBirak } from '../utils/takip.js'
 import { favoriKaldir } from '../utils/favori.js'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
@@ -19,11 +21,13 @@ const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
   { id: 'dizi', etiket: 'Diziler' },
   { id: 'kitap', etiket: 'Kitaplar' },
+  { id: 'yazar', etiket: 'Yazarlar' },
   { id: 'kisi', etiket: 'Oyuncular/Yönetmenler' },
 ]
 
 function esereLink(tur, disId) {
   if (tur === 'kisi') return `/kisi/${disId}`
+  if (tur === 'yazar') return `/yazar/${disId}`
   if (tur === 'kitap') return `/kitap/${disId}`
   if (tur === 'dizi') return `/dizi/${disId}`
   return `/film/${disId}`
@@ -55,6 +59,11 @@ export default function Profil() {
   const [favoriSekmesi, setFavoriSekmesi] = useState('sinema')
   const { favoriler, yenidenYukle: favorileriYenile } = useFavoriler(uid, favoriSekmesi)
   const { izlenecekler, yenidenYukle: izlenecekleriYenile } = useIzlenecekler(uid)
+  const { raflar, yenidenYukle: raflariYenile } = useRaflar(uid)
+  const [rafFormuAcik, setRafFormuAcik] = useState(false)
+  const [rafBaslik, setRafBaslik] = useState('')
+  const [rafAciklama, setRafAciklama] = useState('')
+  const [rafKaydediliyor, setRafKaydediliyor] = useState(false)
   const { yorumlar: yorumlarim } = useYorumlarim(uid)
 
   const [davetKodlari, setDavetKodlari] = useState([])
@@ -63,6 +72,7 @@ export default function Profil() {
   const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
   const [bioTaslak, setBioTaslak] = useState('')
   const [avatarTaslak, setAvatarTaslak] = useState('')
+  const [hedefTaslak, setHedefTaslak] = useState(0)
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   useEffect(() => {
@@ -85,6 +95,7 @@ export default function Profil() {
     if (hedefProfil && benimProfilimMi) {
       setBioTaslak(hedefProfil.bio || '')
       setAvatarTaslak(hedefProfil.avatarUrl || '')
+      setHedefTaslak(hedefProfil.yillikOkumaHedefi || 0)
     }
   }, [hedefProfil, benimProfilimMi])
 
@@ -92,8 +103,8 @@ export default function Profil() {
     e.preventDefault()
     setKaydediliyor(true)
     try {
-      await profilGuncelle({ bio: bioTaslak, avatarUrl: avatarTaslak })
-      setHedefProfil((onceki) => ({ ...onceki, bio: bioTaslak, avatarUrl: avatarTaslak }))
+      await profilGuncelle({ bio: bioTaslak, avatarUrl: avatarTaslak, yillikOkumaHedefi: Number(hedefTaslak) || 0 })
+      setHedefProfil((onceki) => ({ ...onceki, bio: bioTaslak, avatarUrl: avatarTaslak, yillikOkumaHedefi: Number(hedefTaslak) || 0 }))
       setDuzenlemeAcik(false)
     } finally {
       setKaydediliyor(false)
@@ -148,10 +159,33 @@ export default function Profil() {
 
   const SEKMELER = [
     { id: 'izlediklerim', etiket: 'İzlediklerim' },
+    { id: 'suanda', etiket: 'Şu An Okuduklarım' },
     { id: 'izleyecegim', etiket: 'İzleyeceklerim' },
     { id: 'favoriler', etiket: 'Favoriler' },
+    { id: 'raflarim', etiket: 'Raflarım' },
     { id: 'yorumlarim', etiket: 'Yorumlarım' },
   ]
+
+  async function rafOlusturTiklandi(e) {
+    e.preventDefault()
+    if (!rafBaslik.trim() || !kullanici) return
+    setRafKaydediliyor(true)
+    try {
+      await rafOlustur(kullanici, rafBaslik.trim(), rafAciklama)
+      setRafBaslik('')
+      setRafAciklama('')
+      setRafFormuAcik(false)
+      raflariYenile()
+    } finally {
+      setRafKaydediliyor(false)
+    }
+  }
+
+  async function rafiSil(rafId) {
+    if (!window.confirm('Bu rafı silmek istediğine emin misin?')) return
+    await rafSil(rafId)
+    raflariYenile()
+  }
 
   return (
     <div>
@@ -193,6 +227,18 @@ export default function Profil() {
                   value={bioTaslak}
                   onChange={(e) => setBioTaslak(e.target.value)}
                   rows={3}
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">
+                  Yıllık Okuma Hedefi (kitap sayısı)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={hedefTaslak}
+                  onChange={(e) => setHedefTaslak(e.target.value)}
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
               </div>
@@ -273,6 +319,49 @@ export default function Profil() {
       {/* İzlediklerim */}
       {sekme === 'izlediklerim' && (
         <>
+          {(() => {
+            const kitapGonderileri = gonderiler.filter((g) => g.tur === 'kitap')
+            if (kitapGonderileri.length === 0) return null
+            const buYil = new Date().getFullYear()
+            const buYilOkunan = kitapGonderileri.filter((g) => {
+              const t = g.tarih?.toDate?.() || new Date(g.tarih)
+              return !isNaN(t.getTime()) && t.getFullYear() === buYil
+            }).length
+            const turSayaci = {}
+            kitapGonderileri.forEach((g) => {
+              ;(g.turler || '').split(',').map((t) => t.trim()).filter(Boolean).forEach((t) => {
+                turSayaci[t] = (turSayaci[t] || 0) + 1
+              })
+            })
+            const enCokTur = Object.entries(turSayaci).sort((a, b) => b[1] - a[1])[0]?.[0]
+            const hedef = hedefProfil.yillikOkumaHedefi || 0
+
+            return (
+              <div className="mb-8 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+                <p className="text-xs uppercase tracking-widest text-gise mb-2">Okuma Özeti — {buYil}</p>
+                <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-murekkep">
+                  <p>
+                    <span className="font-medium">{buYilOkunan}</span> kitap okudun
+                    {hedef > 0 && <span className="text-kraft"> / hedefin {hedef}</span>}
+                  </p>
+                  {enCokTur && (
+                    <p>
+                      En çok okuduğun tür: <span className="font-medium">{enCokTur}</span>
+                    </p>
+                  )}
+                  <p>
+                    Toplam <span className="font-medium">{kitapGonderileri.length}</span> kitap
+                  </p>
+                </div>
+                {hedef > 0 && (
+                  <div className="mt-2 h-2 w-full max-w-xs overflow-hidden rounded-full bg-kagit ring-1 ring-cizgi">
+                    <div className="h-full bg-deniz" style={{ width: `${Math.min(100, Math.round((buYilOkunan / hedef) * 100))}%` }} />
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
           {gonderiler.some((g) => (g.tur === 'sinema' || g.tur === 'dizi' || g.tur === 'kitap') && (g.posterUrl || g.ilgiliPosterUrl)) && (
             <>
               <h2 className="font-baslik text-lg text-murekkep mb-3">Poster Duvarı</h2>
@@ -309,24 +398,59 @@ export default function Profil() {
         </>
       )}
 
+      {/* Şu An Okuduklarım */}
+      {sekme === 'suanda' && (
+        <div>
+          {izlenecekler.filter((i) => i.durum === 'okunuyor').length === 0 && (
+            <p className="text-sm text-kraft">Şu an okunan/izlenen bir şey yok.</p>
+          )}
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+            {izlenecekler
+              .filter((i) => i.durum === 'okunuyor')
+              .map((i) => (
+                <div key={i.id}>
+                  <PosterKart baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                  {i.toplamSayfa ? (
+                    <>
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-kagitKoyu ring-1 ring-cizgi">
+                        <div
+                          className="h-full bg-deniz"
+                          style={{ width: `${Math.min(100, Math.round(((i.suankiSayfa || 0) / i.toplamSayfa) * 100))}%` }}
+                        />
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-kraft">
+                        {i.suankiSayfa || 0} / {i.toplamSayfa} sayfa
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* İzleyeceklerim */}
       {sekme === 'izleyecegim' && (
         <div>
-          {izlenecekler.length === 0 && <p className="text-sm text-kraft">İzleyecekler listesi boş.</p>}
+          {izlenecekler.filter((i) => i.durum !== 'okunuyor').length === 0 && (
+            <p className="text-sm text-kraft">İzleyecekler listesi boş.</p>
+          )}
           <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
-            {izlenecekler.map((i) => (
-              <div key={i.id} className="relative">
-                <PosterKart baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
-                {benimProfilimMi && (
-                  <button
-                    onClick={() => izlenecekSil(i)}
-                    className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
+            {izlenecekler
+              .filter((i) => i.durum !== 'okunuyor')
+              .map((i) => (
+                <div key={i.id} className="relative">
+                  <PosterKart baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                  {benimProfilimMi && (
+                    <button
+                      onClick={() => izlenecekSil(i)}
+                      className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
           </div>
         </div>
       )}
@@ -363,6 +487,64 @@ export default function Profil() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Raflarım */}
+      {sekme === 'raflarim' && (
+        <div>
+          {kullanici && (
+            <button
+              onClick={() => setRafFormuAcik((a) => !a)}
+              className="mb-4 rounded-sm bg-muhur px-3 py-1.5 font-govde text-sm text-kagit"
+            >
+              {rafFormuAcik ? 'Vazgeç' : '+ Raf Oluştur'}
+            </button>
+          )}
+          {rafFormuAcik && (
+            <form onSubmit={rafOlusturTiklandi} className="mb-4 space-y-2 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+              <input
+                type="text"
+                value={rafBaslik}
+                onChange={(e) => setRafBaslik(e.target.value)}
+                required
+                placeholder="Raf adı (örn. 2026 Okuma Listem)"
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+              <textarea
+                value={rafAciklama}
+                onChange={(e) => setRafAciklama(e.target.value)}
+                rows={2}
+                placeholder="Açıklama (opsiyonel)"
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+              <button
+                type="submit"
+                disabled={rafKaydediliyor}
+                className="rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+              >
+                {rafKaydediliyor ? 'Oluşturuluyor...' : 'Oluştur'}
+              </button>
+            </form>
+          )}
+
+          {raflar.length === 0 && <p className="text-sm text-kraft">Henüz bir raf oluşturmadın.</p>}
+          <ul className="space-y-2">
+            {raflar.map((r) => (
+              <li key={r.id} className="flex items-center justify-between rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+                <Link to={`/raf/${r.id}`} className="flex-1">
+                  <p className="font-govde text-sm text-murekkep">{r.baslik}</p>
+                  {r.aciklama && <p className="text-xs text-kraft">{r.aciklama}</p>}
+                  <p className="mt-0.5 text-[11px] text-kraft">{r.ogeSayisi || 0} eser</p>
+                </Link>
+                {benimProfilimMi && (
+                  <button onClick={() => rafiSil(r.id)} className="text-xs text-kraft hover:text-muhur">
+                    Sil
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

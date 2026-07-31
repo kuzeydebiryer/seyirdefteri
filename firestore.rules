@@ -94,6 +94,20 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
     }
 
+    // Kişisel okuma/izleme rafları — sadece sahibi oluşturup silebilir.
+    match /raflar/{rafId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow update: if request.auth != null; // ogeSayisi güncellemesi için serbest
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    match /rafOgeleri/{ogeId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
     // Yönetmenler: üyelerin elle eklediği küratörlü liste, doküman ID'si TMDB kişi ID'si.
     match /yonetmenler/{tmdbId} {
       allow read: if true;

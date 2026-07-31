@@ -302,5 +302,45 @@ kisiDegerlendirmeleri/{kisiTmdbId}_{uid}  (güncellendi)
 - **Yazı sayfası (`/yazilar`):** Deneme, Film İncelemesi, Kitap İncelemesi türündeki tüm "yazı" güncelerini alt başlıklar halinde listeliyor.
 - **Gezi sayfası (`/gezi`):** "Dünyayı Geziyorum" (gezi güncesi) ve altında "Etkinlik Dünyası" (tiyatro/konser/mekan güncesi) olarak iki bölüme ayrılmış.
 
+## Kitap bölümü geliştirmeleri (A + B)
+- **Kitap hub sayfası artık Film/Dizi ile eşit donanımlı:** Seyirdefteri Tavsiyeleri (Google Books arama ile) ve Haberler bölümleri eklendi.
+- **Okuma durumu genişletildi:** "İzleyeceklerim" artık iki aşamalı — bir kitabı/filmi/diziyi önce izleyecekler listesine ekliyorsun, sonra "Okumaya Başla"/"İzlemeye Başla" ile durumu değiştiriyorsun. Kitaplar için ayrıca **sayfa ilerlemesi** takibi var (örn. "180/400 sayfa", ilerleme çubuğu).
+- **Profilde yeni sekme: "Şu An Okuduklarım"** — aktif olarak okunan/izlenen eserleri ilerleme çubuğuyla gösteriyor, "İzleyeceklerim" sekmesinden ayrıştı.
+
+### Veri modeli eklemeleri
+```
+izlenecekler/{uid}_{tur}_{disId}  (güncellendi)
+  + durum ("planlanan"|"okunuyor"), toplamSayfa, suankiSayfa
+
+tavsiyeler/{id}  (güncellendi)
+  + alt  (kitap için yazar adı)
+```
+
+### Sırada: C, D, E
+Yazar sayfası (Yönetmen mantığının kitaba uyarlanmışı), okuma istatistikleri/yıllık hedef,
+ve kişisel okuma rafları henüz yapılmadı — hazır olduğunda devam edelim.
+
+## Kitap bölümü geliştirmeleri (C + D + E)
+- **Yazar sayfası (`/yazar/:ad`):** Yönetmenlerden farklı olarak elle küratörlü değil — Google Books'un `inauthor:` aramasıyla otomatik oluşuyor (Google Books'ta kararlı bir "yazar kimliği" olmadığı için yazar adı doğrudan anahtar). Bir kitabın yazar bilgisine tıklayınca o yazarın tüm bibliyografisi listeleniyor, favorilere eklenebiliyor.
+- **Okuma Özeti:** Profilde "İzlediklerim" sekmesinde (kitap paylaşımın varsa) bu yıl kaç kitap okuduğun, en çok okuduğun tür ve yıllık hedefine göre ilerleme çubuğu görünüyor. Hedef, "Profili Düzenle" formunda ayarlanıyor.
+- **Raflarım:** Kişisel okuma/izleme rafları (örn. "2026 Okuma Listem") — kendi raflarını oluşturup içine film/dizi/kitap ekleyebiliyorsun. Profilde yeni bir sekme.
+
+### Veri modeli eklemeleri
+```
+kullanicilar/{uid}
+  + yillikOkumaHedefi  (sayı, yeni alan)
+
+favoriler/{...}
+  tur alanı artık "yazar" değerini de alabiliyor (disId = yazar adı, URL-encoded)
+
+raflar/{id}
+  kullaniciId, baslik, aciklama, olusturmaTarihi, ogeSayisi
+
+rafOgeleri/{id}
+  rafId, kullaniciId, tur, disId, baslik, alt, posterUrl, eklemeTarihi
+```
+
+
+
 
 
