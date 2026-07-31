@@ -386,3 +386,8 @@ Film, Dizi ve Oyuncu sayfalarındaki "Haberler" bölümüne artık bir haber pay
 haberler/{id}  (güncellendi)
   + gorselUrl, ilgiliTur, ilgiliDisId, ilgiliBaslik, ilgiliPosterUrl, fragmanId
 ```
+
+## Haberler formunda düzeltme: Enter tuşu hatası, Kitap Ekle, geniş form
+- **Enter tuşu hatası düzeltildi:** Film/dizi/kitap arama kutusunda Enter'a basınca artık arama tetikleniyor, form erkenden gönderilip haber yayınlanmıyor (daha önce başka yerlerde de karşılaştığımız aynı desendi).
+- **Kitap Ekle:** Habere artık Film/Dizi'nin yanı sıra Kitap da iliştirilebiliyor (Google Books arama ile).
+- **Form genişletildi:** Haber ekleme formu daha ferah — daha büyük yazı tipi/dolgu, görsel ve fragman alanları yan yana, arama sonuçları daha büyük ızgara.

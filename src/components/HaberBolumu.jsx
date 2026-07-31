@@ -5,6 +5,13 @@ import { haberEkle, haberSil } from '../utils/haber.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w185'
+const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
+
+const ESER_KATEGORILERI = [
+  { id: 'sinema', etiket: 'Film' },
+  { id: 'dizi', etiket: 'Dizi' },
+  { id: 'kitap', etiket: 'Kitap' },
+]
 
 function tarihGoster(deger) {
   if (!deger) return ''
@@ -32,7 +39,7 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
   const [fragmanGirdi, setFragmanGirdi] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
-  // Film/Dizi kartı ekleme
+  // Film/Dizi/Kitap kartı ekleme
   const [eserFormuAcik, setEserFormuAcik] = useState(false)
   const [eserKategori, setEserKategori] = useState(kategori === 'dizi' ? 'dizi' : 'sinema')
   const [eserArama, setEserArama] = useState('')
@@ -41,7 +48,16 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
 
   async function eserAra(e) {
     e.preventDefault()
-    if (!eserArama.trim() || !TMDB_API_KEY) return
+    if (!eserArama.trim()) return
+    if (eserKategori === 'kitap') {
+      const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
+      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(eserArama)}&maxResults=10${anahtarParcasi}`
+      const res = await fetch(url)
+      const data = await res.json()
+      setEserSonuclari(data.items || [])
+      return
+    }
+    if (!TMDB_API_KEY) return
     const uc = eserKategori === 'sinema' ? 'movie' : 'tv'
     const url = `https://api.themoviedb.org/3/search/${uc}?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(eserArama)}`
     const res = await fetch(url)
@@ -50,12 +66,22 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
   }
 
   function eserSec(item) {
-    setSecilenEser({
-      tur: eserKategori,
-      disId: item.id,
-      baslik: eserKategori === 'sinema' ? item.title : item.name,
-      posterUrl: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '',
-    })
+    if (eserKategori === 'kitap') {
+      const v = item.volumeInfo || {}
+      setSecilenEser({
+        tur: 'kitap',
+        disId: item.id,
+        baslik: v.title || '',
+        posterUrl: (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://'),
+      })
+    } else {
+      setSecilenEser({
+        tur: eserKategori,
+        disId: item.id,
+        baslik: eserKategori === 'sinema' ? item.title : item.name,
+        posterUrl: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '',
+      })
+    }
     setEserSonuclari([])
     setEserArama('')
     setEserFormuAcik(false)
@@ -113,100 +139,114 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
       </div>
 
       {formuAcik && (
-        <form onSubmit={gonder} className="mb-4 space-y-2 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+        <form onSubmit={gonder} className="mb-4 space-y-3 rounded-sm bg-kagitKoyu p-5 ring-1 ring-cizgi max-w-2xl">
           <input
             type="text"
             value={baslik}
             onChange={(e) => setBaslik(e.target.value)}
             required
             placeholder="Haber başlığı"
-            className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            className="w-full rounded-sm bg-kagit px-3 py-2.5 text-base text-murekkep ring-1 ring-cizgi"
           />
           <textarea
             value={icerik}
             onChange={(e) => setIcerik(e.target.value)}
-            rows={2}
+            rows={4}
             placeholder="Kısa içerik (opsiyonel)"
-            className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            className="w-full rounded-sm bg-kagit px-3 py-2.5 text-sm text-murekkep ring-1 ring-cizgi"
           />
 
-          <div>
-            <label className="block text-[11px] uppercase tracking-widest text-kraft mb-1">Görsel URL (opsiyonel)</label>
-            <input
-              type="text"
-              value={gorselUrl}
-              onChange={(e) => setGorselUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-kraft mb-1">Görsel URL (opsiyonel)</label>
+              <input
+                type="text"
+                value={gorselUrl}
+                onChange={(e) => setGorselUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-kraft mb-1">
+                Fragman linki/ID (opsiyonel)
+              </label>
+              <input
+                type="text"
+                value={fragmanGirdi}
+                onChange={(e) => setFragmanGirdi(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
           </div>
 
           <div>
             <label className="block text-[11px] uppercase tracking-widest text-kraft mb-1">
-              Fragman linki/ID (opsiyonel)
-            </label>
-            <input
-              type="text"
-              value={fragmanGirdi}
-              onChange={(e) => setFragmanGirdi(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
-              className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] uppercase tracking-widest text-kraft mb-1">
-              İlgili Film/Dizi Kartı (opsiyonel)
+              İlgili Film/Dizi/Kitap Kartı (opsiyonel)
             </label>
             {secilenEser ? (
-              <div className="flex items-center gap-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
-                {secilenEser.posterUrl && <img src={secilenEser.posterUrl} alt="" className="h-12 w-8 rounded-sm object-cover" />}
-                <p className="flex-1 text-xs text-murekkep">{secilenEser.baslik}</p>
-                <button type="button" onClick={() => setSecilenEser(null)} className="text-[11px] text-kraft hover:text-muhur">
+              <div className="flex items-center gap-3 rounded-sm bg-kagit p-3 ring-1 ring-cizgi">
+                {secilenEser.posterUrl && <img src={secilenEser.posterUrl} alt="" className="h-16 w-11 rounded-sm object-cover" />}
+                <p className="flex-1 text-sm text-murekkep">{secilenEser.baslik}</p>
+                <button type="button" onClick={() => setSecilenEser(null)} className="text-xs text-kraft hover:text-muhur">
                   Kaldır
                 </button>
               </div>
             ) : eserFormuAcik ? (
-              <div className="space-y-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
+              <div className="space-y-2 rounded-sm bg-kagit p-3 ring-1 ring-cizgi">
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEserKategori('sinema')}
-                    className={`rounded-sm px-2 py-1 text-[11px] ${eserKategori === 'sinema' ? 'bg-deniz text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'}`}
-                  >
-                    Film
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEserKategori('dizi')}
-                    className={`rounded-sm px-2 py-1 text-[11px] ${eserKategori === 'dizi' ? 'bg-deniz text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'}`}
-                  >
-                    Dizi
-                  </button>
+                  {ESER_KATEGORILERI.map((k) => (
+                    <button
+                      key={k.id}
+                      type="button"
+                      onClick={() => {
+                        setEserKategori(k.id)
+                        setEserSonuclari([])
+                      }}
+                      className={`rounded-sm px-3 py-1 text-xs ${eserKategori === k.id ? 'bg-deniz text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'}`}
+                    >
+                      {k.etiket}
+                    </button>
+                  ))}
                 </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={eserArama}
                     onChange={(e) => setEserArama(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        eserAra(e)
+                      }
+                    }}
                     placeholder="Ara..."
-                    className="flex-1 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                    className="flex-1 rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                   />
-                  <button onClick={eserAra} type="button" className="rounded-sm bg-deniz px-2 py-1 text-[11px] text-kagit">
+                  <button onClick={eserAra} type="button" className="rounded-sm bg-deniz px-3 py-2 text-xs text-kagit">
                     Ara
                   </button>
                 </div>
                 {eserSonuclari.length > 0 && (
-                  <div className="grid grid-cols-5 gap-1">
-                    {eserSonuclari.slice(0, 10).map((item) => (
-                      <button key={item.id} type="button" onClick={() => eserSec(item)} className="text-left">
-                        <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                          {item.poster_path && (
-                            <img src={`${TMDB_POSTER}${item.poster_path}`} alt="" className="h-full w-full object-cover" />
-                          )}
-                        </div>
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-5 gap-2 sm:grid-cols-7">
+                    {eserSonuclari.slice(0, 14).map((item) => {
+                      const gorselVeAd =
+                        eserKategori === 'kitap'
+                          ? {
+                              url: (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://'),
+                              ad: item.volumeInfo?.title,
+                            }
+                          : { url: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '', ad: item.title || item.name }
+                      return (
+                        <button key={item.id} type="button" onClick={() => eserSec(item)} className="text-left">
+                          <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                            {gorselVeAd.url && <img src={gorselVeAd.url} alt="" className="h-full w-full object-cover" />}
+                          </div>
+                          <p className="mt-1 truncate text-[10px] text-murekkep">{gorselVeAd.ad}</p>
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -216,7 +256,7 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
                 onClick={() => setEserFormuAcik(true)}
                 className="rounded-sm bg-kagit px-3 py-1.5 text-xs text-kraft ring-1 ring-cizgi"
               >
-                + Film/Dizi Ekle
+                + Film/Dizi/Kitap Ekle
               </button>
             )}
           </div>
@@ -224,7 +264,7 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
           <button
             type="submit"
             disabled={kaydediliyor}
-            className="rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+            className="rounded-sm bg-muhur px-5 py-2 font-govde text-sm text-kagit disabled:opacity-40"
           >
             {kaydediliyor ? 'Ekleniyor...' : 'Paylaş'}
           </button>
@@ -252,7 +292,7 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
                   {h.ilgiliBaslik && (
                     <Link
                       to={eserLink(h.ilgiliTur, h.ilgiliDisId)}
-                      className="mt-2 flex items-center gap-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi hover:ring-deniz w-fit"
+                      className="mt-2 flex w-fit items-center gap-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi hover:ring-deniz"
                     >
                       {h.ilgiliPosterUrl && <img src={h.ilgiliPosterUrl} alt="" className="h-14 w-10 rounded-sm object-cover" />}
                       <span className="text-xs text-murekkep">{h.ilgiliBaslik}</span>
