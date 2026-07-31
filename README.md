@@ -391,3 +391,9 @@ haberler/{id}  (güncellendi)
 - **Enter tuşu hatası düzeltildi:** Film/dizi/kitap arama kutusunda Enter'a basınca artık arama tetikleniyor, form erkenden gönderilip haber yayınlanmıyor (daha önce başka yerlerde de karşılaştığımız aynı desendi).
 - **Kitap Ekle:** Habere artık Film/Dizi'nin yanı sıra Kitap da iliştirilebiliyor (Google Books arama ile).
 - **Form genişletildi:** Haber ekleme formu daha ferah — daha büyük yazı tipi/dolgu, görsel ve fragman alanları yan yana, arama sonuçları daha büyük ızgara.
+
+## Haberler bölümü yeniden tasarlandı: kompakt liste + tıkla-genişlet
+Eskiden her haber her zaman tam açık gösteriliyordu (uzun metin + tam görsel + eser kartı + fragman hep birlikte), bu hem dağınık görünüyordu hem çok sayıda haber eklendiğinde sayfayı aşırı uzatıyordu. Yeni tasarım:
+- **Varsayılan görünüm:** Her haber tek satırlık kompakt bir kart — sabit boyutlu küçük görsel (sol), başlık, tek satırlık özet, kaynak/tarih.
+- **Başlığa tıklayınca** kart genişler, altına tam metin + görsel + eser kartı + fragman açılır; tekrar tıklayınca kapanır.
+- **"Daha Fazla Haber Göster" butonu:** Varsayılan olarak sadece son 5 haber listeleniyor, her tıklamada 5 tane daha açılıyor — sayfa sonsuza kadar uzamıyor.

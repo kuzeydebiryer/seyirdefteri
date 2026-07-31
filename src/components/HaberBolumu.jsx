@@ -6,6 +6,7 @@ import { haberEkle, haberSil } from '../utils/haber.js'
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w185'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
+const SAYFA_BASI = 5
 
 const ESER_KATEGORILERI = [
   { id: 'sinema', etiket: 'Film' },
@@ -17,10 +18,12 @@ function tarihGoster(deger) {
   if (!deger) return ''
   const d = typeof deger?.toDate === 'function' ? deger.toDate() : new Date(deger)
   if (isNaN(d.getTime())) return ''
+  const bugun = new Date()
+  const ayniGun = d.toDateString() === bugun.toDateString()
+  if (ayniGun) return `Bugün ${d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
   return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-// Kullanıcı tam bir YouTube linki de yapıştırabilir, sadece video ID'sini çıkarıyoruz.
 function youtubeIdCikar(girdi) {
   if (!girdi) return ''
   const temiz = girdi.trim()
@@ -28,6 +31,71 @@ function youtubeIdCikar(girdi) {
   if (eslesme) return eslesme[1]
   if (/^[a-zA-Z0-9_-]{11}$/.test(temiz)) return temiz
   return temiz
+}
+
+const eserLink = (tur, disId) => (tur === 'dizi' ? `/dizi/${disId}` : tur === 'kitap' ? `/kitap/${disId}` : `/film/${disId}`)
+
+function HaberSatiri({ haber, acikMi, ac, kullanici, sil }) {
+  const kucukGorsel = haber.gorselUrl || haber.ilgiliPosterUrl
+
+  return (
+    <li className="rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+      <button onClick={ac} className="flex w-full gap-3 p-3 text-left">
+        <div className="h-16 w-24 shrink-0 overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi sm:h-20 sm:w-28">
+          {kucukGorsel ? (
+            <img src={kucukGorsel} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-lg text-kraft">📰</div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-govde text-sm font-medium text-murekkep line-clamp-2">{haber.baslik}</p>
+          {haber.icerik && !acikMi && <p className="mt-0.5 line-clamp-1 text-xs text-kraft">{haber.icerik}</p>}
+          <p className="mt-1 text-[11px] text-kraft">
+            {haber.ekleyenAdi} · {tarihGoster(haber.tarih)}
+          </p>
+        </div>
+      </button>
+
+      {acikMi && (
+        <div className="border-t border-cizgi px-3 pb-3 pt-2">
+          {haber.icerik && <p className="text-sm text-murekkep/90">{haber.icerik}</p>}
+
+          {haber.gorselUrl && (
+            <img src={haber.gorselUrl} alt="" className="mt-2 max-h-64 w-full rounded-sm object-cover ring-1 ring-cizgi" />
+          )}
+
+          {haber.ilgiliBaslik && (
+            <Link
+              to={eserLink(haber.ilgiliTur, haber.ilgiliDisId)}
+              className="mt-2 flex w-fit items-center gap-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi hover:ring-deniz"
+            >
+              {haber.ilgiliPosterUrl && <img src={haber.ilgiliPosterUrl} alt="" className="h-14 w-10 rounded-sm object-cover" />}
+              <span className="text-xs text-murekkep">{haber.ilgiliBaslik}</span>
+            </Link>
+          )}
+
+          {haber.fragmanId && (
+            <div className="mt-2 aspect-video max-w-md overflow-hidden rounded-sm ring-1 ring-cizgi">
+              <iframe
+                src={`https://www.youtube.com/embed/${haber.fragmanId}`}
+                title="Fragman"
+                className="h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
+
+          {kullanici?.uid === haber.ekleyenId && (
+            <button onClick={() => sil(haber.id)} className="mt-2 text-xs text-kraft hover:text-muhur">
+              Sil
+            </button>
+          )}
+        </div>
+      )}
+    </li>
+  )
 }
 
 export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
@@ -39,12 +107,14 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
   const [fragmanGirdi, setFragmanGirdi] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
-  // Film/Dizi/Kitap kartı ekleme
   const [eserFormuAcik, setEserFormuAcik] = useState(false)
   const [eserKategori, setEserKategori] = useState(kategori === 'dizi' ? 'dizi' : 'sinema')
   const [eserArama, setEserArama] = useState('')
   const [eserSonuclari, setEserSonuclari] = useState([])
   const [secilenEser, setSecilenEser] = useState(null)
+
+  const [acikId, setAcikId] = useState(null)
+  const [gosterilecekSayi, setGosterilecekSayi] = useState(SAYFA_BASI)
 
   async function eserAra(e) {
     e.preventDefault()
@@ -122,7 +192,7 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
     yenidenYukle()
   }
 
-  const eserLink = (tur, disId) => (tur === 'dizi' ? `/dizi/${disId}` : tur === 'kitap' ? `/kitap/${disId}` : `/film/${disId}`)
+  const gosterilenler = haberler.slice(0, gosterilecekSayi)
 
   return (
     <div className="mb-10">
@@ -274,52 +344,28 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
       {haberler.length === 0 ? (
         <p className="text-sm text-kraft">Henüz haber yok.</p>
       ) : (
-        <ul className="space-y-3">
-          {haberler.map((h) => (
-            <li key={h.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="font-govde text-sm text-murekkep">{h.baslik}</p>
-                  <p className="text-[11px] text-kraft">
-                    {h.ekleyenAdi} · {tarihGoster(h.tarih)}
-                  </p>
-                  {h.icerik && <p className="mt-1 text-sm text-murekkep/90">{h.icerik}</p>}
-
-                  {h.gorselUrl && (
-                    <img src={h.gorselUrl} alt="" className="mt-2 max-h-64 w-full rounded-sm object-cover ring-1 ring-cizgi" />
-                  )}
-
-                  {h.ilgiliBaslik && (
-                    <Link
-                      to={eserLink(h.ilgiliTur, h.ilgiliDisId)}
-                      className="mt-2 flex w-fit items-center gap-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi hover:ring-deniz"
-                    >
-                      {h.ilgiliPosterUrl && <img src={h.ilgiliPosterUrl} alt="" className="h-14 w-10 rounded-sm object-cover" />}
-                      <span className="text-xs text-murekkep">{h.ilgiliBaslik}</span>
-                    </Link>
-                  )}
-
-                  {h.fragmanId && (
-                    <div className="mt-2 aspect-video max-w-md overflow-hidden rounded-sm ring-1 ring-cizgi">
-                      <iframe
-                        src={`https://www.youtube.com/embed/${h.fragmanId}`}
-                        title="Fragman"
-                        className="h-full w-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    </div>
-                  )}
-                </div>
-                {kullanici?.uid === h.ekleyenId && (
-                  <button onClick={() => sil(h.id)} className="shrink-0 text-xs text-kraft hover:text-muhur">
-                    Sil
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="space-y-2">
+            {gosterilenler.map((h) => (
+              <HaberSatiri
+                key={h.id}
+                haber={h}
+                acikMi={acikId === h.id}
+                ac={() => setAcikId((onceki) => (onceki === h.id ? null : h.id))}
+                kullanici={kullanici}
+                sil={sil}
+              />
+            ))}
+          </ul>
+          {haberler.length > gosterilecekSayi && (
+            <button
+              onClick={() => setGosterilecekSayi((n) => n + SAYFA_BASI)}
+              className="mt-3 rounded-sm bg-kagitKoyu px-4 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi hover:text-murekkep"
+            >
+              Daha Fazla Haber Göster ({haberler.length - gosterilecekSayi} kaldı)
+            </button>
+          )}
+        </>
       )}
     </div>
   )
