@@ -4,7 +4,7 @@ import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updat
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGonderiler } from '../hooks/useGonderiler.js'
-import { useTakip } from '../hooks/useTakip.js'
+import { useTakip, takipEdilenProfilleriGetir } from '../hooks/useTakip.js'
 import { useFavoriler } from '../hooks/useFavoriler.js'
 import { useIzlenecekler } from '../hooks/useIzlenecekler.js'
 import { useYorumlarim } from '../hooks/useYorumlarim.js'
@@ -55,6 +55,17 @@ export default function Profil() {
   const [hedefProfil, setHedefProfil] = useState(benimProfilimMi ? kendiProfilim : null)
   const { gonderiler, hata: gonderilerHatasi } = useGonderiler({ yazarId: uid })
   const { takipEdiyorMu, setTakipEdiyorMu, takipciSayisi, takipEdilenSayisi } = useTakip(uid, kullanici?.uid)
+  const [takipEdilenProfilleri, setTakipEdilenProfilleri] = useState([])
+
+  useEffect(() => {
+    let iptal = false
+    takipEdilenProfilleriGetir(uid).then((liste) => {
+      if (!iptal) setTakipEdilenProfilleri(liste)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [uid])
   const [takipIsleniyor, setTakipIsleniyor] = useState(false)
 
   const [sekme, setSekme] = useState('izlediklerim')
@@ -75,6 +86,9 @@ export default function Profil() {
   const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
   const [bioTaslak, setBioTaslak] = useState('')
   const [avatarTaslak, setAvatarTaslak] = useState('')
+  const [kapakTaslak, setKapakTaslak] = useState('')
+  const [letterboxdTaslak, setLetterboxdTaslak] = useState('')
+  const [binKitapTaslak, setBinKitapTaslak] = useState('')
   const [hedefTaslak, setHedefTaslak] = useState(0)
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
@@ -98,6 +112,9 @@ export default function Profil() {
     if (hedefProfil && benimProfilimMi) {
       setBioTaslak(hedefProfil.bio || '')
       setAvatarTaslak(hedefProfil.avatarUrl || '')
+      setKapakTaslak(hedefProfil.kapakUrl || '')
+      setLetterboxdTaslak(hedefProfil.letterboxdUrl || '')
+      setBinKitapTaslak(hedefProfil.binKitapUrl || '')
       setHedefTaslak(hedefProfil.yillikOkumaHedefi || 0)
     }
   }, [hedefProfil, benimProfilimMi])
@@ -106,8 +123,16 @@ export default function Profil() {
     e.preventDefault()
     setKaydediliyor(true)
     try {
-      await profilGuncelle({ bio: bioTaslak, avatarUrl: avatarTaslak, yillikOkumaHedefi: Number(hedefTaslak) || 0 })
-      setHedefProfil((onceki) => ({ ...onceki, bio: bioTaslak, avatarUrl: avatarTaslak, yillikOkumaHedefi: Number(hedefTaslak) || 0 }))
+      const guncelVeri = {
+        bio: bioTaslak,
+        avatarUrl: avatarTaslak,
+        kapakUrl: kapakTaslak,
+        letterboxdUrl: letterboxdTaslak,
+        binKitapUrl: binKitapTaslak,
+        yillikOkumaHedefi: Number(hedefTaslak) || 0,
+      }
+      await profilGuncelle(guncelVeri)
+      setHedefProfil((onceki) => ({ ...onceki, ...guncelVeri }))
       setDuzenlemeAcik(false)
     } finally {
       setKaydediliyor(false)
@@ -194,6 +219,12 @@ export default function Profil() {
 
   return (
     <div>
+      {hedefProfil.kapakUrl && (
+        <div className="mb-4 -mx-4 h-32 overflow-hidden sm:mb-6 sm:h-48 sm:rounded-sm">
+          <img src={hedefProfil.kapakUrl} alt="" className="h-full w-full object-cover" />
+        </div>
+      )}
+
       <div className="mb-6 flex items-start gap-4">
         <Avatar adSoyad={hedefProfil.adSoyad} avatarUrl={hedefProfil.avatarUrl} boyut="h-16 w-16" />
         <div className="flex-1">
@@ -212,10 +243,44 @@ export default function Profil() {
             </Link>
           </div>
           <p className="text-sm text-kraft">@{hedefProfil.kullaniciAdi}</p>
+          {(hedefProfil.letterboxdUrl || hedefProfil.binKitapUrl) && (
+            <div className="mt-1 flex gap-3">
+              {hedefProfil.letterboxdUrl && (
+                <a
+                  href={hedefProfil.letterboxdUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-deniz hover:underline"
+                >
+                  🎬 Letterboxd
+                </a>
+              )}
+              {hedefProfil.binKitapUrl && (
+                <a
+                  href={hedefProfil.binKitapUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-deniz hover:underline"
+                >
+                  📚 1000Kitap
+                </a>
+              )}
+            </div>
+          )}
           {!duzenlemeAcik && hedefProfil.bio && <p className="mt-2 text-sm text-murekkep">{hedefProfil.bio}</p>}
 
           {duzenlemeAcik && (
             <form onSubmit={profiliKaydet} className="mt-3 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Kapak Görsel URL (profilin en üstünde)</label>
+                <input
+                  type="text"
+                  value={kapakTaslak}
+                  onChange={(e) => setKapakTaslak(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Avatar Görsel URL</label>
                 <input
@@ -234,6 +299,28 @@ export default function Profil() {
                   rows={3}
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Letterboxd Profili</label>
+                  <input
+                    type="text"
+                    value={letterboxdTaslak}
+                    onChange={(e) => setLetterboxdTaslak(e.target.value)}
+                    placeholder="https://letterboxd.com/kullaniciadi"
+                    className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs uppercase tracking-widest text-kraft mb-1">1000Kitap Profili</label>
+                  <input
+                    type="text"
+                    value={binKitapTaslak}
+                    onChange={(e) => setBinKitapTaslak(e.target.value)}
+                    placeholder="https://1000kitap.com/kullaniciadi"
+                    className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">
@@ -274,6 +361,19 @@ export default function Profil() {
               </button>
             )}
           </div>
+
+          {takipEdilenProfilleri.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[11px] uppercase tracking-widest text-kraft">Takip Ettikleri</p>
+              <div className="flex flex-wrap gap-2">
+                {takipEdilenProfilleri.map((p) => (
+                  <Link key={p.uid} to={`/profil/${p.uid}`} title={p.adSoyad} className="block">
+                    <Avatar adSoyad={p.adSoyad} avatarUrl={p.avatarUrl} boyut="h-9 w-9" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

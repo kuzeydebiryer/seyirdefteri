@@ -42,3 +42,17 @@ export async function takipEdilenUidleriGetir(uid) {
   const snap = await getDocs(collection(db, 'kullanicilar', uid, 'takipEdilenler'))
   return snap.docs.map((d) => d.id)
 }
+
+// Bir kullanıcının takip ettiği kişilerin profil bilgilerini (avatar/isim) getirir —
+// profildeki "Takip Ettiklerin" avatar ızgarası için.
+export async function takipEdilenProfilleriGetir(uid, enFazla = 12) {
+  const uidler = await takipEdilenUidleriGetir(uid)
+  const kisitli = uidler.slice(0, enFazla)
+  const profiller = await Promise.all(
+    kisitli.map(async (u) => {
+      const snap = await getDoc(doc(db, 'kullanicilar', u))
+      return snap.exists() ? { uid: u, ...snap.data() } : null
+    })
+  )
+  return profiller.filter(Boolean)
+}

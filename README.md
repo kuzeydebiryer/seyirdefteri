@@ -397,3 +397,20 @@ Eskiden her haber her zaman tam açık gösteriliyordu (uzun metin + tam görsel
 - **Varsayılan görünüm:** Her haber tek satırlık kompakt bir kart — sabit boyutlu küçük görsel (sol), başlık, tek satırlık özet, kaynak/tarih.
 - **Başlığa tıklayınca** kart genişler, altına tam metin + görsel + eser kartı + fragman açılır; tekrar tıklayınca kapanır.
 - **"Daha Fazla Haber Göster" butonu:** Varsayılan olarak sadece son 5 haber listeleniyor, her tıklamada 5 tane daha açılıyor — sayfa sonsuza kadar uzamıyor.
+
+## Profil sayfası: kapak görseli, dış profil linkleri, Takip Ettikleri
+Eski site referansından esinlenerek (kuzeydebiryer'in kendi eski sitesi):
+- **Kapak Görseli:** Profil düzenlemede eklenen bir görsel URL'i, artık profilin en üstünde geniş bir banner olarak gösteriliyor.
+- **Letterboxd / 1000Kitap profil linkleri:** Kullanıcılar artık kendi Letterboxd ve 1000Kitap profillerine link ekleyebiliyor, kullanıcı adının hemen altında küçük linkler olarak görünüyor.
+- **Takip Ettikleri:** Profilde artık takip edilen kişilerin küçük avatar ızgarası var (eski sitedeki "Arkadaşlar" bölümünün karşılığı), en fazla 12 kişi gösteriliyor.
+
+### Veri modeli eklemeleri
+```
+kullanicilar/{uid}
+  + kapakUrl, letterboxdUrl, binKitapUrl  (yeni alanlar)
+```
+
+### Değerlendirilip şimdilik yapılmayan fikirler (eski site analizinden)
+- "Film Kareleri" / "Kişi Resimleri" (kullanıcı yüklediği ekran görüntüleri) — niş bir özellik, kapsam dışı bırakıldı.
+- Yapılandırılmış "Kayıt/Doğum günü/Meslek/İlgi alanları" alanları — mevcut serbest metin Bio alanının esnekliği tercih edildi.
+- Top250 karşılaştırma — TMDB tabanlı mimarimize uygun değil.
