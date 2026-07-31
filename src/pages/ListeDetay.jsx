@@ -197,6 +197,18 @@ export default function ListeDetay() {
                 </div>
               </div>
               <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">
+                  Kapak/Afiş URL {!secili.posterUrl && '(bulunamadı, elle ekleyebilirsin)'}
+                </label>
+                <input
+                  type="text"
+                  value={secili.posterUrl || ''}
+                  onChange={(e) => setSecili((onceki) => ({ ...onceki, posterUrl: e.target.value }))}
+                  placeholder="https://..."
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div>
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Etkinlik Tarihi</label>
                 <input
                   type="date"

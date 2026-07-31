@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export async function tavsiyeEkle({ tur, disId, baslik, alt, posterUrl, not: notMetni, kullanici }) {
@@ -13,6 +13,10 @@ export async function tavsiyeEkle({ tur, disId, baslik, alt, posterUrl, not: not
     ekleyenAdi: kullanici.displayName || 'İsimsiz',
     tarih: serverTimestamp(),
   })
+}
+
+export async function tavsiyeGuncelle(tavsiyeId, { posterUrl }) {
+  await updateDoc(doc(db, 'tavsiyeler', tavsiyeId), { posterUrl })
 }
 
 export async function tavsiyeSil(tavsiyeId) {

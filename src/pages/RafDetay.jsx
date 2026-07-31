@@ -4,7 +4,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useRafOgeleri } from '../hooks/useRafOgeleri.js'
-import { rafOgeEkle, rafOgeSil } from '../utils/raf.js'
+import { rafOgeEkle, rafOgeGuncelle, rafOgeSil } from '../utils/raf.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342'
@@ -33,6 +33,8 @@ export default function RafDetay() {
   const [arama, setArama] = useState('')
   const [sonuclar, setSonuclar] = useState([])
   const [ekleniyor, setEkleniyor] = useState(false)
+  const [duzenlenenId, setDuzenlenenId] = useState(null)
+  const [duzenlemeUrl, setDuzenlemeUrl] = useState('')
 
   useEffect(() => {
     getDoc(doc(db, 'raflar', id)).then((snap) => {
@@ -92,6 +94,17 @@ export default function RafDetay() {
 
   async function ogeyiSil(ogeId) {
     await rafOgeSil(id, ogeId)
+    yenidenYukle()
+  }
+
+  function duzenlemeyiAc(o) {
+    setDuzenlenenId(o.id)
+    setDuzenlemeUrl(o.posterUrl || '')
+  }
+
+  async function duzenlemeyiKaydet(ogeId) {
+    await rafOgeGuncelle(ogeId, { posterUrl: duzenlemeUrl })
+    setDuzenlenenId(null)
     yenidenYukle()
   }
 
@@ -174,20 +187,60 @@ export default function RafDetay() {
       <div className="grid grid-cols-4 gap-4 sm:grid-cols-6">
         {ogeler.map((o) => (
           <div key={o.id} className="relative">
-            <Link to={esereLink(o.tur, o.disId)} className="block">
-              <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                {o.posterUrl && <img src={o.posterUrl} alt={o.baslik} className="h-full w-full object-cover" />}
+            {duzenlenenId === o.id ? (
+              <div className="rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
+                <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagit">
+                  {duzenlemeUrl && <img src={duzenlemeUrl} alt="" className="h-full w-full object-cover" />}
+                </div>
+                <input
+                  type="text"
+                  value={duzenlemeUrl}
+                  onChange={(e) => setDuzenlemeUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="mt-1 w-full rounded-sm bg-kagit px-1.5 py-1 text-[10px] text-murekkep ring-1 ring-cizgi"
+                />
+                <div className="mt-1 flex gap-1">
+                  <button
+                    onClick={() => duzenlemeyiKaydet(o.id)}
+                    className="flex-1 rounded-sm bg-muhur py-1 text-[10px] text-kagit"
+                  >
+                    Kaydet
+                  </button>
+                  <button
+                    onClick={() => setDuzenlenenId(null)}
+                    className="rounded-sm bg-kagit px-2 py-1 text-[10px] text-kraft ring-1 ring-cizgi"
+                  >
+                    Vazgeç
+                  </button>
+                </div>
               </div>
-              <p className="mt-1 truncate text-xs text-murekkep">{o.baslik}</p>
-              {o.alt && <p className="truncate text-[11px] text-kraft">{o.alt}</p>}
-            </Link>
-            {kullanici?.uid === o.kullaniciId && (
-              <button
-                onClick={() => ogeyiSil(o.id)}
-                className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
-              >
-                ✕
-              </button>
+            ) : (
+              <>
+                <Link to={esereLink(o.tur, o.disId)} className="block">
+                  <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                    {o.posterUrl && <img src={o.posterUrl} alt={o.baslik} className="h-full w-full object-cover" />}
+                  </div>
+                  <p className="mt-1 truncate text-xs text-murekkep">{o.baslik}</p>
+                  {o.alt && <p className="truncate text-[11px] text-kraft">{o.alt}</p>}
+                </Link>
+                {kullanici?.uid === o.kullaniciId && (
+                  <div className="absolute right-1 top-1 flex gap-1">
+                    <button
+                      onClick={() => duzenlemeyiAc(o)}
+                      className="rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-deniz"
+                      title="Kapak URL'ini düzenle"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      onClick={() => ogeyiSil(o.id)}
+                      className="rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ))}

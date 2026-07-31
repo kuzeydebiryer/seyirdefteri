@@ -30,6 +30,10 @@ export async function rafOgeEkle(rafId, kullanici, { tur, disId, baslik, alt, po
   await updateDoc(doc(db, 'raflar', rafId), { ogeSayisi: increment(1) })
 }
 
+export async function rafOgeGuncelle(ogeId, { posterUrl }) {
+  await updateDoc(doc(db, 'rafOgeleri', ogeId), { posterUrl })
+}
+
 export async function rafOgeSil(rafId, ogeId) {
   await deleteDoc(doc(db, 'rafOgeleri', ogeId))
   await updateDoc(doc(db, 'raflar', rafId), { ogeSayisi: increment(-1) })

@@ -340,6 +340,12 @@ rafOgeleri/{id}
   rafId, kullaniciId, tur, disId, baslik, alt, posterUrl, eklemeTarihi
 ```
 
+## Kapak görseli düzeltmesi (Google Books'ta bulunamayan kapaklar)
+Google Books API, özellikle Türkçe baskılarda bazen kapak görseli sağlamıyor.
+Bunu gidermek için:
+- **Tavsiye eklerken / Liste öğesi eklerken:** Artık "Kapak URL" alanı elle düzenlenebiliyor — API bir kapak bulamazsa boş gelir, sen bir link yapıştırabilirsin.
+- **Zaten eklenmiş bir tavsiyenin veya raf öğesinin kapağı da sonradan düzenlenebiliyor** — kartın üzerindeki ✎ (kalem) ikonuna tıklayıp yeni bir URL girip kaydedebilirsin (sadece ekleyen kişi görür/kullanabilir).
+
 
 
 

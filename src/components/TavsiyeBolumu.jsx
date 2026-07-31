@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { tavsiyeEkle, tavsiyeSil } from '../utils/tavsiye.js'
+import { tavsiyeEkle, tavsiyeGuncelle, tavsiyeSil } from '../utils/tavsiye.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342'
@@ -15,6 +15,8 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
   const [secili, setSecili] = useState(null)
   const [not_, setNot_] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [duzenlenenId, setDuzenlenenId] = useState(null)
+  const [duzenlemeUrl, setDuzenlemeUrl] = useState('')
 
   async function ara(e) {
     e.preventDefault()
@@ -76,6 +78,17 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
     yenidenYukle()
   }
 
+  function duzenlemeyiAc(t) {
+    setDuzenlenenId(t.id)
+    setDuzenlemeUrl(t.posterUrl || '')
+  }
+
+  async function duzenlemeyiKaydet(id) {
+    await tavsiyeGuncelle(id, { posterUrl: duzenlemeUrl })
+    setDuzenlenenId(null)
+    yenidenYukle()
+  }
+
   const esereLink = (disId) => (tur === 'dizi' ? `/dizi/${disId}` : tur === 'kitap' ? `/kitap/${disId}` : `/film/${disId}`)
 
   return (
@@ -105,6 +118,18 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
                 <button type="button" onClick={() => setSecili(null)} className="text-xs text-kraft hover:text-muhur">
                   Değiştir
                 </button>
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">
+                  Kapak URL {!secili.posterUrl && '(bulunamadı, elle ekleyebilirsin)'}
+                </label>
+                <input
+                  type="text"
+                  value={secili.posterUrl}
+                  onChange={(e) => setSecili((onceki) => ({ ...onceki, posterUrl: e.target.value }))}
+                  placeholder="https://..."
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
               </div>
               <textarea
                 value={not_}
@@ -167,21 +192,61 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
         <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
           {tavsiyeler.map((t) => (
             <div key={t.id} className="relative">
-              <Link to={esereLink(t.disId)} className="block">
-                <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                  {t.posterUrl && <img src={t.posterUrl} alt={t.baslik} className="h-full w-full object-cover" />}
+              {duzenlenenId === t.id ? (
+                <div className="rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
+                  <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu">
+                    {duzenlemeUrl && <img src={duzenlemeUrl} alt="" className="h-full w-full object-cover" />}
+                  </div>
+                  <input
+                    type="text"
+                    value={duzenlemeUrl}
+                    onChange={(e) => setDuzenlemeUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="mt-1 w-full rounded-sm bg-kagitKoyu px-1.5 py-1 text-[10px] text-murekkep ring-1 ring-cizgi"
+                  />
+                  <div className="mt-1 flex gap-1">
+                    <button
+                      onClick={() => duzenlemeyiKaydet(t.id)}
+                      className="flex-1 rounded-sm bg-muhur py-1 text-[10px] text-kagit"
+                    >
+                      Kaydet
+                    </button>
+                    <button
+                      onClick={() => setDuzenlenenId(null)}
+                      className="rounded-sm bg-kagitKoyu px-2 py-1 text-[10px] text-kraft ring-1 ring-cizgi"
+                    >
+                      Vazgeç
+                    </button>
+                  </div>
                 </div>
-                <p className="mt-1 truncate text-xs text-murekkep">{t.baslik}</p>
-                {t.alt && <p className="truncate text-[11px] text-kraft">{t.alt}</p>}
-                <p className="truncate text-[11px] text-kraft">{t.ekleyenAdi} tavsiye etti</p>
-              </Link>
-              {kullanici?.uid === t.ekleyenId && (
-                <button
-                  onClick={() => sil(t.id)}
-                  className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
-                >
-                  ✕
-                </button>
+              ) : (
+                <>
+                  <Link to={esereLink(t.disId)} className="block">
+                    <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                      {t.posterUrl && <img src={t.posterUrl} alt={t.baslik} className="h-full w-full object-cover" />}
+                    </div>
+                    <p className="mt-1 truncate text-xs text-murekkep">{t.baslik}</p>
+                    {t.alt && <p className="truncate text-[11px] text-kraft">{t.alt}</p>}
+                    <p className="truncate text-[11px] text-kraft">{t.ekleyenAdi} tavsiye etti</p>
+                  </Link>
+                  {kullanici?.uid === t.ekleyenId && (
+                    <div className="absolute right-1 top-1 flex gap-1">
+                      <button
+                        onClick={() => duzenlemeyiAc(t)}
+                        className="rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-deniz"
+                        title="Kapak URL'ini düzenle"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        onClick={() => sil(t.id)}
+                        className="rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ))}
