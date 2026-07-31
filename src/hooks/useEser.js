@@ -43,7 +43,7 @@ export function useEserGonderileri(tur, disId) {
         })
         setListePuanlari(hepsi)
       } catch (e) {
-        console.warn('Topluluk liste puanları alınamadı (indeks gerekebilir):', e.message)
+        console.error('useEserGonderileri (topluluk liste puanları) hata:', e.code, e.message, e)
       }
 
       setYukleniyor(false)
