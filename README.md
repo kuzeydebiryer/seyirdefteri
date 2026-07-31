@@ -367,3 +367,10 @@ Bunu gidermek için:
 eserPuanlari/{tur}_{disId}_{uid}  (güncellendi)
   + baslik, alt, posterUrl  (profilde göstermek için denormalize edildi)
 ```
+
+## Film/Dizi sayfalarında arama, filtreleme ve zengin içerik
+- **Arama + Filtreleme:** Film ve Dizi sayfalarının en üstünde artık bir arama/filtre kutusu var. "İsimle Ara" TMDB'nin arama ucunu kullanıyor; "Filtrele" ise TMDB'nin Discover ucunu kullanarak tür, yıl aralığı, TMDB puanı (IMDb değil — bu ayrı bir servis gerektirir), ülke ve sıralamaya göre keşif yapmayı sağlıyor.
+- **Fragman:** Eser sayfalarında artık varsa resmi YouTube fragmanı gömülü oynatıcıda gösteriliyor.
+- **Benzer Filmler/Diziler:** Eser sayfasının altında TMDB'nin önerdiği benzer eserler, tıklanabilir poster ızgarası olarak.
+- **Görsel galerisi:** Eser sayfalarında ek sahne/arka plan görselleri; kişi sayfalarında oyuncunun birden fazla fotoğrafı varsa küçük bir galeri şeridi.
+- **Türkiye'de Vizyonda / Yakında Vizyonda:** Film sayfasında artık TMDB'nin `region=TR` parametreli `now_playing`/`upcoming` uçlarından beslenen iki yeni bölüm var — Türkiye'deki gerçek vizyon tarihlerine göre.

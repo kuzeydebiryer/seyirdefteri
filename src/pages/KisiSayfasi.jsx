@@ -44,7 +44,7 @@ export default function KisiSayfasi() {
       try {
         if (!TMDB_API_KEY) throw new Error('TMDB API anahtarı tanımlı değil.')
 
-        const kisiUrl = `https://api.themoviedb.org/3/person/${id}?api_key=${TMDB_API_KEY}&language=tr-TR`
+        const kisiUrl = `https://api.themoviedb.org/3/person/${id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=images`
         const kisiRes = await fetch(kisiUrl)
         const kisiData = await kisiRes.json()
         if (!kisiRes.ok) throw new Error(kisiData.status_message || `HTTP ${kisiRes.status}`)
@@ -189,6 +189,19 @@ export default function KisiSayfasi() {
           <h1 className="font-baslik text-2xl text-murekkep">{kisi.name}</h1>
           {kisi.known_for_department && <p className="text-xs text-kraft">{kisi.known_for_department}</p>}
           {kisi.biography && <p className="mt-2 text-sm text-murekkep leading-relaxed line-clamp-6">{kisi.biography}</p>}
+
+          {kisi.images?.profiles?.length > 1 && (
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              {kisi.images.profiles.slice(0, 8).map((p, i) => (
+                <img
+                  key={i}
+                  src={`https://image.tmdb.org/t/p/w185${p.file_path}`}
+                  alt=""
+                  className="h-24 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi"
+                />
+              ))}
+            </div>
+          )}
 
           {kullanici && (
             <button

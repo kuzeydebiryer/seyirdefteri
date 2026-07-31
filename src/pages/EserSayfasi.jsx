@@ -73,7 +73,7 @@ export default function EserSayfasi({ tur }) {
         if (tur === 'sinema' || tur === 'dizi') {
           if (!TMDB_API_KEY) throw new Error('TMDB API anahtarı tanımlı değil.')
           const uc = tur === 'sinema' ? 'movie' : 'tv'
-          const url = `https://api.themoviedb.org/3/${uc}/${id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits`
+          const url = `https://api.themoviedb.org/3/${uc}/${id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits,videos,similar,images&include_image_language=null,tr,en`
           const res = await fetch(url)
           const data = await res.json()
           if (!res.ok) throw new Error(data.status_message || `HTTP ${res.status}`)
@@ -84,6 +84,16 @@ export default function EserSayfasi({ tur }) {
               ? (data.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => ({ id: k.id, name: k.name }))
               : (data.created_by || []).map((k) => ({ id: k.id, name: k.name }))
           const oyuncular = (data.credits?.cast || []).slice(0, 6).map((k) => ({ id: k.id, name: k.name }))
+
+          // Fragman: YouTube'daki resmi fragman videosu
+          const fragman = (data.videos?.results || []).find((v) => v.site === 'YouTube' && v.type === 'Trailer') ||
+            (data.videos?.results || []).find((v) => v.site === 'YouTube')
+
+          // Benzer filmler/diziler
+          const benzerler = (data.similar?.results || []).slice(0, 12)
+
+          // Görsel galerisi (arka plan görselleri)
+          const gorseller = (data.images?.backdrops || []).slice(0, 8)
 
           setDetay({
             baslik: tur === 'sinema' ? data.title : data.name,
@@ -97,6 +107,9 @@ export default function EserSayfasi({ tur }) {
             yonetmenler,
             oyuncular,
             dbPuan: data.vote_average ? data.vote_average.toFixed(1) : null,
+            fragmanId: fragman?.key || null,
+            benzerler,
+            gorseller,
           })
 
           // Nerede İzlenebilir (Türkiye) — TMDB'nin JustWatch verisi üzerinden sağladığı uç nokta
@@ -491,6 +504,37 @@ export default function EserSayfasi({ tur }) {
         </div>
       )}
 
+      {detay.fragmanId && (
+        <div className="mt-6">
+          <h2 className="font-baslik text-lg text-murekkep mb-2">Fragman</h2>
+          <div className="aspect-video w-full overflow-hidden rounded-sm ring-1 ring-cizgi">
+            <iframe
+              src={`https://www.youtube.com/embed/${detay.fragmanId}`}
+              title="Fragman"
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
+
+      {detay.gorseller?.length > 0 && (
+        <div className="mt-6">
+          <h2 className="font-baslik text-lg text-murekkep mb-2">Görseller</h2>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {detay.gorseller.map((g, i) => (
+              <img
+                key={i}
+                src={`https://image.tmdb.org/t/p/w300${g.file_path}`}
+                alt=""
+                className="h-24 w-40 shrink-0 rounded-sm object-cover ring-1 ring-cizgi"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {kullanici && (
         <Link
           to={eklemeLinki}
@@ -498,6 +542,28 @@ export default function EserSayfasi({ tur }) {
         >
           Bu {basliklar[tur]} hakkında günce yaz
         </Link>
+      )}
+
+      {detay.benzerler?.length > 0 && (
+        <div className="mt-6">
+          <h2 className="font-baslik text-lg text-murekkep mb-2">Benzer {tur === 'dizi' ? 'Diziler' : 'Filmler'}</h2>
+          <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
+            {detay.benzerler.map((b) => (
+              <Link key={b.id} to={`/${tur === 'dizi' ? 'dizi' : 'film'}/${b.id}`} className="block">
+                <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                  {b.poster_path && (
+                    <img
+                      src={`https://image.tmdb.org/t/p/w300${b.poster_path}`}
+                      alt={b.title || b.name}
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                </div>
+                <p className="mt-1 truncate text-xs text-murekkep">{b.title || b.name}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="defter-cizgi my-6" />
