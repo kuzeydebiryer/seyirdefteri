@@ -20,7 +20,7 @@ export default function TopluluklarDetay() {
   const { id } = useParams()
   const { kullanici } = useAuth()
   const { listeler, yukleniyor: listelerYukleniyor, yenidenYukle: listeleriYenile } = useListeler(id)
-  const { etkinlikler, yukleniyor: etkinliklerYukleniyor, yenidenYukle: etkinlikleriYenile } = useGelecekEtkinlikler(id)
+  const { etkinlikler, yukleniyor: etkinliklerYukleniyor, hata: etkinliklerHatasi, yenidenYukle: etkinlikleriYenile } = useGelecekEtkinlikler(id)
 
   const [listeFormuAcik, setListeFormuAcik] = useState(false)
   const [listeBaslik, setListeBaslik] = useState('')
@@ -412,7 +412,15 @@ export default function TopluluklarDetay() {
         )}
 
         {etkinliklerYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
-        {!etkinliklerYukleniyor && etkinlikler.length === 0 && <p className="text-sm text-kraft">Planlanmış bir etkinlik yok.</p>}
+        {etkinliklerHatasi && (
+          <p className="text-sm text-muhur">
+            Gelecek etkinlikler yüklenemedi: {etkinliklerHatasi}
+            {etkinliklerHatasi.includes('index') && ' — F12 konsolundaki linke tıklayarak indeksi oluşturabilirsin.'}
+          </p>
+        )}
+        {!etkinliklerYukleniyor && !etkinliklerHatasi && etkinlikler.length === 0 && (
+          <p className="text-sm text-kraft">Planlanmış bir etkinlik yok.</p>
+        )}
 
         <div className="space-y-3">
           {etkinlikler.map((e) => (
