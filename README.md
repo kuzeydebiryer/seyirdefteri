@@ -266,4 +266,34 @@ Yorumlar sistemi üst seviye koleksiyona taşındığı için, **bu değişiklik
 yazılmış yorumlar** artık görünmüyor (eski konumda kaldılar, silinmediler).
 Yeni yorumlar sorunsuz çalışacak.
 
+## Eser sayfasında doğrudan puanlama, Oyuncular, Yönetmenler, Tavsiyeler, Haberler
+- **Doğrudan puanlama:** Film/dizi/kitap sayfalarında artık günce yazmadan tek tıkla puan verilebiliyor (yeni `eserPuanlari` koleksiyonu, mevcut günce/liste puanlarıyla otomatik birleşiyor).
+- **Oyuncu biyografisi düzeltmesi:** Türkçe biyografi boşsa artık otomatik olarak İngilizce'sine geri dönülüyor.
+- **Oyuncular hub sayfası (`/oyuncular`):** Film/Dizi sayfalarıyla aynı düzen — "Bizim Aramızda Popüler" + "TMDB'de Şu An Popüler" + Haberler.
+- **Yönetmenler (`/yonetmenler`, `/yonetmen/:id`):** Üyelerin TMDB'den arayıp elle eklediği küratörlü bir yönetmen listesi. Her yönetmenin sayfasında sadece yönetmenlik yaptığı işlerin filmografisi + elle eklenen "İlgili Kitaplar" bölümü var.
+- **Seyirdefteri Tavsiyeleri:** Film ve Dizi sayfalarının en üstünde, üyelerin öne çıkardığı tavsiye eserler (otomatik hesaplanan "Bizim Aramızda Popüler"den farklı, elle küratörlü).
+- **Haberler:** Film, Dizi ve Oyuncu sayfalarında kısa duyuru/haber paylaşma alanı.
+
+### Veri modeli eklemeleri
+```
+eserPuanlari/{tur}_{disId}_{uid}
+  tur, disId, kullaniciId, puan, tarih
+
+tavsiyeler/{id}
+  tur ("sinema"|"dizi"), disId, baslik, posterUrl, not, ekleyenId, ekleyenAdi, tarih
+
+haberler/{id}
+  kategori ("sinema"|"dizi"|"kisi"), baslik, icerik, ekleyenId, ekleyenAdi, tarih
+
+yonetmenler/{tmdbId}
+  tmdbId, ad, fotoUrl, ekleyenId, ekleyenAdi, eklemeTarihi
+
+yonetmenler/{tmdbId}/ilgiliKitaplar/{kitapId}
+  googleBooksId, baslik, yazar, posterUrl, ekleyenId, eklemeTarihi
+
+kisiDegerlendirmeleri/{kisiTmdbId}_{uid}  (güncellendi)
+  + kisiAdi, kisiFotoUrl  (Oyuncular hub sayfasında ekstra TMDB isteği gerekmesin diye)
+```
+
+
 

@@ -11,7 +11,9 @@ export function useEserGonderileri(tur, disId) {
   const { kullanici } = useAuth()
   const [gonderiler, setGonderiler] = useState([])
   const [listePuanlari, setListePuanlari] = useState([]) // [{uid, puan}]
+  const [dogrudanPuanlar, setDogrudanPuanlar] = useState([]) // [{uid, puan}] - eserPuanlari koleksiyonundan
   const [yukleniyor, setYukleniyor] = useState(true)
+  const [yenile, setYenile] = useState(0)
 
   useEffect(() => {
     if (!disId) {
@@ -46,29 +48,50 @@ export function useEserGonderileri(tur, disId) {
         console.error('useEserGonderileri (topluluk liste puanları) hata:', e.code, e.message, e)
       }
 
+      // Günce yazmadan doğrudan eser sayfasından verilen puanlar
+      try {
+        const dpQ = query(collection(db, 'eserPuanlari'), where('tur', '==', tur), where('disId', '==', deger))
+        const dpSnap = await getDocs(dpQ)
+        if (iptal) return
+        setDogrudanPuanlar(dpSnap.docs.map((d) => ({ uid: d.data().kullaniciId, puan: d.data().puan })))
+      } catch (e) {
+        console.error('useEserGonderileri (doğrudan eser puanları) hata:', e.code, e.message, e)
+      }
+
       setYukleniyor(false)
     }
     getir()
     return () => {
       iptal = true
     }
-  }, [tur, disId])
+  }, [tur, disId, yenile])
 
-  // Aynı kişi hem kişisel günce hem liste üzerinden puan vermiş olabilir —
-  // kullanıcı başına TEK puan sayılsın diye bir map üzerinden birleştiriyoruz.
+  // Aynı kişi hem kişisel günce hem liste hem doğrudan puanlama üzerinden puan
+  // vermiş olabilir — kullanıcı başına TEK puan sayılsın diye bir map üzerinden
+  // birleştiriyoruz (öncelik: günce > liste > doğrudan puan, ama pratikte nadiren çakışır).
   const puanMap = new Map()
-  gonderiler.forEach((g) => {
-    if (g.kullaniciPuani != null) puanMap.set(g.yazarId, g.kullaniciPuani)
+  dogrudanPuanlar.forEach(({ uid, puan }) => {
+    if (puan != null) puanMap.set(uid, puan)
   })
   listePuanlari.forEach(({ uid, puan }) => {
     if (puan != null) puanMap.set(uid, puan)
+  })
+  gonderiler.forEach((g) => {
+    if (g.kullaniciPuani != null) puanMap.set(g.yazarId, g.kullaniciPuani)
   })
 
   const puanlar = Array.from(puanMap.values())
   const ortalamaPuan = puanlar.length ? puanlar.reduce((a, b) => a + b, 0) / puanlar.length : null
   const kullanicininPuani = kullanici ? puanMap.get(kullanici.uid) ?? null : null
 
-  return { gonderiler, yukleniyor, ortalamaPuan, puanSayisi: puanlar.length, kullanicininPuani }
+  return {
+    gonderiler,
+    yukleniyor,
+    ortalamaPuan,
+    puanSayisi: puanlar.length,
+    kullanicininPuani,
+    yenidenYukle: () => setYenile((n) => n + 1),
+  }
 }
 
 // Bir kategori için topluluğun en çok işlediği / en yüksek puanlı eserlerini

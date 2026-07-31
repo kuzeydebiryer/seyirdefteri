@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { topluluktaPopulerEserler } from '../hooks/useEser.js'
+import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
+import { useHaberler } from '../hooks/useHaberler.js'
 import YildizPuan from '../components/YildizPuan.jsx'
+import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
+import HaberBolumu from '../components/HaberBolumu.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -10,6 +14,8 @@ export default function Filmler() {
   const [topluluk, setTopluluk] = useState([])
   const [populer, setPopuler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
+  const { tavsiyeler, yenidenYukle: tavsiyeleriYenile } = useTavsiyeler('sinema')
+  const { haberler, yenidenYukle: haberleriYenile } = useHaberler('sinema')
 
   useEffect(() => {
     let iptal = false
@@ -38,6 +44,9 @@ export default function Filmler() {
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-6">Film</h1>
+
+      <TavsiyeBolumu tur="sinema" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
+      <HaberBolumu kategori="sinema" haberler={haberler} yenidenYukle={haberleriYenile} />
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Bizim Aramızda Popüler</h2>
       {yukleniyor && <p className="text-sm text-kraft mb-6">Yükleniyor...</p>}

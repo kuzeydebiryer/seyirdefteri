@@ -74,6 +74,39 @@ service cloud.firestore {
       allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
     }
 
+    // Doğrudan eser puanlaması (günce yazmadan). Doküman ID'si `${tur}_${disId}_${uid}`.
+    match /eserPuanlari/{puanId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Seyirdefteri Tavsiyeleri: film/dizi hub sayfalarında üyelerin öne çıkardığı eserler.
+    match /tavsiyeler/{tavsiyeId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
+    // Haberler: Film/Dizi/Oyuncu bölümlerindeki kısa duyurular.
+    match /haberler/{haberId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
+    // Yönetmenler: üyelerin elle eklediği küratörlü liste, doküman ID'si TMDB kişi ID'si.
+    match /yonetmenler/{tmdbId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null;
+
+      match /ilgiliKitaplar/{kitapId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+        allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+      }
+    }
+
     // Topluluklar: herkes okuyabilir, sadece kurucu adına oluşturulabilir.
     // "update" (üye sayısı gibi ortak alanlar için) Faz 3'te pragmatik olarak serbest.
     match /topluluklar/{topluluklId} {

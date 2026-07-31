@@ -4,10 +4,12 @@ import { db } from '../firebase.js'
 // Bir kişiye (yönetmen/oyuncu) verilen puan+yorum. Doküman ID'si `${kisiTmdbId}_${uid}`
 // olarak sabitlenmiş — bu sayede bir kullanıcının aynı kişiye birden fazla
 // değerlendirme bırakması engelleniyor (yeni puan verince eskisinin üzerine yazılıyor).
-export async function kisiDegerlendir(kisiTmdbId, { puan, yorum, kullanici }) {
+export async function kisiDegerlendir(kisiTmdbId, { puan, yorum, kisiAdi, kisiFotoUrl, kullanici }) {
   const id = `${kisiTmdbId}_${kullanici.uid}`
   await setDoc(doc(db, 'kisiDegerlendirmeleri', id), {
     kisiTmdbId: Number(kisiTmdbId),
+    kisiAdi: kisiAdi || '',
+    kisiFotoUrl: kisiFotoUrl || '',
     kullaniciId: kullanici.uid,
     kullaniciAdi: kullanici.displayName || 'İsimsiz',
     puan,

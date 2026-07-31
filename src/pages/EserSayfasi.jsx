@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
 import { izlenecekEkle, izlenecekKaldir, izlenecekMi } from '../utils/izlenecek.js'
+import { eserPuanla } from '../utils/eserPuani.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
@@ -13,6 +14,7 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const TMDB_SAGLAYICI_LOGO = 'https://image.tmdb.org/t/p/w92'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
+const YILDIZ_SECENEKLERI = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 function KisiListesi({ kisiler, etiket }) {
   if (!kisiler || kisiler.length === 0) return null
@@ -34,7 +36,16 @@ function KisiListesi({ kisiler, etiket }) {
 export default function EserSayfasi({ tur }) {
   const { id } = useParams()
   const { kullanici } = useAuth()
-  const { gonderiler, yukleniyor: gonderilerYukleniyor, ortalamaPuan, puanSayisi, kullanicininPuani } = useEserGonderileri(tur, id)
+  const {
+    gonderiler,
+    yukleniyor: gonderilerYukleniyor,
+    ortalamaPuan,
+    puanSayisi,
+    kullanicininPuani,
+    yenidenYukle: puanlariYenidenYukle,
+  } = useEserGonderileri(tur, id)
+  const [puanTaslak, setPuanTaslak] = useState(kullanicininPuani || 4)
+  const [puanKaydediliyor, setPuanKaydediliyor] = useState(false)
 
   const [detay, setDetay] = useState(null)
   const [saglayicilar, setSaglayicilar] = useState(null)
@@ -184,6 +195,18 @@ export default function EserSayfasi({ tur }) {
     }
   }
 
+  async function puanGonder(e) {
+    e.preventDefault()
+    if (!kullanici) return
+    setPuanKaydediliyor(true)
+    try {
+      await eserPuanla(tur, id, puanTaslak, kullanici)
+      puanlariYenidenYukle()
+    } finally {
+      setPuanKaydediliyor(false)
+    }
+  }
+
   const basliklar = { sinema: 'film', dizi: 'dizi', kitap: 'kitap' }
   const eklemeLinki = `/gonderi-ekle?tur=${tur}&disId=${id}`
 
@@ -261,14 +284,35 @@ export default function EserSayfasi({ tur }) {
               )}
             </div>
 
-            {kullanicininPuani != null && (
-              <div className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi inline-block">
-                <p className="text-xs uppercase tracking-widest text-gise">Senin Puanın</p>
-                <div className="mt-1">
-                  <YildizPuan puan={kullanicininPuani} boyut="text-lg" />
-                </div>
-              </div>
-            )}
+            <div className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="text-xs uppercase tracking-widest text-gise">
+                {kullanicininPuani != null ? 'Senin Puanın' : 'Puan Ver'}
+              </p>
+              {kullanici ? (
+                <form onSubmit={puanGonder} className="mt-1 flex items-center gap-2">
+                  <select
+                    value={puanTaslak}
+                    onChange={(e) => setPuanTaslak(Number(e.target.value))}
+                    className="rounded-sm bg-kagit px-2 py-1 text-sm text-murekkep ring-1 ring-cizgi"
+                  >
+                    {YILDIZ_SECENEKLERI.map((s) => (
+                      <option key={s} value={s}>
+                        {s} ★
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={puanKaydediliyor}
+                    className="rounded-sm bg-muhur px-3 py-1 font-govde text-xs text-kagit disabled:opacity-40"
+                  >
+                    {puanKaydediliyor ? 'Kaydediliyor...' : kullanicininPuani != null ? 'Güncelle' : 'Kaydet'}
+                  </button>
+                </form>
+              ) : (
+                <p className="mt-1 text-sm text-kraft">Puan vermek için giriş yap.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

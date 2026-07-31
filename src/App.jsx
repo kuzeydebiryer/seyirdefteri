@@ -17,6 +17,9 @@ import KisiSayfasi from './pages/KisiSayfasi.jsx'
 import Filmler from './pages/Filmler.jsx'
 import Diziler from './pages/Diziler.jsx'
 import KitaplarKesfet from './pages/KitaplarKesfet.jsx'
+import Oyuncular from './pages/Oyuncular.jsx'
+import Yonetmenler from './pages/Yonetmenler.jsx'
+import YonetmenSayfasi from './pages/YonetmenSayfasi.jsx'
 
 export default function App() {
   return (
@@ -38,6 +41,9 @@ export default function App() {
           <Route path="/filmler" element={<OzelRota><Filmler /></OzelRota>} />
           <Route path="/diziler" element={<OzelRota><Diziler /></OzelRota>} />
           <Route path="/kitaplar" element={<OzelRota><KitaplarKesfet /></OzelRota>} />
+          <Route path="/oyuncular" element={<OzelRota><Oyuncular /></OzelRota>} />
+          <Route path="/yonetmenler" element={<OzelRota><Yonetmenler /></OzelRota>} />
+          <Route path="/yonetmen/:id" element={<OzelRota><YonetmenSayfasi /></OzelRota>} />
           <Route path="/film/:id" element={<OzelRota><EserSayfasi tur="sinema" /></OzelRota>} />
           <Route path="/dizi/:id" element={<OzelRota><EserSayfasi tur="dizi" /></OzelRota>} />
           <Route path="/kitap/:id" element={<OzelRota><EserSayfasi tur="kitap" /></OzelRota>} />

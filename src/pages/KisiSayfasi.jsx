@@ -49,6 +49,18 @@ export default function KisiSayfasi() {
         const kisiData = await kisiRes.json()
         if (!kisiRes.ok) throw new Error(kisiData.status_message || `HTTP ${kisiRes.status}`)
         if (iptal) return
+
+        // TMDB birçok kişi için Türkçe biyografi sağlamıyor — boşsa İngilizce'sine geri dön.
+        if (!kisiData.biography) {
+          try {
+            const enUrl = `https://api.themoviedb.org/3/person/${id}?api_key=${TMDB_API_KEY}&language=en-US`
+            const enRes = await fetch(enUrl)
+            const enData = await enRes.json()
+            if (enData.biography) kisiData.biography = enData.biography
+          } catch {
+            // sessizce geç, biyografi olmadan devam
+          }
+        }
         setKisi(kisiData)
 
         if (kullanici) {
@@ -124,7 +136,13 @@ export default function KisiSayfasi() {
     if (!kullanici) return
     setDegerlendirmeKaydediliyor(true)
     try {
-      await kisiDegerlendir(id, { puan: puanTaslak, yorum: yorumTaslak, kullanici })
+      await kisiDegerlendir(id, {
+        puan: puanTaslak,
+        yorum: yorumTaslak,
+        kisiAdi: kisi.name,
+        kisiFotoUrl: kisi.profile_path ? `${TMDB_PROFIL}${kisi.profile_path}` : '',
+        kullanici,
+      })
       degerlendirmeleriYenile()
     } finally {
       setDegerlendirmeKaydediliyor(false)

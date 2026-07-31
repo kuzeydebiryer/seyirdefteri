@@ -9,6 +9,8 @@ const LINKLER = [
   { yol: '/filmler', etiket: 'Film' },
   { yol: '/diziler', etiket: 'Dizi' },
   { yol: '/kitaplar', etiket: 'Kitap' },
+  { yol: '/oyuncular', etiket: 'Oyuncular' },
+  { yol: '/yonetmenler', etiket: 'Yönetmenler' },
   { yol: '/kullanicilar', etiket: 'Kişiler' },
   { yol: '/etkinlikler', etiket: 'Etkinlikler' },
   { yol: '/topluluklar', etiket: 'Topluluklar' },
