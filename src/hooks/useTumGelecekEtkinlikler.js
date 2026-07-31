@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { collectionGroup, getDocs, orderBy, query } from 'firebase/firestore'
+import { collection, getDocs, orderBy, query } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-// Tüm topluluklardaki gelecek etkinlikleri tek seferde getirir (küresel Etkinlikler
-// sayfasında Film/Kitap Kulübü altında göstermek için). collectionGroup sorgusu
-// kullanıyor — ilk çalıştırıldığında Firestore konsolundan bir indeks oluşturman
-// istenebilir, tarayıcı konsolundaki (F12) linke tıklaman yeterli.
+// Tüm topluluklardaki gelecek etkinlikleri getirir (küresel Etkinlikler sayfasında
+// Film/Kitap Kulübü altında göstermek için). Artık üst seviye bir koleksiyon
+// olduğu için basit bir sorgu — özel bir indeks gerekmiyor.
 export function useTumGelecekEtkinlikler() {
   const [etkinlikler, setEtkinlikler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
@@ -16,7 +15,7 @@ export function useTumGelecekEtkinlikler() {
     async function getir() {
       setYukleniyor(true)
       try {
-        const q = query(collectionGroup(db, 'gelecekEtkinlikler'), orderBy('tarih', 'asc'))
+        const q = query(collection(db, 'gelecekEtkinlikler'), orderBy('tarih', 'asc'))
         const snap = await getDocs(q)
         if (iptal) return
         setEtkinlikler(snap.docs.map((d) => ({ id: d.id, ...d.data() })))

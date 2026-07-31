@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, getDocs, orderBy, query } from 'firebase/firestore'
+import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export function useListeOgeleri(topluluklId, listeId) {
@@ -12,7 +12,9 @@ export function useListeOgeleri(topluluklId, listeId) {
     async function getir() {
       setYukleniyor(true)
       const q = query(
-        collection(db, 'topluluklar', topluluklId, 'listeler', listeId, 'ogeler'),
+        collection(db, 'listeOgeleri'),
+        where('topluluklId', '==', topluluklId),
+        where('listeId', '==', listeId),
         orderBy('etkinlikTarihi', 'desc')
       )
       const snap = await getDocs(q)

@@ -217,6 +217,20 @@ gonderiler/{id}  (tur: "sinema"/"dizi" için yeni alanlar)
   oyuncularListesi: [{id, name}]
 ```
 
+## Mimari değişiklik: collectionGroup sorguları kaldırıldı
+Firebase konsolunda "collection group index" oluşturma adımı beklenenden çok daha
+zahmetli/hataya açık çıktı, bu yüzden "Gelecek Etkinlikler" ve "Liste Öğeleri"
+artık `topluluklar/{id}/...` altında gömülü değil, **üst seviye koleksiyonlar**
+(`gelecekEtkinlikler`, `listeOgeleri`) olarak tutuluyor, içlerinde `topluluklId`
+(ve liste öğeleri için ayrıca `listeId`) alanı var. Bu sayede hem topluluk
+sayfası hem küresel Etkinlikler sayfası hem eser sayfası basit `where()`
+sorgularıyla çalışıyor — hiçbir özel/collection-group indeksi gerekmiyor.
+
+**Önemli:** Bu değişiklikten önce oluşturulmuş gelecek etkinlikler ve liste
+öğeleri (eski nested yapıda kalmış test verileri) artık uygulama tarafından
+görünmüyor — veri silinmedi, sadece sorgular artık farklı bir koleksiyona
+bakıyor. Bunları yeniden eklemen gerekiyor.
+
 
 Kişiselleştirilmiş akış, Firestore'un `in` operatörüyle "takip ettiğim herkesin
 gönderileri" sorgusu yapıyor. Bu operatör en fazla 30 değer kabul ediyor —

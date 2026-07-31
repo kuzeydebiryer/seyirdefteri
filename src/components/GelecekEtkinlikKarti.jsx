@@ -22,7 +22,7 @@ function tarihSaatGoster(iso) {
   return d.toLocaleString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 }
 
-export default function GelecekEtkinlikKarti({ topluluklId, etkinlik }) {
+export default function GelecekEtkinlikKarti({ etkinlik }) {
   const { kullanici } = useAuth()
   const [katilacaklar, setKatilacaklar] = useState(etkinlik.katilacaklar || [])
   const [kaynaklarAcik, setKaynaklarAcik] = useState(false)
@@ -58,7 +58,7 @@ export default function GelecekEtkinlikKarti({ topluluklId, etkinlik }) {
   )
   const [dKaydediliyor, setDKaydediliyor] = useState(false)
 
-  const { kaynaklar, yenidenYukle } = useKaynaklar(topluluklId, etkinlik.id)
+  const { kaynaklar, yenidenYukle } = useKaynaklar(etkinlik.id)
   const katiliyorMu = kullanici && katilacaklar.includes(kullanici.uid)
   const benimEtkinliğimMi = kullanici?.uid === etkinlik.olusturanId
 
@@ -69,7 +69,7 @@ export default function GelecekEtkinlikKarti({ topluluklId, etkinlik }) {
     if (!kullanici) return
     const yeni = katiliyorMu ? katilacaklar.filter((u) => u !== kullanici.uid) : [...katilacaklar, kullanici.uid]
     setKatilacaklar(yeni)
-    await katilacagimDegistir(topluluklId, etkinlik.id, kullanici.uid, katiliyorMu)
+    await katilacagimDegistir(etkinlik.id, kullanici.uid, katiliyorMu)
   }
 
   async function kaynakGonder(e) {
@@ -79,7 +79,7 @@ export default function GelecekEtkinlikKarti({ topluluklId, etkinlik }) {
       if (!seciliKitap) return
       setKaydediliyor(true)
       try {
-        await kaynakEkle(topluluklId, etkinlik.id, {
+        await kaynakEkle(etkinlik.id, {
           tur: 'kitap',
           baslik: seciliKitap.baslik,
           url: '',
@@ -101,7 +101,7 @@ export default function GelecekEtkinlikKarti({ topluluklId, etkinlik }) {
     if (!kaynakBaslik.trim() || !kaynakUrl.trim()) return
     setKaydediliyor(true)
     try {
-      await kaynakEkle(topluluklId, etkinlik.id, { tur: kaynakTur, baslik: kaynakBaslik.trim(), url: kaynakUrl.trim(), kullanici })
+      await kaynakEkle(etkinlik.id, { tur: kaynakTur, baslik: kaynakBaslik.trim(), url: kaynakUrl.trim(), kullanici })
       setKaynakBaslik('')
       setKaynakUrl('')
       setKaynakFormuAcik(false)
@@ -170,7 +170,7 @@ export default function GelecekEtkinlikKarti({ topluluklId, etkinlik }) {
     e.preventDefault()
     setDKaydediliyor(true)
     try {
-      await gelecekEtkinlikGuncelle(topluluklId, etkinlik.id, { baslik: dBaslik, aciklama: dAciklama, tarih: dTarih, eser: dEser })
+      await gelecekEtkinlikGuncelle(etkinlik.id, { baslik: dBaslik, aciklama: dAciklama, tarih: dTarih, eser: dEser })
       etkinlik.baslik = dBaslik
       etkinlik.aciklama = dAciklama
       etkinlik.tarih = dTarih

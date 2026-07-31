@@ -416,7 +416,7 @@ export default function TopluluklarDetay() {
 
         <div className="space-y-3">
           {etkinlikler.map((e) => (
-            <GelecekEtkinlikKarti key={e.id} topluluklId={id} etkinlik={e} />
+            <GelecekEtkinlikKarti key={e.id} etkinlik={e} />
           ))}
         </div>
       </div>

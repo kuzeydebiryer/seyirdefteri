@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, collectionGroup, getDocs, query, where } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -30,10 +30,10 @@ export function useEserGonderileri(tur, disId) {
       setGonderiler(gonderilerSnap.docs.map((d) => ({ id: d.id, ...d.data() })))
 
       // Topluluk listelerindeki (Geçmiş Etkinlikler) puanları da dahil et.
-      // collectionGroup sorgusu ilk çalıştırıldığında Firestore konsolundan
-      // bir indeks oluşturman istenebilir — tarayıcı konsolundaki linke tıklaman yeterli.
+      // "listeOgeleri" üst seviye bir koleksiyon olduğu için bu basit bir
+      // where() sorgusu, özel bir indeks gerektirmiyor.
       try {
-        const ogelerQ = query(collectionGroup(db, 'ogeler'), where('tur', '==', tur), where(alan, '==', deger))
+        const ogelerQ = query(collection(db, 'listeOgeleri'), where('tur', '==', tur), where(alan, '==', deger))
         const ogelerSnap = await getDocs(ogelerQ)
         if (iptal) return
         const hepsi = []

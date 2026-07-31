@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore'
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // Bir listenin en son (etkinlik tarihine göre) N öğesini poster şeridi olarak gösterir —
@@ -11,7 +11,9 @@ export default function ListeOnizleme({ topluluklId, listeId, adet = 10 }) {
     let iptal = false
     async function getir() {
       const q = query(
-        collection(db, 'topluluklar', topluluklId, 'listeler', listeId, 'ogeler'),
+        collection(db, 'listeOgeleri'),
+        where('topluluklId', '==', topluluklId),
+        where('listeId', '==', listeId),
         orderBy('etkinlikTarihi', 'desc'),
         limit(adet)
       )

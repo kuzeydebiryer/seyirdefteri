@@ -26,7 +26,7 @@ export default function ListeOgesi({ topluluklId, listeId, oge }) {
     setKaydediliyor(true)
     setPuanlar((onceki) => ({ ...onceki, [kullanici.uid]: yeniPuan }))
     try {
-      await ogePuanla(topluluklId, listeId, oge.id, kullanici.uid, yeniPuan)
+      await ogePuanla(oge.id, kullanici.uid, yeniPuan)
     } finally {
       setKaydediliyor(false)
     }

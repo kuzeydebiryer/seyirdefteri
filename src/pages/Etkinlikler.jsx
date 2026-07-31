@@ -27,7 +27,7 @@ function KulupBolumu({ baslik, tartismaEtkinlikleri, gelecekEtkinlikler }) {
       {gelecekEtkinlikler.length === 0 && <p className="text-sm text-kraft">Planlanmış bir topluluk etkinliği yok.</p>}
       <div className="space-y-3">
         {gelecekEtkinlikler.map((e) => (
-          <GelecekEtkinlikKarti key={e.id} topluluklId={e.topluluklId} etkinlik={e} />
+          <GelecekEtkinlikKarti key={e.id} etkinlik={e} />
         ))}
       </div>
     </div>
@@ -73,7 +73,7 @@ export default function Etkinlikler() {
               <h2 className="font-baslik text-xl text-murekkep mb-4">Genel</h2>
               <div className="space-y-3">
                 {genelEtkinlik.map((e) => (
-                  <GelecekEtkinlikKarti key={e.id} topluluklId={e.topluluklId} etkinlik={e} />
+                  <GelecekEtkinlikKarti key={e.id} etkinlik={e} />
                 ))}
               </div>
             </div>
