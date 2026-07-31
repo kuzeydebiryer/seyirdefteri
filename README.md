@@ -357,3 +357,13 @@ Bunu gidermek için:
 - **Okuduklarım (yeni sekme):** Sadece Kitap — "Okuma Özeti" kutusu artık burada, "Kitaplığım" poster duvarı ve kitap güncesi de burada.
 - **Şu An:** Tek sekme ama içeride "Şu An İzlediklerim" (Film/Dizi) ve "Şu An Okuduklarım" (Kitap, sayfa ilerlemesiyle) olarak ayrı gruplandı.
 - **İzleyecek/Okuyacaklarım:** Tek sekme ama içeride "İzleyeceklerim" (Film/Dizi) ve "Okuyacaklarım" (Kitap) olarak ayrı gruplandı.
+
+## Profil düzeltmeleri: doğrudan puanlar ve Yazı/Gezi sekmesi
+- **"İzlediklerim/Okuduklarım"da doğrudan puanlar da görünüyor:** Daha önce sadece tam günce yazılan eserler (`gonderiler`) gösteriliyordu; eser sayfasından günce yazmadan doğrudan verilen puanlar (`eserPuanlari`) profile hiç yansımıyordu. Artık ikisi birleştirilip Poster Duvarı'nda gösteriliyor (aynı esere hem günce hem doğrudan puan varsa, günce olan tercih ediliyor, tekrar etmiyor).
+- **"Yazı & Gezi" (yeni sekme):** Önceki tür-ayrımı revizyonunda Yazı/Gezi/Etkinlik paylaşımlarının profilde hiçbir karşılığı kalmamıştı — artık kendi sekmeleri var.
+
+### Veri modeli eklemeleri
+```
+eserPuanlari/{tur}_{disId}_{uid}  (güncellendi)
+  + baslik, alt, posterUrl  (profilde göstermek için denormalize edildi)
+```

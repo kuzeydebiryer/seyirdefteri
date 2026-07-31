@@ -9,6 +9,7 @@ import { useFavoriler } from '../hooks/useFavoriler.js'
 import { useIzlenecekler } from '../hooks/useIzlenecekler.js'
 import { useYorumlarim } from '../hooks/useYorumlarim.js'
 import { useRaflar } from '../hooks/useRaflar.js'
+import { useEserPuanlarim } from '../hooks/useEserPuanlarim.js'
 import { rafOlustur, rafSil } from '../utils/raf.js'
 import { takipEt, takipBirak } from '../utils/takip.js'
 import { favoriKaldir } from '../utils/favori.js'
@@ -16,6 +17,7 @@ import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import Avatar from '../components/Avatar.jsx'
+import YildizPuan from '../components/YildizPuan.jsx'
 
 const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
@@ -59,6 +61,7 @@ export default function Profil() {
   const [favoriSekmesi, setFavoriSekmesi] = useState('sinema')
   const { favoriler, yenidenYukle: favorileriYenile } = useFavoriler(uid, favoriSekmesi)
   const { izlenecekler, yenidenYukle: izlenecekleriYenile } = useIzlenecekler(uid)
+  const { puanlar: eserPuanlarim } = useEserPuanlarim(uid)
   const { raflar, yenidenYukle: raflariYenile } = useRaflar(uid)
   const [rafFormuAcik, setRafFormuAcik] = useState(false)
   const [rafBaslik, setRafBaslik] = useState('')
@@ -160,6 +163,7 @@ export default function Profil() {
   const SEKMELER = [
     { id: 'izlediklerim', etiket: 'İzlediklerim' },
     { id: 'okuduklarim', etiket: 'Okuduklarım' },
+    { id: 'yazigezi', etiket: 'Yazı & Gezi' },
     { id: 'suanda', etiket: 'Şu An' },
     { id: 'izleyecegim', etiket: 'İzleyecek/Okuyacaklarım' },
     { id: 'favoriler', etiket: 'Favoriler' },
@@ -321,26 +325,44 @@ export default function Profil() {
       {sekme === 'izlediklerim' && (
         <>
           {(() => {
-            const filmDiziGonderileri = gonderiler.filter((g) => (g.tur === 'sinema' || g.tur === 'dizi') && g.posterUrl)
-            if (filmDiziGonderileri.length === 0) return null
+            const gonderiKarti = (tur) =>
+              gonderiler
+                .filter((g) => g.tur === tur && g.posterUrl)
+                .map((g) => ({ id: g.id, baslik: g.baslik, posterUrl: g.posterUrl, puan: g.kullaniciPuani, link: `/gonderi/${g.id}` }))
+            const puanKarti = (tur) =>
+              eserPuanlarim
+                .filter((e) => e.tur === tur && e.posterUrl)
+                .filter((e) => !gonderiler.some((g) => g.tur === tur && g.tmdbId === e.disId))
+                .map((e) => ({
+                  id: e.id,
+                  baslik: e.baslik,
+                  posterUrl: e.posterUrl,
+                  puan: e.puan,
+                  link: tur === 'dizi' ? `/dizi/${e.disId}` : `/film/${e.disId}`,
+                }))
+
+            const gruplar = [
+              { tur: 'sinema', baslik: 'Filmler' },
+              { tur: 'dizi', baslik: 'Diziler' },
+            ].map(({ tur, baslik }) => ({ tur, baslik, esereler: [...gonderiKarti(tur), ...puanKarti(tur)] }))
+
+            if (gruplar.every((g) => g.esereler.length === 0)) return null
+
             return (
               <>
                 <h2 className="font-baslik text-lg text-murekkep mb-3">Poster Duvarı</h2>
-                {[
-                  { tur: 'sinema', baslik: 'Filmler' },
-                  { tur: 'dizi', baslik: 'Diziler' },
-                ].map(({ tur, baslik }) => {
-                  const buGrup = filmDiziGonderileri.filter((g) => g.tur === tur)
-                  if (buGrup.length === 0) return null
+                {gruplar.map(({ tur, baslik, esereler }) => {
+                  if (esereler.length === 0) return null
                   return (
                     <div key={tur} className="mb-5">
                       <p className="mb-2 text-xs uppercase tracking-widest text-kraft">{baslik}</p>
                       <div className="grid grid-cols-5 gap-2 sm:grid-cols-7">
-                        {buGrup.map((g) => (
-                          <Link key={g.id} to={`/gonderi/${g.id}`} className="block">
+                        {esereler.map((e) => (
+                          <Link key={e.id} to={e.link} className="block">
                             <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                              <img src={g.posterUrl} alt={g.baslik} className="h-full w-full object-cover" />
+                              <img src={e.posterUrl} alt={e.baslik} className="h-full w-full object-cover" />
                             </div>
+                            {e.puan != null && <YildizPuan puan={e.puan} boyut="text-[10px]" onluGoster={false} />}
                           </Link>
                         ))}
                       </div>
@@ -425,17 +447,31 @@ export default function Profil() {
           })()}
 
           {(() => {
-            const kitapGonderileri = gonderiler.filter((g) => g.tur === 'kitap' && (g.posterUrl || g.ilgiliPosterUrl))
-            if (kitapGonderileri.length === 0) return null
+            const gonderiKarti = gonderiler
+              .filter((g) => g.tur === 'kitap' && (g.posterUrl || g.ilgiliPosterUrl))
+              .map((g) => ({
+                id: g.id,
+                baslik: g.baslik,
+                posterUrl: g.posterUrl || g.ilgiliPosterUrl,
+                puan: g.kullaniciPuani,
+                link: `/gonderi/${g.id}`,
+              }))
+            const puanKarti = eserPuanlarim
+              .filter((e) => e.tur === 'kitap' && e.posterUrl)
+              .filter((e) => !gonderiler.some((g) => g.tur === 'kitap' && g.googleBooksId === e.disId))
+              .map((e) => ({ id: e.id, baslik: e.baslik, posterUrl: e.posterUrl, puan: e.puan, link: `/kitap/${e.disId}` }))
+            const kitaplar = [...gonderiKarti, ...puanKarti]
+            if (kitaplar.length === 0) return null
             return (
               <>
                 <h2 className="font-baslik text-lg text-murekkep mb-3">Kitaplığım</h2>
                 <div className="mb-8 grid grid-cols-5 gap-2 sm:grid-cols-7">
-                  {kitapGonderileri.map((g) => (
-                    <Link key={g.id} to={`/gonderi/${g.id}`} className="block">
+                  {kitaplar.map((k) => (
+                    <Link key={k.id} to={k.link} className="block">
                       <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                        <img src={g.posterUrl || g.ilgiliPosterUrl} alt={g.baslik} className="h-full w-full object-cover" />
+                        <img src={k.posterUrl} alt={k.baslik} className="h-full w-full object-cover" />
                       </div>
+                      {k.puan != null && <YildizPuan puan={k.puan} boyut="text-[10px]" onluGoster={false} />}
                     </Link>
                   ))}
                 </div>
@@ -464,6 +500,22 @@ export default function Profil() {
       )}
 
       {/* Şu An Okuduklarım */}
+      {/* Yazı & Gezi (Yazı, Gezi, Etkinlik) */}
+      {sekme === 'yazigezi' && (
+        <div className="space-y-4">
+          {(() => {
+            const digerler = gonderiler.filter((g) => g.tur === 'yazi' || g.tur === 'gezi' || g.tur === 'etkinlik')
+            if (digerler.length === 0) return <p className="text-sm text-kraft">Henüz bir yazı/gezi/etkinlik paylaşımı yok.</p>
+            return digerler.map((g, i) => (
+              <div key={g.id}>
+                <GonderiKarti gonderi={g} />
+                {i < digerler.length - 1 && <div className="defter-cizgi mt-4" />}
+              </div>
+            ))
+          })()}
+        </div>
+      )}
+
       {sekme === 'suanda' && (
         <div>
           {(() => {

@@ -3,14 +3,22 @@ import { db } from '../firebase.js'
 
 // Bir esere (günce yazmadan) doğrudan verilen puan. Doküman ID'si
 // `${tur}_${disId}_${uid}` olarak sabit — bir kullanıcı bir esere tek puan verebiliyor,
-// tekrar puanladığında üzerine yazılıyor.
-export async function eserPuanla(tur, disId, puan, kullanici) {
+// tekrar puanladığında üzerine yazılıyor. Başlık/poster de kaydediliyor ki profildeki
+// "İzlediklerim/Okuduklarım" bunları ekstra bir TMDB/Google Books isteği yapmadan gösterebilsin.
+export async function eserPuanla(tur, disId, puan, kullanici, { baslik, alt, posterUrl } = {}) {
   const id = `${tur}_${disId}_${kullanici.uid}`
-  await setDoc(doc(db, 'eserPuanlari', id), {
-    tur,
-    disId: tur === 'kitap' ? disId : Number(disId),
-    kullaniciId: kullanici.uid,
-    puan,
-    tarih: serverTimestamp(),
-  })
+  await setDoc(
+    doc(db, 'eserPuanlari', id),
+    {
+      tur,
+      disId: tur === 'kitap' ? disId : Number(disId),
+      kullaniciId: kullanici.uid,
+      puan,
+      baslik: baslik || '',
+      alt: alt || '',
+      posterUrl: posterUrl || '',
+      tarih: serverTimestamp(),
+    },
+    { merge: true }
+  )
 }
