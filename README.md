@@ -205,7 +205,19 @@ topluluklar/{id}/gelecekEtkinlikler/{etkinlikId}
 ### Önemli — yeni bir Firestore indeksi gerekebilir
 Bu özellik de bir **collectionGroup** sorgusu kullanıyor (tüm topluluklardaki gelecek etkinlikleri tek seferde çekmek için). İlk çalıştırıldığında Firestore bir indeks oluşturman gerektiğini söyleyebilir — F12 konsolundaki linke tıklaman yeterli.
 
-## Ölçeklenme notu
+## Nerede İzlenebilir ve Kişi Sayfaları
+- **Nerede İzlenebilir:** Film/dizi sayfalarında artık TMDB'nin JustWatch verisi üzerinden Türkiye'deki abonelik/kiralama/satın alma seçenekleri, platform logolarıyla gösteriliyor. JustWatch atıfı da ekleniyor (TMDB'nin kullanım şartı).
+- **Kişi sayfaları (`/kisi/:tmdbId`):** Yönetmen/yaratıcı ve oyuncu isimleri artık tıklanabilir. Bir kişiye tıklayınca TMDB'den o kişinin tüm filmografisi (yönetmenlik ve oyunculuk ayrı ayrı) poster ızgarası halinde listeleniyor.
+- **Kapsam:** Eser sayfalarında (`/film/...`, `/dizi/...`) her zaman çalışıyor (veri TMDB'den taze çekiliyor). Kişisel günce sayfalarında da çalışıyor — artık gönderi kaydedilirken yönetmen/oyuncuların TMDB kimlikleri de saklanıyor. **Bu özellikten önce paylaşılmış eski güncelerde** bu kimlikler yok, o yüzden onlarda isimler düz metin olarak kalmaya devam ediyor (geriye dönük otomatik dönüşüm yok).
+
+### Veri modeli eklemeleri
+```
+gonderiler/{id}  (tur: "sinema"/"dizi" için yeni alanlar)
+  yonetmenListesi: [{id, name}]
+  oyuncularListesi: [{id, name}]
+```
+
+
 Kişiselleştirilmiş akış, Firestore'un `in` operatörüyle "takip ettiğim herkesin
 gönderileri" sorgusu yapıyor. Bu operatör en fazla 30 değer kabul ediyor —
 30'dan fazla takip edilen kişi olursa kod otomatik olarak sorguyu gruplara

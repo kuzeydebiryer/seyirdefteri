@@ -13,6 +13,7 @@ import Topluluklar from './pages/Topluluklar.jsx'
 import TopluluklarDetay from './pages/TopluluklarDetay.jsx'
 import ListeDetay from './pages/ListeDetay.jsx'
 import EserSayfasi from './pages/EserSayfasi.jsx'
+import KisiSayfasi from './pages/KisiSayfasi.jsx'
 import Filmler from './pages/Filmler.jsx'
 import Diziler from './pages/Diziler.jsx'
 import KitaplarKesfet from './pages/KitaplarKesfet.jsx'
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/film/:id" element={<OzelRota><EserSayfasi tur="sinema" /></OzelRota>} />
           <Route path="/dizi/:id" element={<OzelRota><EserSayfasi tur="dizi" /></OzelRota>} />
           <Route path="/kitap/:id" element={<OzelRota><EserSayfasi tur="kitap" /></OzelRota>} />
+          <Route path="/kisi/:id" element={<OzelRota><KisiSayfasi /></OzelRota>} />
         </Routes>
       </main>
     </div>

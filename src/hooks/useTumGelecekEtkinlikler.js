@@ -21,7 +21,8 @@ export function useTumGelecekEtkinlikler() {
         if (iptal) return
         setEtkinlikler(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
       } catch (e) {
-        if (!iptal) setHata(e.message)
+        console.error('useTumGelecekEtkinlikler hata:', e.code, e.message, e)
+        if (!iptal) setHata(`${e.code || ''} ${e.message}`)
       } finally {
         if (!iptal) setYukleniyor(false)
       }

@@ -58,6 +58,8 @@ export default function GonderiEkle() {
   const [bolumSayisi, setBolumSayisi] = useState('')
   const [yonetmen, setYonetmen] = useState('') // film: yönetmen, dizi: yaratıcı
   const [oyuncular, setOyuncular] = useState('')
+  const [yonetmenListesi, setYonetmenListesi] = useState([]) // [{id, name}] - kişi sayfasına link için
+  const [oyuncularListesi, setOyuncularListesi] = useState([])
   const [dbPuan, setDbPuan] = useState('')
   const [sayfaSayisi, setSayfaSayisi] = useState('')
   const [yayinevi, setYayinevi] = useState('')
@@ -119,6 +121,8 @@ export default function GonderiEkle() {
     setBolumSayisi('')
     setYonetmen('')
     setOyuncular('')
+    setYonetmenListesi([])
+    setOyuncularListesi([])
     setDbPuan('')
     setSayfaSayisi('')
     setYayinevi('')
@@ -180,12 +184,17 @@ export default function GonderiEkle() {
           setSureDk(detay.runtime || '')
           const yonetmenler = (detay.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => k.name)
           setYonetmen(yonetmenler.join(', '))
+          setYonetmenListesi(
+            (detay.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => ({ id: k.id, name: k.name }))
+          )
         } else {
           setSezonSayisi(detay.number_of_seasons || '')
           setBolumSayisi(detay.number_of_episodes || '')
           setYonetmen((detay.created_by || []).map((k) => k.name).join(', '))
+          setYonetmenListesi((detay.created_by || []).map((k) => ({ id: k.id, name: k.name })))
         }
         setOyuncular((detay.credits?.cast || []).slice(0, 5).map((k) => k.name).join(', '))
+        setOyuncularListesi((detay.credits?.cast || []).slice(0, 5).map((k) => ({ id: k.id, name: k.name })))
       } else if (hedefTur === 'kitap') {
         const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
         const url = `https://www.googleapis.com/books/v1/volumes/${disId}?${anahtarParcasi}`
@@ -307,8 +316,12 @@ export default function GonderiEkle() {
         if (detay.overview) setOzet(detay.overview)
         const yonetmenler = (detay.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => k.name)
         setYonetmen(yonetmenler.join(', '))
+        setYonetmenListesi(
+          (detay.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => ({ id: k.id, name: k.name }))
+        )
         const ilkOyuncular = (detay.credits?.cast || []).slice(0, 5).map((k) => k.name)
         setOyuncular(ilkOyuncular.join(', '))
+        setOyuncularListesi((detay.credits?.cast || []).slice(0, 5).map((k) => ({ id: k.id, name: k.name })))
       } catch (err) {
         console.warn('TMDB detay bilgisi çekilemedi:', err.message)
       } finally {
@@ -338,8 +351,10 @@ export default function GonderiEkle() {
         if (detay.overview) setOzet(detay.overview)
         const yaratanlar = (detay.created_by || []).map((k) => k.name)
         setYonetmen(yaratanlar.join(', '))
+        setYonetmenListesi((detay.created_by || []).map((k) => ({ id: k.id, name: k.name })))
         const ilkOyuncular = (detay.credits?.cast || []).slice(0, 5).map((k) => k.name)
         setOyuncular(ilkOyuncular.join(', '))
+        setOyuncularListesi((detay.credits?.cast || []).slice(0, 5).map((k) => ({ id: k.id, name: k.name })))
       } catch (err) {
         console.warn('TMDB detay bilgisi çekilemedi:', err.message)
       } finally {
@@ -395,6 +410,8 @@ export default function GonderiEkle() {
         sezonSayisi: kategori === 'dizi' && sezonSayisi ? Number(sezonSayisi) : null,
         bolumSayisi: kategori === 'dizi' && bolumSayisi ? Number(bolumSayisi) : null,
         yonetmen: kategori === 'sinema' || kategori === 'dizi' ? yonetmen : '',
+        yonetmenListesi: kategori === 'sinema' || kategori === 'dizi' ? yonetmenListesi : [],
+        oyuncularListesi: kategori === 'sinema' || kategori === 'dizi' ? oyuncularListesi : [],
         oyuncular: kategori === 'sinema' || kategori === 'dizi' ? oyuncular : '',
         dbPuan: apiliKategori && dbPuan ? Number(dbPuan) : null,
         sayfaSayisi: kategori === 'kitap' && sayfaSayisi ? Number(sayfaSayisi) : null,

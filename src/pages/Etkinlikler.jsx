@@ -57,8 +57,9 @@ export default function Etkinlikler() {
       {yukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {hata && (
         <p className="mb-4 text-sm text-muhur">
-          Topluluk etkinlikleri yüklenemedi: {hata}. Muhtemelen Firestore'da eksik bir indeks var — tarayıcı
-          konsolundaki (F12) linke tıklayarak oluşturabilirsin.
+          Topluluk etkinlikleri yüklenemedi: {hata}
+          {hata.includes('permission') && ' — bu bir Firestore güvenlik kuralı sorunu, indeksle ilgisi yok.'}
+          {hata.includes('index') && ' — bir Firestore indeksi eksik, tarayıcı konsolundaki (F12) linke tıklayarak oluşturabilirsin.'}
         </p>
       )}
 

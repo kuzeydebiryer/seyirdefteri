@@ -8,7 +8,25 @@ import GonderiIcerik from '../components/GonderiIcerik.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
+const TMDB_SAGLAYICI_LOGO = 'https://image.tmdb.org/t/p/w92'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
+
+function KisiListesi({ kisiler, etiket }) {
+  if (!kisiler || kisiler.length === 0) return null
+  return (
+    <p className="mt-1 text-xs text-murekkep">
+      <span className="text-kraft">{etiket}: </span>
+      {kisiler.map((k, i) => (
+        <span key={k.id}>
+          <Link to={`/kisi/${k.id}`} className="hover:underline hover:text-deniz">
+            {k.name}
+          </Link>
+          {i < kisiler.length - 1 && ', '}
+        </span>
+      ))}
+    </p>
+  )
+}
 
 export default function EserSayfasi({ tur }) {
   const { id } = useParams()
@@ -16,6 +34,7 @@ export default function EserSayfasi({ tur }) {
   const { gonderiler, yukleniyor: gonderilerYukleniyor, ortalamaPuan, puanSayisi, kullanicininPuani } = useEserGonderileri(tur, id)
 
   const [detay, setDetay] = useState(null)
+  const [saglayicilar, setSaglayicilar] = useState(null)
   const [detayYukleniyor, setDetayYukleniyor] = useState(true)
   const [hata, setHata] = useState('')
 
@@ -33,6 +52,13 @@ export default function EserSayfasi({ tur }) {
           const data = await res.json()
           if (!res.ok) throw new Error(data.status_message || `HTTP ${res.status}`)
           if (iptal) return
+
+          const yonetmenler =
+            tur === 'sinema'
+              ? (data.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => ({ id: k.id, name: k.name }))
+              : (data.created_by || []).map((k) => ({ id: k.id, name: k.name }))
+          const oyuncular = (data.credits?.cast || []).slice(0, 6).map((k) => ({ id: k.id, name: k.name }))
+
           setDetay({
             baslik: tur === 'sinema' ? data.title : data.name,
             yil: (tur === 'sinema' ? data.release_date : data.first_air_date)?.slice(0, 4),
@@ -42,13 +68,20 @@ export default function EserSayfasi({ tur }) {
             sureDk: tur === 'sinema' ? data.runtime : null,
             sezonSayisi: tur === 'dizi' ? data.number_of_seasons : null,
             bolumSayisi: tur === 'dizi' ? data.number_of_episodes : null,
-            yonetmen:
-              tur === 'sinema'
-                ? (data.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => k.name).join(', ')
-                : (data.created_by || []).map((k) => k.name).join(', '),
-            oyuncular: (data.credits?.cast || []).slice(0, 6).map((k) => k.name).join(', '),
+            yonetmenler,
+            oyuncular,
             dbPuan: data.vote_average ? data.vote_average.toFixed(1) : null,
           })
+
+          // Nerede İzlenebilir (Türkiye) — TMDB'nin JustWatch verisi üzerinden sağladığı uç nokta
+          try {
+            const spUrl = `https://api.themoviedb.org/3/${uc}/${id}/watch/providers?api_key=${TMDB_API_KEY}`
+            const spRes = await fetch(spUrl)
+            const spData = await spRes.json()
+            if (!iptal) setSaglayicilar(spData.results?.TR || null)
+          } catch (e) {
+            console.warn('İzleme sağlayıcıları alınamadı:', e.message)
+          }
         } else if (tur === 'kitap') {
           const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
           const url = `https://www.googleapis.com/books/v1/volumes/${id}?${anahtarParcasi}`
@@ -88,6 +121,14 @@ export default function EserSayfasi({ tur }) {
   if (hata) return <p className="text-sm text-muhur">Bilgi alınamadı: {hata}</p>
   if (!detay) return <p className="text-sm text-kraft">Bulunamadı.</p>
 
+  const izlemeSecenekleri = saglayicilar
+    ? [
+        { etiket: 'Abonelik', liste: saglayicilar.flatrate },
+        { etiket: 'Kirala', liste: saglayicilar.rent },
+        { etiket: 'Satın Al', liste: saglayicilar.buy },
+      ].filter((s) => s.liste && s.liste.length > 0)
+    : []
+
   return (
     <div>
       <div className="flex gap-5">
@@ -110,18 +151,8 @@ export default function EserSayfasi({ tur }) {
             {detay.dbPuan && <span>{tur === 'kitap' ? 'Google' : 'TMDB'} {detay.dbPuan}</span>}
           </div>
 
-          {(tur === 'sinema' || tur === 'dizi') && detay.yonetmen && (
-            <p className="mt-2 text-xs text-murekkep">
-              <span className="text-kraft">{tur === 'dizi' ? 'Yaratıcı: ' : 'Yönetmen: '}</span>
-              {detay.yonetmen}
-            </p>
-          )}
-          {(tur === 'sinema' || tur === 'dizi') && detay.oyuncular && (
-            <p className="text-xs text-murekkep">
-              <span className="text-kraft">Oyuncular: </span>
-              {detay.oyuncular}
-            </p>
-          )}
+          <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
+          <KisiListesi kisiler={detay.oyuncular} etiket="Oyuncular" />
 
           {/* Topluluk ortalaması — bu esere şimdiye kadar verilen tüm puanların ortalaması */}
           <div className="mt-4 flex flex-wrap gap-3">
@@ -150,6 +181,41 @@ export default function EserSayfasi({ tur }) {
       </div>
 
       {detay.ozet && <p className="mt-4 text-sm text-murekkep leading-relaxed">{detay.ozet}</p>}
+
+      {(tur === 'sinema' || tur === 'dizi') && izlemeSecenekleri.length > 0 && (
+        <div className="mt-6">
+          <h2 className="font-baslik text-lg text-murekkep mb-2">Nerede İzlenebilir</h2>
+          <div className="space-y-2">
+            {izlemeSecenekleri.map((s) => (
+              <div key={s.etiket} className="flex items-center gap-2">
+                <span className="w-16 shrink-0 text-xs text-kraft">{s.etiket}</span>
+                <div className="flex flex-wrap gap-2">
+                  {s.liste.map((p) => (
+                    <img
+                      key={p.provider_id}
+                      src={`${TMDB_SAGLAYICI_LOGO}${p.logo_path}`}
+                      alt={p.provider_name}
+                      title={p.provider_name}
+                      className="h-8 w-8 rounded-sm ring-1 ring-cizgi"
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-kraft">
+            Veriler{' '}
+            {saglayicilar?.link ? (
+              <a href={saglayicilar.link} target="_blank" rel="noreferrer" className="hover:underline">
+                JustWatch
+              </a>
+            ) : (
+              'JustWatch'
+            )}{' '}
+            tarafından sağlanmaktadır. Bölgeye ve zamana göre değişebilir.
+          </p>
+        </div>
+      )}
 
       {kullanici && (
         <Link

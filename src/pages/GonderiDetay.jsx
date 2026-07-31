@@ -190,13 +190,31 @@ export default function GonderiDetay() {
             {(gonderi.tur === 'sinema' || gonderi.tur === 'dizi') && gonderi.yonetmen && (
               <p className="mt-1 text-xs text-murekkep">
                 <span className="text-kraft">{gonderi.tur === 'dizi' ? 'Yaratıcı: ' : 'Yönetmen: '}</span>
-                {gonderi.yonetmen}
+                {gonderi.yonetmenListesi?.length > 0
+                  ? gonderi.yonetmenListesi.map((k, i) => (
+                      <span key={k.id}>
+                        <Link to={`/kisi/${k.id}`} className="hover:underline hover:text-deniz">
+                          {k.name}
+                        </Link>
+                        {i < gonderi.yonetmenListesi.length - 1 && ', '}
+                      </span>
+                    ))
+                  : gonderi.yonetmen}
               </p>
             )}
             {(gonderi.tur === 'sinema' || gonderi.tur === 'dizi') && gonderi.oyuncular && (
               <p className="text-xs text-murekkep">
                 <span className="text-kraft">Oyuncular: </span>
-                {gonderi.oyuncular}
+                {gonderi.oyuncularListesi?.length > 0
+                  ? gonderi.oyuncularListesi.map((k, i) => (
+                      <span key={k.id}>
+                        <Link to={`/kisi/${k.id}`} className="hover:underline hover:text-deniz">
+                          {k.name}
+                        </Link>
+                        {i < gonderi.oyuncularListesi.length - 1 && ', '}
+                      </span>
+                    ))
+                  : gonderi.oyuncular}
               </p>
             )}
 
