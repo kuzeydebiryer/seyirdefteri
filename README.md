@@ -374,3 +374,15 @@ eserPuanlari/{tur}_{disId}_{uid}  (güncellendi)
 - **Benzer Filmler/Diziler:** Eser sayfasının altında TMDB'nin önerdiği benzer eserler, tıklanabilir poster ızgarası olarak.
 - **Görsel galerisi:** Eser sayfalarında ek sahne/arka plan görselleri; kişi sayfalarında oyuncunun birden fazla fotoğrafı varsa küçük bir galeri şeridi.
 - **Türkiye'de Vizyonda / Yakında Vizyonda:** Film sayfasında artık TMDB'nin `region=TR` parametreli `now_playing`/`upcoming` uçlarından beslenen iki yeni bölüm var — Türkiye'deki gerçek vizyon tarihlerine göre.
+
+## Haberler bölümü zenginleştirildi (görsel, eser kartı, fragman)
+Film, Dizi ve Oyuncu sayfalarındaki "Haberler" bölümüne artık bir haber paylaşırken şunlar eklenebiliyor:
+- **Görsel:** Bir görsel URL'i yapıştırılabiliyor, haberin altında gösteriliyor.
+- **İlgili Film/Dizi Kartı:** TMDB'den arayıp bir film/dizi seçip habere iliştirilebiliyor — poster+başlık kartı, tıklanınca ilgili eser sayfasına gidiyor.
+- **Fragman:** Bir YouTube linki (veya doğrudan video ID) yapıştırılınca haberin altında gömülü oynatıcıda gösteriliyor.
+
+### Veri modeli eklemeleri
+```
+haberler/{id}  (güncellendi)
+  + gorselUrl, ilgiliTur, ilgiliDisId, ilgiliBaslik, ilgiliPosterUrl, fragmanId
+```
