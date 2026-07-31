@@ -295,5 +295,12 @@ kisiDegerlendirmeleri/{kisiTmdbId}_{uid}  (güncellendi)
   + kisiAdi, kisiFotoUrl  (Oyuncular hub sayfasında ekstra TMDB isteği gerekmesin diye)
 ```
 
+## Menü sadeleştirme, profesyonel logo, Yazı/Gezi bölümleri
+- **Logo:** Üst menüde artık sadece ikon (açık defter + mühür kırmızısı ayraç şeridi) — "Seyirdefteri" yazısı yer kaplamasın diye. Tam wordmark + slogan, Ana Sayfa'nın en üstünde birlikte gösteriliyor.
+- **Menü sadeleşti:** Akış, Ekle kaldırıldı (Ana Sayfa'da zaten var). Kişiler → Profil sayfasına, Etkinlikler → Topluluklar sayfasına taşındı.
+- **Yönetmenler artık Oyuncular sayfasının içinde** — ayrı bir menü maddesi değil, "Bizim Aramızda Popüler" oyuncular bölümünün hemen üstünde kendi alt bölümü olarak duruyor. Yönetmen detay sayfaları (`/yonetmen/:id`) aynen çalışmaya devam ediyor.
+- **Yazı sayfası (`/yazilar`):** Deneme, Film İncelemesi, Kitap İncelemesi türündeki tüm "yazı" güncelerini alt başlıklar halinde listeliyor.
+- **Gezi sayfası (`/gezi`):** "Dünyayı Geziyorum" (gezi güncesi) ve altında "Etkinlik Dünyası" (tiyatro/konser/mekan güncesi) olarak iki bölüme ayrılmış.
+
 
 

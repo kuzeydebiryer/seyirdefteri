@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useGonderiler } from '../hooks/useGonderiler.js'
 import { takipEdilenUidleriGetir } from '../hooks/useTakip.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
+import Logo from '../components/Logo.jsx'
 
 export default function Anasayfa() {
   const { kullanici } = useAuth()
@@ -40,7 +41,12 @@ export default function Anasayfa() {
 
   return (
     <div>
-      <p className="mb-6 text-sm text-kraft italic">Kültür hayatının ortak günlüğü.</p>
+      <div className="mb-6 flex items-center gap-2">
+        <Logo sadeceIkon boyut={22} />
+        <p className="font-baslik text-sm text-murekkep">
+          Seyirdefteri <span className="font-govde italic text-kraft">— Kültür hayatının ortak günlüğü.</span>
+        </p>
+      </div>
 
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-baslik text-2xl text-murekkep">Akış</h1>

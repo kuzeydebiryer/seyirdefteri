@@ -5,13 +5,15 @@ import Avatar from './Avatar.jsx'
 import Logo from './Logo.jsx'
 
 // Akış ve Ekle kaldırıldı — Anasayfa'nın kendisi zaten akış ve "Günce Ekle" butonunu
-// içeriyor. Kişiler profile, Etkinlikler Topluluklar sayfasına taşındı (aşağıdaki notlara bakın).
+// içeriyor. Kişiler profile, Etkinlikler Topluluklar sayfasına taşındı. Yönetmenler
+// artık Oyuncular sayfasının içinde (ayrı menü maddesi değil).
 const LINKLER = [
   { yol: '/filmler', etiket: 'Film' },
   { yol: '/diziler', etiket: 'Dizi' },
   { yol: '/kitaplar', etiket: 'Kitap' },
+  { yol: '/yazilar', etiket: 'Yazı' },
+  { yol: '/gezi', etiket: 'Gezi' },
   { yol: '/oyuncular', etiket: 'Oyuncular' },
-  { yol: '/yonetmenler', etiket: 'Yönetmenler' },
   { yol: '/topluluklar', etiket: 'Topluluklar' },
 ]
 
@@ -32,7 +34,7 @@ export default function Nav() {
     <header className="border-b border-cizgi">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
         <Link to="/" onClick={() => setMenuAcik(false)}>
-          <Logo />
+          <Logo sadeceIkon boyut={34} />
         </Link>
 
         {kullanici ? (

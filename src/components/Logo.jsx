@@ -1,23 +1,30 @@
-// Basit bir SVG logo: açık bir defter sayfası + tüy kalem çizgisi motifi,
-// sitenin "kağıt/günce" kimliğine uygun. Wordmark ile birlikte tek bir link olarak kullanılıyor.
-export default function Logo({ boyut = 32 }) {
+// Seyirdefteri logosu: açık bir defter/günce sayfası + köşesinde mühür kırmızısı
+// bir ayraç (bookmark) şeridi. sadeceIkon=true iken sadece işaret, yazı olmadan
+// (üst menüde yer tutmasın diye); wordmark ayrıca Anasayfa'da slogan satırıyla
+// birlikte gösteriliyor.
+export default function Logo({ boyut = 34, sadeceIkon = true }) {
+  const ikon = (
+    <svg width={boyut} height={boyut} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Açık defter - iki sayfa, ortadan kırılmış */}
+      <path d="M24 10 C19 7.5 12.5 6.5 6 8 V36 C12.5 34.5 19 35.5 24 38 V10 Z" fill="#EDE4CE" stroke="#8C8368" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M24 10 C29 7.5 35.5 6.5 42 8 V36 C35.5 34.5 29 35.5 24 38 V10 Z" fill="#F5EFE1" stroke="#8C8368" strokeWidth="1.4" strokeLinejoin="round" />
+      {/* Sol sayfa satırları */}
+      <line x1="10.5" y1="15" x2="19" y2="13.6" stroke="#8C8368" strokeWidth="1.1" opacity="0.55" />
+      <line x1="10.5" y1="20.5" x2="19" y2="19.6" stroke="#8C8368" strokeWidth="1.1" opacity="0.55" />
+      <line x1="10.5" y1="26" x2="19" y2="25.6" stroke="#8C8368" strokeWidth="1.1" opacity="0.55" />
+      {/* Sağ sayfa satırları */}
+      <line x1="29" y1="13.6" x2="37.5" y2="15" stroke="#8C8368" strokeWidth="1.1" opacity="0.55" />
+      <line x1="29" y1="19.6" x2="37.5" y2="20.5" stroke="#8C8368" strokeWidth="1.1" opacity="0.55" />
+      {/* Mühür kırmızısı ayraç şeridi */}
+      <path d="M32 6 H39 V22 L35.5 18.5 L32 22 Z" fill="#B33A3A" />
+    </svg>
+  )
+
+  if (sadeceIkon) return ikon
+
   return (
-    <span className="flex items-center gap-2">
-      <svg width={boyut} height={boyut} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* Defter gövdesi */}
-        <rect x="4" y="6" width="32" height="28" rx="2" fill="#EDE4CE" stroke="#8C8368" strokeWidth="1.2" />
-        {/* Orta kırışık/ciltleme çizgisi */}
-        <line x1="20" y1="6" x2="20" y2="34" stroke="#D8CBAA" strokeWidth="1" />
-        {/* Sayfa satırları */}
-        <line x1="8" y1="14" x2="17" y2="14" stroke="#B33A3A" strokeWidth="1" opacity="0.5" />
-        <line x1="8" y1="19" x2="17" y2="19" stroke="#8C8368" strokeWidth="1" opacity="0.6" />
-        <line x1="8" y1="24" x2="15" y2="24" stroke="#8C8368" strokeWidth="1" opacity="0.6" />
-        <line x1="23" y1="14" x2="32" y2="14" stroke="#8C8368" strokeWidth="1" opacity="0.6" />
-        <line x1="23" y1="19" x2="32" y2="19" stroke="#8C8368" strokeWidth="1" opacity="0.6" />
-        <line x1="23" y1="24" x2="29" y2="24" stroke="#8C8368" strokeWidth="1" opacity="0.6" />
-        {/* Tüy kalem ucu - mühür kırmızısı vurgu */}
-        <path d="M28 10 L34 4 L36 6 L30 12 L27 13 Z" fill="#B33A3A" />
-      </svg>
+    <span className="flex items-center gap-2.5">
+      {ikon}
       <span className="font-baslik text-2xl text-murekkep">Seyirdefteri</span>
     </span>
   )
