@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { ULKELER } from '../data/ulkeler.js'
 import { kitapGetir, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -67,6 +68,7 @@ export default function GonderiEkle() {
 
   // Gezi / Etkinlik'e özel alanlar
   const [konum, setKonum] = useState('')
+  const [ulkeKodu, setUlkeKodu] = useState('') // sadece 'gezi': Dünya Haritası'nda ülke vurgulamak için
   const [etkinlikTarihi, setEtkinlikTarihi] = useState('')
   const [altTur, setAltTur] = useState('Tiyatro')
 
@@ -129,6 +131,7 @@ export default function GonderiEkle() {
     setSayfaSayisi('')
     setYayinevi('')
     setKonum('')
+    setUlkeKodu('')
     setEtkinlikTarihi('')
     setAltTur('Tiyatro')
     setIlgiliBaslik('')
@@ -403,11 +406,34 @@ export default function GonderiEkle() {
     }
   }
 
+  // Gezi paylaşımında ülke + şehir girildiyse, Dünya Haritası'nda şehir pini
+  // koyabilmek için bir kerelik geocode (enlem/boylem) yapılır ve doğrudan
+  // gönderiye kalıcı olarak yazılır — her harita açılışında tekrar sorulmaz.
+  // Not: OpenStreetMap Nominatim'in ücretsiz herkese açık API'si kullanılıyor;
+  // yoğun/otomatik kullanım için kendi sunucun üzerinden geçirmen önerilir,
+  // ama küçük bir topluluk için (kişi başı, sadece gezi eklerken) sorun olmaz.
+  async function sehirKonumunuGeocodeEt(sehir, ulkeAdi) {
+    if (!sehir?.trim()) return null
+    try {
+      const sorgu = ulkeAdi ? `${sehir}, ${ulkeAdi}` : sehir
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(sorgu)}&format=json&limit=1`)
+      const data = await res.json()
+      if (!data?.[0]) return null
+      return { enlem: Number(data[0].lat), boylem: Number(data[0].lon) }
+    } catch (err) {
+      console.warn('Şehir konumu bulunamadı:', err.message)
+      return null
+    }
+  }
+
   async function paylas(e) {
     e.preventDefault()
     if (!baslik.trim() || !kullanici) return
     setKaydediliyor(true)
     try {
+      const secilenUlke = kategori === 'gezi' ? ULKELER.find((u) => u.kod === ulkeKodu) : null
+      const konumBilgisi = kategori === 'gezi' ? await sehirKonumunuGeocodeEt(konum, secilenUlke?.ad) : null
+
       await addDoc(collection(db, 'gonderiler'), {
         tur: kategori,
         altTur: kategori === 'yazi' ? yaziAltTur : kategori === 'etkinlik' ? altTur : null,
@@ -434,6 +460,11 @@ export default function GonderiEkle() {
         sayfaSayisi: kategori === 'kitap' && sayfaSayisi ? Number(sayfaSayisi) : null,
         yayinevi: kategori === 'kitap' ? yayinevi : '',
         konum: kategori === 'gezi' || kategori === 'etkinlik' ? konum : '',
+        ulkeKodu: kategori === 'gezi' ? secilenUlke?.kod || '' : '',
+        ulkeAdi: kategori === 'gezi' ? secilenUlke?.ad || '' : '',
+        ulkeIso: kategori === 'gezi' ? secilenUlke?.isoNumeric || '' : '',
+        enlem: kategori === 'gezi' ? konumBilgisi?.enlem ?? null : null,
+        boylem: kategori === 'gezi' ? konumBilgisi?.boylem ?? null : null,
         etkinlikTarihi: (kategori === 'gezi' || kategori === 'etkinlik') && etkinlikTarihi ? etkinlikTarihi : null,
         // Yazı'ya özel: incelenen film/kitabın hafif referans kartı
         ilgiliBaslik: kategori === 'yazi' ? ilgiliBaslik : '',
@@ -652,13 +683,32 @@ export default function GonderiEkle() {
 
         {(kategori === 'gezi' || kategori === 'etkinlik') && (
           <div className="flex gap-4">
+            {kategori === 'gezi' && (
+              <div className="w-48">
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Ülke</label>
+                <select
+                  value={ulkeKodu}
+                  onChange={(e) => setUlkeKodu(e.target.value)}
+                  className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                >
+                  <option value="">Seç (Dünya Haritası için)</option>
+                  {ULKELER.map((u) => (
+                    <option key={u.kod} value={u.kod}>
+                      {u.ad}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex-1">
-              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Konum</label>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">
+                {kategori === 'gezi' ? 'Şehir' : 'Konum'}
+              </label>
               <input
                 type="text"
                 value={konum}
                 onChange={(e) => setKonum(e.target.value)}
-                placeholder={kategori === 'gezi' ? 'Şehir, ülke' : 'Mekan adı, şehir'}
+                placeholder={kategori === 'gezi' ? 'Şehir adı' : 'Mekan adı, şehir'}
                 className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>

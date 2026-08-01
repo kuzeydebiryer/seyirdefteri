@@ -1,5 +1,6 @@
 import { useGonderiler } from '../hooks/useGonderiler.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
+import DunyaHaritasi from '../components/DunyaHaritasi.jsx'
 
 export default function Gezi() {
   const { gonderiler: geziler, yukleniyor: geziYukleniyor } = useGonderiler({ tur: 'gezi' })
@@ -8,6 +9,8 @@ export default function Gezi() {
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-6">Gezi</h1>
+
+      {!geziYukleniyor && <DunyaHaritasi geziler={geziler} />}
 
       <div className="mb-10">
         <h2 className="font-baslik text-lg text-murekkep mb-3">Dünyayı Geziyorum</h2>
