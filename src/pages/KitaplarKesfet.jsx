@@ -30,7 +30,10 @@ export default function KitaplarKesfet() {
 
   return (
     <div>
-      <h1 className="font-baslik text-2xl text-murekkep mb-6">Kitap</h1>
+      <h1 className="font-baslik text-2xl text-murekkep mb-1">Kitap</h1>
+      <Link to="/kitaplar/bakim" className="mb-6 inline-block text-[11px] text-kraft hover:text-deniz hover:underline">
+        📋 Kitap Kataloğu Bakımı
+      </Link>
 
       <TavsiyeBolumu tur="kitap" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
       <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} />

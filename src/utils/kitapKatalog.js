@@ -15,7 +15,19 @@
 // Böylece favoriler, izlenecekler, eserPuanlari, gonderiler, /kitap/:id rotası
 // gibi mevcut hiçbir yer dokunulmadan çalışmaya devam ediyor.
 
-import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+} from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
@@ -216,4 +228,40 @@ export async function kitapGuncelle(id, yeniAlanlar, kullanici) {
   })
 
   return { id, ...eskiVeri, ...temizlenmis }
+}
+
+// --- Faz 3: Hafif katalog bakım kuyruğu ---------------------------------
+// Seyirdefteri küçük/davetli bir topluluk olduğu için ayrı bir "admin" rolü
+// kurmuyoruz — herkes güvenilir kabul ediliyor (mevcut Firestore Rules deseniyle
+// tutarlı). Bu yüzden Faz 3, karmaşık bir yönetici paneli değil, giriş yapmış
+// HERKESİN görebildiği basit bir "henüz doğrulanmamış kitaplar" kuyruğu:
+// en son dokunulan (muhtemelen en yeni eklenen) kitaplar önce gösterilir.
+export async function dogrulanmamisKitaplariGetir(limitSayisi = 30) {
+  const q = query(
+    collection(db, 'kitaplar'),
+    where('dogrulanmis', '==', false),
+    orderBy('sonGuncellemeTarihi', 'desc'),
+    limit(limitSayisi)
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// Bir kitabın kaç kez düzenlendiğini (duzenlemeGecmisi kayıt sayısını) döndürür —
+// bakım kuyruğunda "bu kayıt hiç dokunulmamış mı, çok mu tartışılmış" göstergesi.
+export async function kitapDuzenlemeSayisi(id) {
+  const snap = await getDocs(collection(db, 'kitaplar', id, 'duzenlemeGecmisi'))
+  return snap.size
+}
+
+export async function kitapDogrula(id, kullanici) {
+  await setDoc(
+    kitapRef(id),
+    {
+      dogrulanmis: true,
+      dogrulayanUid: kullanici.uid,
+      dogrulamaTarihi: serverTimestamp(),
+    },
+    { merge: true }
+  )
 }

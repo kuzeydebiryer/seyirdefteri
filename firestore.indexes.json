@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "kitaplar",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "dogrulanmis", "order": "ASCENDING" },
+        { "fieldPath": "sonGuncellemeTarihi", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
