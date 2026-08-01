@@ -12,13 +12,32 @@ const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 // ama otomatik eklemek yerine kullanıcıya önce önizletip onaylatıyoruz, çünkü
 // aynı isimli farklı yıl filmleri / remake'ler yanlış eşleşebilir.
 
-function sutunBul(satir, adaylar) {
-  const anahtarlar = Object.keys(satir)
-  for (const aday of adaylar) {
-    const bulunan = anahtarlar.find((a) => a.trim().toLowerCase() === aday)
-    if (bulunan) return satir[bulunan]
-  }
-  return ''
+// Letterboxd'un "Export list" çıktısı tek başlıklı düz bir CSV DEĞİL — iki bölümlü:
+//   satır 1: "Letterboxd list export v7" (biçim etiketi)
+//   satır 2-3: listenin kendi bilgileri (Date,Name,Tags,URL,Description + değerleri)
+//   boş satır
+//   sonraki satır: asıl film tablosunun başlığı (Position,Name,Year,URL,Description)
+//   sonrasında: film satırları
+// Bu yüzden header:true ile doğrudan ayrıştırmak yanlış sütunlara denk gelir.
+// Bunun yerine tüm satırları ham hâliyle alıp, "Name" VE "Year" sütunlarını birlikte
+// içeren satırı bulup asıl film tablosunun başladığı yeri buluyoruz. Bu, hem bu
+// iki bölümlü liste export'unu hem de watchlist.csv gibi tek başlıklı, basit
+// dosyaları aynı anda destekler.
+function filmSatirlariniAyikla(satirlar) {
+  const baslikIndeksi = satirlar.findIndex((satir) => {
+    const kucukHarfli = satir.map((h) => (h || '').trim().toLowerCase())
+    return kucukHarfli.includes('name') && kucukHarfli.includes('year')
+  })
+  if (baslikIndeksi === -1) return []
+
+  const baslik = satirlar[baslikIndeksi].map((h) => h.trim().toLowerCase())
+  const isimSutunu = baslik.indexOf('name')
+  const yilSutunu = baslik.indexOf('year')
+
+  return satirlar
+    .slice(baslikIndeksi + 1)
+    .map((satir) => ({ isim: (satir[isimSutunu] || '').trim(), yil: (satir[yilSutunu] || '').trim() }))
+    .filter((s) => s.isim)
 }
 
 async function tmdbdeAra(isim, yil) {
@@ -50,18 +69,13 @@ export default function LetterboxdIceAktar({ liste, onTamamlandi }) {
     setSatirlar([])
 
     Papa.parse(dosya, {
-      header: true,
+      header: false,
       skipEmptyLines: true,
       complete: async (sonuc) => {
-        const ham = sonuc.data
-          .map((satir) => ({
-            isim: sutunBul(satir, ['name', 'title', 'film title']).trim(),
-            yil: sutunBul(satir, ['year', 'release year']).trim(),
-          }))
-          .filter((s) => s.isim)
+        const ham = filmSatirlariniAyikla(sonuc.data)
 
         if (ham.length === 0) {
-          setHata('CSV içinde "Name"/"Year" sütunları bulunamadı. Letterboxd export dosyasını değiştirmeden yükle.')
+          setHata('CSV içinde "Name"/"Year" sütunlarını içeren bir tablo bulunamadı. Letterboxd export dosyasını değiştirmeden yükle.')
           return
         }
         if (!TMDB_API_KEY) {
@@ -127,7 +141,8 @@ export default function LetterboxdIceAktar({ liste, onTamamlandi }) {
     <div className="space-y-3">
       <p className="text-xs text-kraft">
         Letterboxd'da bir listeyi ya da izleme listesini CSV olarak dışa aktarıp buraya yükle. Her satır TMDB'de
-        aranır; eşleşmeyenler ya da yanlış eşleşenler işaretini kaldırarak dışarıda bırakabilirsin.
+        aranır; eşleşmeyenler ya da yanlış eşleşenler işaretini kaldırarak dışarıda bırakabilirsin. Büyük listelerde
+        (100+ film) eşleştirme birkaç dakika sürebilir, sekmeyi kapatma.
       </p>
 
       <input
