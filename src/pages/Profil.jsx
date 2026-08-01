@@ -16,6 +16,7 @@ import { favoriKaldir } from '../utils/favori.js'
 import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
 import BinKitapIkon from '../components/ikonlar/BinKitapIkon.jsx'
 import PuanIceAktar from '../components/PuanIceAktar.jsx'
+import { kahinOlduguSezonlariGetir } from '../utils/oscar.js'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
@@ -56,6 +57,7 @@ export default function Profil() {
   const benimProfilimMi = kullanici?.uid === uid
 
   const [hedefProfil, setHedefProfil] = useState(benimProfilimMi ? kendiProfilim : null)
+  const [kahinSezonlari, setKahinSezonlari] = useState([])
   const { gonderiler, hata: gonderilerHatasi } = useGonderiler({ yazarId: uid })
   const { takipEdiyorMu, setTakipEdiyorMu, takipciSayisi, takipEdilenSayisi } = useTakip(uid, kullanici?.uid)
   const [takipEdilenProfilleri, setTakipEdilenProfilleri] = useState([])
@@ -113,6 +115,10 @@ export default function Profil() {
       if (snap.exists()) setHedefProfil({ id: uid, ...snap.data() })
     })
   }, [uid, benimProfilimMi, kendiProfilim])
+
+  useEffect(() => {
+    kahinOlduguSezonlariGetir(uid).then(setKahinSezonlari)
+  }, [uid])
 
   useEffect(() => {
     if (!benimProfilimMi) return
@@ -260,6 +266,21 @@ export default function Profil() {
             )}
           </div>
           <p className="text-sm text-kraft">@{hedefProfil.kullaniciAdi}</p>
+
+          {kahinSezonlari.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {kahinSezonlari.map((s) => (
+                <span
+                  key={s.id}
+                  title={s.ad}
+                  className="rounded-full bg-gise/15 px-2.5 py-1 text-xs font-medium text-gise ring-1 ring-gise/40"
+                >
+                  🏆 {s.ad} Kahini
+                </span>
+              ))}
+            </div>
+          )}
+
           {(hedefProfil.letterboxdUrl || hedefProfil.binKitapUrl) && (
             <div className="mt-2 flex gap-2">
               {hedefProfil.letterboxdUrl && (

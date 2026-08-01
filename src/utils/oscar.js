@@ -114,3 +114,51 @@ export async function tahminleriGetir(sezonId) {
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
+
+// --- Faz 3: Sonuç girişi + otomatik skor tablosu + rozet -----------------
+// Arşiv kasıtlı olarak sade: bir sezon bitince sadece kazanan (Kahin) kalıcı
+// olarak tutulur, kategori bazlı ayrıntılar arşive taşınmaz — "sadece rozet".
+
+export async function sonucGir(kategoriId, kazananAdayId) {
+  await updateDoc(doc(db, 'oscarKategorileri', kategoriId), { kazananAdayId })
+}
+
+export async function sonucuTemizle(kategoriId) {
+  await updateDoc(doc(db, 'oscarKategorileri', kategoriId), { kazananAdayId: null })
+}
+
+// Saf fonksiyon — Firestore'a gitmez, elde var olan kategoriler+tahminlerden
+// hesaplar. Sadece sonuçlanmış (kazananAdayId'si olan) kategoriler sayılır.
+export function skorTablosuHesapla(kategoriler, tahminler) {
+  const sonuclananKategoriler = kategoriler.filter((k) => k.kazananAdayId)
+  const kullanicilar = {} // uid -> { kullaniciAdi, dogru, toplam }
+
+  tahminler.forEach((t) => {
+    if (!kullanicilar[t.kullaniciId]) {
+      kullanicilar[t.kullaniciId] = { kullaniciId: t.kullaniciId, kullaniciAdi: t.kullaniciAdi, dogru: 0, toplam: 0 }
+    }
+    const kategori = sonuclananKategoriler.find((k) => k.id === t.kategoriId)
+    if (!kategori) return // henüz sonuçlanmamış kategori, sayıma dahil değil
+    kullanicilar[t.kullaniciId].toplam += 1
+    if (t.adayId === kategori.kazananAdayId) kullanicilar[t.kullaniciId].dogru += 1
+  })
+
+  return Object.values(kullanicilar).sort((a, b) => b.dogru - a.dogru || b.toplam - a.toplam)
+}
+
+export async function sezonuBitir(sezonId, kahinUid, kahinAdi) {
+  await updateDoc(doc(db, 'oscarSezonlari', sezonId), { bittiMi: true, kahinUid, kahinAdi })
+}
+
+export async function tumSezonlariGetir() {
+  const q = query(collection(db, 'oscarSezonlari'), orderBy('olusturmaTarihi', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// Profildeki rozet gösterimi için: bu kullanıcının Kahin ilan edildiği sezonlar.
+export async function kahinOlduguSezonlariGetir(uid) {
+  const q = query(collection(db, 'oscarSezonlari'), where('kahinUid', '==', uid))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
