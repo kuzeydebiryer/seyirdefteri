@@ -12,16 +12,28 @@ export default function KitapKatalogBakimi() {
   const { kullanici } = useAuth()
   const [kitaplar, setKitaplar] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
+  const [hata, setHata] = useState('')
   const [dogrulanıyor, setDogrulanıyor] = useState(null) // hangi kitapId işleniyor
 
   async function yeniden() {
     setYukleniyor(true)
-    const liste = await dogrulanmamisKitaplariGetir(30)
-    const duzenlemeSayilariyla = await Promise.all(
-      liste.map(async (k) => ({ ...k, duzenlemeSayisi: await kitapDuzenlemeSayisi(k.id) }))
-    )
-    setKitaplar(duzenlemeSayilariyla)
-    setYukleniyor(false)
+    setHata('')
+    try {
+      const liste = await dogrulanmamisKitaplariGetir(30)
+      const duzenlemeSayilariyla = await Promise.all(
+        liste.map(async (k) => ({ ...k, duzenlemeSayisi: await kitapDuzenlemeSayisi(k.id) }))
+      )
+      setKitaplar(duzenlemeSayilariyla)
+    } catch (err) {
+      console.error('Bakım kuyruğu yüklenemedi:', err)
+      setHata(
+        err.code === 'failed-precondition'
+          ? 'Firestore index\'i hâlâ oluşturuluyor. Firebase Console > Firestore > İndeksler sekmesinde durum "Etkinleştirilmiş" olunca sayfayı yenile (birkaç dakika sürebilir).'
+          : 'Kitaplar yüklenirken bir hata oluştu: ' + err.message
+      )
+    } finally {
+      setYukleniyor(false)
+    }
   }
 
   useEffect(() => {
@@ -48,7 +60,8 @@ export default function KitapKatalogBakimi() {
       </p>
 
       {yukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
-      {!yukleniyor && kitaplar.length === 0 && (
+      {hata && <p className="text-sm text-muhur">{hata}</p>}
+      {!yukleniyor && !hata && kitaplar.length === 0 && (
         <p className="text-sm text-kraft">Bakım gereken kitap yok — katalog güncel. 🎉</p>
       )}
 
