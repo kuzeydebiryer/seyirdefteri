@@ -51,6 +51,16 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
     }
 
+    // Alıntı Duvarı: bir kitaptan beğenilen bir alıntının paylaşılması.
+    // "update" beğeni sayacı (begenenler dizisi) için serbest bırakıldı — diğer
+    // beğeni/katılım alanlarıyla aynı pragmatik desen.
+    match /alintilar/{alintiId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
     // Kitap Kataloğu (Faz 1) — Google Books + Open Library'den birleştirilip
     // kalıcı olarak yazılan dahili SSOT. Doküman ID'si Google Books volume ID'si
     // (mevcut favoriler/izlenecekler/eserPuanlari/gonderiler ile aynı disId şeması).

@@ -125,3 +125,39 @@ export async function topluluktaPopulerEserler(tur, enFazla = 12) {
   liste.sort((a, b) => b.puanSayisi - a.puanSayisi || (b.ortalamaPuan || 0) - (a.ortalamaPuan || 0))
   return liste.slice(0, enFazla)
 }
+
+// Bir kitap hakkında yazılmış "Kitap İncelemesi" türündeki Yazı'ları getirir.
+// Bunlar normal "kitap" güncelerinden AYRI bir koleksiyon sorgusu: incelemeler
+// tur:'yazi', altTur:'kitap-incelemesi' olarak kaydediliyor ve hangi kitaba ait
+// olduğunu `ilgiliDisId` alanı belirliyor (bkz. GonderiEkle.jsx).
+export function useKitapIncelemeleri(disId) {
+  const [incelemeler, setIncelemeler] = useState([])
+  const [yukleniyor, setYukleniyor] = useState(true)
+
+  useEffect(() => {
+    if (!disId) {
+      setYukleniyor(false)
+      return
+    }
+    let iptal = false
+    async function getir() {
+      setYukleniyor(true)
+      const q = query(
+        collection(db, 'gonderiler'),
+        where('tur', '==', 'yazi'),
+        where('altTur', '==', 'kitap-incelemesi'),
+        where('ilgiliDisId', '==', disId)
+      )
+      const snap = await getDocs(q)
+      if (iptal) return
+      setIncelemeler(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setYukleniyor(false)
+    }
+    getir()
+    return () => {
+      iptal = true
+    }
+  }, [disId])
+
+  return { incelemeler, yukleniyor }
+}

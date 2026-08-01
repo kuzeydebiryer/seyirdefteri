@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useEserGonderileri } from '../hooks/useEser.js'
+import { useEserGonderileri, useKitapIncelemeleri } from '../hooks/useEser.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
@@ -16,6 +16,7 @@ import YildizPuan from '../components/YildizPuan.jsx'
 import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import { kitapGetir, kitapGuncelle } from '../utils/kitapKatalog.js'
+import { alintiEkle, alintiBegenDegistir, alintiSil, kitapAlintilariGetir } from '../utils/alinti.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -41,7 +42,7 @@ function KisiListesi({ kisiler, etiket }) {
 
 export default function EserSayfasi({ tur }) {
   const { id } = useParams()
-  const { kullanici } = useAuth()
+  const { kullanici, profil } = useAuth()
   const {
     gonderiler,
     yukleniyor: gonderilerYukleniyor,
@@ -50,6 +51,7 @@ export default function EserSayfasi({ tur }) {
     kullanicininPuani,
     yenidenYukle: puanlariYenidenYukle,
   } = useEserGonderileri(tur, id)
+  const { incelemeler, yukleniyor: incelemelerYukleniyor } = useKitapIncelemeleri(tur === 'kitap' ? id : null)
   const [puanTaslak, setPuanTaslak] = useState(kullanicininPuani || 4)
   const [puanKaydediliyor, setPuanKaydediliyor] = useState(false)
 
@@ -57,6 +59,13 @@ export default function EserSayfasi({ tur }) {
   const [duzenleModuAcik, setDuzenleModuAcik] = useState(false)
   const [duzenleTaslak, setDuzenleTaslak] = useState(null)
   const [duzenleKaydediliyor, setDuzenleKaydediliyor] = useState(false)
+
+  // Alıntı Duvarı (sadece kitap)
+  const [alintilar, setAlintilar] = useState([])
+  const [alintilarYukleniyor, setAlintilarYukleniyor] = useState(true)
+  const [yeniAlintiMetni, setYeniAlintiMetni] = useState('')
+  const [yeniAlintiSayfa, setYeniAlintiSayfa] = useState('')
+  const [alintiKaydediliyor, setAlintiKaydediliyor] = useState(false)
 
   const [detay, setDetay] = useState(null)
   const [saglayicilar, setSaglayicilar] = useState(null)
@@ -175,6 +184,67 @@ export default function EserSayfasi({ tur }) {
       iptal = true
     }
   }, [kullanici, tur, id])
+
+  useEffect(() => {
+    if (tur !== 'kitap' || !id) {
+      setAlintilarYukleniyor(false)
+      return
+    }
+    let iptal = false
+    async function getir() {
+      setAlintilarYukleniyor(true)
+      const liste = await kitapAlintilariGetir(id)
+      if (!iptal) {
+        setAlintilar(liste)
+        setAlintilarYukleniyor(false)
+      }
+    }
+    getir()
+    return () => {
+      iptal = true
+    }
+  }, [tur, id])
+
+  async function alintiPaylas(e) {
+    e.preventDefault()
+    if (!kullanici || !yeniAlintiMetni.trim() || !detay) return
+    setAlintiKaydediliyor(true)
+    try {
+      await alintiEkle(kullanici, profil, {
+        kitapId: id,
+        kitapBaslik: detay.baslik,
+        kitapYazar: detay.yazar,
+        kitapPosterUrl: detay.posterUrl,
+        metin: yeniAlintiMetni,
+        sayfa: yeniAlintiSayfa,
+      })
+      setYeniAlintiMetni('')
+      setYeniAlintiSayfa('')
+      const liste = await kitapAlintilariGetir(id)
+      setAlintilar(liste)
+    } finally {
+      setAlintiKaydediliyor(false)
+    }
+  }
+
+  async function alintiBegenTiklandi(alinti) {
+    if (!kullanici) return
+    const begeniyorMu = (alinti.begenenler || []).includes(kullanici.uid)
+    setAlintilar((liste) =>
+      liste.map((a) =>
+        a.id === alinti.id
+          ? { ...a, begenenler: begeniyorMu ? a.begenenler.filter((u) => u !== kullanici.uid) : [...(a.begenenler || []), kullanici.uid] }
+          : a
+      )
+    )
+    await alintiBegenDegistir(alinti.id, kullanici.uid, begeniyorMu)
+  }
+
+  async function alintiSilTiklandi(alintiId) {
+    if (!window.confirm('Bu alıntıyı silmek istediğine emin misin?')) return
+    await alintiSil(alintiId)
+    setAlintilar((liste) => liste.filter((a) => a.id !== alintiId))
+  }
 
   function duzenlemeyiAc() {
     setDuzenleTaslak({
@@ -696,6 +766,101 @@ export default function EserSayfasi({ tur }) {
       )}
 
       <div className="defter-cizgi my-6" />
+
+      {tur === 'kitap' && (
+        <>
+          <h2 className="font-baslik text-lg text-murekkep mb-3">📝 İncelemeler</h2>
+          {incelemelerYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
+          {!incelemelerYukleniyor && incelemeler.length === 0 && (
+            <p className="text-sm text-kraft">Bu kitap hakkında henüz bir inceleme yazılmadı.</p>
+          )}
+          {incelemeler.length > 0 && (
+            <ul className="space-y-4 mb-6">
+              {incelemeler.map((inc) => (
+                <li key={inc.id} className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+                  <div className="flex items-center gap-2 text-xs text-kraft">
+                    <Link to={`/profil/${inc.yazarId}`} className="flex items-center gap-2">
+                      <Avatar adSoyad={inc.yazarAdi} avatarUrl={inc.yazarAvatarUrl} boyut="h-5 w-5" />
+                      <span className="font-medium text-murekkep">{inc.yazarAdi}</span>
+                    </Link>
+                  </div>
+                  <Link to={`/gonderi/${inc.id}`} className="block mt-2">
+                    <p className="font-baslik text-sm text-murekkep">{inc.baslik}</p>
+                    {inc.gunce && <GonderiIcerik metin={inc.gunce} tam={false} />}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="defter-cizgi my-6" />
+
+          <h2 className="font-baslik text-lg text-murekkep mb-3">💬 Alıntı Duvarı</h2>
+          {kullanici && (
+            <form onSubmit={alintiPaylas} className="mb-4 space-y-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <textarea
+                value={yeniAlintiMetni}
+                onChange={(e) => setYeniAlintiMetni(e.target.value)}
+                placeholder="Beğendiğin bir alıntıyı buraya yaz..."
+                rows={3}
+                className="w-full rounded-sm bg-kagit px-2 py-1 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  value={yeniAlintiSayfa}
+                  onChange={(e) => setYeniAlintiSayfa(e.target.value)}
+                  placeholder="Sayfa (opsiyonel)"
+                  className="w-32 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                />
+                <button
+                  type="submit"
+                  disabled={alintiKaydediliyor || !yeniAlintiMetni.trim()}
+                  className="ml-auto rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                >
+                  {alintiKaydediliyor ? 'Paylaşılıyor...' : 'Paylaş'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {alintilarYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
+          {!alintilarYukleniyor && alintilar.length === 0 && (
+            <p className="text-sm text-kraft">Bu kitaptan henüz alıntı paylaşılmadı.</p>
+          )}
+          <ul className="space-y-3 mb-6">
+            {alintilar.map((a) => {
+              const begeniyorMu = kullanici && (a.begenenler || []).includes(kullanici.uid)
+              return (
+                <li key={a.id} className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+                  <p className="font-baslik text-sm italic text-murekkep">"{a.metin}"</p>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-kraft">
+                    <Link to={`/profil/${a.kullaniciId}`} className="flex items-center gap-2">
+                      <Avatar adSoyad={a.kullaniciAdi} avatarUrl={a.kullaniciAvatarUrl} boyut="h-5 w-5" />
+                      <span className="font-medium text-murekkep">{a.kullaniciAdi}</span>
+                    </Link>
+                    {a.sayfa && <span>· s. {a.sayfa}</span>}
+                    <button
+                      onClick={() => alintiBegenTiklandi(a)}
+                      disabled={!kullanici}
+                      className={`ml-auto ${begeniyorMu ? 'text-muhur' : 'text-kraft hover:text-muhur'}`}
+                    >
+                      {begeniyorMu ? '♥' : '♡'} {(a.begenenler || []).length || ''}
+                    </button>
+                    {kullanici?.uid === a.kullaniciId && (
+                      <button onClick={() => alintiSilTiklandi(a.id)} className="text-kraft hover:text-muhur">
+                        Sil
+                      </button>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+
+          <div className="defter-cizgi my-6" />
+        </>
+      )}
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Topluluk Güncesi</h2>
       {gonderilerYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}

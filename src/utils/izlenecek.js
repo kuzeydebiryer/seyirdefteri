@@ -1,4 +1,4 @@
-import { deleteDoc, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 function izlenecekDokId(uid, tur, disId) {
@@ -52,4 +52,22 @@ export async function okumayaBasla(uid, tur, disId, toplamSayfa) {
 
 export async function ilerlemeGuncelle(uid, tur, disId, suankiSayfa) {
   await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), { suankiSayfa })
+}
+
+// Kitap Kesfet hub sayfasındaki "Şu An Okuduğum Kitap" widget'ı için: kullanıcının
+// durum:'okunuyor' olan tek kitabını (varsa) getirir. Birden fazla kitap aynı anda
+// "okunuyor" işaretlenmişse en son eklenen döner (pratikte nadir bir durum).
+export async function suankiOkunanKitabiGetir(uid) {
+  if (!uid) return null
+  const q = query(
+    collection(db, 'izlenecekler'),
+    where('kullaniciId', '==', uid),
+    where('tur', '==', 'kitap'),
+    where('durum', '==', 'okunuyor'),
+    limit(1)
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  const d = snap.docs[0]
+  return { id: d.id, ...d.data() }
 }

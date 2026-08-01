@@ -76,6 +76,7 @@ export default function GonderiEkle() {
   const [ilgiliYazar, setIlgiliYazar] = useState('')
   const [ilgiliPosterUrl, setIlgiliPosterUrl] = useState('')
   const [ilgiliTmdbId, setIlgiliTmdbId] = useState(null)
+  const [ilgiliDisId, setIlgiliDisId] = useState(null) // kitap incelemesi: hangi kitaba ait (googleBooksId)
 
   const [kullaniciPuani, setKullaniciPuani] = useState(4)
   const [gunce, setGunce] = useState('')
@@ -135,6 +136,7 @@ export default function GonderiEkle() {
     setIlgiliYazar('')
     setIlgiliPosterUrl('')
     setIlgiliTmdbId(null)
+    setIlgiliDisId(null)
   }
 
   function ilgiliyiKaldir() {
@@ -144,6 +146,7 @@ export default function GonderiEkle() {
     setIlgiliYazar('')
     setIlgiliPosterUrl('')
     setIlgiliTmdbId(null)
+    setIlgiliDisId(null)
   }
 
   function gorselEkle() {
@@ -366,6 +369,7 @@ export default function GonderiEkle() {
         setIlgiliBaslik(v.title || '')
         setIlgiliYazar((v.authors || []).join(', '))
         setIlgiliPosterUrl(kapakOnizleme)
+        setIlgiliDisId(item.id)
         return
       }
 
@@ -437,6 +441,7 @@ export default function GonderiEkle() {
         ilgiliYazar: kategori === 'yazi' ? ilgiliYazar : '',
         ilgiliPosterUrl: kategori === 'yazi' ? ilgiliPosterUrl : '',
         ilgiliTmdbId: kategori === 'yazi' ? ilgiliTmdbId : null,
+        ilgiliDisId: kategori === 'yazi' && yaziAltTur === 'kitap-incelemesi' ? ilgiliDisId : null,
         kullaniciPuani: kategori === 'yazi' && yaziAltTur === 'deneme' ? null : kullaniciPuani,
         gunce,
         tarih: serverTimestamp(),

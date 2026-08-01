@@ -7,6 +7,14 @@
         { "fieldPath": "dogrulanmis", "order": "ASCENDING" },
         { "fieldPath": "sonGuncellemeTarihi", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "alintilar",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kitapId", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
