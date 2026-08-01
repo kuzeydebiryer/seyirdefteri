@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { kitapGetir, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -196,23 +197,19 @@ export default function GonderiEkle() {
         setOyuncular((detay.credits?.cast || []).slice(0, 5).map((k) => k.name).join(', '))
         setOyuncularListesi((detay.credits?.cast || []).slice(0, 5).map((k) => ({ id: k.id, name: k.name })))
       } else if (hedefTur === 'kitap') {
-        const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
-        const url = `https://www.googleapis.com/books/v1/volumes/${disId}?${anahtarParcasi}`
-        const res = await fetch(url)
-        if (!res.ok) throw new Error('Eser bilgisi alınamadı')
-        const data = await res.json()
-        const v = data.volumeInfo || {}
-        const kapak = (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
+        // Faz 1: önce dahili katalog (Firestore), yoksa Google Books + Open Library
+        // birleşimi. Bkz. utils/kitapKatalog.js
+        const k = await kitapGetir(disId)
         setGoogleBooksId(disId)
-        setBaslik(v.title || '')
-        setYazar((v.authors || []).join(', '))
-        setPosterUrl(kapak)
-        setOzet(v.description || '')
-        setTurler((v.categories || []).join(', '))
-        setSayfaSayisi(v.pageCount || '')
-        setYayinevi(v.publisher || '')
-        setYil(v.publishedDate ? v.publishedDate.slice(0, 4) : '')
-        setDbPuan(v.averageRating ? v.averageRating.toFixed(1) : '')
+        setBaslik(k.baslik || '')
+        setYazar(k.yazar || '')
+        setPosterUrl(k.posterUrl || '')
+        setOzet(k.ozet || '')
+        setTurler(k.turler || '')
+        setSayfaSayisi(k.sayfaSayisi || '')
+        setYayinevi(k.yayinevi || '')
+        setYil(k.yil || '')
+        setDbPuan(k.dbPuan ? Number(k.dbPuan).toFixed(1) : '')
       }
     } catch (err) {
       setAramaHatasi('Eser bilgisi çekilemedi: ' + err.message)
@@ -362,27 +359,43 @@ export default function GonderiEkle() {
       }
     } else if (hedef === 'kitap') {
       const v = item.volumeInfo || {}
-      const kapak = (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
+      const kapakOnizleme = (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
 
       if (kategori === 'yazi') {
         setSeciliId(item.id)
         setIlgiliBaslik(v.title || '')
         setIlgiliYazar((v.authors || []).join(', '))
-        setIlgiliPosterUrl(kapak)
+        setIlgiliPosterUrl(kapakOnizleme)
         return
       }
 
+      // Önce ham arama sonucuyla anında doldur (bekleme hissi olmasın),
+      // ardından dahili kataloğa yazıp (Open Library ile zenginleştirip) üzerine güncelle.
       setSeciliId(item.id)
       setGoogleBooksId(item.id)
       setBaslik(v.title || '')
       setYazar((v.authors || []).join(', '))
-      setPosterUrl(kapak)
+      setPosterUrl(kapakOnizleme)
       setOzet(v.description || '')
       setTurler((v.categories || []).join(', '))
       setSayfaSayisi(v.pageCount || '')
       setYayinevi(v.publisher || '')
       setYil(v.publishedDate ? v.publishedDate.slice(0, 4) : '')
       setDbPuan(v.averageRating ? v.averageRating.toFixed(1) : '')
+
+      setDetayYukleniyor(true)
+      try {
+        const k = await kitapAramaSonucundanKaydet(item)
+        setPosterUrl(k.posterUrl || kapakOnizleme)
+        setOzet(k.ozet || v.description || '')
+        setTurler(k.turler || (v.categories || []).join(', '))
+        setSayfaSayisi(k.sayfaSayisi || v.pageCount || '')
+        setYayinevi(k.yayinevi || v.publisher || '')
+      } catch (err) {
+        console.warn('Kitap kataloğuna kaydetme başarısız:', err.message)
+      } finally {
+        setDetayYukleniyor(false)
+      }
     }
   }
 

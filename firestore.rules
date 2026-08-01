@@ -51,6 +51,17 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
     }
 
+    // Kitap Kataloğu (Faz 1) — Google Books + Open Library'den birleştirilip
+    // kalıcı olarak yazılan dahili SSOT. Doküman ID'si Google Books volume ID'si
+    // (mevcut favoriler/izlenecekler/eserPuanlari/gonderiler ile aynı disId şeması).
+    // Herkes okuyabilir; sadece giriş yapmış kullanıcılar yazabilir (otomatik
+    // doldurma sırasında). Faz 2'de kullanıcı düzenlemesi eklenince buradaki
+    // "write" kuralı alan bazlı kısıtlamalarla sıkılaştırılacak.
+    match /kitaplar/{kitapId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
     // Favoriler ve İzleyecekler listesi: doküman ID'si `${uid}_${tur}_${disId}` olacak
     // şekilde sabit, bu yüzden "create" kuralında resource.data üzerinden kullaniciId
     // kontrolü yeterli; "update" gerekmiyor (setDoc ile üzerine yazılıyor, o da create

@@ -15,11 +15,11 @@ import { eserPuanla } from '../utils/eserPuani.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
+import { kitapGetir } from '../utils/kitapKatalog.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const TMDB_SAGLAYICI_LOGO = 'https://image.tmdb.org/t/p/w92'
-const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 const YILDIZ_SECENEKLERI = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 function KisiListesi({ kisiler, etiket }) {
@@ -122,23 +122,20 @@ export default function EserSayfasi({ tur }) {
             console.warn('İzleme sağlayıcıları alınamadı:', e.message)
           }
         } else if (tur === 'kitap') {
-          const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
-          const url = `https://www.googleapis.com/books/v1/volumes/${id}?${anahtarParcasi}`
-          const res = await fetch(url)
-          const data = await res.json()
-          if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
+          // Faz 1: önce dahili kataloğa (Firestore) bakılır; yoksa Google Books +
+          // Open Library birleştirilip kalıcı olarak yazılır. Bkz. utils/kitapKatalog.js
+          const k = await kitapGetir(id)
           if (iptal) return
-          const v = data.volumeInfo || {}
           setDetay({
-            baslik: v.title,
-            yazar: (v.authors || []).join(', '),
-            yil: v.publishedDate?.slice(0, 4),
-            posterUrl: (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://'),
-            ozet: v.description,
-            turler: (v.categories || []).join(', '),
-            sayfaSayisi: v.pageCount,
-            yayinevi: v.publisher,
-            dbPuan: v.averageRating ? v.averageRating.toFixed(1) : null,
+            baslik: k.baslik,
+            yazar: k.yazar,
+            yil: k.yil,
+            posterUrl: k.posterUrl,
+            ozet: k.ozet,
+            turler: k.turler,
+            sayfaSayisi: k.sayfaSayisi,
+            yayinevi: k.yayinevi,
+            dbPuan: k.dbPuan ? Number(k.dbPuan).toFixed(1) : null,
           })
         }
       } catch (err) {
