@@ -11,6 +11,9 @@ import {
   adaySil,
   adaylarGetir,
   izlemeIlerlemesiHesapla,
+  sezonuKilitle,
+  tahminVer,
+  tahminleriGetir,
 } from '../utils/oscar.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -101,10 +104,11 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
 }
 
 export default function Oscar() {
-  const { kullanici } = useAuth()
+  const { kullanici, profil } = useAuth()
   const [sezon, setSezon] = useState(null)
   const [kategoriler, setKategoriler] = useState([])
   const [adaylar, setAdaylar] = useState([])
+  const [tahminler, setTahminler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [ilerleme, setIlerleme] = useState(null)
 
@@ -112,15 +116,17 @@ export default function Oscar() {
   const [torenTarihi, setTorenTarihi] = useState('2027-03-14')
   const [yeniKategoriAdi, setYeniKategoriAdi] = useState('')
   const [aciKategoriId, setAciKategoriId] = useState(null)
+  const [kilitlemeIsleniyor, setKilitlemeIsleniyor] = useState(false)
 
   async function hepsiniYukle() {
     setYukleniyor(true)
     const s = await aktifSezonuGetir()
     setSezon(s)
     if (s) {
-      const [k, a] = await Promise.all([kategorilerGetir(s.id), adaylarGetir(s.id)])
+      const [k, a, t] = await Promise.all([kategorilerGetir(s.id), adaylarGetir(s.id), tahminleriGetir(s.id)])
       setKategoriler(k)
       setAdaylar(a)
+      setTahminler(t)
       const tmdbIdSeti = new Set(a.map((x) => x.tmdbId))
       setIlerleme(await izlemeIlerlemesiHesapla(tmdbIdSeti))
     }
@@ -155,6 +161,30 @@ export default function Oscar() {
   async function adaySilTiklandi(adayId) {
     await adaySil(adayId)
     hepsiniYukle()
+  }
+
+  async function kilitlemeDegistir() {
+    const yeniDurum = !sezon.kilitli
+    const mesaj = yeniDurum
+      ? 'Tahminleri kilitlemek istediğine emin misin? Kilitlendikten sonra kimse tahminini değiştiremez.'
+      : 'Kilidi açmak istediğine emin misin? Herkes tekrar tahminini değiştirebilir hale gelir.'
+    if (!window.confirm(mesaj)) return
+    setKilitlemeIsleniyor(true)
+    try {
+      await sezonuKilitle(sezon.id, yeniDurum)
+      setSezon((s) => ({ ...s, kilitli: yeniDurum }))
+    } finally {
+      setKilitlemeIsleniyor(false)
+    }
+  }
+
+  async function tahminSec(kategoriId, adayId) {
+    if (!kullanici || sezon.kilitli) return
+    await tahminVer(sezon.id, kategoriId, kullanici, profil, adayId)
+    setTahminler((onceki) => {
+      const digerleri = onceki.filter((t) => !(t.kategoriId === kategoriId && t.kullaniciId === kullanici.uid))
+      return [...digerleri, { kategoriId, kullaniciId: kullanici.uid, kullaniciAdi: profil?.adSoyad || 'Sen', adayId }]
+    })
   }
 
   if (yukleniyor) return <p className="text-sm text-kraft">Yükleniyor...</p>
@@ -199,6 +229,12 @@ export default function Oscar() {
     adaylar: adaylar.filter((a) => a.kategoriId === k.id).sort((a, b) => a.sira - b.sira),
   }))
 
+  const kendiTahminlerim = {} // kategoriId -> adayId
+  if (kullanici) {
+    tahminler.filter((t) => t.kullaniciId === kullanici.uid).forEach((t) => (kendiTahminlerim[t.kategoriId] = t.adayId))
+  }
+  const tahminVerilenKategoriSayisi = Object.keys(kendiTahminlerim).length
+
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-1">🏆 Oscar Yolculuğu</h1>
@@ -211,7 +247,7 @@ export default function Oscar() {
       )}
 
       {ilerleme && ilerleme.toplam > 0 && (
-        <div className="mb-6 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+        <div className="mb-4 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
           <div className="flex items-center gap-3">
             <span className="font-baslik text-xl text-muhur">
               {ilerleme.izlenen}/{ilerleme.toplam}
@@ -221,6 +257,31 @@ export default function Oscar() {
             </div>
           </div>
           <p className="mt-1 text-xs text-kraft">aday film topluluk tarafından izlendi</p>
+        </div>
+      )}
+
+      {kategoriler.length > 0 && (
+        <div className="mb-6 flex items-center justify-between rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+          <div>
+            <p className="text-sm text-murekkep">
+              {sezon.kilitli ? '🔒 Tahminler kilitli' : '🔓 Tahminler açık'}
+              {kullanici && !sezon.kilitli && (
+                <span className="text-kraft">
+                  {' '}
+                  · sen {tahminVerilenKategoriSayisi}/{kategoriler.length} kategori için tahmin verdin
+                </span>
+              )}
+            </p>
+          </div>
+          {kullanici && (
+            <button
+              onClick={kilitlemeDegistir}
+              disabled={kilitlemeIsleniyor}
+              className="rounded-sm bg-murekkep px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+            >
+              {kilitlemeIsleniyor ? '...' : sezon.kilitli ? 'Kilidi Aç' : 'Tahminleri Kilitle'}
+            </button>
+          )}
         </div>
       )}
 
@@ -242,52 +303,94 @@ export default function Oscar() {
       {kategoriliAdaylar.length === 0 && <p className="text-sm text-kraft">Henüz kategori eklenmedi.</p>}
 
       <div className="space-y-8">
-        {kategoriliAdaylar.map((k) => (
-          <div key={k.id}>
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="font-baslik text-lg text-murekkep">{k.ad}</h2>
-              {kullanici && (
-                <button onClick={() => kategoriSilTiklandi(k.id)} className="text-[11px] text-kraft hover:text-muhur">
-                  Kategoriyi Sil
-                </button>
-              )}
-            </div>
+        {kategoriliAdaylar.map((k) => {
+          const kendiTahminim = kendiTahminlerim[k.id]
+          const buKategorininTahminleri = tahminler.filter((t) => t.kategoriId === k.id)
 
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-              {k.adaylar.map((a) => (
-                <div key={a.id} className="group relative">
-                  <Link to={`/film/${a.tmdbId}`}>
-                    <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                      {a.posterUrl && <img src={a.posterUrl} alt={a.filmBasligi} className="h-full w-full object-cover" />}
-                    </div>
-                    <p className="mt-1 truncate text-xs text-murekkep">{a.filmBasligi}</p>
-                    {a.kisiAdi && <p className="truncate text-[11px] text-kraft">{a.kisiAdi}</p>}
-                  </Link>
-                  {kullanici && (
-                    <button
-                      onClick={() => adaySilTiklandi(a.id)}
-                      className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft opacity-0 ring-1 ring-cizgi transition-opacity hover:text-muhur group-hover:opacity-100"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {kullanici && (
-              <>
-                {aciKategoriId === k.id ? (
-                  <AdayEkleFormu sezonId={sezon.id} kategori={k} siradakiSira={k.adaylar.length} onEklendi={hepsiniYukle} />
-                ) : (
-                  <button onClick={() => setAciKategoriId(k.id)} className="mt-2 text-[11px] text-kraft hover:text-deniz hover:underline">
-                    + Aday Ekle
+          return (
+            <div key={k.id}>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="font-baslik text-lg text-murekkep">{k.ad}</h2>
+                {kullanici && (
+                  <button onClick={() => kategoriSilTiklandi(k.id)} className="text-[11px] text-kraft hover:text-muhur">
+                    Kategoriyi Sil
                   </button>
                 )}
-              </>
-            )}
-          </div>
-        ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+                {k.adaylar.map((a) => {
+                  const buBenimTahminim = kendiTahminim === a.id
+                  return (
+                    <div key={a.id} className="group relative">
+                      <button
+                        type="button"
+                        onClick={() => tahminSec(k.id, a.id)}
+                        disabled={!kullanici || sezon.kilitli}
+                        className="block w-full text-left disabled:cursor-default"
+                      >
+                        <div
+                          className={`relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-2 ${
+                            buBenimTahminim ? 'ring-muhur' : 'ring-cizgi'
+                          }`}
+                        >
+                          {a.posterUrl && <img src={a.posterUrl} alt={a.filmBasligi} className="h-full w-full object-cover" />}
+                          {buBenimTahminim && (
+                            <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-muhur text-xs text-kagit">
+                              ✓
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                      <Link to={`/film/${a.tmdbId}`} className="mt-1 block truncate text-xs text-murekkep hover:text-deniz hover:underline">
+                        {a.filmBasligi}
+                      </Link>
+                      {a.kisiAdi && <p className="truncate text-[11px] text-kraft">{a.kisiAdi}</p>}
+                      {kullanici && (
+                        <button
+                          onClick={() => adaySilTiklandi(a.id)}
+                          className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft opacity-0 ring-1 ring-cizgi transition-opacity hover:text-muhur group-hover:opacity-100"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {sezon.kilitli && buKategorininTahminleri.length > 0 && (
+                <div className="mt-3 rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
+                  <p className="mb-1 text-[11px] uppercase tracking-widest text-gise">Tahminler</p>
+                  <ul className="space-y-0.5 text-xs text-kraft">
+                    {buKategorininTahminleri.map((t) => {
+                      const aday = k.adaylar.find((a) => a.id === t.adayId)
+                      return (
+                        <li key={t.id}>
+                          <span className="text-murekkep">{t.kullaniciId === kullanici?.uid ? 'Sen' : t.kullaniciAdi}</span>
+                          {' → '}
+                          {aday?.filmBasligi || '(silinmiş aday)'}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {kullanici && !sezon.kilitli && (
+                <>
+                  {aciKategoriId === k.id ? (
+                    <AdayEkleFormu sezonId={sezon.id} kategori={k} siradakiSira={k.adaylar.length} onEklendi={hepsiniYukle} />
+                  ) : (
+                    <button onClick={() => setAciKategoriId(k.id)} className="mt-2 text-[11px] text-kraft hover:text-deniz hover:underline">
+                      + Aday Ekle
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

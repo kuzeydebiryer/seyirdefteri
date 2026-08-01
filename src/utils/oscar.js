@@ -3,7 +3,7 @@
 // kategoriler ve adaylar (OKULLAR listesi gibi) elle girilen referans veridir.
 // Puanlama/tahmin sistemi (Faz 2) ve sonuç+rozet (Faz 3) sonraya bırakıldı.
 
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export async function sezonOlustur(kullanici, { ad, torenTarihi }) {
@@ -80,4 +80,37 @@ export async function izlemeIlerlemesiHesapla(tmdbIdSeti) {
     if (tmdbIdSeti.has(disId)) izlenenler.add(disId)
   })
   return { izlenen: izlenenler.size, toplam: tmdbIdSeti.size }
+}
+
+// --- Faz 2: Tahmin / Anket sistemi ---------------------------------------
+// Puanlama tamamen elle yapılacağı için (bkz. Faz 3) burada karmaşık bir
+// ağırlıklandırma yok — sadece "kim hangi kategoride kimi tahmin etti" kaydı.
+// Kilitleme otomatik bir tarihe göre DEĞİL, elle (bir buton ile) yapılıyor —
+// tören gecikebilir/öne alınabilir, bunu tarihe bağlamak kırılgan olurdu.
+
+export async function sezonuKilitle(sezonId, kilitli) {
+  await updateDoc(doc(db, 'oscarSezonlari', sezonId), { kilitli })
+}
+
+// Doküman ID'si kasıtlı olarak `${kategoriId}_${uid}` — bir kullanıcı bir
+// kategoride sadece bir tahmine sahip olabilir, değiştirdiğinde üzerine yazılır.
+export async function tahminVer(sezonId, kategoriId, kullanici, profil, adayId) {
+  await setDoc(
+    doc(db, 'oscarTahminleri', `${kategoriId}_${kullanici.uid}`),
+    {
+      sezonId,
+      kategoriId,
+      kullaniciId: kullanici.uid,
+      kullaniciAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+      adayId,
+      tarih: serverTimestamp(),
+    },
+    { merge: true }
+  )
+}
+
+export async function tahminleriGetir(sezonId) {
+  const q = query(collection(db, 'oscarTahminleri'), where('sezonId', '==', sezonId))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
