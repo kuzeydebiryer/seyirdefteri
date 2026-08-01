@@ -60,6 +60,13 @@ service cloud.firestore {
     match /kitaplar/{kitapId} {
       allow read: if true;
       allow write: if request.auth != null;
+
+      // Faz 2 düzenleme geçmişi: kim, ne zaman, hangi alanı değiştirdi.
+      // Kayıtlar değiştirilemez/silinemez (moderasyon/denetim izi olarak kalır).
+      match /duzenlemeGecmisi/{kayitId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      }
     }
 
     // Favoriler ve İzleyecekler listesi: doküman ID'si `${uid}_${tur}_${disId}` olacak

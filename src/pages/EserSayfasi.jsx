@@ -15,7 +15,7 @@ import { eserPuanla } from '../utils/eserPuani.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
-import { kitapGetir } from '../utils/kitapKatalog.js'
+import { kitapGetir, kitapGuncelle } from '../utils/kitapKatalog.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -52,6 +52,11 @@ export default function EserSayfasi({ tur }) {
   } = useEserGonderileri(tur, id)
   const [puanTaslak, setPuanTaslak] = useState(kullanicininPuani || 4)
   const [puanKaydediliyor, setPuanKaydediliyor] = useState(false)
+
+  // Faz 2: kitap bilgisi düzenleme (dahili katalog düzeltmesi)
+  const [duzenleModuAcik, setDuzenleModuAcik] = useState(false)
+  const [duzenleTaslak, setDuzenleTaslak] = useState(null)
+  const [duzenleKaydediliyor, setDuzenleKaydediliyor] = useState(false)
 
   const [detay, setDetay] = useState(null)
   const [saglayicilar, setSaglayicilar] = useState(null)
@@ -170,6 +175,43 @@ export default function EserSayfasi({ tur }) {
       iptal = true
     }
   }, [kullanici, tur, id])
+
+  function duzenlemeyiAc() {
+    setDuzenleTaslak({
+      baslik: detay.baslik || '',
+      yazar: detay.yazar || '',
+      posterUrl: detay.posterUrl || '',
+      ozet: detay.ozet || '',
+      turler: detay.turler || '',
+      sayfaSayisi: detay.sayfaSayisi || '',
+      yayinevi: detay.yayinevi || '',
+    })
+    setDuzenleModuAcik(true)
+  }
+
+  async function duzenlemeyiKaydet(e) {
+    e.preventDefault()
+    if (!kullanici || !duzenleTaslak) return
+    setDuzenleKaydediliyor(true)
+    try {
+      const guncellenen = await kitapGuncelle(id, duzenleTaslak, kullanici)
+      setDetay((onceki) => ({
+        ...onceki,
+        baslik: guncellenen.baslik,
+        yazar: guncellenen.yazar,
+        posterUrl: guncellenen.posterUrl,
+        ozet: guncellenen.ozet,
+        turler: guncellenen.turler,
+        sayfaSayisi: guncellenen.sayfaSayisi,
+        yayinevi: guncellenen.yayinevi,
+      }))
+      setDuzenleModuAcik(false)
+    } catch (err) {
+      window.alert('Kaydedilemedi: ' + err.message)
+    } finally {
+      setDuzenleKaydediliyor(false)
+    }
+  }
 
   async function favoriDegistir() {
     if (!kullanici || !detay) return
@@ -321,6 +363,96 @@ export default function EserSayfasi({ tur }) {
 
           <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
           <KisiListesi kisiler={detay.oyuncular} etiket="Oyuncular" />
+
+          {tur === 'kitap' && kullanici && !duzenleModuAcik && (
+            <button onClick={duzenlemeyiAc} className="mt-2 text-[11px] text-kraft hover:text-deniz hover:underline">
+              ✏️ Bilgiyi Düzenle
+            </button>
+          )}
+
+          {tur === 'kitap' && duzenleModuAcik && duzenleTaslak && (
+            <form onSubmit={duzenlemeyiKaydet} className="mt-3 max-w-sm space-y-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="text-xs uppercase tracking-widest text-gise">Kitap Bilgisini Düzenle</p>
+              <div>
+                <label className="text-[11px] text-kraft">Başlık</label>
+                <input
+                  value={duzenleTaslak.baslik}
+                  onChange={(e) => setDuzenleTaslak((t) => ({ ...t, baslik: e.target.value }))}
+                  className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-kraft">Yazar</label>
+                <input
+                  value={duzenleTaslak.yazar}
+                  onChange={(e) => setDuzenleTaslak((t) => ({ ...t, yazar: e.target.value }))}
+                  className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-kraft">Kapak Görseli URL'i</label>
+                <input
+                  value={duzenleTaslak.posterUrl}
+                  onChange={(e) => setDuzenleTaslak((t) => ({ ...t, posterUrl: e.target.value }))}
+                  className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-kraft">Özet</label>
+                <textarea
+                  value={duzenleTaslak.ozet}
+                  onChange={(e) => setDuzenleTaslak((t) => ({ ...t, ozet: e.target.value }))}
+                  rows={4}
+                  className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-kraft">Tür(ler) (virgülle ayır)</label>
+                <input
+                  value={duzenleTaslak.turler}
+                  onChange={(e) => setDuzenleTaslak((t) => ({ ...t, turler: e.target.value }))}
+                  className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-[11px] text-kraft">Sayfa Sayısı</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={duzenleTaslak.sayfaSayisi}
+                    onChange={(e) => setDuzenleTaslak((t) => ({ ...t, sayfaSayisi: e.target.value }))}
+                    className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[11px] text-kraft">Yayınevi</label>
+                  <input
+                    value={duzenleTaslak.yayinevi}
+                    onChange={(e) => setDuzenleTaslak((t) => ({ ...t, yayinevi: e.target.value }))}
+                    className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={duzenleKaydediliyor}
+                  className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                >
+                  {duzenleKaydediliyor ? 'Kaydediliyor...' : 'Kaydet'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDuzenleModuAcik(false)}
+                  disabled={duzenleKaydediliyor}
+                  className="rounded-sm bg-kagit px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi disabled:opacity-40"
+                >
+                  Vazgeç
+                </button>
+              </div>
+            </form>
+          )}
 
           {kullanici && (
             <div className="mt-3 flex flex-wrap gap-2">

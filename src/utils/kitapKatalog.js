@@ -1,4 +1,4 @@
-// Kitap Kataloğu (Faz 1 — Dahili SSOT)
+// Kitap Kataloğu (Faz 1 — Dahili SSOT, Faz 2 — Kullanıcı Düzenlemesi)
 //
 // Sorun: Google Books API, Türkçe kitaplarda çoğu zaman sadece başlık + yazar
 // döndürüyor (kapak, özet, tür, sayfa sayısı boş kalıyor) çünkü Türk yayınevleri
@@ -8,14 +8,14 @@
 // kez görüldüğünde (arama sonucundan seçildiğinde ya da detay sayfası açıldığında)
 // Google Books + Open Library verisi birleştirilip Firestore'daki `kitaplar/{id}`
 // koleksiyonuna KALICI olarak yazılır. Bir sonraki ziyarette hiç dış API'ye
-// gidilmeden doğrudan Firestore'dan okunur — hem Türkçe veri kalitesi zamanla
-// (kullanıcı/AR düzeltmeleriyle, Faz 2) artar hem de Firestore/istek maliyeti düşer.
+// gidilmeden doğrudan Firestore'dan okunur. Faz 2 ile kullanıcılar eksik/yanlış
+// kalan alanları elle düzeltebiliyor — düzeltmeler kalıcı katalogda birikiyor.
 //
 // ID şeması bilerek DEĞİŞTİRİLMEDİ: `id` hâlâ Google Books volume ID'si.
 // Böylece favoriler, izlenecekler, eserPuanlari, gonderiler, /kitap/:id rotası
 // gibi mevcut hiçbir yer dokunulmadan çalışmaya devam ediyor.
 
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
@@ -116,7 +116,7 @@ function birlestir(google, openLibrary) {
   }
 }
 
-// --- Ana giriş noktası --------------------------------------------------
+// --- Ana giriş noktası (Faz 1) -------------------------------------------
 
 // Bir kitabı getirir. Önce dahili katalogda (Firestore) arar; varsa dış API'ye
 // hiç gitmeden döndürür. Yoksa Google Books + Open Library'yi birleştirip
@@ -167,4 +167,53 @@ export async function kitapAramaSonucundanKaydet(item) {
   })
 
   return { id, ...birlesik }
+}
+
+// --- Faz 2: Kullanıcı düzenlemesi ---------------------------------------
+// Google/Open Library otomatik doldurmasının eksik/yanlış bıraktığı alanları
+// kullanıcıların düzeltebilmesi için. Her değişiklik `duzenlemeGecmisi` alt
+// koleksiyonuna loglanır (kim, ne zaman, hangi alan, eski/yeni değer) — bu,
+// ileride bir moderasyon paneli (Faz 3) kurulacaksa geriye dönük kanıt sağlar.
+// DÜZENLENEBİLİR ALANLAR bilinçli olarak sınırlı tutuldu: dbPuan (Google puanı)
+// gibi dışarıdan gelen "objektif" alanlara kullanıcı müdahalesi açılmadı.
+const DUZENLENEBILIR_ALANLAR = ['baslik', 'yazar', 'posterUrl', 'ozet', 'turler', 'sayfaSayisi', 'yayinevi']
+
+export async function kitapGuncelle(id, yeniAlanlar, kullanici) {
+  const ref = kitapRef(id)
+  const mevcut = await getDoc(ref)
+  const eskiVeri = mevcut.exists() ? mevcut.data() : {}
+
+  const temizlenmis = {}
+  const degisenAlanlar = []
+  for (const alan of DUZENLENEBILIR_ALANLAR) {
+    if (!(alan in yeniAlanlar)) continue
+    const yeniDeger =
+      alan === 'sayfaSayisi' ? (yeniAlanlar[alan] ? Number(yeniAlanlar[alan]) : null) : yeniAlanlar[alan] || ''
+    const eskiDeger = eskiVeri[alan] ?? (alan === 'sayfaSayisi' ? null : '')
+    if (yeniDeger !== eskiDeger) {
+      temizlenmis[alan] = yeniDeger
+      degisenAlanlar.push({ alan, eskiDeger, yeniDeger })
+    }
+  }
+
+  if (degisenAlanlar.length === 0) return { id, ...eskiVeri }
+
+  await setDoc(
+    ref,
+    {
+      ...temizlenmis,
+      sonDuzenleyenUid: kullanici.uid,
+      sonGuncellemeTarihi: serverTimestamp(),
+      kaynaklar: { ...(eskiVeri.kaynaklar || {}), kullanici: true },
+    },
+    { merge: true }
+  )
+
+  await addDoc(collection(db, 'kitaplar', id, 'duzenlemeGecmisi'), {
+    kullaniciId: kullanici.uid,
+    degisiklikler: degisenAlanlar,
+    tarih: serverTimestamp(),
+  })
+
+  return { id, ...eskiVeri, ...temizlenmis }
 }
