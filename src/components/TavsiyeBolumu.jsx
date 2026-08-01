@@ -191,7 +191,7 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
       ) : (
         <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
           {tavsiyeler.map((t) => (
-            <div key={t.id} className="relative">
+            <div key={t.id} className="group relative">
               {duzenlenenId === t.id ? (
                 <div className="rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
                   <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu">
@@ -222,22 +222,29 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
               ) : (
                 <>
                   <Link to={esereLink(t.disId)} className="block">
-                    <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                       {t.posterUrl && <img src={t.posterUrl} alt={t.baslik} className="h-full w-full object-cover" />}
+                      {t.not && (
+                        <div className="absolute inset-x-0 bottom-0 max-h-full overflow-hidden bg-murekkep/85 p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          <p className="line-clamp-4 text-[10px] leading-tight text-kagit">{t.not}</p>
+                        </div>
+                      )}
                     </div>
                     <p className="mt-1 truncate text-xs text-murekkep">{t.baslik}</p>
                     {t.alt && <p className="truncate text-[11px] text-kraft">{t.alt}</p>}
                     <p className="truncate text-[11px] text-kraft">{t.ekleyenAdi} tavsiye etti</p>
                   </Link>
                   {kullanici?.uid === t.ekleyenId && (
-                    <div className="absolute right-1 top-1 flex gap-1">
-                      <button
-                        onClick={() => duzenlemeyiAc(t)}
-                        className="rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-deniz"
-                        title="Kapak URL'ini düzenle"
-                      >
-                        ✎
-                      </button>
+                    <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      {tur === 'kitap' && (
+                        <button
+                          onClick={() => duzenlemeyiAc(t)}
+                          className="rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-deniz"
+                          title="Kapak URL'ini düzenle"
+                        >
+                          ✎
+                        </button>
+                      )}
                       <button
                         onClick={() => sil(t.id)}
                         className="rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-muhur"
