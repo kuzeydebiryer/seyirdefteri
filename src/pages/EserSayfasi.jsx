@@ -71,6 +71,7 @@ export default function EserSayfasi({ tur }) {
   const [yeniAlintiSayfa, setYeniAlintiSayfa] = useState('')
   const [alintiKaydediliyor, setAlintiKaydediliyor] = useState(false)
   const [alintilarTumunuGorAcik, setAlintilarTumunuGorAcik] = useState(false)
+  const [fragmanAcik, setFragmanAcik] = useState(false)
   const [listeMenusuAcik, setListeMenusuAcik] = useState(false)
   const [listeyeEkleniyor, setListeyeEkleniyor] = useState(null)
   const { listeler: kendiListelerim } = useKisiselListeler(kullanici?.uid)
@@ -810,16 +811,27 @@ export default function EserSayfasi({ tur }) {
 
       {detay.fragmanId && (
         <div className="mt-6">
-          <h2 className="font-baslik text-lg text-murekkep mb-2">Fragman</h2>
-          <div className="aspect-video w-full overflow-hidden rounded-sm ring-1 ring-cizgi">
-            <iframe
-              src={`https://www.youtube.com/embed/${detay.fragmanId}`}
-              title="Fragman"
-              className="h-full w-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
+          {fragmanAcik ? (
+            <>
+              <h2 className="font-baslik text-lg text-murekkep mb-2">Fragman</h2>
+              <div className="aspect-video w-full overflow-hidden rounded-sm ring-1 ring-cizgi">
+                <iframe
+                  src={`https://www.youtube.com/embed/${detay.fragmanId}?autoplay=1`}
+                  title="Fragman"
+                  className="h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={() => setFragmanAcik(true)}
+              className="flex items-center gap-2 rounded-sm bg-kagitKoyu px-4 py-3 font-govde text-sm text-murekkep ring-1 ring-cizgi hover:ring-deniz"
+            >
+              ▶ Fragmanı Göster
+            </button>
+          )}
         </div>
       )}
 
@@ -851,14 +863,15 @@ export default function EserSayfasi({ tur }) {
       {detay.benzerler?.length > 0 && (
         <div className="mt-6">
           <h2 className="font-baslik text-lg text-murekkep mb-2">Benzer {tur === 'dizi' ? 'Diziler' : 'Filmler'}</h2>
-          <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
+          <div className="flex gap-3 overflow-x-auto pb-1">
             {detay.benzerler.map((b) => (
-              <Link key={b.id} to={`/${tur === 'dizi' ? 'dizi' : 'film'}/${b.id}`} className="block">
+              <Link key={b.id} to={`/${tur === 'dizi' ? 'dizi' : 'film'}/${b.id}`} className="block w-20 shrink-0">
                 <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                   {b.poster_path && (
                     <img
                       src={`https://image.tmdb.org/t/p/w300${b.poster_path}`}
                       alt={b.title || b.name}
+                      loading="lazy"
                       className="h-full w-full object-cover"
                     />
                   )}
