@@ -4,7 +4,8 @@ import { topluluktaPopulerEserler } from '../hooks/useEser.js'
 import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
 import { useHaberler } from '../hooks/useHaberler.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { suankiOkunanKitabiGetir, ilerlemeGuncelle, izlenecekEkle } from '../utils/izlenecek.js'
+import { suankiOkunanKitabiGetir, ilerlemeGuncelle, izlenecekEkle, toplamSayfaTamamla } from '../utils/izlenecek.js'
+import { kitapGetir } from '../utils/kitapKatalog.js'
 import KitapSecici from '../components/KitapSecici.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
@@ -24,6 +25,16 @@ function SuankiKitapWidget() {
       return
     }
     const k = await suankiOkunanKitabiGetir(kullanici.uid)
+    // Kendiliğinden onarım: kitap sonradan düzenlenip sayfa sayısı eklendiyse
+    // ama bu izlenecek kaydı hâlâ eski (boş) değeri taşıyorsa, katalogdan
+    // (Firestore'dan, dış API'ye gitmeden) tamamla.
+    if (k && !k.toplamSayfa) {
+      const kitapKaydi = await kitapGetir(k.disId)
+      if (kitapKaydi.sayfaSayisi) {
+        await toplamSayfaTamamla(kullanici.uid, 'kitap', k.disId, kitapKaydi.sayfaSayisi)
+        k.toplamSayfa = kitapKaydi.sayfaSayisi
+      }
+    }
     setKitap(k)
     setSayfaTaslak(k?.suankiSayfa ?? '')
     setYukleniyor(false)

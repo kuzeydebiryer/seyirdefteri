@@ -54,6 +54,15 @@ export async function ilerlemeGuncelle(uid, tur, disId, suankiSayfa) {
   await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), { suankiSayfa })
 }
 
+// "Okumaya Başlıyorum" tıklandığı anda kitabın sayfa sayısı katalogda henüz
+// yoksa, izlenecek kaydı toplamSayfa:null ile oluşuyor. Kitap sonradan
+// (Bilgiyi Düzenle veya Yeniden Dene ile) güncellenirse bu ESKİ kayıt kendiliğinden
+// güncellenmiyor — iki ayrı belge. Bu fonksiyon o boşluğu kendiliğinden onarır:
+// kayıt hâlâ toplamSayfa'sızsa ve katalogda artık bir değer varsa, geriye dönük doldurur.
+export async function toplamSayfaTamamla(uid, tur, disId, toplamSayfa) {
+  await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), { toplamSayfa })
+}
+
 // Kitap Kesfet hub sayfasındaki "Şu An Okuduğum Kitap" widget'ı için: kullanıcının
 // durum:'okunuyor' olan tek kitabını (varsa) getirir. Birden fazla kitap aynı anda
 // "okunuyor" işaretlenmişse en son eklenen döner (pratikte nadir bir durum).

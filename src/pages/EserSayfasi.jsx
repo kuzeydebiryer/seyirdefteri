@@ -8,6 +8,7 @@ import {
   izlenecekEkle,
   izlenecekKaldir,
   izlenecekGetir,
+  toplamSayfaTamamla,
   okumayaBasla,
   ilerlemeGuncelle,
 } from '../utils/izlenecek.js'
@@ -184,6 +185,21 @@ export default function EserSayfasi({ tur }) {
       iptal = true
     }
   }, [kullanici, tur, id])
+
+  // Kendiliğinden onarım: kitap sonradan düzenlenip sayfa sayısı eklendiyse
+  // ama izlenecek kaydı hâlâ eski (boş) değeri taşıyorsa, sessizce doldur.
+  useEffect(() => {
+    if (
+      tur === 'kitap' &&
+      izlenecekKaydi?.durum === 'okunuyor' &&
+      !izlenecekKaydi.toplamSayfa &&
+      detay?.sayfaSayisi &&
+      kullanici
+    ) {
+      toplamSayfaTamamla(kullanici.uid, tur, id, detay.sayfaSayisi)
+      setIzlenecekKaydi((onceki) => ({ ...onceki, toplamSayfa: detay.sayfaSayisi }))
+    }
+  }, [tur, id, kullanici, detay?.sayfaSayisi, izlenecekKaydi?.durum, izlenecekKaydi?.toplamSayfa])
 
   useEffect(() => {
     if (tur !== 'kitap' || !id) {
