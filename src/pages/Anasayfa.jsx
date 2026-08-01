@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useGonderiler } from '../hooks/useGonderiler.js'
 import { takipEdilenUidleriGetir } from '../hooks/useTakip.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
+import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
 import Logo from '../components/Logo.jsx'
 
 export default function Anasayfa() {
@@ -69,6 +70,8 @@ export default function Anasayfa() {
           Herkes
         </button>
       </div>
+
+      <SonAlintilarBolumu limitSayisi={5} />
 
       {gercektenYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {hata && <p className="text-sm text-muhur">Bir hata oldu: {hata}</p>}

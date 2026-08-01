@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import Avatar from '../components/Avatar.jsx'
 import KitapSecici from '../components/KitapSecici.jsx'
-import { alintiBegenDegistir, alintiEkle, sonAlintilariGetir } from '../utils/alinti.js'
+import AlintiKarti from '../components/AlintiKarti.jsx'
+import { alintiBegenDegistir, alintiEkle, alintiSil, sonAlintilariGetir } from '../utils/alinti.js'
 
 export default function AlintiDuvari() {
   const { kullanici, profil } = useAuth()
@@ -60,6 +59,12 @@ export default function AlintiDuvari() {
     await alintiBegenDegistir(alinti.id, kullanici.uid, begeniyorMu)
   }
 
+  async function silTiklandi(alintiId) {
+    if (!window.confirm('Bu alıntıyı silmek istediğine emin misin?')) return
+    await alintiSil(alintiId)
+    setAlintilar((liste) => liste.filter((a) => a.id !== alintiId))
+  }
+
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-1">💬 Alıntı Duvarı</h1>
@@ -100,30 +105,9 @@ export default function AlintiDuvari() {
       {!yukleniyor && alintilar.length === 0 && <p className="text-sm text-kraft">Henüz kimse alıntı paylaşmadı.</p>}
 
       <ul className="space-y-3">
-        {alintilar.map((a) => {
-          const begeniyorMu = kullanici && (a.begenenler || []).includes(kullanici.uid)
-          return (
-            <li key={a.id} className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-              <p className="font-baslik text-sm italic text-murekkep">"{a.metin}"</p>
-              <Link to={`/kitap/${a.kitapId}`} className="mt-1 block text-xs text-kraft hover:text-deniz hover:underline">
-                {a.kitapBaslik}{a.kitapYazar && ` · ${a.kitapYazar}`}{a.sayfa && ` · s. ${a.sayfa}`}
-              </Link>
-              <div className="mt-2 flex items-center gap-2 text-xs text-kraft">
-                <Link to={`/profil/${a.kullaniciId}`} className="flex items-center gap-2">
-                  <Avatar adSoyad={a.kullaniciAdi} avatarUrl={a.kullaniciAvatarUrl} boyut="h-5 w-5" />
-                  <span className="font-medium text-murekkep">{a.kullaniciAdi}</span>
-                </Link>
-                <button
-                  onClick={() => begenTiklandi(a)}
-                  disabled={!kullanici}
-                  className={`ml-auto ${begeniyorMu ? 'text-muhur' : 'text-kraft hover:text-muhur'}`}
-                >
-                  {begeniyorMu ? '♥' : '♡'} {(a.begenenler || []).length || ''}
-                </button>
-              </div>
-            </li>
-          )
-        })}
+        {alintilar.map((a) => (
+          <AlintiKarti key={a.id} alinti={a} kullanici={kullanici} onBegenTiklandi={begenTiklandi} onSilTiklandi={silTiklandi} />
+        ))}
       </ul>
     </div>
   )

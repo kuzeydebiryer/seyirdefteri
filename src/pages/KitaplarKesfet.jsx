@@ -6,6 +6,7 @@ import { useHaberler } from '../hooks/useHaberler.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { suankiOkunanKitabiGetir, ilerlemeGuncelle, izlenecekEkle, toplamSayfaTamamla } from '../utils/izlenecek.js'
 import { kitapGetir } from '../utils/kitapKatalog.js'
+import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
 import KitapSecici from '../components/KitapSecici.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
@@ -190,6 +191,8 @@ export default function KitaplarKesfet() {
       </div>
 
       <SuankiKitapWidget />
+
+      <SonAlintilarBolumu limitSayisi={5} />
 
       <TavsiyeBolumu tur="kitap" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
       <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} />

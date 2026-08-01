@@ -65,21 +65,25 @@ export default function KitapSecici({ onSecim, secili, onTemizle }) {
 
   return (
     <div>
-      <form onSubmit={ara} className="flex gap-2">
+      <div className="flex gap-2">
         <input
           value={arama}
           onChange={(e) => setArama(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') ara(e)
+          }}
           placeholder="Kitap adı ya da yazar ara..."
           className="flex-1 rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
         />
         <button
-          type="submit"
+          type="button"
+          onClick={ara}
           disabled={yukleniyor || !arama.trim()}
           className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi disabled:opacity-40"
         >
           {yukleniyor ? 'Aranıyor...' : 'Ara'}
         </button>
-      </form>
+      </div>
 
       {hata && <p className="mt-2 text-xs text-muhur">{hata}</p>}
 

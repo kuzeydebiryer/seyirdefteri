@@ -18,6 +18,7 @@ import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import { kitapGetir, kitapGuncelle } from '../utils/kitapKatalog.js'
 import { alintiEkle, alintiBegenDegistir, alintiSil, kitapAlintilariGetir } from '../utils/alinti.js'
+import AlintiKarti from '../components/AlintiKarti.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -67,6 +68,7 @@ export default function EserSayfasi({ tur }) {
   const [yeniAlintiMetni, setYeniAlintiMetni] = useState('')
   const [yeniAlintiSayfa, setYeniAlintiSayfa] = useState('')
   const [alintiKaydediliyor, setAlintiKaydediliyor] = useState(false)
+  const [alintilarTumunuGorAcik, setAlintilarTumunuGorAcik] = useState(false)
 
   const [detay, setDetay] = useState(null)
   const [saglayicilar, setSaglayicilar] = useState(null)
@@ -844,35 +846,27 @@ export default function EserSayfasi({ tur }) {
           {!alintilarYukleniyor && alintilar.length === 0 && (
             <p className="text-sm text-kraft">Bu kitaptan henüz alıntı paylaşılmadı.</p>
           )}
-          <ul className="space-y-3 mb-6">
-            {alintilar.map((a) => {
-              const begeniyorMu = kullanici && (a.begenenler || []).includes(kullanici.uid)
-              return (
-                <li key={a.id} className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-                  <p className="font-baslik text-sm italic text-murekkep">"{a.metin}"</p>
-                  <div className="mt-2 flex items-center gap-2 text-xs text-kraft">
-                    <Link to={`/profil/${a.kullaniciId}`} className="flex items-center gap-2">
-                      <Avatar adSoyad={a.kullaniciAdi} avatarUrl={a.kullaniciAvatarUrl} boyut="h-5 w-5" />
-                      <span className="font-medium text-murekkep">{a.kullaniciAdi}</span>
-                    </Link>
-                    {a.sayfa && <span>· s. {a.sayfa}</span>}
-                    <button
-                      onClick={() => alintiBegenTiklandi(a)}
-                      disabled={!kullanici}
-                      className={`ml-auto ${begeniyorMu ? 'text-muhur' : 'text-kraft hover:text-muhur'}`}
-                    >
-                      {begeniyorMu ? '♥' : '♡'} {(a.begenenler || []).length || ''}
-                    </button>
-                    {kullanici?.uid === a.kullaniciId && (
-                      <button onClick={() => alintiSilTiklandi(a.id)} className="text-kraft hover:text-muhur">
-                        Sil
-                      </button>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
+          <ul className="space-y-3">
+            {(alintilarTumunuGorAcik ? alintilar : alintilar.slice(0, 5)).map((a) => (
+              <AlintiKarti
+                key={a.id}
+                alinti={a}
+                kullanici={kullanici}
+                onBegenTiklandi={alintiBegenTiklandi}
+                onSilTiklandi={alintiSilTiklandi}
+                kapakGoster={false}
+              />
+            ))}
           </ul>
+          {alintilar.length > 5 && (
+            <button
+              onClick={() => setAlintilarTumunuGorAcik((a) => !a)}
+              className="mt-2 mb-6 text-xs text-kraft hover:text-deniz hover:underline"
+            >
+              {alintilarTumunuGorAcik ? '↑ Daha Az Göster' : `Tümünü Gör (${alintilar.length}) →`}
+            </button>
+          )}
+          {alintilar.length <= 5 && <div className="mb-6" />}
 
           <div className="defter-cizgi my-6" />
         </>
