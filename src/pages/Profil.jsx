@@ -15,6 +15,7 @@ import { takipEt, takipBirak } from '../utils/takip.js'
 import { favoriKaldir } from '../utils/favori.js'
 import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
 import BinKitapIkon from '../components/ikonlar/BinKitapIkon.jsx'
+import PuanIceAktar from '../components/PuanIceAktar.jsx'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
@@ -85,6 +86,7 @@ export default function Profil() {
   const [davetKodlari, setDavetKodlari] = useState([])
   const [uretiliyor, setUretiliyor] = useState(false)
   const [davetAcik, setDavetAcik] = useState(false)
+  const [puanIceAktarAcik, setPuanIceAktarAcik] = useState(false)
 
   const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
   const [bioTaslak, setBioTaslak] = useState('')
@@ -421,6 +423,23 @@ export default function Profil() {
                   ))}
                 </ul>
               )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {benimProfilimMi && (
+        <div className="mb-8 rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+          <button
+            onClick={() => setPuanIceAktarAcik((a) => !a)}
+            className="flex w-full items-center justify-between px-4 py-2 text-sm text-murekkep"
+          >
+            <span>📥 Letterboxd Puanlarını İçe Aktar</span>
+            <span className="text-xs text-kraft">{puanIceAktarAcik ? '▲ Gizle' : '▼ Göster'}</span>
+          </button>
+          {puanIceAktarAcik && (
+            <div className="border-t border-cizgi px-4 py-3">
+              <PuanIceAktar />
             </div>
           )}
         </div>

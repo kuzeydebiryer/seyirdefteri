@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import Papa from 'papaparse'
-import { ogeEkle } from '../utils/kisiselListe.js'
+import { useAuth } from '../context/AuthContext.jsx'
+import { eserPuanla } from '../utils/eserPuani.js'
 import { filmSatirlariniAyikla, tmdbdeAra, esZamanliIsle, TMDB_POSTER } from '../utils/letterboxdCsv.js'
 
-const ES_ZAMANLILIK = 6 // aynı anda kaç TMDB araması yapılacak
+const ES_ZAMANLILIK = 6
 
-export default function LetterboxdIceAktar({ liste, onTamamlandi }) {
+export default function PuanIceAktar({ onTamamlandi }) {
+  const { kullanici } = useAuth()
   const [dosyaAdi, setDosyaAdi] = useState('')
-  const [satirlar, setSatirlar] = useState([]) // { isim, yil, secili, eslesme }
+  const [satirlar, setSatirlar] = useState([]) // { isim, yil, puan, secili, eslesme }
   const [eslestiriliyor, setEslestiriliyor] = useState(false)
   const [ilerleme, setIlerleme] = useState({ tamam: 0, toplam: 0 })
   const [iceAktariliyor, setIceAktariliyor] = useState(false)
   const [hata, setHata] = useState('')
+  const [tamamlandi, setTamamlandi] = useState(false)
 
   function dosyaSecildi(e) {
     const dosya = e.target.files?.[0]
@@ -19,15 +22,18 @@ export default function LetterboxdIceAktar({ liste, onTamamlandi }) {
     setDosyaAdi(dosya.name)
     setHata('')
     setSatirlar([])
+    setTamamlandi(false)
 
     Papa.parse(dosya, {
       header: false,
       skipEmptyLines: true,
       complete: async (sonuc) => {
-        const ham = filmSatirlariniAyikla(sonuc.data)
+        const ham = filmSatirlariniAyikla(sonuc.data).filter((s) => s.puan && !isNaN(Number(s.puan)))
 
         if (ham.length === 0) {
-          setHata('CSV içinde "Name"/"Year" sütunlarını içeren bir tablo bulunamadı. Letterboxd export dosyasını değiştirmeden yükle.')
+          setHata(
+            'Bu dosyada bir "Rating" sütunu bulunamadı ya da hiçbir satırda puan yok. "ratings.csv" ya da "diary.csv" dosyasını yükle.'
+          )
           return
         }
 
@@ -66,34 +72,35 @@ export default function LetterboxdIceAktar({ liste, onTamamlandi }) {
 
   async function iceAktar() {
     const secilenler = satirlar.filter((s) => s.secili && s.eslesme)
-    if (secilenler.length === 0) return
+    if (secilenler.length === 0 || !kullanici) return
     setIceAktariliyor(true)
     setIlerleme({ tamam: 0, toplam: secilenler.length })
-    let sonrakiSira = liste.ogeSayisi || 0
-    for (const s of secilenler) {
-      await ogeEkle(
-        { ...liste, ogeSayisi: sonrakiSira },
-        {
-          tur: 'sinema',
-          disId: s.eslesme.tmdbId,
+    await esZamanliIsle(
+      secilenler,
+      async (s) => {
+        await eserPuanla('sinema', s.eslesme.tmdbId, Number(s.puan), kullanici, {
           baslik: s.eslesme.baslik,
           alt: s.eslesme.yil,
           posterUrl: s.eslesme.posterUrl,
-        }
-      )
-      sonrakiSira += 1
-      setIlerleme((onceki) => ({ ...onceki, tamam: onceki.tamam + 1 }))
-    }
+        })
+      },
+      8,
+      (tamam, toplam) => setIlerleme({ tamam, toplam })
+    )
     setIceAktariliyor(false)
-    onTamamlandi()
+    setTamamlandi(true)
+    onTamamlandi?.()
   }
+
+  const cokBuyukListe = satirlar.length > 200
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-kraft">
-        Letterboxd'da bir listeyi ya da izleme listesini CSV olarak dışa aktarıp buraya yükle. Her satır TMDB'de
-        aranır; eşleşmeyenler ya da yanlış eşleşenler işaretini kaldırarak dışarıda bırakabilirsin. Büyük listelerde
-        (100+ film) eşleştirme birkaç dakika sürebilir, sekmeyi kapatma.
+        Letterboxd'dan indirdiğin export ZIP'inin içinden <code>ratings.csv</code> (ya da puanları da içeren{' '}
+        <code>diary.csv</code>) dosyasını yükle. Puan ölçeği (0.5-5 yıldız) birebir aynı olduğu için hiçbir dönüşüm
+        gerekmiyor. Bu, sadece puanlarını dolduracak — geçmişe dönük yüzlerce gönderi oluşturmayacak, akışın
+        şişmeyecek.
       </p>
 
       <input
@@ -109,15 +116,23 @@ export default function LetterboxdIceAktar({ liste, onTamamlandi }) {
       {eslestiriliyor && (
         <p className="text-xs text-kraft">
           Eşleştiriliyor... {ilerleme.tamam}/{ilerleme.toplam}
+          {ilerleme.toplam > 300 && ' — büyük bir liste, biraz zaman alabilir, sekmeyi kapatma.'}
         </p>
       )}
 
-      {!eslestiriliyor && satirlar.length > 0 && (
+      {tamamlandi && !eslestiriliyor && (
+        <p className="text-xs text-murekkep">✓ İçe aktarma tamamlandı. Profilindeki puanlarına bakabilirsin.</p>
+      )}
+
+      {!eslestiriliyor && satirlar.length > 0 && !tamamlandi && (
         <>
           <p className="text-xs text-kraft">
-            {satirlar.filter((s) => s.eslesme).length}/{satirlar.length} eşleşti. İçe aktarmadan önce kontrol et:
+            {satirlar.filter((s) => s.eslesme).length}/{satirlar.length} eşleşti.
+            {cokBuyukListe
+              ? ' Liste büyük olduğu için önizlemede afişler gösterilmiyor, sadece eşleşme durumu.'
+              : ' İçe aktarmadan önce kontrol et:'}
           </p>
-          <ul className="max-h-80 space-y-1 overflow-y-auto">
+          <ul className="max-h-96 space-y-1 overflow-y-auto">
             {satirlar.map((s, i) => (
               <li
                 key={i}
@@ -130,12 +145,13 @@ export default function LetterboxdIceAktar({ liste, onTamamlandi }) {
                   disabled={!s.eslesme}
                   className="shrink-0"
                 />
-                {s.eslesme?.posterUrl && (
+                {!cokBuyukListe && s.eslesme?.posterUrl && (
                   <img src={s.eslesme.posterUrl} alt="" className="h-10 w-7 shrink-0 rounded-sm object-cover" />
                 )}
                 <span className="min-w-0 flex-1 truncate text-murekkep">
                   {s.isim} {s.yil && `(${s.yil})`}
                 </span>
+                <span className="shrink-0 text-kraft">★ {s.puan}</span>
                 {!s.eslesme && <span className="shrink-0 text-muhur">Eşleşme yok</span>}
               </li>
             ))}
