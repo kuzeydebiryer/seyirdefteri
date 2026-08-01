@@ -184,7 +184,16 @@ export default function GonderiDetay() {
               <p className="text-sm text-kraft">
                 {gonderi.tur === 'etkinlik' && gonderi.turler && `${gonderi.turler} · `}
                 {gonderi.konum}
-                {gonderi.etkinlikTarihi && ` · ${new Date(gonderi.etkinlikTarihi).toLocaleDateString('tr-TR')}`}
+                {gonderi.tur === 'etkinlik' && gonderi.etkinlikTarihi && ` · ${new Date(gonderi.etkinlikTarihi).toLocaleDateString('tr-TR')}`}
+                {gonderi.tur === 'gezi' && gonderi.baslangicTarihi && (
+                  <>
+                    {' · '}
+                    {new Date(gonderi.baslangicTarihi).toLocaleDateString('tr-TR')}
+                    {gonderi.bitisTarihi &&
+                      gonderi.bitisTarihi !== gonderi.baslangicTarihi &&
+                      ` – ${new Date(gonderi.bitisTarihi).toLocaleDateString('tr-TR')}`}
+                  </>
+                )}
               </p>
             )}
 
@@ -259,6 +268,52 @@ export default function GonderiDetay() {
       </div>
 
       {gonderi.ozet && <p className="mt-4 text-xs text-kraft leading-relaxed">{gonderi.ozet}</p>}
+
+      {gonderi.tur === 'gezi' &&
+        (gonderi.kalinanYer || gonderi.yapilacaklar || gonderi.yemeIcmeTavsiyeleri || gonderi.butceBilgisi) && (
+          <div className="mt-4 grid gap-4 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi sm:grid-cols-2">
+            {gonderi.kalinanYer && (
+              <div>
+                <p className="text-xs uppercase tracking-widest text-gise mb-1">🛏️ Kalınan Yer</p>
+                <p className="text-sm text-murekkep">{gonderi.kalinanYer}</p>
+              </div>
+            )}
+            {gonderi.butceBilgisi && (
+              <div>
+                <p className="text-xs uppercase tracking-widest text-gise mb-1">💰 Bütçe</p>
+                <p className="text-sm text-murekkep">{gonderi.butceBilgisi}</p>
+              </div>
+            )}
+            {gonderi.yapilacaklar && (
+              <div>
+                <p className="text-xs uppercase tracking-widest text-gise mb-1">📍 Yapılacaklar / Görülecek Yerler</p>
+                <ul className="list-disc pl-4 text-sm text-murekkep space-y-0.5">
+                  {gonderi.yapilacaklar
+                    .split('\n')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .map((satir, i) => (
+                      <li key={i}>{satir}</li>
+                    ))}
+                </ul>
+              </div>
+            )}
+            {gonderi.yemeIcmeTavsiyeleri && (
+              <div>
+                <p className="text-xs uppercase tracking-widest text-gise mb-1">🍽️ Yeme-İçme Tavsiyeleri</p>
+                <ul className="list-disc pl-4 text-sm text-murekkep space-y-0.5">
+                  {gonderi.yemeIcmeTavsiyeleri
+                    .split('\n')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .map((satir, i) => (
+                      <li key={i}>{satir}</li>
+                    ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
       {gonderi.gunce && (
         <div className="mt-4">

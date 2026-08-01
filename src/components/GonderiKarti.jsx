@@ -88,7 +88,16 @@ export default function GonderiKarti({ gonderi }) {
           <p className="text-xs text-kraft -mt-1">
             {gonderi.tur === 'etkinlik' && gonderi.turler && `${gonderi.turler} · `}
             {gonderi.konum}
-            {gonderi.etkinlikTarihi && ` · ${new Date(gonderi.etkinlikTarihi).toLocaleDateString('tr-TR')}`}
+            {gonderi.tur === 'etkinlik' && gonderi.etkinlikTarihi && ` · ${new Date(gonderi.etkinlikTarihi).toLocaleDateString('tr-TR')}`}
+            {gonderi.tur === 'gezi' && gonderi.baslangicTarihi && (
+              <>
+                {' · '}
+                {new Date(gonderi.baslangicTarihi).toLocaleDateString('tr-TR')}
+                {gonderi.bitisTarihi &&
+                  gonderi.bitisTarihi !== gonderi.baslangicTarihi &&
+                  ` – ${new Date(gonderi.bitisTarihi).toLocaleDateString('tr-TR')}`}
+              </>
+            )}
           </p>
         )}
         {gonderi.tur === 'yazi' && gonderi.ilgiliBaslik && (

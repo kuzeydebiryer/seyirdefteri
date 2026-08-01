@@ -69,6 +69,12 @@ export default function GonderiEkle() {
   // Gezi / Etkinlik'e özel alanlar
   const [konum, setKonum] = useState('')
   const [ulkeKodu, setUlkeKodu] = useState('') // sadece 'gezi': Dünya Haritası'nda ülke vurgulamak için
+  const [baslangicTarihi, setBaslangicTarihi] = useState('') // sadece 'gezi': tek gün olmayabilir
+  const [bitisTarihi, setBitisTarihi] = useState('')
+  const [kalinanYer, setKalinanYer] = useState('')
+  const [yapilacaklar, setYapilacaklar] = useState('')
+  const [yemeIcmeTavsiyeleri, setYemeIcmeTavsiyeleri] = useState('')
+  const [butceBilgisi, setButceBilgisi] = useState('')
   const [etkinlikTarihi, setEtkinlikTarihi] = useState('')
   const [altTur, setAltTur] = useState('Tiyatro')
 
@@ -132,6 +138,12 @@ export default function GonderiEkle() {
     setYayinevi('')
     setKonum('')
     setUlkeKodu('')
+    setBaslangicTarihi('')
+    setBitisTarihi('')
+    setKalinanYer('')
+    setYapilacaklar('')
+    setYemeIcmeTavsiyeleri('')
+    setButceBilgisi('')
     setEtkinlikTarihi('')
     setAltTur('Tiyatro')
     setIlgiliBaslik('')
@@ -465,7 +477,13 @@ export default function GonderiEkle() {
         ulkeIso: kategori === 'gezi' ? secilenUlke?.isoNumeric || '' : '',
         enlem: kategori === 'gezi' ? konumBilgisi?.enlem ?? null : null,
         boylem: kategori === 'gezi' ? konumBilgisi?.boylem ?? null : null,
-        etkinlikTarihi: (kategori === 'gezi' || kategori === 'etkinlik') && etkinlikTarihi ? etkinlikTarihi : null,
+        etkinlikTarihi: kategori === 'etkinlik' && etkinlikTarihi ? etkinlikTarihi : null,
+        baslangicTarihi: kategori === 'gezi' && baslangicTarihi ? baslangicTarihi : null,
+        bitisTarihi: kategori === 'gezi' && bitisTarihi ? bitisTarihi : null,
+        kalinanYer: kategori === 'gezi' ? kalinanYer : '',
+        yapilacaklar: kategori === 'gezi' ? yapilacaklar : '',
+        yemeIcmeTavsiyeleri: kategori === 'gezi' ? yemeIcmeTavsiyeleri : '',
+        butceBilgisi: kategori === 'gezi' ? butceBilgisi : '',
         // Yazı'ya özel: incelenen film/kitabın hafif referans kartı
         ilgiliBaslik: kategori === 'yazi' ? ilgiliBaslik : '',
         ilgiliYil: kategori === 'yazi' && ilgiliYil ? Number(ilgiliYil) : null,
@@ -712,13 +730,84 @@ export default function GonderiEkle() {
                 className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>
-            <div className="w-40">
-              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Tarih</label>
+            {kategori === 'etkinlik' && (
+              <div className="w-40">
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Tarih</label>
+                <input
+                  type="date"
+                  value={etkinlikTarihi}
+                  onChange={(e) => setEtkinlikTarihi(e.target.value)}
+                  className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+            )}
+            {kategori === 'gezi' && (
+              <>
+                <div className="w-36">
+                  <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Başlangıç</label>
+                  <input
+                    type="date"
+                    value={baslangicTarihi}
+                    onChange={(e) => setBaslangicTarihi(e.target.value)}
+                    className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                  />
+                </div>
+                <div className="w-36">
+                  <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Bitiş</label>
+                  <input
+                    type="date"
+                    value={bitisTarihi}
+                    min={baslangicTarihi || undefined}
+                    onChange={(e) => setBitisTarihi(e.target.value)}
+                    className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {kategori === 'gezi' && (
+          <div className="space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+            <p className="text-xs uppercase tracking-widest text-gise">Seyahat Detayları (opsiyonel)</p>
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Kalınan Yer</label>
               <input
-                type="date"
-                value={etkinlikTarihi}
-                onChange={(e) => setEtkinlikTarihi(e.target.value)}
-                className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                type="text"
+                value={kalinanYer}
+                onChange={(e) => setKalinanYer(e.target.value)}
+                placeholder="Otel, apart, arkadaş evi..."
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Yapılacaklar / Görülecek Yerler</label>
+              <textarea
+                value={yapilacaklar}
+                onChange={(e) => setYapilacaklar(e.target.value)}
+                rows={3}
+                placeholder={'Her satıra bir yer/aktivite yaz:\nEyfel Kulesi\nLouvre Müzesi'}
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Yeme-İçme Tavsiyeleri</label>
+              <textarea
+                value={yemeIcmeTavsiyeleri}
+                onChange={(e) => setYemeIcmeTavsiyeleri(e.target.value)}
+                rows={3}
+                placeholder={'Her satıra bir tavsiye yaz:\nBistro Le Petit — kuzu tajine\nCafé de Flore — kahvaltı'}
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Bütçe Bilgisi</label>
+              <input
+                type="text"
+                value={butceBilgisi}
+                onChange={(e) => setButceBilgisi(e.target.value)}
+                placeholder="ör. Kişi başı ~15.000 TL (uçak+otel dahil)"
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>
           </div>
