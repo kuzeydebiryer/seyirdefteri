@@ -1,0 +1,294 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
+import {
+  sezonOlustur,
+  aktifSezonuGetir,
+  kategoriEkle,
+  kategoriSil,
+  kategorilerGetir,
+  adayEkle,
+  adaySil,
+  adaylarGetir,
+  izlemeIlerlemesiHesapla,
+} from '../utils/oscar.js'
+
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
+const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
+
+function gunSayisi(torenTarihi) {
+  if (!torenTarihi) return null
+  const fark = new Date(torenTarihi) - new Date()
+  return Math.ceil(fark / (1000 * 60 * 60 * 24))
+}
+
+function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
+  const [arama, setArama] = useState('')
+  const [kisiAdi, setKisiAdi] = useState('')
+  const [sonuclar, setSonuclar] = useState([])
+  const [aramaYukleniyor, setAramaYukleniyor] = useState(false)
+  const [ekleniyor, setEkleniyor] = useState(false)
+
+  async function ara(e) {
+    e.preventDefault()
+    if (!arama.trim() || !TMDB_API_KEY) return
+    setAramaYukleniyor(true)
+    try {
+      const url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(arama)}`
+      const res = await fetch(url)
+      const data = await res.json()
+      setSonuclar(data.results || [])
+    } finally {
+      setAramaYukleniyor(false)
+    }
+  }
+
+  async function sec(film) {
+    setEkleniyor(true)
+    try {
+      await adayEkle(sezonId, kategori.id, {
+        tmdbId: film.id,
+        filmBasligi: film.title,
+        filmYili: film.release_date ? film.release_date.slice(0, 4) : '',
+        posterUrl: film.poster_path ? `${TMDB_POSTER}${film.poster_path}` : '',
+        kisiAdi,
+        sira: siradakiSira,
+      })
+      setArama('')
+      setKisiAdi('')
+      setSonuclar([])
+      onEklendi()
+    } finally {
+      setEkleniyor(false)
+    }
+  }
+
+  return (
+    <div className="mt-2 space-y-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
+      <form onSubmit={ara} className="flex gap-2">
+        <input
+          type="text"
+          value={arama}
+          onChange={(e) => setArama(e.target.value)}
+          placeholder="Film ara..."
+          className="flex-1 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+        />
+        <input
+          type="text"
+          value={kisiAdi}
+          onChange={(e) => setKisiAdi(e.target.value)}
+          placeholder="Kişi adı (opsiyonel)"
+          className="w-36 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+        />
+        <button type="submit" className="rounded-sm bg-deniz px-2 py-1 font-govde text-xs text-kagit">
+          {aramaYukleniyor ? '...' : 'Ara'}
+        </button>
+      </form>
+      {sonuclar.length > 0 && (
+        <div className="grid grid-cols-6 gap-1.5">
+          {sonuclar.slice(0, 12).map((film) => (
+            <button key={film.id} onClick={() => sec(film)} disabled={ekleniyor} className="text-left disabled:opacity-40">
+              <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                {film.poster_path && <img src={`${TMDB_POSTER}${film.poster_path}`} alt={film.title} className="h-full w-full object-cover" />}
+              </div>
+              <p className="truncate text-[10px] text-murekkep">{film.title}</p>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function Oscar() {
+  const { kullanici } = useAuth()
+  const [sezon, setSezon] = useState(null)
+  const [kategoriler, setKategoriler] = useState([])
+  const [adaylar, setAdaylar] = useState([])
+  const [yukleniyor, setYukleniyor] = useState(true)
+  const [ilerleme, setIlerleme] = useState(null)
+
+  const [sezonAdi, setSezonAdi] = useState('99. Akademi Ödülleri')
+  const [torenTarihi, setTorenTarihi] = useState('2027-03-14')
+  const [yeniKategoriAdi, setYeniKategoriAdi] = useState('')
+  const [aciKategoriId, setAciKategoriId] = useState(null)
+
+  async function hepsiniYukle() {
+    setYukleniyor(true)
+    const s = await aktifSezonuGetir()
+    setSezon(s)
+    if (s) {
+      const [k, a] = await Promise.all([kategorilerGetir(s.id), adaylarGetir(s.id)])
+      setKategoriler(k)
+      setAdaylar(a)
+      const tmdbIdSeti = new Set(a.map((x) => x.tmdbId))
+      setIlerleme(await izlemeIlerlemesiHesapla(tmdbIdSeti))
+    }
+    setYukleniyor(false)
+  }
+
+  useEffect(() => {
+    hepsiniYukle()
+  }, [])
+
+  async function sezonuOlustur(e) {
+    e.preventDefault()
+    if (!sezonAdi.trim() || !kullanici) return
+    await sezonOlustur(kullanici, { ad: sezonAdi, torenTarihi })
+    hepsiniYukle()
+  }
+
+  async function kategoriEkleTiklandi(e) {
+    e.preventDefault()
+    if (!yeniKategoriAdi.trim() || !sezon) return
+    await kategoriEkle(sezon.id, { ad: yeniKategoriAdi, sira: kategoriler.length })
+    setYeniKategoriAdi('')
+    hepsiniYukle()
+  }
+
+  async function kategoriSilTiklandi(kategoriId) {
+    if (!window.confirm('Bu kategoriyi ve tüm adaylarını silmek istediğine emin misin?')) return
+    await kategoriSil(kategoriId)
+    hepsiniYukle()
+  }
+
+  async function adaySilTiklandi(adayId) {
+    await adaySil(adayId)
+    hepsiniYukle()
+  }
+
+  if (yukleniyor) return <p className="text-sm text-kraft">Yükleniyor...</p>
+
+  if (!sezon) {
+    return (
+      <div>
+        <h1 className="font-baslik text-2xl text-murekkep mb-1">🏆 Oscar Yolculuğu</h1>
+        <p className="mb-6 text-sm text-kraft">Henüz bir Oscar sezonu oluşturulmadı.</p>
+        {kullanici && (
+          <form onSubmit={sezonuOlustur} className="max-w-sm space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Sezon Adı</label>
+              <input
+                type="text"
+                value={sezonAdi}
+                onChange={(e) => setSezonAdi(e.target.value)}
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Tören Tarihi</label>
+              <input
+                type="date"
+                value={torenTarihi}
+                onChange={(e) => setTorenTarihi(e.target.value)}
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+            <button type="submit" className="rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit">
+              Sezonu Oluştur
+            </button>
+          </form>
+        )}
+      </div>
+    )
+  }
+
+  const gun = gunSayisi(sezon.torenTarihi)
+  const kategoriliAdaylar = kategoriler.map((k) => ({
+    ...k,
+    adaylar: adaylar.filter((a) => a.kategoriId === k.id).sort((a, b) => a.sira - b.sira),
+  }))
+
+  return (
+    <div>
+      <h1 className="font-baslik text-2xl text-murekkep mb-1">🏆 Oscar Yolculuğu</h1>
+      <p className="mb-1 text-sm text-kraft">{sezon.ad}</p>
+      {gun != null && (
+        <p className="mb-4 text-sm text-kraft">
+          {gun > 0 ? `Törene ${gun} gün kaldı` : gun === 0 ? 'Tören bugün! 🎬' : 'Tören geçti'} ·{' '}
+          {new Date(sezon.torenTarihi).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+        </p>
+      )}
+
+      {ilerleme && ilerleme.toplam > 0 && (
+        <div className="mb-6 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+          <div className="flex items-center gap-3">
+            <span className="font-baslik text-xl text-muhur">
+              {ilerleme.izlenen}/{ilerleme.toplam}
+            </span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-kagit">
+              <div className="h-full bg-muhur" style={{ width: `${(ilerleme.izlenen / ilerleme.toplam) * 100}%` }} />
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-kraft">aday film topluluk tarafından izlendi</p>
+        </div>
+      )}
+
+      {kullanici && (
+        <form onSubmit={kategoriEkleTiklandi} className="mb-6 flex gap-2">
+          <input
+            type="text"
+            value={yeniKategoriAdi}
+            onChange={(e) => setYeniKategoriAdi(e.target.value)}
+            placeholder="Yeni kategori adı (ör. En İyi Film)"
+            className="flex-1 max-w-sm rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+          />
+          <button type="submit" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit">
+            + Kategori Ekle
+          </button>
+        </form>
+      )}
+
+      {kategoriliAdaylar.length === 0 && <p className="text-sm text-kraft">Henüz kategori eklenmedi.</p>}
+
+      <div className="space-y-8">
+        {kategoriliAdaylar.map((k) => (
+          <div key={k.id}>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="font-baslik text-lg text-murekkep">{k.ad}</h2>
+              {kullanici && (
+                <button onClick={() => kategoriSilTiklandi(k.id)} className="text-[11px] text-kraft hover:text-muhur">
+                  Kategoriyi Sil
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+              {k.adaylar.map((a) => (
+                <div key={a.id} className="group relative">
+                  <Link to={`/film/${a.tmdbId}`}>
+                    <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                      {a.posterUrl && <img src={a.posterUrl} alt={a.filmBasligi} className="h-full w-full object-cover" />}
+                    </div>
+                    <p className="mt-1 truncate text-xs text-murekkep">{a.filmBasligi}</p>
+                    {a.kisiAdi && <p className="truncate text-[11px] text-kraft">{a.kisiAdi}</p>}
+                  </Link>
+                  {kullanici && (
+                    <button
+                      onClick={() => adaySilTiklandi(a.id)}
+                      className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft opacity-0 ring-1 ring-cizgi transition-opacity hover:text-muhur group-hover:opacity-100"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {kullanici && (
+              <>
+                {aciKategoriId === k.id ? (
+                  <AdayEkleFormu sezonId={sezon.id} kategori={k} siradakiSira={k.adaylar.length} onEklendi={hepsiniYukle} />
+                ) : (
+                  <button onClick={() => setAciKategoriId(k.id)} className="mt-2 text-[11px] text-kraft hover:text-deniz hover:underline">
+                    + Aday Ekle
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

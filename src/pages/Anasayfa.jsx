@@ -5,6 +5,8 @@ import { useGonderiler } from '../hooks/useGonderiler.js'
 import { takipEdilenUidleriGetir } from '../hooks/useTakip.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
+import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
+import TavsiyeBildirimSeridi from '../components/TavsiyeBildirimSeridi.jsx'
 import Logo from '../components/Logo.jsx'
 
 export default function Anasayfa() {
@@ -49,6 +51,8 @@ export default function Anasayfa() {
         </p>
       </div>
 
+      <TavsiyeBildirimSeridi />
+
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-baslik text-2xl text-murekkep">Akış</h1>
         <Link to="/gonderi-ekle" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-sm text-kagit">
@@ -70,6 +74,8 @@ export default function Anasayfa() {
           Herkes
         </button>
       </div>
+
+      <KitapDunyasiWidget />
 
       <SonAlintilarBolumu limitSayisi={5} />
 

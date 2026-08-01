@@ -15,6 +15,39 @@
         { "fieldPath": "kitapId", "order": "ASCENDING" },
         { "fieldPath": "tarih", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "izlenecekler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tur", "order": "ASCENDING" },
+        { "fieldPath": "durum", "order": "ASCENDING" },
+        { "fieldPath": "eklemeTarihi", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "kisiselListeler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kullaniciId", "order": "ASCENDING" },
+        { "fieldPath": "olusturmaTarihi", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "kisiselListeOgeleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "listeId", "order": "ASCENDING" },
+        { "fieldPath": "sira", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "oscarKategorileri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sezonId", "order": "ASCENDING" },
+        { "fieldPath": "sira", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

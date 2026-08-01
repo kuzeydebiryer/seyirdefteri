@@ -61,6 +61,39 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
+    // Oscar Yolculuğu (Faz 1) — sezon/kategori/aday referans verisi. Akademi'nin
+    // resmi bir API'si olmadığı için elle giriliyor; küçük/davetli topluluk
+    // olduğumuz için herkesin düzenleyebildiği pragmatik desen (bkz. kitaplar).
+    match /oscarSezonlari/{sezonId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /oscarKategorileri/{kategoriId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /oscarAdaylari/{adayId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Kişisel Listeler (Letterboxd tarzı, topluluklardaki ortak izleme
+    // listesinden ayrı) — sahibi dışında kimse düzenleyemez/silemez;
+    // "herkeseAcik: false" olan listeler sadece sahibine görünür.
+    match /kisiselListeler/{listeId} {
+      allow read: if resource.data.herkeseAcik == true || (request.auth != null && resource.data.kullaniciId == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    match /kisiselListeOgeleri/{ogeId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && get(/databases/$(database)/documents/kisiselListeler/$(request.resource.data.listeId)).data.kullaniciId == request.auth.uid;
+      allow update, delete: if request.auth != null
+        && get(/databases/$(database)/documents/kisiselListeler/$(resource.data.listeId)).data.kullaniciId == request.auth.uid;
+    }
+
     // Kitap Kataloğu (Faz 1) — Google Books + Open Library'den birleştirilip
     // kalıcı olarak yazılan dahili SSOT. Doküman ID'si Google Books volume ID'si
     // (mevcut favoriler/izlenecekler/eserPuanlari/gonderiler ile aynı disId şeması).

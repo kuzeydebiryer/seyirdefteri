@@ -15,6 +15,7 @@ const LINKLER = [
   { yol: '/gezi', etiket: 'Gezi' },
   { yol: '/oyuncular', etiket: 'Oyuncular' },
   { yol: '/topluluklar', etiket: 'Topluluklar' },
+  { yol: '/oscar', etiket: '🏆 Oscar' },
 ]
 
 export default function Nav() {

@@ -244,6 +244,11 @@ export default function Profil() {
             <Link to="/kullanicilar" className="text-xs text-deniz hover:underline">
               Kişileri Keşfet →
             </Link>
+            {benimProfilimMi && (
+              <Link to="/listelerim" className="text-xs text-deniz hover:underline">
+                📋 Listelerim →
+              </Link>
+            )}
           </div>
           <p className="text-sm text-kraft">@{hedefProfil.kullaniciAdi}</p>
           {(hedefProfil.letterboxdUrl || hedefProfil.binKitapUrl) && (

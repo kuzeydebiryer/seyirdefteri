@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 function izlenecekDokId(uid, tur, disId) {
@@ -79,4 +79,19 @@ export async function suankiOkunanKitabiGetir(uid) {
   if (snap.empty) return null
   const d = snap.docs[0]
   return { id: d.id, ...d.data() }
+}
+
+// Anasayfa'daki "Kitap Dünyası" widget'ı için: TÜM topluluğun şu an okuduğu
+// kitapları getirir (herkese görünür, kişisel değil). En son okumaya
+// başlayanlar önce gelir.
+export async function topluluktaSuankiOkunanlariGetir(limitSayisi = 6) {
+  const q = query(
+    collection(db, 'izlenecekler'),
+    where('tur', '==', 'kitap'),
+    where('durum', '==', 'okunuyor'),
+    orderBy('eklemeTarihi', 'desc'),
+    limit(limitSayisi)
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }

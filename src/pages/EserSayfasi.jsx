@@ -18,6 +18,8 @@ import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import { kitapGetir, kitapGuncelle } from '../utils/kitapKatalog.js'
 import { alintiEkle, alintiBegenDegistir, alintiSil, kitapAlintilariGetir } from '../utils/alinti.js'
+import { useKisiselListeler } from '../hooks/useKisiselListeler.js'
+import { ogeEkle as listeyeOgeEkle } from '../utils/kisiselListe.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -69,6 +71,25 @@ export default function EserSayfasi({ tur }) {
   const [yeniAlintiSayfa, setYeniAlintiSayfa] = useState('')
   const [alintiKaydediliyor, setAlintiKaydediliyor] = useState(false)
   const [alintilarTumunuGorAcik, setAlintilarTumunuGorAcik] = useState(false)
+  const [listeMenusuAcik, setListeMenusuAcik] = useState(false)
+  const [listeyeEkleniyor, setListeyeEkleniyor] = useState(null)
+  const { listeler: kendiListelerim } = useKisiselListeler(kullanici?.uid)
+
+  async function listeyeEkle(liste) {
+    setListeyeEkleniyor(liste.id)
+    try {
+      await listeyeOgeEkle(liste, {
+        tur,
+        disId: id,
+        baslik: detay.baslik,
+        alt: detay.yazar || detay.yil || '',
+        posterUrl: detay.posterUrl,
+      })
+      setListeMenusuAcik(false)
+    } finally {
+      setListeyeEkleniyor(null)
+    }
+  }
 
   const [detay, setDetay] = useState(null)
   const [saglayicilar, setSaglayicilar] = useState(null)
@@ -553,6 +574,38 @@ export default function EserSayfasi({ tur }) {
               >
                 {favoriMi_ ? '★ Favorilerimde' : '☆ Favorilere Ekle'}
               </button>
+
+              <div className="relative">
+                <button
+                  onClick={() => setListeMenusuAcik((a) => !a)}
+                  className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi"
+                >
+                  📋 Listeye Ekle
+                </button>
+                {listeMenusuAcik && (
+                  <div className="absolute left-0 top-full z-10 mt-1 w-56 rounded-sm bg-kagit p-2 shadow-lg ring-1 ring-cizgi">
+                    {kendiListelerim.length === 0 && (
+                      <p className="px-2 py-1 text-xs text-kraft">Henüz bir listen yok.</p>
+                    )}
+                    {kendiListelerim.map((l) => (
+                      <button
+                        key={l.id}
+                        onClick={() => listeyeEkle(l)}
+                        disabled={listeyeEkleniyor === l.id}
+                        className="block w-full rounded-sm px-2 py-1.5 text-left text-xs text-murekkep hover:bg-kagitKoyu disabled:opacity-40"
+                      >
+                        {listeyeEkleniyor === l.id ? 'Ekleniyor...' : l.baslik}
+                      </button>
+                    ))}
+                    <Link
+                      to="/listelerim"
+                      className="mt-1 block rounded-sm px-2 py-1.5 text-left text-xs text-deniz hover:bg-kagitKoyu"
+                    >
+                      + Yeni Liste Oluştur
+                    </Link>
+                  </div>
+                )}
+              </div>
 
               {!izlenecekKaydi && (
                 <>
