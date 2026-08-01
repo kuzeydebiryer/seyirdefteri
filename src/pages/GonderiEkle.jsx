@@ -244,6 +244,10 @@ export default function GonderiEkle() {
     if (urlTur && urlDisId) {
       setKategori(urlTur)
       disIdIleGetir(urlTur, urlDisId)
+    } else if (urlTur) {
+      // Gezi/Etkinlik gibi dış veritabanı ID'si gerekmeyen kategoriler için:
+      // sadece ?tur=gezi ile gelindiğinde de o kategoriye geçilsin.
+      kategoriDegistir(urlTur)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
