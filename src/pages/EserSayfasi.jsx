@@ -14,6 +14,7 @@ import {
 } from '../utils/izlenecek.js'
 import { eserPuanla } from '../utils/eserPuani.js'
 import YildizPuan from '../components/YildizPuan.jsx'
+import YildizSecici from '../components/YildizSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import { kitapGetir, kitapGuncelle } from '../utils/kitapKatalog.js'
@@ -25,7 +26,6 @@ import AlintiKarti from '../components/AlintiKarti.jsx'
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const TMDB_SAGLAYICI_LOGO = 'https://image.tmdb.org/t/p/w92'
-const YILDIZ_SECENEKLERI = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 function KisiListesi({ kisiler, etiket }) {
   if (!kisiler || kisiler.length === 0) return null
@@ -56,7 +56,6 @@ export default function EserSayfasi({ tur }) {
     yenidenYukle: puanlariYenidenYukle,
   } = useEserGonderileri(tur, id)
   const { incelemeler, yukleniyor: incelemelerYukleniyor } = useKitapIncelemeleri(tur === 'kitap' ? id : null)
-  const [puanTaslak, setPuanTaslak] = useState(kullanicininPuani || 4)
   const [puanKaydediliyor, setPuanKaydediliyor] = useState(false)
 
   // Faz 2: kitap bilgisi düzenleme (dahili katalog düzeltmesi)
@@ -429,12 +428,11 @@ export default function EserSayfasi({ tur }) {
     }
   }
 
-  async function puanGonder(e) {
-    e.preventDefault()
+  async function puanGonder(puan) {
     if (!kullanici) return
     setPuanKaydediliyor(true)
     try {
-      await eserPuanla(tur, id, puanTaslak, kullanici, {
+      await eserPuanla(tur, id, puan, kullanici, {
         baslik: detay.baslik,
         alt: detay.yazar || '',
         posterUrl: detay.posterUrl,
@@ -640,25 +638,29 @@ export default function EserSayfasi({ tur }) {
                   >
                     + {tur === 'kitap' ? 'Okuyacaklarıma' : 'İzleyeceklerime'} Ekle
                   </button>
-                  <button
-                    onClick={dogrudanOkumayaBasla}
-                    disabled={izlenecekIsleniyor}
-                    className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
-                  >
-                    {tur === 'kitap' ? 'Okumaya Başlıyorum' : 'İzlemeye Başlıyorum'}
-                  </button>
+                  {tur === 'kitap' && (
+                    <button
+                      onClick={dogrudanOkumayaBasla}
+                      disabled={izlenecekIsleniyor}
+                      className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                    >
+                      Okumaya Başlıyorum
+                    </button>
+                  )}
                 </>
               )}
 
               {izlenecekKaydi?.durum === 'planlanan' && (
                 <>
-                  <button
-                    onClick={okumayaBaslaTiklandi}
-                    disabled={izlenecekIsleniyor}
-                    className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
-                  >
-                    {tur === 'kitap' ? 'Okumaya Başla' : 'İzlemeye Başla'}
-                  </button>
+                  {tur === 'kitap' && (
+                    <button
+                      onClick={okumayaBaslaTiklandi}
+                      disabled={izlenecekIsleniyor}
+                      className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                    >
+                      Okumaya Başla
+                    </button>
+                  )}
                   <button
                     onClick={izlenecektenKaldir}
                     disabled={izlenecekIsleniyor}
@@ -729,54 +731,27 @@ export default function EserSayfasi({ tur }) {
             </div>
           )}
 
-          {/* Topluluk ortalaması — bu esere şimdiye kadar verilen tüm puanların ortalaması */}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <div className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi inline-block">
-              <p className="text-xs uppercase tracking-widest text-gise">Topluluk Ortalaması</p>
-              {ortalamaPuan != null ? (
-                <div className="mt-1 flex items-center gap-2">
-                  <YildizPuan puan={Math.round(ortalamaPuan * 2) / 2} boyut="text-lg" />
-                  <span className="text-xs text-kraft">({puanSayisi} kişi puanladı)</span>
-                </div>
-              ) : (
-                <p className="mt-1 text-sm text-kraft">Henüz kimse puanlamadı.</p>
-              )}
+          {/* Topluluk puanı (salt okunur) + kendi puanın (tıklanabilir) — kutu/etiket olmadan sade */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+            <div className="flex items-center gap-2">
+              <YildizSecici deger={ortalamaPuan} disabled boyut="text-lg" />
+              <span className="text-xs text-kraft">{ortalamaPuan != null ? `(${puanSayisi} kişi)` : 'Henüz puanlanmadı'}</span>
             </div>
 
-            <div className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-              <p className="text-xs uppercase tracking-widest text-gise">
-                {kullanicininPuani != null ? 'Senin Puanın' : 'Puan Ver'}
-              </p>
-              {kullanici ? (
-                <form onSubmit={puanGonder} className="mt-1 flex items-center gap-2">
-                  <select
-                    value={puanTaslak}
-                    onChange={(e) => setPuanTaslak(Number(e.target.value))}
-                    className="rounded-sm bg-kagit px-2 py-1 text-sm text-murekkep ring-1 ring-cizgi"
-                  >
-                    {YILDIZ_SECENEKLERI.map((s) => (
-                      <option key={s} value={s}>
-                        {s} ★
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={puanKaydediliyor}
-                    className="rounded-sm bg-muhur px-3 py-1 font-govde text-xs text-kagit disabled:opacity-40"
-                  >
-                    {puanKaydediliyor ? 'Kaydediliyor...' : kullanicininPuani != null ? 'Güncelle' : 'Kaydet'}
-                  </button>
-                </form>
-              ) : (
-                <p className="mt-1 text-sm text-kraft">Puan vermek için giriş yap.</p>
-              )}
-            </div>
+            {kullanici ? (
+              <div className="flex items-center gap-2">
+                <YildizSecici deger={kullanicininPuani} onSec={puanGonder} boyut="text-lg" />
+                {puanKaydediliyor && <span className="text-xs text-kraft">kaydediliyor...</span>}
+              </div>
+            ) : (
+              <span className="text-xs text-kraft">Puan vermek için giriş yap.</span>
+            )}
           </div>
         </div>
       </div>
 
       {detay.ozet && <p className="mt-4 text-sm text-murekkep leading-relaxed">{detay.ozet}</p>}
+
 
       {(tur === 'sinema' || tur === 'dizi') && izlemeSecenekleri.length > 0 && (
         <div className="mt-6">
