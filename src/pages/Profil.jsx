@@ -13,6 +13,8 @@ import { useEserPuanlarim } from '../hooks/useEserPuanlarim.js'
 import { rafOlustur, rafSil } from '../utils/raf.js'
 import { takipEt, takipBirak } from '../utils/takip.js'
 import { favoriKaldir } from '../utils/favori.js'
+import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
+import BinKitapIkon from '../components/ikonlar/BinKitapIkon.jsx'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
@@ -244,15 +246,16 @@ export default function Profil() {
           </div>
           <p className="text-sm text-kraft">@{hedefProfil.kullaniciAdi}</p>
           {(hedefProfil.letterboxdUrl || hedefProfil.binKitapUrl) && (
-            <div className="mt-1 flex gap-3">
+            <div className="mt-2 flex gap-2">
               {hedefProfil.letterboxdUrl && (
                 <a
                   href={hedefProfil.letterboxdUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs text-deniz hover:underline"
+                  className="flex items-center gap-1.5 rounded-full bg-kagitKoyu px-2.5 py-1 text-xs text-murekkep ring-1 ring-cizgi hover:ring-deniz hover:text-deniz"
                 >
-                  🎬 Letterboxd
+                  <LetterboxdIkon className="h-4 w-4" />
+                  Letterboxd
                 </a>
               )}
               {hedefProfil.binKitapUrl && (
@@ -260,9 +263,10 @@ export default function Profil() {
                   href={hedefProfil.binKitapUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs text-deniz hover:underline"
+                  className="flex items-center gap-1.5 rounded-full bg-kagitKoyu px-2.5 py-1 text-xs text-murekkep ring-1 ring-cizgi hover:ring-deniz hover:text-deniz"
                 >
-                  📚 1000Kitap
+                  <BinKitapIkon className="h-4 w-4" />
+                  1000Kitap
                 </a>
               )}
             </div>
