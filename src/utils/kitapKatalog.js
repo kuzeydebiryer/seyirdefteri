@@ -73,12 +73,15 @@ function googleVerisiniNormallestir(data) {
 }
 
 // --- Open Library (Türkçe kapak/özet/tür zenginleştirme) --------------
-// API anahtarı gerektirmez, ISBN üzerinden çalışır. Google'da eksik kalan
-// kapak/özet/tür/sayfa sayısı alanlarını doldurmak için "boşluk doldurucu"
-// olarak kullanılır — Google verisinin üzerine yazmaz, sadece boş alanları tamamlar.
-async function openLibraryZenginlestir(isbn13, isbn10) {
-  const isbn = isbn13 || isbn10
-  if (!isbn) return null
+// API anahtarı gerektirmez. İki katmanlı çalışır:
+//   1) ISBN üzerinden TAM baskıyı bulmayı dener (en doğru veri — o Türkçe
+//      baskının gerçek sayfa sayısı, kapağı vb.)
+//   2) ISBN'de bulunamayan ya da eksik kalan alanlar için başlık+yazar
+//      araması yapar ve İSTER Türkçe baskıdan ister başka bir baskıdan olsun,
+//      eşleşen ilk kayıttan yaklaşık bir değer alır (örn. sayfa sayısı) —
+//      hiç veri olmamasından iyidir, sadece bir tahmindir.
+// İkisi de Google verisinin üzerine yazmaz, sadece boş alanları tamamlar.
+async function openLibraryIsbnIle(isbn) {
   try {
     const kitapRes = await fetch(`https://openlibrary.org/isbn/${isbn}.json`)
     if (!kitapRes.ok) return null
@@ -109,8 +112,50 @@ async function openLibraryZenginlestir(isbn13, isbn10) {
       yayinevi: (kitapData.publishers || [])[0] || '',
     }
   } catch (err) {
-    console.warn('Open Library zenginleştirme başarısız:', err.message)
+    console.warn('Open Library (ISBN) zenginleştirme başarısız:', err.message)
     return null
+  }
+}
+
+async function openLibraryBaslikIle(baslik, yazar) {
+  if (!baslik) return null
+  try {
+    const parcalar = [`title=${encodeURIComponent(baslik)}`]
+    if (yazar) parcalar.push(`author=${encodeURIComponent(yazar.split(',')[0])}`)
+    const res = await fetch(`https://openlibrary.org/search.json?${parcalar.join('&')}&limit=5`)
+    if (!res.ok) return null
+    const data = await res.json()
+    const eslesen = (data.docs || []).find((d) => d.number_of_pages_median || d.cover_i) || data.docs?.[0]
+    if (!eslesen) return null
+    return {
+      posterUrl: eslesen.cover_i ? `https://covers.openlibrary.org/b/id/${eslesen.cover_i}-L.jpg` : '',
+      ozet: '',
+      turler: (eslesen.subject || []).slice(0, 6).join(', '),
+      sayfaSayisi: eslesen.number_of_pages_median || null,
+      yayinevi: (eslesen.publisher || [])[0] || '',
+    }
+  } catch (err) {
+    console.warn('Open Library (başlık araması) zenginleştirme başarısız:', err.message)
+    return null
+  }
+}
+
+async function openLibraryZenginlestir(google) {
+  const isbn = google.isbn13 || google.isbn10
+  const isbnSonucu = isbn ? await openLibraryIsbnIle(isbn) : null
+
+  // ISBN sonucu varsa ama hâlâ boş kalan alanlar varsa, başlık araması ile
+  // TAMAMLAYICI olarak devam et (isbnSonucu'nun üzerine yazmaz).
+  const eksikVarMi = !isbnSonucu || !isbnSonucu.sayfaSayisi || !isbnSonucu.posterUrl || !isbnSonucu.ozet
+  const baslikSonucu = eksikVarMi ? await openLibraryBaslikIle(google.baslik, google.yazar) : null
+
+  if (!isbnSonucu && !baslikSonucu) return null
+  return {
+    posterUrl: isbnSonucu?.posterUrl || baslikSonucu?.posterUrl || '',
+    ozet: isbnSonucu?.ozet || baslikSonucu?.ozet || '',
+    turler: isbnSonucu?.turler || baslikSonucu?.turler || '',
+    sayfaSayisi: isbnSonucu?.sayfaSayisi ?? baslikSonucu?.sayfaSayisi ?? null,
+    yayinevi: isbnSonucu?.yayinevi || baslikSonucu?.yayinevi || '',
   }
 }
 
@@ -142,7 +187,7 @@ export async function kitapGetir(id) {
 
   const googleData = await googleVolumeGetir(id)
   const google = googleVerisiniNormallestir(googleData)
-  const openLibrary = await openLibraryZenginlestir(google.isbn13, google.isbn10)
+  const openLibrary = await openLibraryZenginlestir(google)
   const birlesik = birlestir(google, openLibrary)
 
   await setDoc(ref, {
@@ -168,7 +213,7 @@ export async function kitapAramaSonucundanKaydet(item) {
   }
 
   const google = googleVerisiniNormallestir(item)
-  const openLibrary = await openLibraryZenginlestir(google.isbn13, google.isbn10)
+  const openLibrary = await openLibraryZenginlestir(google)
   const birlesik = birlestir(google, openLibrary)
 
   await setDoc(ref, {
@@ -264,4 +309,50 @@ export async function kitapDogrula(id, kullanici) {
     },
     { merge: true }
   )
+}
+
+// Zaten katalogda olan ama eksik kalan (özellikle sayfaSayisi/posterUrl/ozet)
+// bir kaydı, Open Library'nin ikinci katmanı olan başlık+yazar araması dahil
+// olmak üzere YENİDEN dener. Sadece hâlâ boş olan alanları doldurur, kullanıcı
+// düzeltmesi yapılmış alanların üzerine yazmaz. Bakım kuyruğunda "🔄 Yeniden
+// Dene" butonu için kullanılıyor.
+export async function kitapYenidenZenginlestir(id) {
+  const ref = kitapRef(id)
+  const mevcut = await getDoc(ref)
+  const eskiVeri = mevcut.exists() ? mevcut.data() : {}
+
+  let isbn13 = eskiVeri.isbn13
+  let isbn10 = eskiVeri.isbn10
+  if (!isbn13 && !isbn10) {
+    try {
+      const googleData = await googleVolumeGetir(id)
+      const g = googleVerisiniNormallestir(googleData)
+      isbn13 = g.isbn13
+      isbn10 = g.isbn10
+    } catch {
+      // ISBN alınamazsa başlık araması yine de denenir
+    }
+  }
+
+  const openLibrary = await openLibraryZenginlestir({
+    isbn13,
+    isbn10,
+    baslik: eskiVeri.baslik,
+    yazar: eskiVeri.yazar,
+  })
+  if (!openLibrary) return { id, ...eskiVeri }
+
+  const doldurulacak = {}
+  if (!eskiVeri.posterUrl && openLibrary.posterUrl) doldurulacak.posterUrl = openLibrary.posterUrl
+  if (!eskiVeri.ozet && openLibrary.ozet) doldurulacak.ozet = openLibrary.ozet
+  if (!eskiVeri.turler && openLibrary.turler) doldurulacak.turler = openLibrary.turler
+  if (!eskiVeri.sayfaSayisi && openLibrary.sayfaSayisi) doldurulacak.sayfaSayisi = openLibrary.sayfaSayisi
+  if (!eskiVeri.yayinevi && openLibrary.yayinevi) doldurulacak.yayinevi = openLibrary.yayinevi
+  if (isbn13 && !eskiVeri.isbn13) doldurulacak.isbn13 = isbn13
+  if (isbn10 && !eskiVeri.isbn10) doldurulacak.isbn10 = isbn10
+
+  if (Object.keys(doldurulacak).length === 0) return { id, ...eskiVeri }
+
+  await setDoc(ref, { ...doldurulacak, sonGuncellemeTarihi: serverTimestamp() }, { merge: true })
+  return { id, ...eskiVeri, ...doldurulacak }
 }

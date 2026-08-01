@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { dogrulanmamisKitaplariGetir, kitapDogrula, kitapDuzenlemeSayisi } from '../utils/kitapKatalog.js'
+import { dogrulanmamisKitaplariGetir, kitapDogrula, kitapDuzenlemeSayisi, kitapYenidenZenginlestir } from '../utils/kitapKatalog.js'
 
 // Faz 3: Küçük/davetli bir topluluk olduğumuz için ayrı bir "admin" rolü yok —
 // herkes güvenilir kabul ediliyor (mevcut Firestore Rules deseniyle tutarlı).
@@ -14,6 +14,7 @@ export default function KitapKatalogBakimi() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hata, setHata] = useState('')
   const [dogrulanıyor, setDogrulanıyor] = useState(null) // hangi kitapId işleniyor
+  const [yenidenDeneniyor, setYenidenDeneniyor] = useState(null)
 
   async function yeniden() {
     setYukleniyor(true)
@@ -48,6 +49,16 @@ export default function KitapKatalogBakimi() {
       setKitaplar((liste) => liste.filter((k) => k.id !== id))
     } finally {
       setDogrulanıyor(null)
+    }
+  }
+
+  async function yenidenDene(id) {
+    setYenidenDeneniyor(id)
+    try {
+      const guncellenen = await kitapYenidenZenginlestir(id)
+      setKitaplar((liste) => liste.map((k) => (k.id === id ? { ...k, ...guncellenen } : k)))
+    } finally {
+      setYenidenDeneniyor(null)
     }
   }
 
@@ -105,6 +116,13 @@ export default function KitapKatalogBakimi() {
                 >
                   İncele / Düzenle
                 </Link>
+                <button
+                  onClick={() => yenidenDene(k.id)}
+                  disabled={yenidenDeneniyor === k.id}
+                  className="rounded-sm bg-kagit px-2 py-1 font-govde text-[11px] text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:opacity-40"
+                >
+                  {yenidenDeneniyor === k.id ? 'Deneniyor...' : '🔄 Yeniden Dene'}
+                </button>
                 <button
                   onClick={() => dogrula(k.id)}
                   disabled={dogrulanıyor === k.id}

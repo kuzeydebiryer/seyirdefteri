@@ -94,43 +94,53 @@ function SuankiKitapWidget() {
   const yuzde = kitap.toplamSayfa ? Math.min(100, Math.round(((kitap.suankiSayfa || 0) / kitap.toplamSayfa) * 100)) : null
 
   return (
-    <div className="mb-6 rounded-sm bg-deniz p-4 text-kagit ring-1 ring-cizgi">
-      <p className="text-[11px] uppercase tracking-widest opacity-80">📖 Şu An Okuduğun Kitap</p>
-      <Link to={`/kitap/${kitap.disId}`} className="mt-1 block font-baslik text-lg hover:underline">
-        {kitap.baslik}
-      </Link>
-      {kitap.alt && <p className="text-sm opacity-80">{kitap.alt}</p>}
-
-      {kitap.toplamSayfa ? (
-        <>
-          <div className="mt-3 flex items-center gap-3">
-            {yuzde != null && <span className="font-baslik text-2xl">%{yuzde}</span>}
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-kagit/30">
-              <div className="h-full bg-kagit" style={{ width: `${yuzde || 0}%` }} />
-            </div>
-          </div>
-          <form onSubmit={ilerlemeyiKaydet} className="mt-3 flex items-center gap-2">
-            <input
-              type="number"
-              min="0"
-              max={kitap.toplamSayfa}
-              value={sayfaTaslak}
-              onChange={(e) => setSayfaTaslak(e.target.value)}
-              className="w-20 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
-            />
-            <span className="text-xs opacity-80">/ {kitap.toplamSayfa} sayfa</span>
-            <button
-              type="submit"
-              disabled={kaydediliyor}
-              className="ml-auto rounded-sm bg-kagit px-3 py-1.5 font-govde text-xs text-murekkep disabled:opacity-40"
-            >
-              {kaydediliyor ? 'Kaydediliyor...' : 'Güncelle'}
-            </button>
-          </form>
-        </>
-      ) : (
-        <p className="mt-2 text-xs opacity-80">Sayfa bilgisi yok, ilerleme takip edilemiyor.</p>
+    <div className="mb-6 flex gap-4 rounded-sm bg-deniz p-4 text-kagit ring-1 ring-cizgi">
+      {kitap.posterUrl && (
+        <img src={kitap.posterUrl} alt={kitap.baslik} className="h-28 w-20 shrink-0 rounded-sm object-cover ring-1 ring-kagit/30" />
       )}
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] uppercase tracking-widest opacity-80">📖 Şu An Okuduğun Kitap</p>
+        <Link to={`/kitap/${kitap.disId}`} className="mt-1 block font-baslik text-lg hover:underline">
+          {kitap.baslik}
+        </Link>
+        {kitap.alt && <p className="text-sm opacity-80">{kitap.alt}</p>}
+
+        {kitap.toplamSayfa ? (
+          <>
+            <div className="mt-3 flex items-center gap-3">
+              {yuzde != null && <span className="font-baslik text-2xl">%{yuzde}</span>}
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-kagit/30">
+                <div className="h-full bg-kagit" style={{ width: `${yuzde || 0}%` }} />
+              </div>
+            </div>
+            <form onSubmit={ilerlemeyiKaydet} className="mt-3 flex items-center gap-2">
+              <input
+                type="number"
+                min="0"
+                max={kitap.toplamSayfa}
+                value={sayfaTaslak}
+                onChange={(e) => setSayfaTaslak(e.target.value)}
+                className="w-20 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+              />
+              <span className="text-xs opacity-80">/ {kitap.toplamSayfa} sayfa</span>
+              <button
+                type="submit"
+                disabled={kaydediliyor}
+                className="ml-auto rounded-sm bg-kagit px-3 py-1.5 font-govde text-xs text-murekkep disabled:opacity-40"
+              >
+                {kaydediliyor ? 'Kaydediliyor...' : 'Güncelle'}
+              </button>
+            </form>
+          </>
+        ) : (
+          <div className="mt-2">
+            <p className="text-xs opacity-80">Sayfa bilgisi yok, ilerleme yüzde olarak takip edilemiyor.</p>
+            <Link to={`/kitap/${kitap.disId}`} className="text-xs underline opacity-90 hover:opacity-100">
+              ✏️ Kitap sayfasından sayfa sayısını elle girebilirsin
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

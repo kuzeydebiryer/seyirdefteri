@@ -10,12 +10,11 @@ export default {
         muhur: '#B33A3A',
         kraft: '#8C8368',
         cizgi: '#D8CBAA',
-        // Sonradan eklendi: JSX'te kullanılıyordu ama tema tanımında eksikti —
-        // bu yüzden bg-deniz/text-deniz/text-gise ile stillenen tüm butonlar ve
-        // etiketler (ör. "Okumaya Başlıyorum") CSS üretilmediği için görünmez
-        // kalıyordu.
-        deniz: '#2F6F8F',
-        gise: '#B8860B',
+        // Sonradan eklendi: JSX'te kullanılıyordu ama tema tanımında eksikti.
+        // İlk denemede (#2F6F8F mavi) sıcak kağıt/kraft paletiyle çatıştı,
+        // bu yüzden aynı aileden ama daha yumuşak/bastırılmış tonlara çekildi.
+        deniz: '#4A6E6B',
+        gise: '#A6763F',
       },
       fontFamily: {
         baslik: ['"Fraunces"', 'serif'],
