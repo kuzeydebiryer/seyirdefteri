@@ -84,6 +84,7 @@ export default function Profil() {
 
   const [davetKodlari, setDavetKodlari] = useState([])
   const [uretiliyor, setUretiliyor] = useState(false)
+  const [davetAcik, setDavetAcik] = useState(false)
 
   const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
   const [bioTaslak, setBioTaslak] = useState('')
@@ -382,28 +383,40 @@ export default function Profil() {
       </div>
 
       {benimProfilimMi && (
-        <div className="mb-8 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-murekkep">
-              Kalan davet hakkın: <span className="font-medium">{hedefProfil.kalanDavetHakki}</span>
-            </p>
-            <button
-              onClick={davetKoduOlustur}
-              disabled={hedefProfil.kalanDavetHakki <= 0 || uretiliyor}
-              className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
-            >
-              {uretiliyor ? 'Oluşturuluyor...' : 'Davet Kodu Oluştur'}
-            </button>
-          </div>
-          {davetKodlari.length > 0 && (
-            <ul className="mt-3 space-y-1 text-xs text-kraft">
-              {davetKodlari.map((k) => (
-                <li key={k.id} className="flex items-center justify-between">
-                  <span className="font-mono tracking-widest text-murekkep">{k.id}</span>
-                  <span>{k.kullanildiMi ? 'Kullanıldı' : 'Kullanılmadı'}</span>
-                </li>
-              ))}
-            </ul>
+        <div className="mb-8 rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+          <button
+            onClick={() => setDavetAcik((a) => !a)}
+            className="flex w-full items-center justify-between px-4 py-2 text-sm text-murekkep"
+          >
+            <span>
+              🎟️ Davet Kodların <span className="text-kraft">(kalan: {hedefProfil.kalanDavetHakki})</span>
+            </span>
+            <span className="text-xs text-kraft">{davetAcik ? '▲ Gizle' : '▼ Göster'}</span>
+          </button>
+
+          {davetAcik && (
+            <div className="border-t border-cizgi px-4 py-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-kraft">Her kod bir kişi tarafından bir kez kullanılabilir.</p>
+                <button
+                  onClick={davetKoduOlustur}
+                  disabled={hedefProfil.kalanDavetHakki <= 0 || uretiliyor}
+                  className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                >
+                  {uretiliyor ? 'Oluşturuluyor...' : 'Davet Kodu Oluştur'}
+                </button>
+              </div>
+              {davetKodlari.length > 0 && (
+                <ul className="mt-3 max-h-32 space-y-1 overflow-y-auto text-xs text-kraft">
+                  {davetKodlari.map((k) => (
+                    <li key={k.id} className="flex items-center justify-between">
+                      <span className="font-mono tracking-widest text-murekkep">{k.id}</span>
+                      <span>{k.kullanildiMi ? 'Kullanıldı' : 'Kullanılmadı'}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
       )}
