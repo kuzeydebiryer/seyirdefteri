@@ -4,7 +4,8 @@ import { topluluktaPopulerEserler } from '../hooks/useEser.js'
 import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
 import { useHaberler } from '../hooks/useHaberler.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { suankiOkunanKitabiGetir, ilerlemeGuncelle } from '../utils/izlenecek.js'
+import { suankiOkunanKitabiGetir, ilerlemeGuncelle, izlenecekEkle } from '../utils/izlenecek.js'
+import KitapSecici from '../components/KitapSecici.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import HaberBolumu from '../components/HaberBolumu.jsx'
@@ -15,25 +16,22 @@ function SuankiKitapWidget() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [sayfaTaslak, setSayfaTaslak] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [seciliKitap, setSeciliKitap] = useState(null) // KitapSecici'den henüz kaydedilmemiş seçim
 
-  useEffect(() => {
+  async function yeniden() {
     if (!kullanici) {
       setYukleniyor(false)
       return
     }
-    let iptal = false
-    async function getir() {
-      const k = await suankiOkunanKitabiGetir(kullanici.uid)
-      if (!iptal) {
-        setKitap(k)
-        setSayfaTaslak(k?.suankiSayfa ?? '')
-        setYukleniyor(false)
-      }
-    }
-    getir()
-    return () => {
-      iptal = true
-    }
+    const k = await suankiOkunanKitabiGetir(kullanici.uid)
+    setKitap(k)
+    setSayfaTaslak(k?.suankiSayfa ?? '')
+    setYukleniyor(false)
+  }
+
+  useEffect(() => {
+    yeniden()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kullanici])
 
   async function ilerlemeyiKaydet(e) {
@@ -48,7 +46,50 @@ function SuankiKitapWidget() {
     }
   }
 
-  if (yukleniyor || !kitap) return null
+  // Kitap Kataloğu'ndan (Google Books + Open Library ile zenginleştirilmiş)
+  // bir kitap seçilince direkt "okunuyor" durumunda izlenecekler kaydı açılır —
+  // kullanıcının önce bir günce yazmasına ya da kitabı "Popüler" listesinde
+  // bulmasına gerek kalmadan.
+  async function okumayaBasla() {
+    if (!kullanici || !seciliKitap) return
+    setKaydediliyor(true)
+    try {
+      await izlenecekEkle(kullanici, {
+        tur: 'kitap',
+        disId: seciliKitap.id,
+        baslik: seciliKitap.baslik,
+        alt: seciliKitap.yazar || '',
+        posterUrl: seciliKitap.posterUrl,
+        toplamSayfa: seciliKitap.sayfaSayisi || null,
+        durum: 'okunuyor',
+      })
+      setSeciliKitap(null)
+      await yeniden()
+    } finally {
+      setKaydediliyor(false)
+    }
+  }
+
+  if (yukleniyor) return null
+
+  if (!kitap) {
+    return (
+      <div className="mb-6 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+        <p className="mb-2 font-baslik text-sm text-murekkep">📖 Şu An Ne Okuyorsun?</p>
+        <p className="mb-3 text-xs text-kraft">Bir kitap seç, doğrudan "okunuyor" olarak işaretlensin.</p>
+        <KitapSecici secili={seciliKitap} onSecim={setSeciliKitap} onTemizle={() => setSeciliKitap(null)} />
+        {seciliKitap && (
+          <button
+            onClick={okumayaBasla}
+            disabled={kaydediliyor}
+            className="mt-2 rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+          >
+            {kaydediliyor ? 'Kaydediliyor...' : 'Okumaya Başlıyorum'}
+          </button>
+        )}
+      </div>
+    )
+  }
 
   const yuzde = kitap.toplamSayfa ? Math.min(100, Math.round(((kitap.suankiSayfa || 0) / kitap.toplamSayfa) * 100)) : null
 
