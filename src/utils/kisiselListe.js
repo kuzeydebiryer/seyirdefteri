@@ -4,8 +4,12 @@
 // var, bu ise sade bir küratörlük/koleksiyon aracı).
 //
 // Şema:
-//   kisiselListeler/{listeId}        — { kullaniciId, baslik, aciklama, herkeseAcik, kapakUrl, ogeSayisi, olusturmaTarihi }
-//   kisiselListeOgeleri/{ogeId}      — { listeId, tur, disId, baslik, alt, posterUrl, sira, eklemeTarihi }
+//   kisiselListeler/{listeId}    — { kullaniciId, baslik, aciklama, herkeseAcik, kapakUrl, ogeSayisi,
+//                                    turSayaclari: {sinema,dizi,kitap}, baskinTur, olusturmaTarihi }
+//   kisiselListeOgeleri/{ogeId}  — { listeId, tur, disId, baslik, alt, posterUrl, sira, eklemeTarihi }
+//
+// baskinTur: listede en çok hangi türden eser varsa o — Film/Dizi/Kitap sayfalarında
+// "Listeler" bölümünde hangi listenin gösterileceğine karar vermek için.
 
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
@@ -18,6 +22,8 @@ export async function listeOlustur(kullanici, { baslik, aciklama, herkeseAcik })
     herkeseAcik: herkeseAcik !== false,
     kapakUrl: '',
     ogeSayisi: 0,
+    turSayaclari: { sinema: 0, dizi: 0, kitap: 0 },
+    baskinTur: '',
     olusturmaTarihi: serverTimestamp(),
   })
   return ref.id
@@ -48,6 +54,8 @@ export async function listeOgeleriGetir(listeId) {
 
 // Tek bir eser ekler; sıra numarasını otomatik olarak (mevcut öğe sayısı) atar.
 // Kapak görseli boşsa (listenin ilk öğesiyse) listenin kapağı olarak da kaydedilir.
+// Ayrıca turSayaclari'nı güncelleyip baskinTur'u yeniden hesaplar (Film/Dizi/Kitap
+// sayfalarındaki "Listeler" bölümü bu alana göre filtreleniyor).
 export async function ogeEkle(liste, oge) {
   await addDoc(collection(db, 'kisiselListeOgeleri'), {
     listeId: liste.id,
@@ -59,8 +67,15 @@ export async function ogeEkle(liste, oge) {
     sira: liste.ogeSayisi || 0,
     eklemeTarihi: serverTimestamp(),
   })
+
+  const oncekiSayaclar = liste.turSayaclari || { sinema: 0, dizi: 0, kitap: 0 }
+  const yeniSayaclar = { ...oncekiSayaclar, [oge.tur]: (oncekiSayaclar[oge.tur] || 0) + 1 }
+  const baskinTur = Object.entries(yeniSayaclar).sort((a, b) => b[1] - a[1])[0][0]
+
   await updateDoc(doc(db, 'kisiselListeler', liste.id), {
     ogeSayisi: increment(1),
+    turSayaclari: yeniSayaclar,
+    baskinTur,
     ...(liste.ogeSayisi === 0 && oge.posterUrl ? { kapakUrl: oge.posterUrl } : {}),
   })
 }
@@ -76,4 +91,33 @@ export async function ogeSil(ogeId) {
 
 export async function listeGuncelle(listeId, alanlar) {
   await updateDoc(doc(db, 'kisiselListeler', listeId), alanlar)
+}
+
+// Film/Dizi/Kitap sayfalarındaki "Listeler" bölümü için: baskın türü eşleşen,
+// herkese açık listeler.
+export async function turdekiListeleriGetir(tur, limitSayisi = 6) {
+  const q = query(collection(db, 'kisiselListeler'), where('herkeseAcik', '==', true), where('baskinTur', '==', tur))
+  const snap = await getDocs(q)
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.ogeSayisi || 0) - (a.ogeSayisi || 0))
+    .slice(0, limitSayisi)
+}
+
+// Bir eserin (film/dizi/kitap) hangi listelerde yer aldığını bulur — eser
+// sayfasında "Bu eser şu listelerde" bölümü için. `goruntuleyenUid` verilirse
+// gizli listeler sadece sahibiyse gösterilir.
+export async function esereAitListeleriGetir(tur, disId, goruntuleyenUid) {
+  const q = query(collection(db, 'kisiselListeOgeleri'), where('tur', '==', tur), where('disId', '==', disId))
+  const ogelerSnap = await getDocs(q)
+  const listeIdleri = [...new Set(ogelerSnap.docs.map((d) => d.data().listeId))]
+
+  // Promise.allSettled kullanıyoruz: bu eser başkasının GİZLİ bir listesindeyse,
+  // o listeyi okuma iznimiz olmaz (Firestore Rules reddeder) — tek bir reddedilen
+  // istek Promise.all ile tüm sorguyu bozar, allSettled ile sadece o liste atlanır.
+  const sonuclar = await Promise.allSettled(listeIdleri.map((id) => getDoc(doc(db, 'kisiselListeler', id))))
+  return sonuclar
+    .filter((s) => s.status === 'fulfilled' && s.value.exists())
+    .map((s) => ({ id: s.value.id, ...s.value.data() }))
+    .filter((l) => l.herkeseAcik || l.kullaniciId === goruntuleyenUid)
 }

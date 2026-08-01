@@ -11,6 +11,7 @@ import KitapSecici from '../components/KitapSecici.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import HaberBolumu from '../components/HaberBolumu.jsx'
+import ListelerBolumu from '../components/ListelerBolumu.jsx'
 
 function SuankiKitapWidget() {
   const { kullanici } = useAuth()
@@ -196,6 +197,7 @@ export default function KitaplarKesfet() {
 
       <TavsiyeBolumu tur="kitap" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
       <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} />
+      <ListelerBolumu tur="kitap" />
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Bizim Aramızda Popüler</h2>
       {yukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}

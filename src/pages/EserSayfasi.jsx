@@ -19,7 +19,7 @@ import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import { kitapGetir, kitapGuncelle } from '../utils/kitapKatalog.js'
 import { alintiEkle, alintiBegenDegistir, alintiSil, kitapAlintilariGetir } from '../utils/alinti.js'
 import { useKisiselListeler } from '../hooks/useKisiselListeler.js'
-import { ogeEkle as listeyeOgeEkle } from '../utils/kisiselListe.js'
+import { ogeEkle as listeyeOgeEkle, esereAitListeleriGetir } from '../utils/kisiselListe.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -74,18 +74,31 @@ export default function EserSayfasi({ tur }) {
   const [listeMenusuAcik, setListeMenusuAcik] = useState(false)
   const [listeyeEkleniyor, setListeyeEkleniyor] = useState(null)
   const { listeler: kendiListelerim } = useKisiselListeler(kullanici?.uid)
+  const [esereAitListeler, setEsereAitListeler] = useState([])
+
+  useEffect(() => {
+    let iptal = false
+    const disIdTipli = tur === 'kitap' ? id : Number(id)
+    esereAitListeleriGetir(tur, disIdTipli, kullanici?.uid).then((l) => {
+      if (!iptal) setEsereAitListeler(l)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [tur, id, kullanici?.uid])
 
   async function listeyeEkle(liste) {
     setListeyeEkleniyor(liste.id)
     try {
       await listeyeOgeEkle(liste, {
         tur,
-        disId: id,
+        disId: tur === 'kitap' ? id : Number(id),
         baslik: detay.baslik,
         alt: detay.yazar || detay.yil || '',
         posterUrl: detay.posterUrl,
       })
       setListeMenusuAcik(false)
+      setEsereAitListeler((onceki) => [...onceki, liste])
     } finally {
       setListeyeEkleniyor(null)
     }
@@ -650,6 +663,21 @@ export default function EserSayfasi({ tur }) {
                   </button>
                 </>
               )}
+            </div>
+          )}
+
+          {esereAitListeler.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-kraft">
+              <span>📋 Listelerde:</span>
+              {esereAitListeler.map((l) => (
+                <Link
+                  key={l.id}
+                  to={`/liste/${l.id}`}
+                  className="rounded-full bg-kagitKoyu px-2.5 py-1 text-murekkep ring-1 ring-cizgi hover:text-deniz"
+                >
+                  {l.baslik}
+                </Link>
+              ))}
             </div>
           )}
 

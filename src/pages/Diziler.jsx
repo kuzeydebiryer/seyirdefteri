@@ -6,6 +6,7 @@ import { useHaberler } from '../hooks/useHaberler.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import HaberBolumu from '../components/HaberBolumu.jsx'
+import ListelerBolumu from '../components/ListelerBolumu.jsx'
 import FilmDiziArama from '../components/FilmDiziArama.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -50,6 +51,7 @@ export default function Diziler() {
 
       <TavsiyeBolumu tur="dizi" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
       <HaberBolumu kategori="dizi" haberler={haberler} yenidenYukle={haberleriYenile} />
+      <ListelerBolumu tur="dizi" />
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Bizim Aramızda Popüler</h2>
       {yukleniyor && <p className="text-sm text-kraft mb-6">Yükleniyor...</p>}
