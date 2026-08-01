@@ -90,7 +90,10 @@ export default function Profil() {
   const [posterAramasi, setPosterAramasi] = useState('')
   const [posterGosterimSayisi, setPosterGosterimSayisi] = useState({ sinema: 28, dizi: 28 })
   const [minPuan, setMinPuan] = useState(0)
-  const [seciliTur, setSeciliTur] = useState('') // tek seçim: sade tutmak için
+  const [seciliTurler, setSeciliTurler] = useState([]) // çoklu seçim
+  const [yilBaslangic, setYilBaslangic] = useState('')
+  const [yilBitis, setYilBitis] = useState('')
+  const [siralama, setSiralama] = useState('varsayilan') // 'varsayilan' | 'puan-yuksek' | 'yeni' | 'alfabetik'
 
   const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
   const [bioTaslak, setBioTaslak] = useState('')
@@ -480,6 +483,7 @@ export default function Profil() {
                   puan: g.kullaniciPuani,
                   yil: g.yil || '',
                   turler: g.turler || '',
+                  tarih: g.tarih,
                   link: `/gonderi/${g.id}`,
                 }))
             const puanKarti = (tur) =>
@@ -493,6 +497,7 @@ export default function Profil() {
                   puan: e.puan,
                   yil: e.yil || '',
                   turler: e.turler || '',
+                  tarih: e.tarih,
                   link: tur === 'dizi' ? `/dizi/${e.disId}` : `/film/${e.disId}`,
                 }))
 
@@ -526,7 +531,7 @@ export default function Profil() {
                       placeholder={`${toplamEser} film/dizi içinde ara...`}
                       className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                     />
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <select
                         value={minPuan}
                         onChange={(e) => setMinPuan(Number(e.target.value))}
@@ -539,26 +544,43 @@ export default function Profil() {
                         <option value={4.5}>★ 4.5+</option>
                         <option value={5}>★ 5 (tam puan)</option>
                       </select>
-                      {tumTurler.length > 0 && (
-                        <select
-                          value={seciliTur}
-                          onChange={(e) => setSeciliTur(e.target.value)}
-                          className="rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
-                        >
-                          <option value="">Tüm türler</option>
-                          {tumTurler.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                      {(minPuan > 0 || seciliTur || posterAramasi) && (
+
+                      <input
+                        type="number"
+                        value={yilBaslangic}
+                        onChange={(e) => setYilBaslangic(e.target.value)}
+                        placeholder="Yıl (başlangıç)"
+                        className="w-28 rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+                      <span className="text-xs text-kraft">–</span>
+                      <input
+                        type="number"
+                        value={yilBitis}
+                        onChange={(e) => setYilBitis(e.target.value)}
+                        placeholder="Yıl (bitiş)"
+                        className="w-28 rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+
+                      <select
+                        value={siralama}
+                        onChange={(e) => setSiralama(e.target.value)}
+                        className="rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+                      >
+                        <option value="varsayilan">Sıralama: Varsayılan</option>
+                        <option value="puan-yuksek">Puan: Yüksekten Düşüğe</option>
+                        <option value="yeni">Eklenme: Yeniden Eskiye</option>
+                        <option value="alfabetik">Alfabetik (A-Z)</option>
+                      </select>
+
+                      {(minPuan > 0 || seciliTurler.length > 0 || posterAramasi || yilBaslangic || yilBitis || siralama !== 'varsayilan') && (
                         <button
                           onClick={() => {
                             setMinPuan(0)
-                            setSeciliTur('')
+                            setSeciliTurler([])
                             setPosterAramasi('')
+                            setYilBaslangic('')
+                            setYilBitis('')
+                            setSiralama('varsayilan')
                           }}
                           className="text-xs text-kraft hover:text-muhur"
                         >
@@ -566,6 +588,27 @@ export default function Profil() {
                         </button>
                       )}
                     </div>
+
+                    {tumTurler.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {tumTurler.map((t) => {
+                          const secili = seciliTurler.includes(t)
+                          return (
+                            <button
+                              key={t}
+                              onClick={() =>
+                                setSeciliTurler((onceki) => (secili ? onceki.filter((x) => x !== t) : [...onceki, t]))
+                              }
+                              className={`rounded-full px-2.5 py-1 text-[11px] ring-1 ${
+                                secili ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagit text-kraft ring-cizgi hover:ring-murekkep/50'
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -578,12 +621,28 @@ export default function Profil() {
                   if (minPuan > 0) {
                     filtrelenmis = filtrelenmis.filter((e) => (e.puan || 0) >= minPuan)
                   }
-                  if (seciliTur) {
-                    filtrelenmis = filtrelenmis.filter((e) => e.turler && e.turler.includes(seciliTur))
+                  if (seciliTurler.length > 0) {
+                    filtrelenmis = filtrelenmis.filter((e) => e.turler && seciliTurler.some((t) => e.turler.includes(t)))
                   }
+                  if (yilBaslangic) {
+                    filtrelenmis = filtrelenmis.filter((e) => e.yil && Number(e.yil) >= Number(yilBaslangic))
+                  }
+                  if (yilBitis) {
+                    filtrelenmis = filtrelenmis.filter((e) => e.yil && Number(e.yil) <= Number(yilBitis))
+                  }
+
+                  filtrelenmis = [...filtrelenmis]
+                  if (siralama === 'puan-yuksek') {
+                    filtrelenmis.sort((a, b) => (b.puan || 0) - (a.puan || 0))
+                  } else if (siralama === 'alfabetik') {
+                    filtrelenmis.sort((a, b) => a.baslik.localeCompare(b.baslik, 'tr'))
+                  } else if (siralama === 'yeni') {
+                    filtrelenmis.sort((a, b) => (b.tarih?.toMillis?.() || 0) - (a.tarih?.toMillis?.() || 0))
+                  }
+
                   const gosterilecekSayi = posterGosterimSayisi[tur] || 28
                   const gosterilenler = filtrelenmis.slice(0, gosterilecekSayi)
-                  const filtreAktif = posterAramasi.trim() || minPuan > 0 || seciliTur
+                  const filtreAktif = posterAramasi.trim() || minPuan > 0 || seciliTurler.length > 0 || yilBaslangic || yilBitis
 
                   return (
                     <div key={tur} className="mb-5">
