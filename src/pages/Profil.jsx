@@ -87,6 +87,10 @@ export default function Profil() {
   const [uretiliyor, setUretiliyor] = useState(false)
   const [davetAcik, setDavetAcik] = useState(false)
   const [puanIceAktarAcik, setPuanIceAktarAcik] = useState(false)
+  const [posterAramasi, setPosterAramasi] = useState('')
+  const [posterGosterimSayisi, setPosterGosterimSayisi] = useState({ sinema: 28, dizi: 28 })
+  const [minPuan, setMinPuan] = useState(0)
+  const [seciliTur, setSeciliTur] = useState('') // tek seçim: sade tutmak için
 
   const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
   const [bioTaslak, setBioTaslak] = useState('')
@@ -469,7 +473,15 @@ export default function Profil() {
             const gonderiKarti = (tur) =>
               gonderiler
                 .filter((g) => g.tur === tur && g.posterUrl)
-                .map((g) => ({ id: g.id, baslik: g.baslik, posterUrl: g.posterUrl, puan: g.kullaniciPuani, link: `/gonderi/${g.id}` }))
+                .map((g) => ({
+                  id: g.id,
+                  baslik: g.baslik,
+                  posterUrl: g.posterUrl,
+                  puan: g.kullaniciPuani,
+                  yil: g.yil || '',
+                  turler: g.turler || '',
+                  link: `/gonderi/${g.id}`,
+                }))
             const puanKarti = (tur) =>
               eserPuanlarim
                 .filter((e) => e.tur === tur && e.posterUrl)
@@ -479,6 +491,8 @@ export default function Profil() {
                   baslik: e.baslik,
                   posterUrl: e.posterUrl,
                   puan: e.puan,
+                  yil: e.yil || '',
+                  turler: e.turler || '',
                   link: tur === 'dizi' ? `/dizi/${e.disId}` : `/film/${e.disId}`,
                 }))
 
@@ -489,24 +503,112 @@ export default function Profil() {
 
             if (gruplar.every((g) => g.esereler.length === 0)) return null
 
+            const toplamEser = gruplar.reduce((n, g) => n + g.esereler.length, 0)
+
+            // Tüm gruplardaki eserlerden benzersiz tür listesi (filtre seçenekleri için).
+            // Not: tür bilgisi sadece bu özellik eklendikten sonra puanlanan/içe aktarılan
+            // eserlerde var — eski kayıtlarda boş kalabilir, bu normal.
+            const tumTurler = [...new Set(gruplar.flatMap((g) => g.esereler.flatMap((e) => (e.turler ? e.turler.split(', ') : []))))].sort()
+
             return (
               <>
-                <h2 className="font-baslik text-lg text-murekkep mb-3">Poster Duvarı</h2>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="font-baslik text-lg text-murekkep">Poster Duvarı</h2>
+                  <span className="text-xs text-kraft">{toplamEser} eser</span>
+                </div>
+
+                {toplamEser > 20 && (
+                  <div className="mb-4 space-y-2">
+                    <input
+                      type="text"
+                      value={posterAramasi}
+                      onChange={(e) => setPosterAramasi(e.target.value)}
+                      placeholder={`${toplamEser} film/dizi içinde ara...`}
+                      className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <select
+                        value={minPuan}
+                        onChange={(e) => setMinPuan(Number(e.target.value))}
+                        className="rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+                      >
+                        <option value={0}>Tüm puanlar</option>
+                        <option value={3}>★ 3+ </option>
+                        <option value={3.5}>★ 3.5+</option>
+                        <option value={4}>★ 4+</option>
+                        <option value={4.5}>★ 4.5+</option>
+                        <option value={5}>★ 5 (tam puan)</option>
+                      </select>
+                      {tumTurler.length > 0 && (
+                        <select
+                          value={seciliTur}
+                          onChange={(e) => setSeciliTur(e.target.value)}
+                          className="rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+                        >
+                          <option value="">Tüm türler</option>
+                          {tumTurler.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {(minPuan > 0 || seciliTur || posterAramasi) && (
+                        <button
+                          onClick={() => {
+                            setMinPuan(0)
+                            setSeciliTur('')
+                            setPosterAramasi('')
+                          }}
+                          className="text-xs text-kraft hover:text-muhur"
+                        >
+                          Filtreleri Temizle
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {gruplar.map(({ tur, baslik, esereler }) => {
                   if (esereler.length === 0) return null
+                  let filtrelenmis = esereler
+                  if (posterAramasi.trim()) {
+                    filtrelenmis = filtrelenmis.filter((e) => e.baslik.toLowerCase().includes(posterAramasi.trim().toLowerCase()))
+                  }
+                  if (minPuan > 0) {
+                    filtrelenmis = filtrelenmis.filter((e) => (e.puan || 0) >= minPuan)
+                  }
+                  if (seciliTur) {
+                    filtrelenmis = filtrelenmis.filter((e) => e.turler && e.turler.includes(seciliTur))
+                  }
+                  const gosterilecekSayi = posterGosterimSayisi[tur] || 28
+                  const gosterilenler = filtrelenmis.slice(0, gosterilecekSayi)
+                  const filtreAktif = posterAramasi.trim() || minPuan > 0 || seciliTur
+
                   return (
                     <div key={tur} className="mb-5">
-                      <p className="mb-2 text-xs uppercase tracking-widest text-kraft">{baslik}</p>
+                      <p className="mb-2 text-xs uppercase tracking-widest text-kraft">
+                        {baslik} {filtreAktif && `(${filtrelenmis.length} sonuç)`}
+                      </p>
+                      {filtrelenmis.length === 0 && <p className="text-xs text-kraft">Eşleşme yok.</p>}
                       <div className="grid grid-cols-5 gap-2 sm:grid-cols-7">
-                        {esereler.map((e) => (
+                        {gosterilenler.map((e) => (
                           <Link key={e.id} to={e.link} className="block">
                             <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                              <img src={e.posterUrl} alt={e.baslik} className="h-full w-full object-cover" />
+                              <img src={e.posterUrl} alt={e.baslik} loading="lazy" className="h-full w-full object-cover" />
                             </div>
                             {e.puan != null && <YildizPuan puan={e.puan} boyut="text-[10px]" onluGoster={false} />}
                           </Link>
                         ))}
                       </div>
+                      {filtrelenmis.length > gosterilecekSayi && (
+                        <button
+                          onClick={() => setPosterGosterimSayisi((onceki) => ({ ...onceki, [tur]: (onceki[tur] || 28) + 28 }))}
+                          className="mt-2 text-xs text-kraft hover:text-deniz hover:underline"
+                        >
+                          Daha Fazla Göster ({filtrelenmis.length - gosterilecekSayi} kaldı) ↓
+                        </button>
+                      )}
                     </div>
                   )
                 })}

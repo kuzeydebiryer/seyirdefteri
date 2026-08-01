@@ -3,6 +3,7 @@ import Papa from 'papaparse'
 import { useAuth } from '../context/AuthContext.jsx'
 import { eserPuanla } from '../utils/eserPuani.js'
 import { filmSatirlariniAyikla, tmdbdeAra, esZamanliIsle, TMDB_POSTER } from '../utils/letterboxdCsv.js'
+import { turIsimleriGetir } from '../data/tmdbTurler.js'
 
 const ES_ZAMANLILIK = 6
 
@@ -51,6 +52,7 @@ export default function PuanIceAktar({ onTamamlandi }) {
                     baslik: bulunan.title,
                     yil: bulunan.release_date ? bulunan.release_date.slice(0, 4) : satir.yil,
                     posterUrl: bulunan.poster_path ? `${TMDB_POSTER}${bulunan.poster_path}` : '',
+                    turler: turIsimleriGetir(bulunan.genre_ids),
                   }
                 : null,
               secili: !!bulunan,
@@ -82,6 +84,8 @@ export default function PuanIceAktar({ onTamamlandi }) {
           baslik: s.eslesme.baslik,
           alt: s.eslesme.yil,
           posterUrl: s.eslesme.posterUrl,
+          yil: s.eslesme.yil,
+          turler: s.eslesme.turler,
         })
       },
       8,

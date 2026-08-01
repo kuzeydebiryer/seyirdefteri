@@ -420,7 +420,13 @@ export default function EserSayfasi({ tur }) {
     if (!kullanici) return
     setPuanKaydediliyor(true)
     try {
-      await eserPuanla(tur, id, puanTaslak, kullanici, { baslik: detay.baslik, alt: detay.yazar || '', posterUrl: detay.posterUrl })
+      await eserPuanla(tur, id, puanTaslak, kullanici, {
+        baslik: detay.baslik,
+        alt: detay.yazar || '',
+        posterUrl: detay.posterUrl,
+        yil: detay.yil || '',
+        turler: detay.turler || '',
+      })
       puanlariYenidenYukle()
     } finally {
       setPuanKaydediliyor(false)
