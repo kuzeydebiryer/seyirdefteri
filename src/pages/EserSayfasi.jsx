@@ -464,11 +464,15 @@ export default function EserSayfasi({ tur }) {
 
   return (
     <div>
-      <div className="flex gap-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
         {detay.posterUrl && (
-          <img src={detay.posterUrl} alt={detay.baslik} className="h-56 w-40 shrink-0 rounded-sm object-cover ring-1 ring-cizgi" />
+          <img
+            src={detay.posterUrl}
+            alt={detay.baslik}
+            className="h-56 w-40 shrink-0 self-center rounded-sm object-cover ring-1 ring-cizgi sm:self-start"
+          />
         )}
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="font-baslik text-3xl text-murekkep">
             {detay.baslik} {detay.yil && <span className="text-kraft text-xl">({detay.yil})</span>}
           </h1>
