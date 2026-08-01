@@ -16,7 +16,7 @@ export default function DunyaHaritasi({ geziler }) {
   const ziyaretEdilenSehirSayisi = new Set(sehirPinleri.map((g) => `${g.konum}-${g.ulkeKodu}`)).size
 
   return (
-    <div className="mb-8 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+    <div className="mb-8 rounded-sm bg-kagit p-3 ring-1 ring-cizgi">
       <div className="relative">
         <ComposableMap projectionConfig={{ scale: 130 }} width={800} height={420} style={{ width: '100%', height: 'auto' }}>
           <Geographies geography={GEOGRAPHY_URL}>
@@ -27,12 +27,12 @@ export default function DunyaHaritasi({ geziler }) {
                   <Geography
                     key={geo.rsmKey}
                     geography={geo}
-                    fill={ziyaretEdildi ? '#B33A3A' : '#EDE4CE'}
-                    stroke="#D8CBAA"
-                    strokeWidth={0.5}
+                    fill={ziyaretEdildi ? '#B33A3A' : '#C9BC98'}
+                    stroke="#8C8368"
+                    strokeWidth={0.6}
                     style={{
                       default: { outline: 'none' },
-                      hover: { outline: 'none', fill: ziyaretEdildi ? '#9c3232' : '#D8CBAA' },
+                      hover: { outline: 'none', fill: ziyaretEdildi ? '#9c3232' : '#B5A67D' },
                       pressed: { outline: 'none' },
                     }}
                   />
