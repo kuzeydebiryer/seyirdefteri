@@ -134,7 +134,9 @@ export default function EserSayfasi({ tur }) {
             tur === 'sinema'
               ? (data.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => ({ id: k.id, name: k.name }))
               : (data.created_by || []).map((k) => ({ id: k.id, name: k.name }))
-          const oyuncular = (data.credits?.cast || []).slice(0, 6).map((k) => ({ id: k.id, name: k.name }))
+          const oyuncular = (data.credits?.cast || [])
+            .slice(0, 10)
+            .map((k) => ({ id: k.id, name: k.name, karakter: k.character, fotoUrl: k.profile_path ? `https://image.tmdb.org/t/p/w185${k.profile_path}` : '' }))
 
           // Fragman: YouTube'daki resmi fragman videosu
           const fragman = (data.videos?.results || []).find((v) => v.site === 'YouTube' && v.type === 'Trailer') ||
@@ -493,7 +495,6 @@ export default function EserSayfasi({ tur }) {
           </div>
 
           <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
-          <KisiListesi kisiler={detay.oyuncular} etiket="Oyuncular" />
 
           {tur === 'kitap' && kullanici && !duzenleModuAcik && (
             <button onClick={duzenlemeyiAc} className="mt-2 text-[11px] text-kraft hover:text-deniz hover:underline">
@@ -586,23 +587,45 @@ export default function EserSayfasi({ tur }) {
           )}
 
           {kullanici && (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap items-start gap-6">
               <button
                 onClick={favoriDegistir}
                 disabled={favoriIsleniyor}
-                className={`rounded-sm px-3 py-1.5 font-govde text-xs ${
-                  favoriMi_ ? 'bg-muhur text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
-                } disabled:opacity-40`}
+                className="flex flex-col items-center gap-1 disabled:opacity-40"
               >
-                {favoriMi_ ? '★ Favorilerimde' : '☆ Favorilere Ekle'}
+                <span className={`text-2xl ${favoriMi_ ? 'text-muhur' : 'text-cizgi'}`}>{favoriMi_ ? '♥' : '♡'}</span>
+                <span className="text-[10px] uppercase tracking-wide text-kraft">Favori</span>
               </button>
 
-              <div className="relative">
+              {!izlenecekKaydi && (
                 <button
-                  onClick={() => setListeMenusuAcik((a) => !a)}
-                  className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi"
+                  onClick={izlenecegeEkle}
+                  disabled={izlenecekIsleniyor}
+                  className="flex flex-col items-center gap-1 disabled:opacity-40"
                 >
-                  📋 Listeye Ekle
+                  <span className="text-2xl text-cizgi">🕐</span>
+                  <span className="text-[10px] uppercase tracking-wide text-kraft">
+                    {tur === 'kitap' ? 'Okuyacaklarım' : 'İzleyeceğim'}
+                  </span>
+                </button>
+              )}
+              {izlenecekKaydi && (
+                <button
+                  onClick={izlenecektenKaldir}
+                  disabled={izlenecekIsleniyor}
+                  className="flex flex-col items-center gap-1 disabled:opacity-40"
+                >
+                  <span className="text-2xl text-muhur">🕐</span>
+                  <span className="text-[10px] uppercase tracking-wide text-kraft">
+                    {tur === 'kitap' ? 'Okuyacaklarımda' : 'İzleyeceklerimde'}
+                  </span>
+                </button>
+              )}
+
+              <div className="relative flex flex-col items-center gap-1">
+                <button onClick={() => setListeMenusuAcik((a) => !a)} disabled={false} className="flex flex-col items-center gap-1">
+                  <span className="text-2xl text-cizgi">📋</span>
+                  <span className="text-[10px] uppercase tracking-wide text-kraft">Liste</span>
                 </button>
                 {listeMenusuAcik && (
                   <div className="absolute left-0 top-full z-10 mt-1 w-56 rounded-sm bg-kagit p-2 shadow-lg ring-1 ring-cizgi">
@@ -629,46 +652,23 @@ export default function EserSayfasi({ tur }) {
                 )}
               </div>
 
-              {!izlenecekKaydi && (
-                <>
-                  <button
-                    onClick={izlenecegeEkle}
-                    disabled={izlenecekIsleniyor}
-                    className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi disabled:opacity-40"
-                  >
-                    + {tur === 'kitap' ? 'Okuyacaklarıma' : 'İzleyeceklerime'} Ekle
-                  </button>
-                  {tur === 'kitap' && (
-                    <button
-                      onClick={dogrudanOkumayaBasla}
-                      disabled={izlenecekIsleniyor}
-                      className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
-                    >
-                      Okumaya Başlıyorum
-                    </button>
-                  )}
-                </>
+              {tur === 'kitap' && !izlenecekKaydi && (
+                <button
+                  onClick={dogrudanOkumayaBasla}
+                  disabled={izlenecekIsleniyor}
+                  className="self-center rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                >
+                  Okumaya Başlıyorum
+                </button>
               )}
-
-              {izlenecekKaydi?.durum === 'planlanan' && (
-                <>
-                  {tur === 'kitap' && (
-                    <button
-                      onClick={okumayaBaslaTiklandi}
-                      disabled={izlenecekIsleniyor}
-                      className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
-                    >
-                      Okumaya Başla
-                    </button>
-                  )}
-                  <button
-                    onClick={izlenecektenKaldir}
-                    disabled={izlenecekIsleniyor}
-                    className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi disabled:opacity-40"
-                  >
-                    Kaldır
-                  </button>
-                </>
+              {tur === 'kitap' && izlenecekKaydi?.durum === 'planlanan' && (
+                <button
+                  onClick={okumayaBaslaTiklandi}
+                  disabled={izlenecekIsleniyor}
+                  className="self-center rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                >
+                  Okumaya Başla
+                </button>
               )}
             </div>
           )}
@@ -785,6 +785,29 @@ export default function EserSayfasi({ tur }) {
             )}{' '}
             tarafından sağlanmaktadır. Bölgeye ve zamana göre değişebilir.
           </p>
+        </div>
+      )}
+
+      {detay.oyuncular?.length > 0 && (
+        <div className="mt-6">
+          <h2 className="font-baslik text-lg text-murekkep mb-2">Oyuncular</h2>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {detay.oyuncular.map((k) => (
+              <Link key={k.id} to={`/kisi/${k.id}`} className="block w-16 shrink-0 text-center">
+                <div className="mx-auto h-16 w-16 overflow-hidden rounded-full bg-kagitKoyu ring-1 ring-cizgi">
+                  {k.fotoUrl ? (
+                    <img src={k.fotoUrl} alt={k.name} loading="lazy" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center font-baslik text-lg text-kraft">
+                      {k.name[0]}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 truncate text-[11px] text-murekkep">{k.name}</p>
+                {k.karakter && <p className="truncate text-[10px] text-kraft">{k.karakter}</p>}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
