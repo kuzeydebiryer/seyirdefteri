@@ -17,7 +17,7 @@ import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
-import { kitapGetir, kitapGuncelle, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
+import { kitapGetir, kitapGuncelle, kitapAramaSonucundanKaydet, kitapElleEkle } from '../utils/kitapKatalog.js'
 import { alintiEkle, alintiBegenDegistir, alintiSil, kitapAlintilariGetir } from '../utils/alinti.js'
 import { useKisiselListeler } from '../hooks/useKisiselListeler.js'
 import { ogeEkle as listeyeOgeEkle, esereAitListeleriGetir } from '../utils/kisiselListe.js'
@@ -29,6 +29,7 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const TMDB_SAGLAYICI_LOGO = 'https://image.tmdb.org/t/p/w92'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
+const DIL_ADLARI = { tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', fr: 'Fransızca', es: 'İspanyolca', it: 'İtalyanca', ru: 'Rusça' }
 
 function KisiListesi({ kisiler, etiket }) {
   if (!kisiler || kisiler.length === 0) return null
@@ -86,6 +87,9 @@ export default function EserSayfasi({ tur }) {
   const [ilgiliSonuclar, setIlgiliSonuclar] = useState([])
   const [ilgiliAramaYukleniyor, setIlgiliAramaYukleniyor] = useState(false)
   const [ilgiliEkleniyor, setIlgiliEkleniyor] = useState(null)
+  const [ilgiliElleAcik, setIlgiliElleAcik] = useState(false)
+  const [ilgiliElleForm, setIlgiliElleForm] = useState({ baslik: '', yazar: '', yayinevi: '', yil: '', posterUrl: '' })
+  const [ilgiliElleKaydediliyor, setIlgiliElleKaydediliyor] = useState(false)
 
   const ilgiliHedefTur = tur === 'kitap' ? ilgiliKategori : 'kitap'
 
@@ -151,6 +155,25 @@ export default function EserSayfasi({ tur }) {
       setIlgiliEkleAcik(false)
     } finally {
       setIlgiliEkleniyor(null)
+    }
+  }
+
+  async function ilgiliElleKaydet(e) {
+    e.preventDefault()
+    if (!ilgiliElleForm.baslik.trim() || !kullanici) return
+    setIlgiliElleKaydediliyor(true)
+    try {
+      const kitap = await kitapElleEkle(ilgiliElleForm, kullanici)
+      const hedef = { tur: 'kitap', disId: kitap.id, baslik: kitap.baslik, alt: kitap.yazar, posterUrl: kitap.posterUrl }
+      const kaynak = { tur, disId: tur === 'kitap' ? id : Number(id), baslik: detay.baslik, alt: detay.yazar || detay.yil || '', posterUrl: detay.posterUrl }
+      await ilgiliEserEkle(kaynak, hedef, kullanici)
+      setIlgiliEserler((onceki) => [...onceki, { digerTur: 'kitap', digerDisId: kitap.id, digerBaslik: kitap.baslik, digerPosterUrl: kitap.posterUrl, digerAlt: kitap.yazar }])
+      setIlgiliElleAcik(false)
+      setIlgiliEkleAcik(false)
+      setIlgiliArama('')
+      setIlgiliSonuclar([])
+    } finally {
+      setIlgiliElleKaydediliyor(false)
     }
   }
 
@@ -813,34 +836,108 @@ export default function EserSayfasi({ tur }) {
                         {ilgiliAramaYukleniyor ? '...' : 'Ara'}
                       </button>
                     </form>
-                    {ilgiliSonuclar.length > 0 && (
-                      <ul className="max-h-56 space-y-1 overflow-y-auto">
-                        {ilgiliSonuclar.slice(0, 10).map((item) => {
-                          const v = ilgiliHedefTur === 'kitap' ? item.volumeInfo || {} : item
-                          const ad = ilgiliHedefTur === 'kitap' ? v.title : ilgiliHedefTur === 'sinema' ? v.title : v.name
-                          const kapak =
-                            ilgiliHedefTur === 'kitap'
-                              ? (v.imageLinks?.thumbnail || '').replace('http://', 'https://')
-                              : v.poster_path
-                                ? `${TMDB_POSTER}${v.poster_path}`
-                                : ''
-                          return (
-                            <li key={item.id}>
-                              <button
-                                type="button"
-                                onClick={() => ilgiliSec(item)}
-                                disabled={ilgiliEkleniyor === item.id}
-                                className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left hover:bg-kagitKoyu disabled:opacity-40"
-                              >
-                                {kapak && <img src={kapak} alt="" className="h-9 w-6 shrink-0 rounded-sm object-cover" />}
-                                <span className="truncate text-xs text-murekkep">
-                                  {ilgiliEkleniyor === item.id ? 'Ekleniyor...' : ad}
-                                </span>
-                              </button>
-                            </li>
-                          )
-                        })}
-                      </ul>
+                    {ilgiliElleAcik ? (
+                      <form onSubmit={ilgiliElleKaydet} className="space-y-2 rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
+                        <p className="text-[11px] uppercase tracking-widest text-gise">Kitabı Elle Ekle</p>
+                        <input
+                          value={ilgiliElleForm.baslik}
+                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, baslik: e.target.value }))}
+                          placeholder="Başlık *"
+                          required
+                          className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                        />
+                        <input
+                          value={ilgiliElleForm.yazar}
+                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yazar: e.target.value }))}
+                          placeholder="Yazar"
+                          className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            value={ilgiliElleForm.yayinevi}
+                            onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yayinevi: e.target.value }))}
+                            placeholder="Yayınevi"
+                            className="flex-1 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                          />
+                          <input
+                            value={ilgiliElleForm.yil}
+                            onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yil: e.target.value }))}
+                            placeholder="Yıl"
+                            className="w-16 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                          />
+                        </div>
+                        <input
+                          value={ilgiliElleForm.posterUrl}
+                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, posterUrl: e.target.value }))}
+                          placeholder="Kapak görseli URL'i (opsiyonel)"
+                          className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={ilgiliElleKaydediliyor || !ilgiliElleForm.baslik.trim()}
+                            className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                          >
+                            {ilgiliElleKaydediliyor ? 'Ekleniyor...' : 'Kaydet'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIlgiliElleAcik(false)}
+                            className="rounded-sm bg-kagit px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi"
+                          >
+                            Vazgeç
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        {ilgiliSonuclar.length > 0 && (
+                          <ul className="max-h-56 space-y-1 overflow-y-auto">
+                            {ilgiliSonuclar.slice(0, 10).map((item) => {
+                              const v = ilgiliHedefTur === 'kitap' ? item.volumeInfo || {} : item
+                              const ad = ilgiliHedefTur === 'kitap' ? v.title : ilgiliHedefTur === 'sinema' ? v.title : v.name
+                              const kapak =
+                                ilgiliHedefTur === 'kitap'
+                                  ? (v.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                                  : v.poster_path
+                                    ? `${TMDB_POSTER}${v.poster_path}`
+                                    : ''
+                              const altSatir =
+                                ilgiliHedefTur === 'kitap'
+                                  ? [(v.authors || []).join(', '), v.publisher, DIL_ADLARI[v.language] || v.language].filter(Boolean).join(' · ')
+                                  : (ilgiliHedefTur === 'sinema' ? v.release_date : v.first_air_date)?.slice(0, 4) || ''
+                              return (
+                                <li key={item.id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => ilgiliSec(item)}
+                                    disabled={ilgiliEkleniyor === item.id}
+                                    className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left hover:bg-kagitKoyu disabled:opacity-40"
+                                  >
+                                    {kapak && <img src={kapak} alt="" className="h-9 w-6 shrink-0 rounded-sm object-cover" />}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-xs text-murekkep">{ilgiliEkleniyor === item.id ? 'Ekleniyor...' : ad}</p>
+                                      {altSatir && <p className="truncate text-[10px] text-kraft">{altSatir}</p>}
+                                    </div>
+                                  </button>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
+                        {ilgiliHedefTur === 'kitap' && kullanici && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIlgiliElleForm({ baslik: ilgiliArama, yazar: '', yayinevi: '', yil: '', posterUrl: '' })
+                              setIlgiliElleAcik(true)
+                            }}
+                            className="text-[11px] text-kraft hover:text-deniz hover:underline"
+                          >
+                            Aradığını bulamadın mı? Elle ekle →
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 )}

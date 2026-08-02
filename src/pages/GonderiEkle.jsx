@@ -9,6 +9,7 @@ import { kitapGetir, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
+const DIL_ADLARI = { tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', fr: 'Fransızca', es: 'İspanyolca', it: 'İtalyanca', ru: 'Rusça' }
 const YILDIZ_SECENEKLERI = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 const ETKINLIK_TURLERI = ['Tiyatro', 'Konser', 'Mekan', 'Sergi', 'Diğer']
 
@@ -605,6 +606,12 @@ export default function GonderiEkle() {
                               ),
                               ad: item.volumeInfo?.title,
                             }
+                    const kitapAltSatir =
+                      hedef === 'kitap'
+                        ? [(item.volumeInfo?.authors || []).join(', '), item.volumeInfo?.publisher, DIL_ADLARI[item.volumeInfo?.language] || item.volumeInfo?.language]
+                            .filter(Boolean)
+                            .join(' · ')
+                        : ''
                     return (
                       <button
                         key={item.id}
@@ -622,6 +629,7 @@ export default function GonderiEkle() {
                           )}
                         </div>
                         <p className="mt-1 truncate text-xs text-murekkep">{gorselVeAd.ad}</p>
+                        {kitapAltSatir && <p className="truncate text-[10px] text-kraft">{kitapAltSatir}</p>}
                       </button>
                     )
                   })}

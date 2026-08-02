@@ -356,3 +356,35 @@ export async function kitapYenidenZenginlestir(id) {
   await setDoc(ref, { ...doldurulacak, sonGuncellemeTarihi: serverTimestamp() }, { merge: true })
   return { id, ...eskiVeri, ...doldurulacak }
 }
+
+// Elle Kitap Ekle — Google Books'ta hiç bulunamayan (ya da bulunsa bile
+// yanlış/eksik baskısı görünen) kitaplar için. Türkçe basımlarda özellikle
+// yaygın bir sorun: aynı başlıkta çok sayıda sonuç geliyor ama hangisinin
+// hangi yayınevi/dile ait olduğu arama listesinde görünmüyor, ya da aranan
+// baskı Google'ın taradığı feed'lerde hiç yok. Bu fonksiyon, Google Books
+// ID'si olmayan bir "sentetik" ID (el_...) ile doğrudan dahili kataloğa yazar
+// — sonrasında bu kitap, sistemin geri kalanında normal bir kitap gibi
+// davranır (favorilere eklenebilir, puanlanabilir, listeye eklenebilir vb.).
+export async function kitapElleEkle({ baslik, yazar, yayinevi, yil, ozet, turler, sayfaSayisi, posterUrl }, kullanici) {
+  const id = `el_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+  const veri = {
+    baslik,
+    yazar: yazar || '',
+    yayinevi: yayinevi || '',
+    yil: yil || '',
+    ozet: ozet || '',
+    turler: turler || '',
+    sayfaSayisi: sayfaSayisi ? Number(sayfaSayisi) : null,
+    posterUrl: posterUrl || '',
+    dbPuan: null,
+    isbn13: '',
+    isbn10: '',
+    kaynaklar: { kullanici: true },
+    dogrulanmis: true, // elle girildiği için otomatik doğrulanmış sayılır, bakım kuyruğuna düşmesin
+    ekleyenUid: kullanici?.uid || null,
+    olusturulmaTarihi: serverTimestamp(),
+    sonGuncellemeTarihi: serverTimestamp(),
+  }
+  await setDoc(kitapRef(id), veri)
+  return { id, ...veri }
+}
