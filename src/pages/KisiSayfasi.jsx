@@ -278,15 +278,15 @@ export default function KisiSayfasi() {
 
   return (
     <div>
-      <div className="flex gap-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
         {kisi.profile_path && (
           <img
             src={`${TMDB_PROFIL}${kisi.profile_path}`}
             alt={kisi.name}
-            className="h-40 w-28 shrink-0 rounded-sm object-cover ring-1 ring-cizgi"
+            className="h-40 w-28 shrink-0 self-center rounded-sm object-cover ring-1 ring-cizgi sm:self-start"
           />
         )}
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="font-baslik text-2xl text-murekkep">{kisi.name}</h1>
           {kisi.known_for_department && <p className="text-xs text-kraft">{kisi.known_for_department}</p>}
           {kisi.biography && <p className="mt-2 text-sm text-murekkep leading-relaxed line-clamp-6">{kisi.biography}</p>}

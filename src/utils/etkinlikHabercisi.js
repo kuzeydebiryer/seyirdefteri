@@ -11,7 +11,7 @@
 // ayrı alanlar olarak saklanır — bir etkinlik, SON gösterimi geçene kadar
 // listede kalır.
 
-import { arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
+import { arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export async function habercEkle(kullanici, profil, { baslik, sehir, mekan, gorselUrl, tur, tarihler, biletSatisTarihi, satisLinki, bilgi }) {
@@ -54,4 +54,13 @@ export async function katilimDegistir(habercId, uid, katiliyorMu) {
 
 export async function habercSil(habercId) {
   await deleteDoc(doc(db, 'etkinlikHabercileri', habercId))
+}
+
+// Anasayfa akışında güncelerle karışık gösterilecek son duyurular — burada
+// "yaklaşan etkinlik" filtresi yok, sadece EN SON PAYLAŞILAN duyurular (akışın
+// mantığı zaten "en yeni ne oldu" olduğu için, eklenme tarihine göre sıralanır).
+export async function sonHabercileriGetir(limitSayisi = 10) {
+  const q = query(collection(db, 'etkinlikHabercileri'), orderBy('eklemeTarihi', 'desc'), limit(limitSayisi))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data(), _tur: 'haberci' }))
 }
