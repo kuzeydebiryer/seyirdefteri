@@ -6,11 +6,17 @@ import { favoriMi } from '../hooks/useFavoriler.js'
 import { kisiDegerlendir } from '../utils/kisiDegerlendirme.js'
 import { useKisiDegerlendirmeleri } from '../hooks/useKisiDegerlendirmeleri.js'
 import YildizPuan from '../components/YildizPuan.jsx'
+import YildizSecici from '../components/YildizSecici.jsx'
+import { esereAitListeleriGetir } from '../utils/kisiselListe.js'
+import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
+
+import { kitapAramaSonucundanKaydet, kitapElleEkle } from '../utils/kitapKatalog.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342'
 const TMDB_PROFIL = 'https://image.tmdb.org/t/p/w300'
-const YILDIZ_SECENEKLERI = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
+const DIL_ADLARI = { tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', fr: 'Fransızca', es: 'İspanyolca', it: 'İtalyanca', ru: 'Rusça' }
 
 export default function KisiSayfasi() {
   const { id } = useParams()
@@ -35,6 +41,16 @@ export default function KisiSayfasi() {
   const [puanTaslak, setPuanTaslak] = useState(4)
   const [yorumTaslak, setYorumTaslak] = useState('')
   const [degerlendirmeKaydediliyor, setDegerlendirmeKaydediliyor] = useState(false)
+
+  const [ilgiliKitaplar, setIlgiliKitaplar] = useState([])
+  const [ilgiliEkleAcik, setIlgiliEkleAcik] = useState(false)
+  const [ilgiliArama, setIlgiliArama] = useState('')
+  const [ilgiliSonuclar, setIlgiliSonuclar] = useState([])
+  const [ilgiliAramaYukleniyor, setIlgiliAramaYukleniyor] = useState(false)
+  const [ilgiliEkleniyor, setIlgiliEkleniyor] = useState(null)
+  const [ilgiliElleAcik, setIlgiliElleAcik] = useState(false)
+  const [ilgiliElleForm, setIlgiliElleForm] = useState({ baslik: '', yazar: '', yayinevi: '', yil: '', posterUrl: '' })
+  const [ilgiliElleKaydediliyor, setIlgiliElleKaydediliyor] = useState(false)
 
   useEffect(() => {
     let iptal = false
@@ -109,6 +125,91 @@ export default function KisiSayfasi() {
       setYorumTaslak(kullanicininDegerlendirmesi.yorum || '')
     }
   }, [kullanicininDegerlendirmesi])
+
+  useEffect(() => {
+    let iptal = false
+    ilgiliEserleriGetir('kisi', Number(id), kullanici?.uid).then((l) => {
+      if (!iptal) setIlgiliKitaplar(l)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [id, kullanici?.uid])
+
+  async function ilgiliAra(e) {
+    e.preventDefault()
+    if (!ilgiliArama.trim()) return
+    setIlgiliAramaYukleniyor(true)
+    setIlgiliSonuclar([])
+    try {
+      const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
+      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(ilgiliArama)}&maxResults=10${anahtarParcasi}`
+      const res = await fetch(url)
+      const data = await res.json()
+      setIlgiliSonuclar(data.items || [])
+    } finally {
+      setIlgiliAramaYukleniyor(false)
+    }
+  }
+
+  async function ilgiliSec(item) {
+    if (!kullanici) return
+    setIlgiliEkleniyor(item.id)
+    try {
+      const kitap = await kitapAramaSonucundanKaydet(item)
+      const hedef = { tur: 'kitap', disId: kitap.id, baslik: kitap.baslik, alt: kitap.yazar, posterUrl: kitap.posterUrl }
+      const kaynak = {
+        tur: 'kisi',
+        disId: Number(id),
+        baslik: kisi.name,
+        alt: kisi.known_for_department || '',
+        posterUrl: kisi.profile_path ? `${TMDB_PROFIL}${kisi.profile_path}` : '',
+      }
+      await ilgiliEserEkle(kaynak, hedef, kullanici)
+      setIlgiliKitaplar((onceki) => [
+        ...onceki,
+        { digerTur: 'kitap', digerDisId: hedef.disId, digerBaslik: hedef.baslik, digerPosterUrl: hedef.posterUrl, digerAlt: hedef.alt },
+      ])
+      setIlgiliArama('')
+      setIlgiliSonuclar([])
+      setIlgiliEkleAcik(false)
+    } finally {
+      setIlgiliEkleniyor(null)
+    }
+  }
+
+  async function ilgiliElleKaydet(e) {
+    e.preventDefault()
+    if (!ilgiliElleForm.baslik.trim() || !kullanici) return
+    setIlgiliElleKaydediliyor(true)
+    try {
+      const kitap = await kitapElleEkle(ilgiliElleForm, kullanici)
+      const hedef = { tur: 'kitap', disId: kitap.id, baslik: kitap.baslik, alt: kitap.yazar, posterUrl: kitap.posterUrl }
+      const kaynak = {
+        tur: 'kisi',
+        disId: Number(id),
+        baslik: kisi.name,
+        alt: kisi.known_for_department || '',
+        posterUrl: kisi.profile_path ? `${TMDB_PROFIL}${kisi.profile_path}` : '',
+      }
+      await ilgiliEserEkle(kaynak, hedef, kullanici)
+      setIlgiliKitaplar((onceki) => [
+        ...onceki,
+        { digerTur: 'kitap', digerDisId: hedef.disId, digerBaslik: hedef.baslik, digerPosterUrl: hedef.posterUrl, digerAlt: hedef.alt },
+      ])
+      setIlgiliElleAcik(false)
+      setIlgiliEkleAcik(false)
+    } finally {
+      setIlgiliElleKaydediliyor(false)
+    }
+  }
+
+  async function ilgiliKaldirTiklandi(kitap) {
+    if (!window.confirm('Bu bağlantıyı kaldırmak istediğine emin misin?')) return
+    const kaynak = { tur: 'kisi', disId: Number(id) }
+    await ilgiliEserSil(kaynak, { tur: 'kitap', disId: kitap.digerDisId })
+    setIlgiliKitaplar((onceki) => onceki.filter((k) => k.digerDisId !== kitap.digerDisId))
+  }
 
   async function favoriDegistir() {
     if (!kullanici || !kisi) return
@@ -204,60 +305,192 @@ export default function KisiSayfasi() {
           )}
 
           {kullanici && (
-            <button
-              onClick={favoriDegistir}
-              disabled={favoriIsleniyor}
-              className={`mt-3 rounded-sm px-3 py-1.5 font-govde text-xs ${
-                favoriMi_ ? 'bg-muhur text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
-              } disabled:opacity-40`}
-            >
-              {favoriMi_ ? '★ Favorilerimde' : '☆ Favorilere Ekle'}
-            </button>
+            <div className="mt-3 flex flex-wrap items-start gap-6">
+              <button onClick={favoriDegistir} disabled={favoriIsleniyor} className="flex flex-col items-center gap-1 disabled:opacity-40">
+                <span className={`text-2xl ${favoriMi_ ? 'text-muhur' : 'text-cizgi'}`}>{favoriMi_ ? '♥' : '♡'}</span>
+                <span className="text-[10px] uppercase tracking-wide text-kraft">Favori</span>
+              </button>
+
+              <div className="relative flex flex-col items-center gap-1">
+                <button onClick={() => setIlgiliEkleAcik((a) => !a)} className="flex flex-col items-center gap-1">
+                  <span className="text-2xl text-cizgi">📚</span>
+                  <span className="text-[10px] uppercase tracking-wide text-kraft">İlgili Kitap</span>
+                </button>
+                {ilgiliEkleAcik && (
+                  <div className="absolute left-0 top-full z-10 mt-1 w-72 space-y-2 rounded-sm bg-kagit p-3 shadow-lg ring-1 ring-cizgi">
+                    {ilgiliElleAcik ? (
+                      <form onSubmit={ilgiliElleKaydet} className="space-y-2">
+                        <p className="text-[11px] uppercase tracking-widest text-gise">Kitabı Elle Ekle</p>
+                        <input
+                          value={ilgiliElleForm.baslik}
+                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, baslik: e.target.value }))}
+                          placeholder="Başlık *"
+                          required
+                          className="w-full rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                        />
+                        <input
+                          value={ilgiliElleForm.yazar}
+                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yazar: e.target.value }))}
+                          placeholder="Yazar"
+                          className="w-full rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            value={ilgiliElleForm.yayinevi}
+                            onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yayinevi: e.target.value }))}
+                            placeholder="Yayınevi"
+                            className="flex-1 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                          />
+                          <input
+                            value={ilgiliElleForm.yil}
+                            onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yil: e.target.value }))}
+                            placeholder="Yıl"
+                            className="w-16 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                          />
+                        </div>
+                        <input
+                          value={ilgiliElleForm.posterUrl}
+                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, posterUrl: e.target.value }))}
+                          placeholder="Kapak görseli URL'i (opsiyonel)"
+                          className="w-full rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={ilgiliElleKaydediliyor || !ilgiliElleForm.baslik.trim()}
+                            className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                          >
+                            {ilgiliElleKaydediliyor ? 'Ekleniyor...' : 'Kaydet'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIlgiliElleAcik(false)}
+                            className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi"
+                          >
+                            Vazgeç
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <form onSubmit={ilgiliAra} className="flex gap-2">
+                          <input
+                            type="text"
+                            value={ilgiliArama}
+                            onChange={(e) => setIlgiliArama(e.target.value)}
+                            placeholder="Kitap ara..."
+                            className="flex-1 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                          />
+                          <button type="submit" className="rounded-sm bg-deniz px-2 py-1 font-govde text-xs text-kagit">
+                            {ilgiliAramaYukleniyor ? '...' : 'Ara'}
+                          </button>
+                        </form>
+                        {ilgiliSonuclar.length > 0 && (
+                          <ul className="max-h-56 space-y-1 overflow-y-auto">
+                            {ilgiliSonuclar.slice(0, 10).map((item) => {
+                              const v = item.volumeInfo || {}
+                              const kapak = (v.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                              const altSatir = [(v.authors || []).join(', '), v.publisher, DIL_ADLARI[v.language] || v.language]
+                                .filter(Boolean)
+                                .join(' · ')
+                              return (
+                                <li key={item.id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => ilgiliSec(item)}
+                                    disabled={ilgiliEkleniyor === item.id}
+                                    className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left hover:bg-kagitKoyu disabled:opacity-40"
+                                  >
+                                    {kapak && <img src={kapak} alt="" className="h-9 w-6 shrink-0 rounded-sm object-cover" />}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-xs text-murekkep">{ilgiliEkleniyor === item.id ? 'Ekleniyor...' : v.title}</p>
+                                      {altSatir && <p className="truncate text-[10px] text-kraft">{altSatir}</p>}
+                                    </div>
+                                  </button>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIlgiliElleForm({ baslik: ilgiliArama, yazar: '', yayinevi: '', yil: '', posterUrl: '' })
+                            setIlgiliElleAcik(true)
+                          }}
+                          className="text-[11px] text-kraft hover:text-deniz hover:underline"
+                        >
+                          Aradığını bulamadın mı? Elle ekle →
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
-          <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi inline-block">
-            <p className="text-xs uppercase tracking-widest text-gise">Topluluk Ortalaması</p>
-            {ortalamaPuan != null ? (
-              <div className="mt-1 flex items-center gap-2">
-                <YildizPuan puan={Math.round(ortalamaPuan * 2) / 2} boyut="text-lg" />
-                <span className="text-xs text-kraft">({puanSayisi} kişi puanladı)</span>
+          {ilgiliKitaplar.length > 0 && (
+            <div className="mt-4">
+              <p className="mb-1 text-xs text-kraft">📚 İlgili Kitaplar</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {ilgiliKitaplar.map((k) => (
+                  <div key={k.digerDisId} className="group relative w-16 shrink-0">
+                    <Link to={`/kitap/${k.digerDisId}`}>
+                      <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                        {k.digerPosterUrl && <img src={k.digerPosterUrl} alt={k.digerBaslik} className="h-full w-full object-cover" />}
+                      </div>
+                      <p className="mt-1 truncate text-[11px] text-murekkep">{k.digerBaslik}</p>
+                    </Link>
+                    {kullanici && (
+                      <button
+                        onClick={() => ilgiliKaldirTiklandi(k)}
+                        className="absolute right-0 top-0 rounded-full bg-kagit/90 px-1 text-[10px] text-kraft opacity-0 ring-1 ring-cizgi transition-opacity hover:text-muhur group-hover:opacity-100"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {kullanici ? (
+              <YildizSecici
+                deger={puanTaslak}
+                onSec={(p) => {
+                  setPuanTaslak(p)
+                  kisiDegerlendir(id, { puan: p, yorum: yorumTaslak, kisiAdi: kisi.name, kisiFotoUrl: kisi.profile_path ? `${TMDB_PROFIL}${kisi.profile_path}` : '', kullanici }).then(degerlendirmeleriYenile)
+                }}
+                boyut="text-lg"
+              />
             ) : (
-              <p className="mt-1 text-sm text-kraft">Henüz kimse puanlamadı.</p>
+              <YildizSecici deger={ortalamaPuan} disabled boyut="text-lg" />
             )}
+            <span className="text-xs text-kraft">
+              {ortalamaPuan != null ? `Topluluk: ${ortalamaPuan.toFixed(1)} (${puanSayisi} kişi)` : 'Henüz kimse puanlamadı'}
+            </span>
           </div>
         </div>
       </div>
 
       {kullanici && (
-        <form onSubmit={degerlendirmeGonder} className="mt-6 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi max-w-md">
-          <p className="font-govde text-sm text-murekkep">
-            {kullanicininDegerlendirmesi ? 'Değerlendirmeni güncelle' : 'Bu kişiyi değerlendir'}
-          </p>
-          <select
-            value={puanTaslak}
-            onChange={(e) => setPuanTaslak(Number(e.target.value))}
-            className="rounded-sm bg-kagit px-2 py-1 text-sm text-murekkep ring-1 ring-cizgi"
-          >
-            {YILDIZ_SECENEKLERI.map((s) => (
-              <option key={s} value={s}>
-                {s} ★
-              </option>
-            ))}
-          </select>
+        <form onSubmit={degerlendirmeGonder} className="mt-4 max-w-md">
           <textarea
             value={yorumTaslak}
             onChange={(e) => setYorumTaslak(e.target.value)}
             rows={2}
             placeholder="Kısa bir yorum (opsiyonel)"
-            className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
           />
           <button
             type="submit"
             disabled={degerlendirmeKaydediliyor}
-            className="rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+            className="mt-2 rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
           >
-            {degerlendirmeKaydediliyor ? 'Kaydediliyor...' : 'Kaydet'}
+            {degerlendirmeKaydediliyor ? 'Kaydediliyor...' : 'Yorumu Kaydet'}
           </button>
         </form>
       )}

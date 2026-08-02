@@ -6,6 +6,7 @@ import { useYonetmenler } from '../hooks/useYonetmenler.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { yonetmenEkle } from '../utils/yonetmen.js'
 import HaberBolumu from '../components/HaberBolumu.jsx'
+import KisiArama from '../components/KisiArama.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_PROFIL = 'https://image.tmdb.org/t/p/w300'
@@ -76,6 +77,8 @@ export default function Oyuncular() {
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-6">Oyuncular &amp; Yönetmenler</h1>
+
+      <KisiArama />
 
       <HaberBolumu kategori="kisi" haberler={haberler} yenidenYukle={haberleriYenile} />
 

@@ -43,15 +43,21 @@ export async function kategorilerGetir(sezonId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
-export async function adayEkle(sezonId, kategoriId, { tmdbId, filmBasligi, filmYili, posterUrl, kisiAdi, sira }) {
+// tmdbId: film bazlı adaylarda (En İyi Film gibi) zorunlu. kisiTmdbId: oyunculuk/
+// yönetmenlik kategorilerinde kişinin kendisini birincil aday yapmak için —
+// bu durumda tmdbId hâlâ verilir (afiş yerine kişi fotoğrafı öncelikli gösterilir)
+// ama esas kimlik kişi olur, filmBasligi ise "hangi film için aday olduğu" bilgisidir.
+export async function adayEkle(sezonId, kategoriId, { tmdbId, filmBasligi, filmYili, posterUrl, kisiAdi, kisiTmdbId, kisiFotoUrl, sira }) {
   await addDoc(collection(db, 'oscarAdaylari'), {
     sezonId,
     kategoriId,
-    tmdbId,
+    tmdbId: tmdbId ?? null,
     filmBasligi,
     filmYili: filmYili || '',
     posterUrl: posterUrl || '',
-    kisiAdi: kisiAdi || '', // oyunculuk/yönetmenlik gibi kategorilerde kişi adı (opsiyonel)
+    kisiAdi: kisiAdi || '',
+    kisiTmdbId: kisiTmdbId ?? null,
+    kisiFotoUrl: kisiFotoUrl || '',
     sira: sira ?? 0,
   })
 }

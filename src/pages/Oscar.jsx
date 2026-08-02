@@ -22,6 +22,7 @@ import {
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
+const TMDB_PROFIL = 'https://image.tmdb.org/t/p/w300'
 
 function gunSayisi(torenTarihi) {
   if (!torenTarihi) return null
@@ -30,8 +31,10 @@ function gunSayisi(torenTarihi) {
 }
 
 function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
+  const [mod, setMod] = useState('film') // 'film' | 'kisi'
   const [arama, setArama] = useState('')
-  const [kisiAdi, setKisiAdi] = useState('')
+  const [kisiAdi, setKisiAdi] = useState('') // 'film' modunda: aday filmle ilişkili kişi adı (opsiyonel)
+  const [ilgiliFilm, setIlgiliFilm] = useState('') // 'kisi' modunda: bu kişinin hangi film için aday olduğu
   const [sonuclar, setSonuclar] = useState([])
   const [aramaYukleniyor, setAramaYukleniyor] = useState(false)
   const [ekleniyor, setEkleniyor] = useState(false)
@@ -41,7 +44,8 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
     if (!arama.trim() || !TMDB_API_KEY) return
     setAramaYukleniyor(true)
     try {
-      const url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(arama)}`
+      const uc = mod === 'kisi' ? 'person' : 'movie'
+      const url = `https://api.themoviedb.org/3/search/${uc}?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(arama)}`
       const res = await fetch(url)
       const data = await res.json()
       setSonuclar(data.results || [])
@@ -50,19 +54,30 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
     }
   }
 
-  async function sec(film) {
+  async function sec(secim) {
     setEkleniyor(true)
     try {
-      await adayEkle(sezonId, kategori.id, {
-        tmdbId: film.id,
-        filmBasligi: film.title,
-        filmYili: film.release_date ? film.release_date.slice(0, 4) : '',
-        posterUrl: film.poster_path ? `${TMDB_POSTER}${film.poster_path}` : '',
-        kisiAdi,
-        sira: siradakiSira,
-      })
+      if (mod === 'kisi') {
+        await adayEkle(sezonId, kategori.id, {
+          kisiTmdbId: secim.id,
+          kisiAdi: secim.name,
+          kisiFotoUrl: secim.profile_path ? `${TMDB_PROFIL}${secim.profile_path}` : '',
+          filmBasligi: ilgiliFilm,
+          sira: siradakiSira,
+        })
+      } else {
+        await adayEkle(sezonId, kategori.id, {
+          tmdbId: secim.id,
+          filmBasligi: secim.title,
+          filmYili: secim.release_date ? secim.release_date.slice(0, 4) : '',
+          posterUrl: secim.poster_path ? `${TMDB_POSTER}${secim.poster_path}` : '',
+          kisiAdi,
+          sira: siradakiSira,
+        })
+      }
       setArama('')
       setKisiAdi('')
+      setIlgiliFilm('')
       setSonuclar([])
       onEklendi()
     } finally {
@@ -72,36 +87,79 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
 
   return (
     <div className="mt-2 space-y-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
+      <div className="flex gap-1">
+        {[
+          { id: 'film', etiket: 'Film' },
+          { id: 'kisi', etiket: 'Kişi (Oyuncu/Yönetmen)' },
+        ].map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => {
+              setMod(m.id)
+              setSonuclar([])
+            }}
+            className={`rounded-sm px-2 py-1 font-govde text-[11px] ${
+              mod === m.id ? 'bg-murekkep text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+            }`}
+          >
+            {m.etiket}
+          </button>
+        ))}
+      </div>
+
       <form onSubmit={ara} className="flex gap-2">
         <input
           type="text"
           value={arama}
           onChange={(e) => setArama(e.target.value)}
-          placeholder="Film ara..."
+          placeholder={mod === 'kisi' ? 'Oyuncu/yönetmen ara...' : 'Film ara...'}
           className="flex-1 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
         />
-        <input
-          type="text"
-          value={kisiAdi}
-          onChange={(e) => setKisiAdi(e.target.value)}
-          placeholder="Kişi adı (opsiyonel)"
-          className="w-36 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
-        />
+        {mod === 'kisi' ? (
+          <input
+            type="text"
+            value={ilgiliFilm}
+            onChange={(e) => setIlgiliFilm(e.target.value)}
+            placeholder="Hangi film için? (ör. The Odyssey)"
+            className="w-48 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+          />
+        ) : (
+          <input
+            type="text"
+            value={kisiAdi}
+            onChange={(e) => setKisiAdi(e.target.value)}
+            placeholder="Kişi adı (opsiyonel)"
+            className="w-36 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+          />
+        )}
         <button type="submit" className="rounded-sm bg-deniz px-2 py-1 font-govde text-xs text-kagit">
           {aramaYukleniyor ? '...' : 'Ara'}
         </button>
       </form>
       {sonuclar.length > 0 && (
         <div className="grid grid-cols-6 gap-1.5">
-          {sonuclar.slice(0, 12).map((film) => (
-            <button key={film.id} onClick={() => sec(film)} disabled={ekleniyor} className="text-left disabled:opacity-40">
-              <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                {film.poster_path && <img src={`${TMDB_POSTER}${film.poster_path}`} alt={film.title} className="h-full w-full object-cover" />}
-              </div>
-              <p className="truncate text-[10px] text-murekkep">{film.title}</p>
-            </button>
-          ))}
+          {sonuclar.slice(0, 12).map((sonuc) => {
+            const foto = mod === 'kisi' ? sonuc.profile_path : sonuc.poster_path
+            const ad = mod === 'kisi' ? sonuc.name : sonuc.title
+            return (
+              <button
+                key={sonuc.id}
+                onClick={() => sec(sonuc)}
+                disabled={ekleniyor || (mod === 'kisi' && !ilgiliFilm.trim())}
+                className="text-left disabled:opacity-40"
+              >
+                <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                  {foto && <img src={`${mod === 'kisi' ? TMDB_PROFIL : TMDB_POSTER}${foto}`} alt={ad} className="h-full w-full object-cover" />}
+                </div>
+                <p className="truncate text-[10px] text-murekkep">{ad}</p>
+              </button>
+            )
+          })}
         </div>
+      )}
+      {mod === 'kisi' && !ilgiliFilm.trim() && sonuclar.length > 0 && (
+        <p className="text-[10px] text-muhur">Eklemeden önce "Hangi film için?" alanını doldur.</p>
       )}
     </div>
   )
@@ -520,6 +578,11 @@ export default function Oscar() {
                 {k.adaylar.map((a) => {
                   const buBenimTahminim = kendiTahminim === a.id
                   const buKazanan = k.kazananAdayId === a.id
+                  const kisiBazliMi = !!a.kisiTmdbId
+                  const gorselUrl = kisiBazliMi ? a.kisiFotoUrl : a.posterUrl
+                  const ustBaslik = kisiBazliMi ? a.kisiAdi : a.filmBasligi
+                  const altBaslik = kisiBazliMi ? a.filmBasligi : a.kisiAdi
+                  const link = kisiBazliMi ? `/kisi/${a.kisiTmdbId}` : `/film/${a.tmdbId}`
                   return (
                     <div key={a.id} className="group relative">
                       <button
@@ -533,7 +596,7 @@ export default function Oscar() {
                             buKazanan ? 'ring-gise' : buBenimTahminim ? 'ring-muhur' : 'ring-cizgi'
                           }`}
                         >
-                          {a.posterUrl && <img src={a.posterUrl} alt={a.filmBasligi} className="h-full w-full object-cover" />}
+                          {gorselUrl && <img src={gorselUrl} alt={ustBaslik} className="h-full w-full object-cover" />}
                           {buKazanan && (
                             <span className="absolute left-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-gise text-xs">
                               🏆
@@ -546,10 +609,10 @@ export default function Oscar() {
                           )}
                         </div>
                       </button>
-                      <Link to={`/film/${a.tmdbId}`} className="mt-1 block truncate text-xs text-murekkep hover:text-deniz hover:underline">
-                        {a.filmBasligi}
+                      <Link to={link} className="mt-1 block truncate text-xs text-murekkep hover:text-deniz hover:underline">
+                        {ustBaslik}
                       </Link>
-                      {a.kisiAdi && <p className="truncate text-[11px] text-kraft">{a.kisiAdi}</p>}
+                      {altBaslik && <p className="truncate text-[11px] text-kraft">{altBaslik}</p>}
                       {kullanici && !sezon.kilitli && (
                         <button
                           onClick={() => adaySilTiklandi(a.id)}
@@ -573,7 +636,7 @@ export default function Oscar() {
                         <li key={t.id}>
                           <span className="text-murekkep">{t.kullaniciId === kullanici?.uid ? 'Sen' : t.kullaniciAdi}</span>
                           {' → '}
-                          {aday?.filmBasligi || '(silinmiş aday)'}
+                          {aday ? (aday.kisiTmdbId ? `${aday.kisiAdi} (${aday.filmBasligi})` : aday.filmBasligi) : '(silinmiş aday)'}
                         </li>
                       )
                     })}
