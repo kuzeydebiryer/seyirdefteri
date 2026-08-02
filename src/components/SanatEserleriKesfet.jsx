@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
-import { sanatEseriAra, rastgeleEserGetir } from '../utils/metMuseum.js'
+import { sanatEseriAra, rastgeleEserGetir } from '../utils/sanatEserleri.js'
 
 function EserKarti({ eser }) {
   return (
-    <a href={eser.objectURL} target="_blank" rel="noreferrer" className="block">
-      <div className="aspect-[3/4] overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
-        <img src={eser.primaryImageSmall} alt={eser.title} loading="lazy" className="h-full w-full object-cover" />
+    <a href={eser.sourceUrl} target="_blank" rel="noreferrer" className="block">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
+        <img src={eser.imageUrl} alt={eser.title} loading="lazy" className="h-full w-full object-cover" />
+        <span className="absolute bottom-0 right-0 rounded-tl-sm bg-murekkep/80 px-1 py-0.5 text-[9px] text-kagit">
+          {eser.kaynakAdi}
+        </span>
       </div>
       <p className="mt-1 truncate text-xs font-medium text-murekkep">{eser.title || 'İsimsiz'}</p>
       <p className="truncate text-[11px] text-kraft">
@@ -55,27 +58,26 @@ export default function SanatEserleriKesfet() {
   return (
     <div className="mb-10">
       <h2 className="font-baslik text-lg text-murekkep mb-1">🖼️ Sanat Eserleri Keşfet</h2>
-      <p className="mb-3 text-xs text-kraft">The Metropolitan Museum of Art'ın açık erişim koleksiyonundan.</p>
+      <p className="mb-3 text-xs text-kraft">The Met ve Art Institute of Chicago'nun açık erişim koleksiyonlarından.</p>
 
       {!gununEseriYukleniyor && gununEseri && (
         <div className="mb-4 flex gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-          <a href={gununEseri.objectURL} target="_blank" rel="noreferrer" className="shrink-0">
+          <a href={gununEseri.sourceUrl} target="_blank" rel="noreferrer" className="shrink-0">
             <img
-              src={gununEseri.primaryImageSmall}
+              src={gununEseri.imageUrl}
               alt={gununEseri.title}
               className="h-28 w-20 rounded-sm object-cover ring-1 ring-cizgi"
             />
           </a>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] uppercase tracking-widest text-gise">Günün Eseri</p>
-            <a href={gununEseri.objectURL} target="_blank" rel="noreferrer" className="mt-1 block truncate font-baslik text-sm text-murekkep hover:underline">
+            <p className="text-[11px] uppercase tracking-widest text-gise">Günün Eseri · {gununEseri.kaynakAdi}</p>
+            <a href={gununEseri.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 block truncate font-baslik text-sm text-murekkep hover:underline">
               {gununEseri.title || 'İsimsiz'}
             </a>
             <p className="truncate text-xs text-kraft">
               {gununEseri.artistDisplayName || 'Bilinmeyen sanatçı'}
               {gununEseri.objectDate && ` · ${gununEseri.objectDate}`}
             </p>
-            {gununEseri.department && <p className="truncate text-[11px] text-kraft">{gununEseri.department}</p>}
             <button onClick={gununEseriniYenile} className="mt-2 text-[11px] text-kraft hover:text-deniz hover:underline">
               🔄 Başka Bir Eser Göster
             </button>
@@ -101,7 +103,7 @@ export default function SanatEserleriKesfet() {
       {sonuclar.length > 0 && (
         <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-6">
           {sonuclar.map((eser) => (
-            <EserKarti key={eser.objectID} eser={eser} />
+            <EserKarti key={eser.id} eser={eser} />
           ))}
         </div>
       )}
