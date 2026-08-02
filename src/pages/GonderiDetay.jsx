@@ -21,6 +21,8 @@ import { useTartismaEtkinlikleri } from '../hooks/useTartismaEtkinlikleri.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import EtkinlikKarti from '../components/EtkinlikKarti.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
+import HavaDurumuOzeti from '../components/HavaDurumuOzeti.jsx'
+import YerBilgiKutusu from '../components/YerBilgiKutusu.jsx'
 
 function tarihGoster(deger) {
   if (!deger) return ''
@@ -196,6 +198,17 @@ export default function GonderiDetay() {
                 )}
               </p>
             )}
+
+            {gonderi.tur === 'gezi' && gonderi.enlem && gonderi.boylem && gonderi.baslangicTarihi && (
+              <HavaDurumuOzeti
+                enlem={gonderi.enlem}
+                boylem={gonderi.boylem}
+                baslangicTarihi={gonderi.baslangicTarihi}
+                bitisTarihi={gonderi.bitisTarihi}
+              />
+            )}
+
+            {gonderi.tur === 'gezi' && gonderi.konum && <YerBilgiKutusu yer={gonderi.konum} />}
 
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-kraft">
               {gonderi.turler && <span>{gonderi.turler}</span>}
