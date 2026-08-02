@@ -18,7 +18,7 @@ import BinKitapIkon from '../components/ikonlar/BinKitapIkon.jsx'
 import PuanIceAktar from '../components/PuanIceAktar.jsx'
 import { kahinOlduguSezonlariGetir } from '../utils/oscar.js'
 import { tumIstatistikleriYenidenHesapla } from '../utils/istatistikYenidenHesapla.js'
-import { kullaniciKoleksiyonuGetir } from '../utils/sanatKoleksiyonu.js'
+import { kullaniciKoleksiyonuGetir, eseriKoleksiyondanCikar } from '../utils/sanatKoleksiyonu.js'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
@@ -222,6 +222,7 @@ export default function Profil() {
     { id: 'favoriler', etiket: 'Favoriler' },
     { id: 'raflarim', etiket: 'Raflarım' },
     { id: 'yorumlarim', etiket: 'Yorumlarım' },
+    { id: 'sanatKoleksiyonum', etiket: 'Sanat Koleksiyonlarım' },
   ]
 
   async function rafOlusturTiklandi(e) {
@@ -540,26 +541,6 @@ export default function Profil() {
           </button>
         ))}
       </div>
-
-      {sanatKoleksiyonu.length > 0 && (
-        <div className="mb-8">
-          <h2 className="font-baslik text-lg text-murekkep mb-3">🖼️ Sanat Koleksiyonum</h2>
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-            {sanatKoleksiyonu.map((eser) => (
-              <a key={eser.id} href={eser.sourceUrl} target="_blank" rel="noreferrer" className="block">
-                <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                  <img src={eser.imageUrl} alt={eser.title} loading="lazy" className="h-full w-full object-cover" />
-                  <span className="absolute bottom-0 right-0 rounded-tl-sm bg-murekkep/80 px-1 py-0.5 text-[9px] text-kagit">
-                    {eser.kaynakAdi}
-                  </span>
-                </div>
-                <p className="mt-1 truncate text-xs text-murekkep">{eser.title}</p>
-                <p className="truncate text-[11px] text-kraft">{eser.artistDisplayName}</p>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* İzlediklerim (sadece Film/Dizi) */}
       {sekme === 'izlediklerim' && (
@@ -1125,6 +1106,40 @@ export default function Profil() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {sekme === 'sanatKoleksiyonum' && (
+        <div>
+          {sanatKoleksiyonu.length === 0 && <p className="text-sm text-kraft">Henüz koleksiyona eklenmiş bir eser yok.</p>}
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {sanatKoleksiyonu.map((eser) => (
+              <div key={eser.id} className="group relative">
+                <a href={eser.sourceUrl} target="_blank" rel="noreferrer" className="block">
+                  <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                    <img src={eser.imageUrl} alt={eser.title} loading="lazy" className="h-full w-full object-cover" />
+                    <span className="absolute bottom-0 right-0 rounded-tl-sm bg-murekkep/80 px-1 py-0.5 text-[9px] text-kagit">
+                      {eser.kaynakAdi}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-murekkep">{eser.title}</p>
+                  <p className="truncate text-[11px] text-kraft">{eser.artistDisplayName}</p>
+                </a>
+                {benimProfilimMi && (
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm('Bu eseri koleksiyonundan çıkarmak istediğine emin misin?')) return
+                      await eseriKoleksiyondanCikar(uid, eser.eserId)
+                      setSanatKoleksiyonu((liste) => liste.filter((e) => e.id !== eser.id))
+                    }}
+                    className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft opacity-0 ring-1 ring-cizgi transition-opacity hover:text-muhur group-hover:opacity-100"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
