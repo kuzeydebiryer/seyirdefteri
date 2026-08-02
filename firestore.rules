@@ -61,6 +61,16 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
+    // Etkinlik Habercisi: ileriye dönük etkinlik duyuru panosu. "katilacaklar"
+    // dizisi herkes tarafından güncellenebilir (katılım işareti); diğer alanlar
+    // sadece ekleyen tarafından silinebilir.
+    match /etkinlikHabercileri/{habercId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
     // İlgili Eserler: bir filmin uyarlandığı kitap gibi çift yönlü bağlantılar.
     // Herkes okuyabilir, giriş yapmış herkes ekleyip düzeltebilir (kitaplar
     // kataloğuyla aynı pragmatik desen).
