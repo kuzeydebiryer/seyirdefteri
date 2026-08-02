@@ -11,7 +11,7 @@ const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 const DIL_ADLARI = { tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', fr: 'Fransızca', es: 'İspanyolca', it: 'İtalyanca', ru: 'Rusça' }
 const YILDIZ_SECENEKLERI = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
-const ETKINLIK_TURLERI = ['Tiyatro', 'Konser', 'Mekan', 'Sergi', 'Diğer']
+const ETKINLIK_TURLERI = ['Tiyatro', 'Opera', 'Bale', 'Konser', 'Festival', 'Müze', 'Sergi', 'Stand-up', 'Konferans/Panel', 'Mekan', 'Diğer']
 
 const KATEGORILER = [
   { id: 'sinema', etiket: 'Film' },

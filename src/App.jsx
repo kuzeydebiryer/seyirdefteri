@@ -26,6 +26,7 @@ import AlintiDuvari from './pages/AlintiDuvari.jsx'
 import Oyuncular from './pages/Oyuncular.jsx'
 import Yazilar from './pages/Yazilar.jsx'
 import Gezi from './pages/Gezi.jsx'
+import EtkinlikDunyasi from './pages/EtkinlikDunyasi.jsx'
 import YonetmenSayfasi from './pages/YonetmenSayfasi.jsx'
 import YazarSayfasi from './pages/YazarSayfasi.jsx'
 import RafDetay from './pages/RafDetay.jsx'
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/oyuncular" element={<OzelRota><Oyuncular /></OzelRota>} />
           <Route path="/yazilar" element={<OzelRota><Yazilar /></OzelRota>} />
           <Route path="/gezi" element={<OzelRota><Gezi /></OzelRota>} />
+          <Route path="/etkinlik-dunyasi" element={<OzelRota><EtkinlikDunyasi /></OzelRota>} />
           <Route path="/yonetmen/:id" element={<OzelRota><YonetmenSayfasi /></OzelRota>} />
           <Route path="/yazar/:ad" element={<OzelRota><YazarSayfasi /></OzelRota>} />
           <Route path="/raf/:id" element={<OzelRota><RafDetay /></OzelRota>} />

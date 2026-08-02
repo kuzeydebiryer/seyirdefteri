@@ -10,15 +10,14 @@ import Logo from './Logo.jsx'
 const LINKLER = [
   { yol: '/filmler', etiket: 'Film', ikon: '🎬' },
   { yol: '/diziler', etiket: 'Dizi', ikon: '📺' },
+  { yol: '/oyuncular', etiket: 'Oyuncu', ikon: '🎭' },
+  { yol: '/oscar', etiket: 'Oscar', ikon: '🏆' },
   { yol: '/kitaplar', etiket: 'Kitap', ikon: '📚' },
   { yol: '/yazilar', etiket: 'Yazı', ikon: '📝' },
   { yol: '/gezi', etiket: 'Gezi', ikon: '✈️' },
-  { yol: '/oyuncular', etiket: 'Oyuncular', ikon: '🎭' },
+  { yol: '/etkinlik-dunyasi', etiket: 'Etkinlik', ikon: '🎟️' },
 ]
-const TOPLULUK_LINKLERI = [
-  { yol: '/topluluklar', etiket: 'Topluluklar', ikon: '👥' },
-  { yol: '/oscar', etiket: 'Oscar', ikon: '🏆' },
-]
+const TOPLULUK_LINKLERI = [{ yol: '/topluluklar', etiket: 'Topluluk', ikon: '👥' }]
 
 export default function Nav() {
   const { kullanici, profil, cikisYap } = useAuth()
