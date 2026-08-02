@@ -105,7 +105,7 @@ const BOS_FORM = {
 
 export default function EtkinlikDunyasi() {
   const { kullanici, profil } = useAuth()
-  const { gonderiler: etkinlikler, yukleniyor: etkinlikYukleniyor } = useGonderiler({ tur: 'etkinlik' })
+  const { gonderiler: etkinlikler, yukleniyor: etkinlikYukleniyor, dahaFazlaVarMi, dahaFazlaYukle } = useGonderiler({ tur: 'etkinlik' })
 
   const [habercler, setHaberciler] = useState([])
   const [habercYukleniyor, setHabercYukleniyor] = useState(true)
@@ -347,6 +347,14 @@ export default function EtkinlikDunyasi() {
             </div>
           ))}
         </div>
+        {!etkinlikYukleniyor && dahaFazlaVarMi && (
+          <button
+            onClick={dahaFazlaYukle}
+            className="mt-4 rounded-sm bg-kagitKoyu px-4 py-2 font-govde text-sm text-kraft ring-1 ring-cizgi hover:text-murekkep"
+          >
+            Daha Fazla Göster
+          </button>
+        )}
       </div>
     </div>
   )

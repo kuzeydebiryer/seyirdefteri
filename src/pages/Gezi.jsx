@@ -4,7 +4,7 @@ import GonderiKarti from '../components/GonderiKarti.jsx'
 import DunyaHaritasi from '../components/DunyaHaritasi.jsx'
 
 export default function Gezi() {
-  const { gonderiler: geziler, yukleniyor: geziYukleniyor } = useGonderiler({ tur: 'gezi' })
+  const { gonderiler: geziler, yukleniyor: geziYukleniyor, dahaFazlaVarMi, dahaFazlaYukle } = useGonderiler({ tur: 'gezi' })
 
   return (
     <div>
@@ -33,6 +33,14 @@ export default function Gezi() {
             </div>
           ))}
         </div>
+        {!geziYukleniyor && dahaFazlaVarMi && (
+          <button
+            onClick={dahaFazlaYukle}
+            className="mt-4 rounded-sm bg-kagitKoyu px-4 py-2 font-govde text-sm text-kraft ring-1 ring-cizgi hover:text-murekkep"
+          >
+            Daha Fazla Göster
+          </button>
+        )}
       </div>
     </div>
   )

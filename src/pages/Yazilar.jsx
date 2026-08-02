@@ -8,7 +8,7 @@ const ALT_TUR_BASLIKLARI = [
 ]
 
 export default function Yazilar() {
-  const { gonderiler, yukleniyor, hata } = useGonderiler({ tur: 'yazi' })
+  const { gonderiler, yukleniyor, hata, dahaFazlaVarMi, dahaFazlaYukle } = useGonderiler({ tur: 'yazi' })
 
   return (
     <div>
@@ -39,6 +39,15 @@ export default function Yazilar() {
             </div>
           )
         })}
+
+      {!yukleniyor && dahaFazlaVarMi && (
+        <button
+          onClick={dahaFazlaYukle}
+          className="rounded-sm bg-kagitKoyu px-4 py-2 font-govde text-sm text-kraft ring-1 ring-cizgi hover:text-murekkep"
+        >
+          Daha Fazla Göster
+        </button>
+      )}
     </div>
   )
 }

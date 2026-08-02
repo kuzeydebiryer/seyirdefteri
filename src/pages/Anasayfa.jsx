@@ -36,7 +36,7 @@ export default function Anasayfa() {
   const takipFiltresi = takipHazirMi ? [...takipEdilenler, kullanici.uid] : []
   const sorguAktifMi = sekme === 'herkes' || takipHazirMi
 
-  const { gonderiler, yukleniyor, hata } = useGonderiler(
+  const { gonderiler, yukleniyor, hata, dahaFazlaVarMi, dahaFazlaYukle } = useGonderiler(
     !sorguAktifMi ? undefined : sekme === 'takip' ? { yazarIdListesi: takipFiltresi } : {}
   )
 
@@ -103,6 +103,15 @@ export default function Anasayfa() {
             </div>
           ))}
         </div>
+      )}
+      {!gercektenYukleniyor && dahaFazlaVarMi && (
+        <button
+          onClick={dahaFazlaYukle}
+          disabled={yukleniyor}
+          className="mt-6 rounded-sm bg-kagitKoyu px-4 py-2 font-govde text-sm text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:opacity-40"
+        >
+          {yukleniyor ? 'Yükleniyor...' : 'Daha Fazla Göster'}
+        </button>
       )}
     </div>
   )

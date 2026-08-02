@@ -58,7 +58,7 @@ export default function Profil() {
 
   const [hedefProfil, setHedefProfil] = useState(benimProfilimMi ? kendiProfilim : null)
   const [kahinSezonlari, setKahinSezonlari] = useState([])
-  const { gonderiler, hata: gonderilerHatasi } = useGonderiler({ yazarId: uid })
+  const { gonderiler, hata: gonderilerHatasi } = useGonderiler({ yazarId: uid, sayfaBoyutu: 500 })
   const { takipEdiyorMu, setTakipEdiyorMu, takipciSayisi, takipEdilenSayisi } = useTakip(uid, kullanici?.uid)
   const [takipEdilenProfilleri, setTakipEdilenProfilleri] = useState([])
 
