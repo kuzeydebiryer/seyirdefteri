@@ -17,15 +17,18 @@ import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
-import { kitapGetir, kitapGuncelle } from '../utils/kitapKatalog.js'
+import { kitapGetir, kitapGuncelle, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
 import { alintiEkle, alintiBegenDegistir, alintiSil, kitapAlintilariGetir } from '../utils/alinti.js'
 import { useKisiselListeler } from '../hooks/useKisiselListeler.js'
 import { ogeEkle as listeyeOgeEkle, esereAitListeleriGetir } from '../utils/kisiselListe.js'
+import { filmOscarBilgisiGetir } from '../utils/oscar.js'
+import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const TMDB_SAGLAYICI_LOGO = 'https://image.tmdb.org/t/p/w92'
+const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
 function KisiListesi({ kisiler, etiket }) {
   if (!kisiler || kisiler.length === 0) return null
@@ -75,6 +78,100 @@ export default function EserSayfasi({ tur }) {
   const [listeyeEkleniyor, setListeyeEkleniyor] = useState(null)
   const { listeler: kendiListelerim } = useKisiselListeler(kullanici?.uid)
   const [esereAitListeler, setEsereAitListeler] = useState([])
+  const [oscarSezonlari, setOscarSezonlari] = useState([])
+  const [ilgiliEserler, setIlgiliEserler] = useState([])
+  const [ilgiliEkleAcik, setIlgiliEkleAcik] = useState(false)
+  const [ilgiliKategori, setIlgiliKategori] = useState('sinema') // kitap sayfasında hedef film/dizi seçimi
+  const [ilgiliArama, setIlgiliArama] = useState('')
+  const [ilgiliSonuclar, setIlgiliSonuclar] = useState([])
+  const [ilgiliAramaYukleniyor, setIlgiliAramaYukleniyor] = useState(false)
+  const [ilgiliEkleniyor, setIlgiliEkleniyor] = useState(null)
+
+  const ilgiliHedefTur = tur === 'kitap' ? ilgiliKategori : 'kitap'
+
+  useEffect(() => {
+    let iptal = false
+    const disIdTipli = tur === 'kitap' ? id : Number(id)
+    ilgiliEserleriGetir(tur, disIdTipli).then((l) => {
+      if (!iptal) setIlgiliEserler(l)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [tur, id])
+
+  async function ilgiliAra(e) {
+    e.preventDefault()
+    if (!ilgiliArama.trim()) return
+    setIlgiliAramaYukleniyor(true)
+    setIlgiliSonuclar([])
+    try {
+      if (ilgiliHedefTur === 'kitap') {
+        const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
+        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(ilgiliArama)}&maxResults=10${anahtarParcasi}`
+        const res = await fetch(url)
+        const data = await res.json()
+        setIlgiliSonuclar(data.items || [])
+      } else {
+        if (!TMDB_API_KEY) return
+        const uc = ilgiliHedefTur === 'sinema' ? 'movie' : 'tv'
+        const url = `https://api.themoviedb.org/3/search/${uc}?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(ilgiliArama)}`
+        const res = await fetch(url)
+        const data = await res.json()
+        setIlgiliSonuclar(data.results || [])
+      }
+    } finally {
+      setIlgiliAramaYukleniyor(false)
+    }
+  }
+
+  async function ilgiliSec(item) {
+    if (!kullanici) return
+    setIlgiliEkleniyor(item.id)
+    try {
+      let hedef
+      if (ilgiliHedefTur === 'kitap') {
+        const kitap = await kitapAramaSonucundanKaydet(item)
+        hedef = { tur: 'kitap', disId: item.id, baslik: kitap.baslik, alt: kitap.yazar, posterUrl: kitap.posterUrl }
+      } else {
+        const v = item
+        hedef = {
+          tur: ilgiliHedefTur,
+          disId: v.id,
+          baslik: ilgiliHedefTur === 'sinema' ? v.title : v.name,
+          alt: (ilgiliHedefTur === 'sinema' ? v.release_date : v.first_air_date)?.slice(0, 4) || '',
+          posterUrl: v.poster_path ? `${TMDB_POSTER}${v.poster_path}` : '',
+        }
+      }
+      const kaynak = { tur, disId: tur === 'kitap' ? id : Number(id), baslik: detay.baslik, alt: detay.yazar || detay.yil || '', posterUrl: detay.posterUrl }
+      await ilgiliEserEkle(kaynak, hedef, kullanici)
+      setIlgiliEserler((onceki) => [...onceki, { digerTur: hedef.tur, digerDisId: hedef.disId, digerBaslik: hedef.baslik, digerPosterUrl: hedef.posterUrl, digerAlt: hedef.alt }])
+      setIlgiliArama('')
+      setIlgiliSonuclar([])
+      setIlgiliEkleAcik(false)
+    } finally {
+      setIlgiliEkleniyor(null)
+    }
+  }
+
+  async function ilgiliKaldirTiklandi(ilgili) {
+    if (!window.confirm('Bu bağlantıyı kaldırmak istediğine emin misin?')) return
+    const kaynak = { tur, disId: tur === 'kitap' ? id : Number(id) }
+    const hedef = { tur: ilgili.digerTur, disId: ilgili.digerDisId }
+    await ilgiliEserSil(kaynak, hedef)
+    setIlgiliEserler((onceki) => onceki.filter((x) => !(x.digerTur === ilgili.digerTur && x.digerDisId === ilgili.digerDisId)))
+  }
+
+  useEffect(() => {
+    if (tur !== 'sinema') return
+    let iptal = false
+    filmOscarBilgisiGetir(Number(id)).then((s) => {
+      if (!iptal) setOscarSezonlari(s)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [tur, id])
 
   useEffect(() => {
     let iptal = false
@@ -154,6 +251,7 @@ export default function EserSayfasi({ tur }) {
             posterUrl: data.poster_path ? `${TMDB_POSTER}${data.poster_path}` : '',
             ozet: data.overview,
             turler: (data.genres || []).map((g) => g.name).join(', '),
+            turListesi: (data.genres || []).map((g) => ({ id: g.id, ad: g.name })),
             sureDk: tur === 'sinema' ? data.runtime : null,
             sezonSayisi: tur === 'dizi' ? data.number_of_seasons : null,
             bolumSayisi: tur === 'dizi' ? data.number_of_episodes : null,
@@ -485,7 +583,18 @@ export default function EserSayfasi({ tur }) {
           )}
 
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-kraft">
-            {detay.turler && <span>{detay.turler}</span>}
+            {detay.turListesi?.length > 0 ? (
+              detay.turListesi.map((t, i) => (
+                <span key={t.id}>
+                  <Link to={`/tur/${tur}/${t.id}?ad=${encodeURIComponent(t.ad)}`} className="hover:text-deniz hover:underline">
+                    {t.ad}
+                  </Link>
+                  {i < detay.turListesi.length - 1 && ','}
+                </span>
+              ))
+            ) : (
+              detay.turler && <span>{detay.turler}</span>
+            )}
             {detay.sureDk && <span>⏱ {detay.sureDk} dk</span>}
             {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
             {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
@@ -652,6 +761,91 @@ export default function EserSayfasi({ tur }) {
                 )}
               </div>
 
+              {oscarSezonlari.length > 0 && (
+                <Link to="/oscar" className="flex flex-col items-center gap-1">
+                  <span className="text-2xl">🏆</span>
+                  <span className="text-[10px] uppercase tracking-wide text-kraft">
+                    {oscarSezonlari.map((s) => (s.torenTarihi ? s.torenTarihi.slice(0, 4) : '')).join(', ')}
+                  </span>
+                </Link>
+              )}
+
+              <div className="relative flex flex-col items-center gap-1">
+                <button onClick={() => setIlgiliEkleAcik((a) => !a)} className="flex flex-col items-center gap-1">
+                  <span className="text-2xl text-cizgi">{tur === 'kitap' ? '🎬' : '📚'}</span>
+                  <span className="text-[10px] uppercase tracking-wide text-kraft">
+                    {tur === 'kitap' ? 'İlgili Film' : 'İlgili Kitap'}
+                  </span>
+                </button>
+                {ilgiliEkleAcik && (
+                  <div className="absolute left-0 top-full z-10 mt-1 w-72 space-y-2 rounded-sm bg-kagit p-3 shadow-lg ring-1 ring-cizgi">
+                    {tur === 'kitap' && (
+                      <div className="flex gap-1">
+                        {[
+                          { id: 'sinema', etiket: 'Film' },
+                          { id: 'dizi', etiket: 'Dizi' },
+                        ].map((k) => (
+                          <button
+                            key={k.id}
+                            type="button"
+                            onClick={() => {
+                              setIlgiliKategori(k.id)
+                              setIlgiliSonuclar([])
+                            }}
+                            className={`rounded-sm px-2 py-1 font-govde text-[11px] ${
+                              ilgiliKategori === k.id ? 'bg-murekkep text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                            }`}
+                          >
+                            {k.etiket}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <form onSubmit={ilgiliAra} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={ilgiliArama}
+                        onChange={(e) => setIlgiliArama(e.target.value)}
+                        placeholder={tur === 'kitap' ? 'Film/dizi ara...' : 'Kitap ara...'}
+                        className="flex-1 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+                      <button type="submit" className="rounded-sm bg-deniz px-2 py-1 font-govde text-xs text-kagit">
+                        {ilgiliAramaYukleniyor ? '...' : 'Ara'}
+                      </button>
+                    </form>
+                    {ilgiliSonuclar.length > 0 && (
+                      <ul className="max-h-56 space-y-1 overflow-y-auto">
+                        {ilgiliSonuclar.slice(0, 10).map((item) => {
+                          const v = ilgiliHedefTur === 'kitap' ? item.volumeInfo || {} : item
+                          const ad = ilgiliHedefTur === 'kitap' ? v.title : ilgiliHedefTur === 'sinema' ? v.title : v.name
+                          const kapak =
+                            ilgiliHedefTur === 'kitap'
+                              ? (v.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                              : v.poster_path
+                                ? `${TMDB_POSTER}${v.poster_path}`
+                                : ''
+                          return (
+                            <li key={item.id}>
+                              <button
+                                type="button"
+                                onClick={() => ilgiliSec(item)}
+                                disabled={ilgiliEkleniyor === item.id}
+                                className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left hover:bg-kagitKoyu disabled:opacity-40"
+                              >
+                                {kapak && <img src={kapak} alt="" className="h-9 w-6 shrink-0 rounded-sm object-cover" />}
+                                <span className="truncate text-xs text-murekkep">
+                                  {ilgiliEkleniyor === item.id ? 'Ekleniyor...' : ad}
+                                </span>
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {tur === 'kitap' && !izlenecekKaydi && (
                 <button
                   onClick={dogrudanOkumayaBasla}
@@ -685,6 +879,38 @@ export default function EserSayfasi({ tur }) {
                   {l.baslik}
                 </Link>
               ))}
+            </div>
+          )}
+
+          {ilgiliEserler.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1 text-xs text-kraft">{tur === 'kitap' ? '🎬 İlgili Film/Diziler' : '📚 İlgili Kitaplar'}</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {ilgiliEserler.map((ilgili) => {
+                  const esereGit =
+                    ilgili.digerTur === 'kitap' ? `/kitap/${ilgili.digerDisId}` : `/${ilgili.digerTur === 'dizi' ? 'dizi' : 'film'}/${ilgili.digerDisId}`
+                  return (
+                    <div key={ilgili.id} className="group relative w-16 shrink-0">
+                      <Link to={esereGit}>
+                        <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                          {ilgili.digerPosterUrl && (
+                            <img src={ilgili.digerPosterUrl} alt={ilgili.digerBaslik} className="h-full w-full object-cover" />
+                          )}
+                        </div>
+                        <p className="mt-1 truncate text-[11px] text-murekkep">{ilgili.digerBaslik}</p>
+                      </Link>
+                      {kullanici && (
+                        <button
+                          onClick={() => ilgiliKaldirTiklandi(ilgili)}
+                          className="absolute right-0 top-0 rounded-full bg-kagit/90 px-1 text-[10px] text-kraft opacity-0 ring-1 ring-cizgi transition-opacity hover:text-muhur group-hover:opacity-100"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 
@@ -731,21 +957,24 @@ export default function EserSayfasi({ tur }) {
             </div>
           )}
 
-          {/* Topluluk puanı (salt okunur) + kendi puanın (tıklanabilir) — kutu/etiket olmadan sade */}
-          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
-            <div className="flex items-center gap-2">
-              <YildizSecici deger={ortalamaPuan} disabled boyut="text-lg" />
-              <span className="text-xs text-kraft">{ortalamaPuan != null ? `(${puanSayisi} kişi)` : 'Henüz puanlanmadı'}</span>
-            </div>
-
+          {/* Tek yıldız satırı: giriş yapmışsan kendi (tıklanabilir) puanın, yanında
+              topluluk ortalaması sadece metin olarak — iki ayrı yıldız satırı yerine */}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             {kullanici ? (
-              <div className="flex items-center gap-2">
+              <>
                 <YildizSecici deger={kullanicininPuani} onSec={puanGonder} boyut="text-lg" />
                 {puanKaydediliyor && <span className="text-xs text-kraft">kaydediliyor...</span>}
-              </div>
+              </>
             ) : (
-              <span className="text-xs text-kraft">Puan vermek için giriş yap.</span>
+              <YildizSecici deger={ortalamaPuan} disabled boyut="text-lg" />
             )}
+            <span className="text-xs text-kraft">
+              {ortalamaPuan != null
+                ? `Topluluk: ${ortalamaPuan.toFixed(1)} (${puanSayisi} kişi)`
+                : kullanici
+                  ? 'Henüz kimse puanlamadı'
+                  : 'Puan vermek için giriş yap'}
+            </span>
           </div>
         </div>
       </div>

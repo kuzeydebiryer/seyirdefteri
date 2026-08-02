@@ -61,6 +61,14 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
+    // İlgili Eserler: bir filmin uyarlandığı kitap gibi çift yönlü bağlantılar.
+    // Herkes okuyabilir, giriş yapmış herkes ekleyip düzeltebilir (kitaplar
+    // kataloğuyla aynı pragmatik desen).
+    match /ilgiliEserler/{ilgiliId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
     // Oscar Yolculuğu (Faz 1) — sezon/kategori/aday referans verisi. Akademi'nin
     // resmi bir API'si olmadığı için elle giriliyor; küçük/davetli topluluk
     // olduğumuz için herkesin düzenleyebildiği pragmatik desen (bkz. kitaplar).

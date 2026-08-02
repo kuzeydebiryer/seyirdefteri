@@ -123,6 +123,10 @@ export default function Oscar() {
   const [aciKategoriId, setAciKategoriId] = useState(null)
   const [kilitlemeIsleniyor, setKilitlemeIsleniyor] = useState(false)
   const [bitirmeIsleniyor, setBitirmeIsleniyor] = useState(false)
+  const [topluAcik, setTopluAcik] = useState(false)
+  const [topluMetin, setTopluMetin] = useState('')
+  const [topluCalisiyor, setTopluCalisiyor] = useState(false)
+  const [topluIlerleme, setTopluIlerleme] = useState('')
 
   async function hepsiniYukle() {
     setYukleniyor(true)
@@ -150,6 +154,68 @@ export default function Oscar() {
     if (!sezonAdi.trim() || !kullanici) return
     await sezonOlustur(kullanici, { ad: sezonAdi, torenTarihi })
     hepsiniYukle()
+  }
+
+  async function tmdbdeFilmAra(isim) {
+    if (!TMDB_API_KEY) return null
+    const url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(isim)}`
+    try {
+      const res = await fetch(url)
+      const data = await res.json()
+      return data.results?.[0] || null
+    } catch {
+      return null
+    }
+  }
+
+  // Format: boş satırla ayrılmış bloklar. Her bloğun ilk satırı kategori adı,
+  // sonraki satırlar "Film Adı" ya da "Film Adı | Kişi Adı" (oyunculuk/yönetmenlik
+  // kategorileri için). Ör. bir ödül tahmin sitesinden (elle, bir kerelik) kopyalanan
+  // güncel aday listesini buraya yapıştırıp saniyeler içinde eklemek için.
+  async function topluEkleYap() {
+    const bloklar = topluMetin
+      .split(/\n\s*\n/)
+      .map((b) => b.split('\n').map((s) => s.trim()).filter(Boolean))
+      .filter((b) => b.length > 0)
+
+    if (bloklar.length === 0) return
+    setTopluCalisiyor(true)
+    try {
+      let toplamFilm = bloklar.reduce((n, b) => n + b.length - 1, 0)
+      let islenen = 0
+      for (const blok of bloklar) {
+        const [kategoriAdi, ...filmSatirlari] = blok
+        setTopluIlerleme(`"${kategoriAdi}" kategorisi oluşturuluyor...`)
+        await kategoriEkle(sezon.id, { ad: kategoriAdi, sira: kategoriler.length })
+        const guncelKategoriler = await kategorilerGetir(sezon.id)
+        const kategori = guncelKategoriler.find((k) => k.ad === kategoriAdi)
+        if (!kategori) continue
+
+        let sira = 0
+        for (const satir of filmSatirlari) {
+          const [filmAdi, kisiAdi] = satir.split('|').map((s) => s?.trim())
+          islenen++
+          setTopluIlerleme(`(${islenen}/${toplamFilm}) "${filmAdi}" aranıyor...`)
+          const film = await tmdbdeFilmAra(filmAdi)
+          if (film) {
+            await adayEkle(sezon.id, kategori.id, {
+              tmdbId: film.id,
+              filmBasligi: film.title,
+              filmYili: film.release_date ? film.release_date.slice(0, 4) : '',
+              posterUrl: film.poster_path ? `${TMDB_POSTER}${film.poster_path}` : '',
+              kisiAdi: kisiAdi || '',
+              sira: sira++,
+            })
+          }
+        }
+      }
+      setTopluMetin('')
+      setTopluAcik(false)
+      hepsiniYukle()
+    } finally {
+      setTopluCalisiyor(false)
+      setTopluIlerleme('')
+    }
   }
 
   async function kategoriEkleTiklandi(e) {
@@ -375,18 +441,56 @@ export default function Oscar() {
       )}
 
       {kullanici && (
-        <form onSubmit={kategoriEkleTiklandi} className="mb-6 flex gap-2">
-          <input
-            type="text"
-            value={yeniKategoriAdi}
-            onChange={(e) => setYeniKategoriAdi(e.target.value)}
-            placeholder="Yeni kategori adı (ör. En İyi Film)"
-            className="flex-1 max-w-sm rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
-          />
-          <button type="submit" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit">
-            + Kategori Ekle
-          </button>
-        </form>
+        <div className="mb-6 space-y-2">
+          <div className="flex gap-2">
+            <form onSubmit={kategoriEkleTiklandi} className="flex flex-1 max-w-sm gap-2">
+              <input
+                type="text"
+                value={yeniKategoriAdi}
+                onChange={(e) => setYeniKategoriAdi(e.target.value)}
+                placeholder="Yeni kategori adı (ör. En İyi Film)"
+                className="flex-1 rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+              <button type="submit" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit">
+                + Kategori Ekle
+              </button>
+            </form>
+            <button
+              onClick={() => setTopluAcik((a) => !a)}
+              className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi"
+            >
+              📋 Toplu Ekle
+            </button>
+          </div>
+
+          {topluAcik && (
+            <div className="max-w-xl space-y-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="text-xs text-kraft">
+                Bir tahmin sitesinden kopyaladığın listeyi yapıştır. Format: her kategori ayrı bir blok (aralarında boş
+                satır), ilk satır kategori adı, sonraki satırlar film adları — oyunculuk/yönetmenlik gibi kategorilerde{' '}
+                <code>Film Adı | Kişi Adı</code> şeklinde yazabilirsin.
+              </p>
+              <textarea
+                value={topluMetin}
+                onChange={(e) => setTopluMetin(e.target.value)}
+                rows={10}
+                disabled={topluCalisiyor}
+                placeholder={
+                  'En İyi Film\nThe Odyssey\nLa Bola Negra\nWild Horse Nine\n\nEn İyi Yönetmen\nThe Odyssey | Christopher Nolan\nLa Bola Negra | Javier Ambrossi'
+                }
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-xs text-murekkep ring-1 ring-cizgi"
+              />
+              {topluCalisiyor && <p className="text-xs text-kraft">{topluIlerleme}</p>}
+              <button
+                onClick={topluEkleYap}
+                disabled={topluCalisiyor || !topluMetin.trim()}
+                className="rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+              >
+                {topluCalisiyor ? 'Ekleniyor...' : 'Hepsini Ekle'}
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {kategoriliAdaylar.length === 0 && <p className="text-sm text-kraft">Henüz kategori eklenmedi.</p>}

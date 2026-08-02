@@ -3,7 +3,7 @@
 // kategoriler ve adaylar (OKULLAR listesi gibi) elle girilen referans veridir.
 // Puanlama/tahmin sistemi (Faz 2) ve sonuç+rozet (Faz 3) sonraya bırakıldı.
 
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export async function sezonOlustur(kullanici, { ad, torenTarihi }) {
@@ -161,4 +161,15 @@ export async function kahinOlduguSezonlariGetir(uid) {
   const q = query(collection(db, 'oscarSezonlari'), where('kahinUid', '==', uid))
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// Eser sayfasında "🏆 Oscar Adayı" rozeti için: bu film hangi sezon(lar)ın
+// adayı — varsa hangi yıl(lar) gösterilecek.
+export async function filmOscarBilgisiGetir(tmdbId) {
+  const q = query(collection(db, 'oscarAdaylari'), where('tmdbId', '==', tmdbId))
+  const adaySnap = await getDocs(q)
+  if (adaySnap.empty) return []
+  const sezonIdleri = [...new Set(adaySnap.docs.map((d) => d.data().sezonId))]
+  const sezonlar = await Promise.all(sezonIdleri.map((id) => getDoc(doc(db, 'oscarSezonlari', id))))
+  return sezonlar.filter((s) => s.exists()).map((s) => ({ id: s.id, ...s.data() }))
 }
