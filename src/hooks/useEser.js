@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -94,36 +94,29 @@ export function useEserGonderileri(tur, disId) {
   }
 }
 
-// Bir kategori için topluluğun en çok işlediği / en yüksek puanlı eserlerini
-// (tmdbId veya googleBooksId'ye göre gruplanmış) hesaplar — kategori hub sayfasında kullanılır.
+// Bir kategori için topluluğun en çok puanladığı eserleri getirir — kategori
+// hub sayfasında ("Bizim Aramızda Popüler") kullanılır.
+//
+// Eskiden bu, TÜM `gonderiler` koleksiyonunu tarayıp tarayıcıda gruplardı —
+// koleksiyon büyüdükçe her sayfa açılışında binlerce kaydı okumak anlamına
+// geliyordu. Artık `eserIstatistikleri` özet koleksiyonunu okuyor — bu kayıt,
+// bir esere her puan verildiğinde (bkz. eserIstatistik.js) güncelleniyor,
+// dolayısıyla burada sadece küçük, önceden hesaplanmış bir liste sorgulanıyor.
 export async function topluluktaPopulerEserler(tur, enFazla = 12) {
-  const alan = tur === 'kitap' ? 'googleBooksId' : 'tmdbId'
-  const q = query(collection(db, 'gonderiler'), where('tur', '==', tur))
+  const q = query(collection(db, 'eserIstatistikleri'), where('tur', '==', tur), orderBy('puanSayisi', 'desc'), limit(enFazla))
   const snap = await getDocs(q)
-  const gruplar = new Map()
-  snap.docs.forEach((d) => {
+  return snap.docs.map((d) => {
     const veri = d.data()
-    const id = veri[alan]
-    if (!id) return
-    if (!gruplar.has(id)) {
-      gruplar.set(id, {
-        id,
-        baslik: veri.baslik,
-        yil: veri.yil,
-        posterUrl: veri.posterUrl,
-        yazar: veri.yazar,
-        puanlar: [],
-      })
+    return {
+      id: veri.disId,
+      baslik: veri.baslik,
+      yil: veri.yil,
+      posterUrl: veri.posterUrl,
+      yazar: veri.alt,
+      puanSayisi: veri.puanSayisi || 0,
+      ortalamaPuan: veri.puanSayisi ? veri.puanToplam / veri.puanSayisi : null,
     }
-    if (veri.kullaniciPuani != null) gruplar.get(id).puanlar.push(veri.kullaniciPuani)
   })
-  const liste = Array.from(gruplar.values()).map((e) => ({
-    ...e,
-    ortalamaPuan: e.puanlar.length ? e.puanlar.reduce((a, b) => a + b, 0) / e.puanlar.length : null,
-    puanSayisi: e.puanlar.length,
-  }))
-  liste.sort((a, b) => b.puanSayisi - a.puanSayisi || (b.ortalamaPuan || 0) - (a.ortalamaPuan || 0))
-  return liste.slice(0, enFazla)
 }
 
 // Bir kitap hakkında yazılmış "Kitap İncelemesi" türündeki Yazı'ları getirir.

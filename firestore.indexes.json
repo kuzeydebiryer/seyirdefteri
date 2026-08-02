@@ -72,6 +72,14 @@
         { "fieldPath": "tur", "order": "ASCENDING" },
         { "fieldPath": "disId", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "eserIstatistikleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tur", "order": "ASCENDING" },
+        { "fieldPath": "puanSayisi", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

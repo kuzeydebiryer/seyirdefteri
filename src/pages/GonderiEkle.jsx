@@ -5,6 +5,7 @@ import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ULKELER } from '../data/ulkeler.js'
 import { kitapGetir, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
+import { eserIstatistikGuncelle } from '../utils/eserIstatistik.js'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -502,6 +503,14 @@ export default function GonderiEkle() {
         begenenler: [],
         yorumSayisi: 0,
       })
+
+      // Puanlı bir günce paylaşıldıysa (deneme yazıları hariç), "Bizim Aramızda
+      // Popüler" listesinin okuduğu özet kaydını da güncelle.
+      if (apiliKategori && kullaniciPuani != null) {
+        const disId = kategori === 'kitap' ? googleBooksId : Number(tmdbId)
+        await eserIstatistikGuncelle(kategori, disId, { baslik: baslik.trim(), alt: yazar || yonetmen || '', posterUrl, yil }, kullaniciPuani, null)
+      }
+
       navigate('/')
     } catch (err) {
       setAramaHatasi('Kaydedilemedi: ' + err.message)

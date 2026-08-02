@@ -17,6 +17,7 @@ import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
 import BinKitapIkon from '../components/ikonlar/BinKitapIkon.jsx'
 import PuanIceAktar from '../components/PuanIceAktar.jsx'
 import { kahinOlduguSezonlariGetir } from '../utils/oscar.js'
+import { tumIstatistikleriYenidenHesapla } from '../utils/istatistikYenidenHesapla.js'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
@@ -89,6 +90,9 @@ export default function Profil() {
   const [uretiliyor, setUretiliyor] = useState(false)
   const [davetAcik, setDavetAcik] = useState(false)
   const [puanIceAktarAcik, setPuanIceAktarAcik] = useState(false)
+  const [yenidenHesaplaAcik, setYenidenHesaplaAcik] = useState(false)
+  const [yenidenHesaplaniyor, setYenidenHesaplaniyor] = useState(false)
+  const [yenidenHesaplaDurumu, setYenidenHesaplaDurumu] = useState('')
   const [posterAramasi, setPosterAramasi] = useState('')
   const [posterGosterimSayisi, setPosterGosterimSayisi] = useState({ sinema: 28, dizi: 28 })
   const [minPuan, setMinPuan] = useState(0)
@@ -468,6 +472,47 @@ export default function Profil() {
           {puanIceAktarAcik && (
             <div className="border-t border-cizgi px-4 py-3">
               <PuanIceAktar />
+            </div>
+          )}
+        </div>
+      )}
+
+      {benimProfilimMi && (
+        <div className="mb-8 rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+          <button
+            onClick={() => setYenidenHesaplaAcik((a) => !a)}
+            className="flex w-full items-center justify-between px-4 py-2 text-sm text-murekkep"
+          >
+            <span>🔄 Popülerlik Önbelleğini Yeniden Hesapla</span>
+            <span className="text-xs text-kraft">{yenidenHesaplaAcik ? '▲ Gizle' : '▼ Göster'}</span>
+          </button>
+          {yenidenHesaplaAcik && (
+            <div className="border-t border-cizgi px-4 py-3 space-y-2">
+              <p className="text-xs text-kraft">
+                "Bizim Aramızda Popüler" listelerinin performans için okuduğu özet kayıtları, sadece bundan sonraki
+                puanlamalarla dolar. Geçmiş puanları (Letterboxd içe aktarımı dahil) bu özete dahil etmek için bunu{' '}
+                <strong>bir kez</strong> çalıştır — tüm topluluk için geçerli, sadece bir kişinin yapması yeterli.
+              </p>
+              <button
+                onClick={async () => {
+                  setYenidenHesaplaniyor(true)
+                  try {
+                    const sonuc = await tumIstatistikleriYenidenHesapla(setYenidenHesaplaDurumu)
+                    setYenidenHesaplaDurumu(
+                      `✓ Tamamlandı — Film: ${sonuc.sinema}, Dizi: ${sonuc.dizi}, Kitap: ${sonuc.kitap}, Kişi: ${sonuc.kisiler}`
+                    )
+                  } catch (err) {
+                    setYenidenHesaplaDurumu('Hata: ' + err.message)
+                  } finally {
+                    setYenidenHesaplaniyor(false)
+                  }
+                }}
+                disabled={yenidenHesaplaniyor}
+                className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+              >
+                {yenidenHesaplaniyor ? 'Hesaplanıyor...' : 'Yeniden Hesapla'}
+              </button>
+              {yenidenHesaplaDurumu && <p className="text-xs text-kraft">{yenidenHesaplaDurumu}</p>}
             </div>
           )}
         </div>

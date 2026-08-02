@@ -1,23 +1,23 @@
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // Topluluğun en çok değerlendirdiği/favorilediği kişileri (yönetmen/oyuncu)
-// hesaplar — Oyuncular keşif sayfasında "Bizim Aramızda Popüler" için kullanılır.
+// getirir — Oyuncular keşif sayfasında "Bizim Aramızda Popüler" için kullanılır.
+//
+// Eskiden bu, TÜM `kisiDegerlendirmeleri` koleksiyonunu tarayıp tarayıcıda
+// gruplardı. Artık `kisiIstatistikleri` özet koleksiyonunu okuyor — bu kayıt,
+// bir kişiye her puan verildiğinde (bkz. kisiDegerlendirme.js) güncelleniyor.
 export async function topluluktaPopulerKisiler(enFazla = 12) {
-  const snap = await getDocs(collection(db, 'kisiDegerlendirmeleri'))
-  const gruplar = new Map()
-  snap.docs.forEach((d) => {
+  const q = query(collection(db, 'kisiIstatistikleri'), orderBy('puanSayisi', 'desc'), limit(enFazla))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => {
     const veri = d.data()
-    const id = veri.kisiTmdbId
-    if (!id) return
-    if (!gruplar.has(id)) gruplar.set(id, { id, kisiAdi: veri.kisiAdi, kisiFotoUrl: veri.kisiFotoUrl, puanlar: [] })
-    if (veri.puan != null) gruplar.get(id).puanlar.push(veri.puan)
+    return {
+      id: veri.kisiTmdbId,
+      kisiAdi: veri.kisiAdi,
+      kisiFotoUrl: veri.kisiFotoUrl,
+      puanSayisi: veri.puanSayisi || 0,
+      ortalamaPuan: veri.puanSayisi ? veri.puanToplam / veri.puanSayisi : null,
+    }
   })
-  const liste = Array.from(gruplar.values()).map((k) => ({
-    ...k,
-    ortalamaPuan: k.puanlar.length ? k.puanlar.reduce((a, b) => a + b, 0) / k.puanlar.length : null,
-    puanSayisi: k.puanlar.length,
-  }))
-  liste.sort((a, b) => b.puanSayisi - a.puanSayisi)
-  return liste.slice(0, enFazla)
 }
