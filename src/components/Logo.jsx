@@ -17,6 +17,8 @@ export default function Logo({ boyut = 34, sadeceIkon = true }) {
       <line x1="29" y1="19.6" x2="37.5" y2="20.5" stroke="#8C8368" strokeWidth="1.1" opacity="0.55" />
       {/* Mühür kırmızısı ayraç şeridi */}
       <path d="M32 6 H39 V22 L35.5 18.5 L32 22 Z" fill="#B33A3A" />
+      {/* "Seyir" dokunuşu: ayracın içinde küçük bir oynat üçgeni — hem defter hem izleme fikri tek işarette */}
+      <path d="M34.1 9.2 L34.1 13.6 L38 11.4 Z" fill="#F5EFE1" />
     </svg>
   )
 

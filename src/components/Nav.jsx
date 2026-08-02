@@ -35,13 +35,15 @@ export default function Nav() {
 
   return (
     <header className="border-b border-cizgi">
-      <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-        <Link to="/" onClick={() => setMenuAcik(false)}>
+      <div className="mx-auto flex max-w-3xl items-center px-4 py-4">
+        <Link to="/" onClick={() => setMenuAcik(false)} className="shrink-0">
           <Logo sadeceIkon boyut={34} />
         </Link>
 
+        <span className="ml-2.5 font-baslik text-lg text-murekkep sm:hidden">Seyirdefteri</span>
+
         {kullanici ? (
-          <>
+          <div className="ml-auto flex items-center">
             {/* Masaüstü menüsü */}
             <nav className="hidden sm:flex items-center gap-x-5 font-govde text-sm">
               {[...LINKLER, ...TOPLULUK_LINKLERI].map((l) => (
@@ -68,9 +70,9 @@ export default function Nav() {
             >
               {menuAcik ? '✕' : '☰'}
             </button>
-          </>
+          </div>
         ) : (
-          <nav className="flex items-center gap-4 font-govde text-sm">
+          <nav className="ml-auto flex items-center gap-4 font-govde text-sm">
             <NavLink to="/giris" className="text-kraft hover:text-murekkep">
               Giriş
             </NavLink>
