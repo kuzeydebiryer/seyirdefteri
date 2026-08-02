@@ -8,14 +8,16 @@ import Logo from './Logo.jsx'
 // içeriyor. Kişiler profile, Etkinlikler Topluluklar sayfasına taşındı. Yönetmenler
 // artık Oyuncular sayfasının içinde (ayrı menü maddesi değil).
 const LINKLER = [
-  { yol: '/filmler', etiket: 'Film' },
-  { yol: '/diziler', etiket: 'Dizi' },
-  { yol: '/kitaplar', etiket: 'Kitap' },
-  { yol: '/yazilar', etiket: 'Yazı' },
-  { yol: '/gezi', etiket: 'Gezi' },
-  { yol: '/oyuncular', etiket: 'Oyuncular' },
-  { yol: '/topluluklar', etiket: 'Topluluklar' },
-  { yol: '/oscar', etiket: '🏆 Oscar' },
+  { yol: '/filmler', etiket: 'Film', ikon: '🎬' },
+  { yol: '/diziler', etiket: 'Dizi', ikon: '📺' },
+  { yol: '/kitaplar', etiket: 'Kitap', ikon: '📚' },
+  { yol: '/yazilar', etiket: 'Yazı', ikon: '📝' },
+  { yol: '/gezi', etiket: 'Gezi', ikon: '✈️' },
+  { yol: '/oyuncular', etiket: 'Oyuncular', ikon: '🎭' },
+]
+const TOPLULUK_LINKLERI = [
+  { yol: '/topluluklar', etiket: 'Topluluklar', ikon: '👥' },
+  { yol: '/oscar', etiket: 'Oscar', ikon: '🏆' },
 ]
 
 export default function Nav() {
@@ -42,7 +44,7 @@ export default function Nav() {
           <>
             {/* Masaüstü menüsü */}
             <nav className="hidden sm:flex items-center gap-x-5 font-govde text-sm">
-              {LINKLER.map((l) => (
+              {[...LINKLER, ...TOPLULUK_LINKLERI].map((l) => (
                 <NavLink key={l.yol} to={l.yol} className={linkSinifi}>
                   {l.etiket}
                 </NavLink>
@@ -80,31 +82,65 @@ export default function Nav() {
       </div>
       <div className="defter-cizgi" />
 
-      {/* Mobil açılır menü */}
+      {/* Mobil açılır menü — tam ekran overlay: sayfayı itmek yerine üzerine biner,
+          piksel hesabına bağlı kalmamak için kendi başlık satırını taşıyor. */}
       {kullanici && menuAcik && (
-        <nav className="sm:hidden flex flex-col gap-1 bg-kagitKoyu px-4 py-3 font-govde text-sm">
-          <NavLink
-            to={`/profil/${kullanici.uid}`}
-            onClick={() => setMenuAcik(false)}
-            className={({ isActive }) => `flex items-center gap-2 py-2 ${isActive ? 'text-muhur' : 'text-murekkep'}`}
-          >
-            <Avatar adSoyad={profil?.adSoyad} avatarUrl={profil?.avatarUrl} boyut="h-6 w-6" />
-            {profil?.kullaniciAdi || 'Profil'}
-          </NavLink>
-          <div className="defter-cizgi my-1" />
-          {LINKLER.map((l) => (
-            <NavLink
-              key={l.yol}
-              to={l.yol}
+        <nav className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-kagit font-govde text-sm sm:hidden">
+          <div className="flex items-center justify-between border-b border-cizgi px-4 py-4">
+            <Logo sadeceIkon boyut={34} />
+            <button
               onClick={() => setMenuAcik(false)}
-              className={({ isActive }) => `py-2 ${isActive ? 'text-muhur' : 'text-kraft'}`}
+              className="flex h-9 w-9 items-center justify-center rounded-sm text-murekkep"
+              aria-label="Menüyü kapat"
             >
-              {l.etiket}
+              ✕
+            </button>
+          </div>
+
+          <div className="px-4 py-3">
+            <NavLink
+              to={`/profil/${kullanici.uid}`}
+              onClick={() => setMenuAcik(false)}
+              className={({ isActive }) => `flex items-center gap-2 rounded-sm px-2 py-2.5 ${isActive ? 'text-muhur' : 'text-murekkep'}`}
+            >
+              <Avatar adSoyad={profil?.adSoyad} avatarUrl={profil?.avatarUrl} boyut="h-7 w-7" />
+              <span className="font-medium">{profil?.kullaniciAdi || 'Profil'}</span>
             </NavLink>
-          ))}
-          <button onClick={cikis} className="py-2 text-left text-kraft">
-            Çıkış
-          </button>
+
+            <div className="defter-cizgi my-1" />
+
+            {LINKLER.map((l) => (
+              <NavLink
+                key={l.yol}
+                to={l.yol}
+                onClick={() => setMenuAcik(false)}
+                className={({ isActive }) => `flex items-center gap-3 rounded-sm px-2 py-2 ${isActive ? 'text-muhur' : 'text-kraft'}`}
+              >
+                <span className="w-5 text-center">{l.ikon}</span>
+                {l.etiket}
+              </NavLink>
+            ))}
+
+            <div className="defter-cizgi my-1" />
+
+            {TOPLULUK_LINKLERI.map((l) => (
+              <NavLink
+                key={l.yol}
+                to={l.yol}
+                onClick={() => setMenuAcik(false)}
+                className={({ isActive }) => `flex items-center gap-3 rounded-sm px-2 py-2 ${isActive ? 'text-muhur' : 'text-kraft'}`}
+              >
+                <span className="w-5 text-center">{l.ikon}</span>
+                {l.etiket}
+              </NavLink>
+            ))}
+
+            <div className="defter-cizgi my-1" />
+
+            <button onClick={cikis} className="w-full rounded-sm px-2 py-2.5 text-left text-kraft/70">
+              Çıkış
+            </button>
+          </div>
         </nav>
       )}
     </header>
