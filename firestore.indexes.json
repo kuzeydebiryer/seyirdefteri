@@ -80,6 +80,14 @@
         { "fieldPath": "tur", "order": "ASCENDING" },
         { "fieldPath": "puanSayisi", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "sanatKoleksiyonu",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kullaniciId", "order": "ASCENDING" },
+        { "fieldPath": "eklemeTarihi", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

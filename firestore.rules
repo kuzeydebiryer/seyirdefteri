@@ -16,6 +16,15 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
+    // Sanat Koleksiyonum: Sanat Eserleri Keşfet'te (Met/AIC) beğenilen eserlerin
+    // kişisel koleksiyonu. Herkes görebilir (Poster Duvarı gibi), sadece sahibi
+    // ekleyip silebilir.
+    match /sanatKoleksiyonu/{kayitId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
     // Kullanıcı profilleri: herkes okuyabilir, sadece kendi profilini oluşturup düzenleyebilir
     match /kullanicilar/{uid} {
       allow read: if true;
