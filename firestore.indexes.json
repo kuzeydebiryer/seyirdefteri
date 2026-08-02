@@ -48,6 +48,14 @@
         { "fieldPath": "sezonId", "order": "ASCENDING" },
         { "fieldPath": "sira", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "etkinlikHabercileri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sonTarih", "order": "ASCENDING" },
+        { "fieldPath": "ilkTarih", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -4,17 +4,28 @@
 // Otomatik bir bilet sitesi entegrasyonu (Biletix vb.) CORS/ToS engelleri
 // yüzünden mümkün değildi (bkz. Oscar Yolculuğu analizi) — bu yüzden elle,
 // topluluk kaynaklı bir duyuru panosu olarak kuruldu.
+//
+// Çoklu tarih: bir oyun/etkinlik aynı mekanda birden fazla kez sahnelenebiliyor.
+// `tarihler` dizisi TÜM gösterim tarihlerini tutar; sorgulama/sıralama için
+// bundan türetilen `ilkTarih` (en yakın gösterim) ve `sonTarih` (en son gösterim)
+// ayrı alanlar olarak saklanır — bir etkinlik, SON gösterimi geçene kadar
+// listede kalır.
 
 import { arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-export async function habercEkle(kullanici, profil, { baslik, sehir, tur, etkinlikTarihi, biletSatisTarihi, satisLinki, bilgi }) {
+export async function habercEkle(kullanici, profil, { baslik, sehir, mekan, gorselUrl, tur, tarihler, biletSatisTarihi, satisLinki, bilgi }) {
+  const siraliTarihler = [...tarihler].filter(Boolean).sort()
   const ref = doc(collection(db, 'etkinlikHabercileri'))
   await setDoc(ref, {
     baslik,
     sehir: sehir || '',
+    mekan: mekan || '',
+    gorselUrl: gorselUrl || '',
     tur: tur || 'Diğer',
-    etkinlikTarihi,
+    tarihler: siraliTarihler,
+    ilkTarih: siraliTarihler[0],
+    sonTarih: siraliTarihler[siraliTarihler.length - 1],
     biletSatisTarihi: biletSatisTarihi || null,
     satisLinki: satisLinki || '',
     bilgi: bilgi || '',
@@ -26,11 +37,11 @@ export async function habercEkle(kullanici, profil, { baslik, sehir, tur, etkinl
   return ref.id
 }
 
-// Sadece bugünden itibaren olan etkinlikler, tarihe göre yakından uzağa sıralı.
-// Geçmiş etkinlikler otomatik olarak listeden düşer (elle silmeye gerek yok).
+// Son gösterim tarihi geçmemiş TÜM etkinlikler, en yakın gösterime göre sıralı.
+// Geçmiş etkinlikler (tüm tarihleri geçmiş olanlar) otomatik olarak düşer.
 export async function habercileriGetir() {
   const bugun = new Date().toISOString().slice(0, 10)
-  const q = query(collection(db, 'etkinlikHabercileri'), where('etkinlikTarihi', '>=', bugun), orderBy('etkinlikTarihi', 'asc'))
+  const q = query(collection(db, 'etkinlikHabercileri'), where('sonTarih', '>=', bugun), orderBy('sonTarih', 'asc'), orderBy('ilkTarih', 'asc'))
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
