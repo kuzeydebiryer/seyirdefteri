@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { collection, getDocs, query, Timestamp, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 const KATEGORILER = [
@@ -14,6 +14,10 @@ const YEDI_GUN_MS = 7 * 24 * 60 * 60 * 1000
 // Tam liste yerine sadece "bu hafta eklenen tavsiye var mı" sayısını gösteren
 // tek satırlık şerit. Tavsiyelerin kendisi hâlâ kendi sayfalarında (Film/Dizi/
 // Kitap) yaşıyor — burası sadece "gitmeye değer" sinyali veriyor.
+//
+// Sorgu, tarih filtresini Firestore tarafında yapıyor (where tarih >= cutoff) —
+// eskiden tüm tavsiyeler.js çekilip tarayıcıda filtreleniyordu, bu koleksiyon
+// büyüdükçe gereksiz okuma anlamına gelirdi.
 export default function TavsiyeBildirimSeridi() {
   const [sayilar, setSayilar] = useState(null)
   const [yukleniyor, setYukleniyor] = useState(true)
@@ -21,12 +25,11 @@ export default function TavsiyeBildirimSeridi() {
   useEffect(() => {
     let iptal = false
     async function getir() {
-      const cutoff = Date.now() - YEDI_GUN_MS
+      const cutoff = Timestamp.fromMillis(Date.now() - YEDI_GUN_MS)
       const sonuc = await Promise.all(
         KATEGORILER.map(async (k) => {
-          const snap = await getDocs(query(collection(db, 'tavsiyeler'), where('tur', '==', k.tur)))
-          const sayi = snap.docs.filter((d) => (d.data().tarih?.toMillis?.() || 0) >= cutoff).length
-          return { ...k, sayi }
+          const snap = await getDocs(query(collection(db, 'tavsiyeler'), where('tur', '==', k.tur), where('tarih', '>=', cutoff)))
+          return { ...k, sayi: snap.size }
         })
       )
       if (!iptal) {

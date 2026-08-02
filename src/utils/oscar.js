@@ -71,15 +71,28 @@ export async function adaylarGetir(sezonId) {
 // Topluluk genelinde izleme ilerlemesi: bu sezonun adayı olan filmlerden kaçının
 // en az bir kişi tarafından puanlandığını (=izlendiğini) sayar. "İzlendi" için ayrı
 // bir durum alanı yok — eserPuanlari'na puan girilmiş olması izlenmiş olmanın kanıtı.
+// Topluluk genelinde izleme ilerlemesi: bu sezonun adayı olan filmlerden kaçının
+// en az bir kişi tarafından puanlandığını (=izlendiğini) sayar. "İzlendi" için ayrı
+// bir durum alanı yok — eserPuanlari'na puan girilmiş olması izlenmiş olmanın kanıtı.
+//
+// ÖNEMLİ: eserPuanlari'nın TAMAMINI (tur=='sinema') çekmek yerine sadece bu
+// sezonun adayı olan tmdbId'leri sorguluyoruz. Firestore'un `in` operatörü en
+// fazla 30 değer aldığı için 30'arlık gruplar hâlinde soruyoruz. Bu, koleksiyon
+// büyüdükçe (ör. toplu Letterboxd puan içe aktarımından sonra binlerce kayıt
+// olduğunda) her sayfa açılışında TÜM koleksiyonu okumayı — ve Firestore
+// kotasını gereksiz yere tüketmeyi — önlüyor.
 export async function izlemeIlerlemesiHesapla(tmdbIdSeti) {
-  if (tmdbIdSeti.size === 0) return { izlenen: 0, toplam: 0 }
-  const snap = await getDocs(query(collection(db, 'eserPuanlari'), where('tur', '==', 'sinema')))
+  const tmdbIdler = [...tmdbIdSeti]
+  if (tmdbIdler.length === 0) return { izlenen: 0, toplam: 0 }
+
   const izlenenler = new Set()
-  snap.docs.forEach((d) => {
-    const disId = d.data().disId
-    if (tmdbIdSeti.has(disId)) izlenenler.add(disId)
-  })
-  return { izlenen: izlenenler.size, toplam: tmdbIdSeti.size }
+  for (let i = 0; i < tmdbIdler.length; i += 30) {
+    const parca = tmdbIdler.slice(i, i + 30)
+    const q = query(collection(db, 'eserPuanlari'), where('tur', '==', 'sinema'), where('disId', 'in', parca))
+    const snap = await getDocs(q)
+    snap.docs.forEach((d) => izlenenler.add(d.data().disId))
+  }
+  return { izlenen: izlenenler.size, toplam: tmdbIdler.length }
 }
 
 // --- Faz 2: Tahmin / Anket sistemi ---------------------------------------

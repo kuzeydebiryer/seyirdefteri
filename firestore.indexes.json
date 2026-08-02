@@ -56,6 +56,22 @@
         { "fieldPath": "sonTarih", "order": "ASCENDING" },
         { "fieldPath": "ilkTarih", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "tavsiyeler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tur", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "eserPuanlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tur", "order": "ASCENDING" },
+        { "fieldPath": "disId", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
