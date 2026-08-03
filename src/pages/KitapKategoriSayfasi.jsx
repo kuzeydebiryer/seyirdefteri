@@ -35,7 +35,7 @@ export default function KitapKategoriSayfasi() {
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-1">{gosterilenAd}</h1>
-      <p className="mb-6 text-sm text-kraft">Türkçe Kitap Veri Tabanı (Kitapyurdu)</p>
+      <p className="mb-6 text-sm text-kraft">Türkçe Kitap Veri Tabanı</p>
 
       {yukleniyor && kitaplar.length === 0 && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {!yukleniyor && kitaplar.length === 0 && <p className="text-sm text-kraft">Bu kategoride kitap bulunamadı.</p>}

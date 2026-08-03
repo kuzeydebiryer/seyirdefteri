@@ -78,7 +78,7 @@ export default function YayineviSayfasi() {
         )}
       </div>
       <p className="mt-1 text-xs text-kraft">
-        {yukleniyor ? 'Yükleniyor...' : `${kitaplar.length} kitap · Türkçe Kitap Veri Tabanı (Kitapyurdu)`}
+        {yukleniyor ? 'Yükleniyor...' : `${kitaplar.length} kitap · Türkçe Kitap Veri Tabanı`}
       </p>
 
       <div className="defter-cizgi my-6" />

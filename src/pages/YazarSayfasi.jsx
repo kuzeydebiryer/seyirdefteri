@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
 import { yazarinKitaplariniGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
-import YerBilgiKutusu from '../components/YerBilgiKutusu.jsx'
+import YazarBiyografisi from '../components/YazarBiyografisi.jsx'
 
 export default function YazarSayfasi() {
   const { ad } = useParams()
@@ -80,10 +80,10 @@ export default function YazarSayfasi() {
         )}
       </div>
       <p className="mt-1 text-xs text-kraft">
-        {yukleniyor ? 'Yükleniyor...' : `${kitaplar.length} kitap · Türkçe Kitap Veri Tabanı (Kitapyurdu)`}
+        {yukleniyor ? 'Yükleniyor...' : `${kitaplar.length} kitap · Türkçe Kitap Veri Tabanı`}
       </p>
 
-      <YerBilgiKutusu yer={yazarAdi} />
+      <YazarBiyografisi yazarAdi={yazarAdi} />
 
       <div className="defter-cizgi my-6" />
 
