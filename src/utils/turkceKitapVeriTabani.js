@@ -26,6 +26,8 @@ import { db } from '../firebase.js'
 // (~750KB, gzip ~300KB) indiriliyor — tüm veri hiç indirilmiyor.
 const PARCA_SAYISI = 80
 const parcaCache = {}
+let veriCache = null
+let yuklemePromise = null
 
 async function aciklamaGetir(indeks) {
   const parcaNo = indeks % PARCA_SAYISI
