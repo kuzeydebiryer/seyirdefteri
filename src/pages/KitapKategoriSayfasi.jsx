@@ -55,16 +55,6 @@ export default function KitapKategoriSayfasi() {
                 {[k.yazar, k.yayinevi, k.yil, k.sayfaSayisi && `${k.sayfaSayisi} s.`].filter(Boolean).join(' · ')}
               </p>
             </div>
-            {k.url && (
-              <a
-                href={k.url}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 rounded-sm bg-kagit px-2 py-1 text-[11px] text-kraft ring-1 ring-cizgi hover:underline"
-              >
-                Kaynak →
-              </a>
-            )}
           </div>
         ))}
       </div>

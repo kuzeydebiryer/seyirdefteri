@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
 import { yazarinKitaplariniGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import YerBilgiKutusu from '../components/YerBilgiKutusu.jsx'
 
 export default function YazarSayfasi() {
   const { ad } = useParams()
@@ -82,6 +83,8 @@ export default function YazarSayfasi() {
         {yukleniyor ? 'Yükleniyor...' : `${kitaplar.length} kitap · Türkçe Kitap Veri Tabanı (Kitapyurdu)`}
       </p>
 
+      <YerBilgiKutusu yer={yazarAdi} />
+
       <div className="defter-cizgi my-6" />
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Kitapları</h2>
@@ -105,16 +108,6 @@ export default function YazarSayfasi() {
               </p>
               {k.kategori && <p className="truncate text-[11px] text-kraft">{k.kategori}</p>}
             </div>
-            {k.url && (
-              <a
-                href={k.url}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 rounded-sm bg-kagit px-2 py-1 text-[11px] text-kraft ring-1 ring-cizgi hover:underline"
-              >
-                Kaynak →
-              </a>
-            )}
           </div>
         ))}
       </div>

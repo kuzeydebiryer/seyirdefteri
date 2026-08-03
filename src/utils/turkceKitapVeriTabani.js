@@ -152,15 +152,42 @@ export async function gununKitabiGetir() {
 // rastgele biri seçilip ona uyan gerçek bir kitap öneriliyor. Bu bir "takip
 // sistemi" değil (kimin tamamladığını kaydetmiyoruz), sadece keşif/ilham
 // amaçlı — basit ve düşük riskli tutmak için bilerek böyle.
-const MEYDAN_OKUMALAR = [
-  { etiket: '250 Sayfadan Kısa Bir Kitap Oku', filtre: { sayfaMaks: 250 } },
-  { etiket: '500 Sayfadan Uzun Bir Klasik Oku', filtre: { sayfaMin: 500 } },
-  { etiket: 'Bu Yıl Çıkmış Bir Kitap Oku', filtre: { yilBaslangic: new Date().getFullYear() } },
-  { etiket: '100 Sayfadan Kısa Bir Kitap Oku (Hızlı Okuma)', filtre: { sayfaMaks: 100 } },
-]
+// Sayfa Sayısına Göre Meydan Okuma — birkaç hazır meydan okuma türünden
+// rastgele biri seçilip ona uyan gerçek bir kitap öneriliyor. Bu bir "takip
+// sistemi" değil (kimin tamamladığını kaydetmiyoruz), sadece keşif/ilham
+// amaçlı — basit ve düşük riskli tutmak için bilerek böyle.
+//
+// "Bu yıl çıkmış" meydan okuması BİLEREK sistemin gerçek tarihini (ör. 2026)
+// değil, veri setindeki EN YENİ yılı (ör. 2025) referans alıyor — veri seti
+// belli bir tarihte toplandığı için sistem tarihiyle karşılaştırınca hep boş
+// çıkardı (veri setinde daha "bu yıla ait" hiçbir kayıt olmayabilir).
+let enYeniYilCache = null
+
+async function enYeniYiliBul() {
+  if (enYeniYilCache) return enYeniYilCache
+  const veri = await veriyiYukle()
+  let enYeni = 0
+  for (let i = 0; i < veri.length; i++) {
+    const yil = Number(veri[i][4])
+    if (yil > enYeni) enYeni = yil
+  }
+  enYeniYilCache = enYeni
+  return enYeni
+}
+
+async function meydanOkumalariGetir() {
+  const enYeniYil = await enYeniYiliBul()
+  return [
+    { etiket: '250 Sayfadan Kısa Bir Kitap Oku', filtre: { sayfaMaks: 250 } },
+    { etiket: '500 Sayfadan Uzun Bir Klasik Oku', filtre: { sayfaMin: 500 } },
+    { etiket: `${enYeniYil} veya Sonrasından Yeni Çıkmış Bir Kitap Oku`, filtre: { yilBaslangic: enYeniYil } },
+    { etiket: '100 Sayfadan Kısa Bir Kitap Oku (Hızlı Okuma)', filtre: { sayfaMaks: 100 } },
+  ]
+}
 
 export async function meydanOkumaOner() {
-  const meydanOkuma = MEYDAN_OKUMALAR[Math.floor(Math.random() * MEYDAN_OKUMALAR.length)]
+  const meydanOkumalar = await meydanOkumalariGetir()
+  const meydanOkuma = meydanOkumalar[Math.floor(Math.random() * meydanOkumalar.length)]
   const veri = await veriyiYukle()
 
   // Filtreye uyan rastgele bir kitap bulmak için veriden rastgele noktalardan

@@ -101,16 +101,6 @@ export default function YayineviSayfasi() {
               </p>
               {k.kategori && <p className="truncate text-[11px] text-kraft">{k.kategori}</p>}
             </div>
-            {k.url && (
-              <a
-                href={k.url}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 rounded-sm bg-kagit px-2 py-1 text-[11px] text-kraft ring-1 ring-cizgi hover:underline"
-              >
-                Kaynak →
-              </a>
-            )}
           </div>
         ))}
       </div>
