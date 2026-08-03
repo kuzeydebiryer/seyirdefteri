@@ -1,10 +1,7 @@
 import { useState } from 'react'
-import { kitapAramaSonucundanKaydet, kitapElleEkle } from '../utils/kitapKatalog.js'
+import { kitapElleEkle } from '../utils/kitapKatalog.js'
+import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { useAuth } from '../context/AuthContext.jsx'
-
-const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
-
-const DIL_ADLARI = { tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', fr: 'Fransızca', es: 'İspanyolca', it: 'İtalyanca', ru: 'Rusça' }
 
 // Bağımsız kitap arama/seçme bileşeni. GonderiEkle'nin "günce yaz" akışına
 // gömülü olan kitap aramasından farklı olarak, herhangi bir formun içine
@@ -13,10 +10,12 @@ const DIL_ADLARI = { tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', fr: 'Frans
 // seçebilmesi için. Seçilen kitap otomatik olarak dahili kataloğa yazılır
 // (henüz kimse günce yazmamış olsa bile).
 //
-// Arama sonuçlarında yazar + yayınevi + dil gösteriliyor — aksi hâlde aynı
-// başlıkta çok sayıda sonuç (farklı dil/baskı) birbirinden ayırt edilemiyordu.
-// Aranan kitap Google Books'ta hiç yoksa (özellikle Türkçe baskılarda sık
-// karşılaşılan bir durum) "Elle Ekle" formuyla dahili kataloğa direkt yazılabiliyor.
+// Arama, Kitapyurdu'ndan derlenmiş 67.000+ kitaplık Türkçe veri tabanımızda
+// yapılıyor — yabancı kaynaklara (Google Books arama sonuçları) bilerek yer
+// verilmiyor. Seçilen kitabın ISBN'i varsa SADECE kapak görseli için sessizce
+// Google Books'a bakılıyor (bu bir "arama" değil, görsel tamamlama). Aranan
+// kitap veri tabanında hiç yoksa "Elle Ekle" formuyla dahili kataloğa direkt
+// yazılabiliyor.
 export default function KitapSecici({ onSecim, secili, onTemizle }) {
   const { kullanici } = useAuth()
   const [arama, setArama] = useState('')
@@ -35,13 +34,15 @@ export default function KitapSecici({ onSecim, secili, onTemizle }) {
     setYukleniyor(true)
     setHata('')
     try {
-      const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
-      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(arama)}&maxResults=15${anahtarParcasi}`
-      const res = await fetch(url)
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
-      setSonuclar(data.items || [])
-      if ((data.items || []).length === 0) setHata('Sonuç bulunamadı.')
+      const trSonuclar = await turkceKitapAra(arama, 15)
+      const normallesmis = trSonuclar.map((k) => ({
+        id: `tr_${k.id}`,
+        ham: k,
+        ad: k.baslik,
+        altSatir: [k.yazar, k.yayinevi, k.yil].filter(Boolean).join(' · '),
+      }))
+      setSonuclar(normallesmis)
+      if (normallesmis.length === 0) setHata('Sonuç bulunamadı.')
     } catch (err) {
       setHata('Arama sırasında hata: ' + err.message)
     } finally {
@@ -49,10 +50,10 @@ export default function KitapSecici({ onSecim, secili, onTemizle }) {
     }
   }
 
-  async function sec(item) {
-    setKaydediliyorId(item.id)
+  async function sec(sonuc) {
+    setKaydediliyorId(sonuc.id)
     try {
-      const kitap = await kitapAramaSonucundanKaydet(item)
+      const kitap = await turkceKitaptanKaydet(sonuc.ham)
       onSecim(kitap)
       setSonuclar([])
       setArama('')
@@ -179,29 +180,23 @@ export default function KitapSecici({ onSecim, secili, onTemizle }) {
 
       {sonuclar.length > 0 && (
         <ul className="mt-2 max-h-64 space-y-1 overflow-y-auto">
-          {sonuclar.map((item) => {
-            const v = item.volumeInfo || {}
-            const kapak = (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
-            const dil = DIL_ADLARI[v.language] || v.language || ''
-            const altSatir = [(v.authors || []).join(', '), v.publisher, dil].filter(Boolean).join(' · ')
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => sec(item)}
-                  disabled={kaydediliyorId === item.id}
-                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-kagitKoyu disabled:opacity-40"
-                >
-                  {kapak && <img src={kapak} alt={v.title} className="h-10 w-7 shrink-0 rounded-sm object-cover" />}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-murekkep">{v.title}</p>
-                    <p className="truncate text-[11px] text-kraft">{altSatir}</p>
-                  </div>
-                  {kaydediliyorId === item.id && <span className="text-[11px] text-kraft">Seçiliyor...</span>}
-                </button>
-              </li>
-            )
-          })}
+          {sonuclar.map((sonuc) => (
+            <li key={sonuc.id}>
+              <button
+                type="button"
+                onClick={() => sec(sonuc)}
+                disabled={kaydediliyorId === sonuc.id}
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-kagitKoyu disabled:opacity-40"
+              >
+                <div className="flex h-10 w-7 shrink-0 items-center justify-center rounded-sm bg-kagitKoyu text-[9px] text-kraft">📖</div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-murekkep">{sonuc.ad}</p>
+                  <p className="truncate text-[11px] text-kraft">{sonuc.altSatir}</p>
+                </div>
+                {kaydediliyorId === sonuc.id && <span className="text-[11px] text-kraft">Seçiliyor...</span>}
+              </button>
+            </li>
+          ))}
         </ul>
       )}
 

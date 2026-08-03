@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
-
-const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
+import { yazarinKitaplariniGetir } from '../utils/turkceKitapVeriTabani.js'
 
 export default function YazarSayfasi() {
   const { ad } = useParams()
@@ -13,30 +12,18 @@ export default function YazarSayfasi() {
 
   const [kitaplar, setKitaplar] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
-  const [hata, setHata] = useState('')
   const [favoriMi_, setFavoriMi_] = useState(false)
   const [favoriIsleniyor, setFavoriIsleniyor] = useState(false)
 
   useEffect(() => {
     let iptal = false
-    async function getir() {
-      setYukleniyor(true)
-      setHata('')
-      try {
-        const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
-        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(`inauthor:"${yazarAdi}"`)}&maxResults=24&orderBy=newest${anahtarParcasi}`
-        const res = await fetch(url)
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
-        if (iptal) return
-        setKitaplar(data.items || [])
-      } catch (err) {
-        if (!iptal) setHata(err.message)
-      } finally {
-        if (!iptal) setYukleniyor(false)
+    setYukleniyor(true)
+    yazarinKitaplariniGetir(yazarAdi).then((liste) => {
+      if (!iptal) {
+        setKitaplar(liste)
+        setYukleniyor(false)
       }
-    }
-    getir()
+    })
 
     if (kullanici) {
       favoriMi(kullanici.uid, 'yazar', ad).then((v) => {
@@ -79,29 +66,39 @@ export default function YazarSayfasi() {
           </button>
         )}
       </div>
-      <p className="mt-1 text-xs text-kraft">Google Books'tan otomatik derlenen bibliyografi.</p>
+      <p className="mt-1 text-xs text-kraft">
+        {yukleniyor ? 'Yükleniyor...' : `${kitaplar.length} kitap · Türkçe Kitap Veri Tabanı (Kitapyurdu)`}
+      </p>
 
       <div className="defter-cizgi my-6" />
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Kitapları</h2>
-      {yukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
-      {hata && <p className="text-sm text-muhur">Bilgi alınamadı: {hata}</p>}
-      {!yukleniyor && kitaplar.length === 0 && <p className="text-sm text-kraft">Kayıt bulunamadı.</p>}
+      {!yukleniyor && kitaplar.length === 0 && (
+        <p className="text-sm text-kraft">Bu yazara ait kitap bulunamadı (yazar adı yazımı farklı olabilir).</p>
+      )}
 
-      <div className="grid grid-cols-4 gap-4 sm:grid-cols-6">
-        {kitaplar.map((k) => {
-          const v = k.volumeInfo || {}
-          const posterUrl = (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
-          return (
-            <Link key={k.id} to={`/kitap/${k.id}`} className="block">
-              <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                {posterUrl && <img src={posterUrl} alt={v.title} className="h-full w-full object-cover" />}
-              </div>
-              <p className="mt-1 truncate text-xs text-murekkep">{v.title}</p>
-              {v.publishedDate && <p className="text-[11px] text-kraft">{v.publishedDate.slice(0, 4)}</p>}
-            </Link>
-          )
-        })}
+      <div className="space-y-2">
+        {kitaplar.map((k) => (
+          <div key={k.id} className="flex items-center justify-between gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-murekkep">{k.baslik}</p>
+              <p className="truncate text-xs text-kraft">
+                {[k.yayinevi, k.yil, k.sayfaSayisi && `${k.sayfaSayisi} s.`].filter(Boolean).join(' · ')}
+              </p>
+              {k.kategori && <p className="truncate text-[11px] text-kraft">{k.kategori}</p>}
+            </div>
+            {k.url && (
+              <a
+                href={k.url}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-sm bg-kagit px-2 py-1 text-[11px] text-deniz ring-1 ring-cizgi hover:underline"
+              >
+                Kaynağa Git →
+              </a>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )

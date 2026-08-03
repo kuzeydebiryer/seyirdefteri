@@ -4,14 +4,13 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ULKELER } from '../data/ulkeler.js'
-import { kitapGetir, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
+import { kitapGetir } from '../utils/kitapKatalog.js'
+import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { eserIstatistikGuncelle } from '../utils/eserIstatistik.js'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
-const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
-const DIL_ADLARI = { tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', fr: 'Fransızca', es: 'İspanyolca', it: 'İtalyanca', ru: 'Rusça' }
 const YILDIZ_SECENEKLERI = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 const KATEGORILER = [
@@ -284,16 +283,9 @@ export default function GonderiEkle() {
         setSonuclar(data.results || [])
         if ((data.results || []).length === 0) setAramaHatasi('Sonuç bulunamadı.')
       } else if (hedef === 'kitap') {
-        const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
-        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(arama)}&maxResults=10${anahtarParcasi}`
-        const res = await fetch(url)
-        const data = await res.json()
-        if (!res.ok) {
-          console.error('Google Books API hatası:', data)
-          throw new Error(data.error?.message || `HTTP ${res.status}`)
-        }
-        setSonuclar(data.items || [])
-        if ((data.items || []).length === 0) setAramaHatasi('Sonuç bulunamadı.')
+        const trSonuclar = await turkceKitapAra(arama, 12)
+        setSonuclar(trSonuclar.map((k) => ({ id: `tr_${k.id}`, ham: k })))
+        if (trSonuclar.length === 0) setAramaHatasi('Sonuç bulunamadı.')
       }
     } catch (err) {
       setAramaHatasi('Arama sırasında hata: ' + err.message)
@@ -382,40 +374,39 @@ export default function GonderiEkle() {
         setDetayYukleniyor(false)
       }
     } else if (hedef === 'kitap') {
-      const v = item.volumeInfo || {}
-      const kapakOnizleme = (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
+      const k = item.ham
 
       if (kategori === 'yazi') {
         setSeciliId(item.id)
-        setIlgiliBaslik(v.title || '')
-        setIlgiliYazar((v.authors || []).join(', '))
-        setIlgiliPosterUrl(kapakOnizleme)
+        setIlgiliBaslik(k.baslik || '')
+        setIlgiliYazar(k.yazar || '')
+        setIlgiliPosterUrl('')
         setIlgiliDisId(item.id)
         return
       }
 
-      // Önce ham arama sonucuyla anında doldur (bekleme hissi olmasın),
-      // ardından dahili kataloğa yazıp (Open Library ile zenginleştirip) üzerine güncelle.
+      // Önce ham veriyle anında doldur (bekleme hissi olmasın), ardından
+      // dahili kataloğa yazıp (kapak için ISBN'den Google Books'a bakıp) üzerine güncelle.
       setSeciliId(item.id)
       setGoogleBooksId(item.id)
-      setBaslik(v.title || '')
-      setYazar((v.authors || []).join(', '))
-      setPosterUrl(kapakOnizleme)
-      setOzet(v.description || '')
-      setTurler((v.categories || []).join(', '))
-      setSayfaSayisi(v.pageCount || '')
-      setYayinevi(v.publisher || '')
-      setYil(v.publishedDate ? v.publishedDate.slice(0, 4) : '')
-      setDbPuan(v.averageRating ? v.averageRating.toFixed(1) : '')
+      setBaslik(k.baslik || '')
+      setYazar(k.yazar || '')
+      setPosterUrl('')
+      setOzet('')
+      setTurler(k.kategori || '')
+      setSayfaSayisi(k.sayfaSayisi || '')
+      setYayinevi(k.yayinevi || '')
+      setYil(k.yil || '')
+      setDbPuan('')
 
       setDetayYukleniyor(true)
       try {
-        const k = await kitapAramaSonucundanKaydet(item)
-        setPosterUrl(k.posterUrl || kapakOnizleme)
-        setOzet(k.ozet || v.description || '')
-        setTurler(k.turler || (v.categories || []).join(', '))
-        setSayfaSayisi(k.sayfaSayisi || v.pageCount || '')
-        setYayinevi(k.yayinevi || v.publisher || '')
+        const kaydedilen = await turkceKitaptanKaydet(k)
+        setGoogleBooksId(kaydedilen.id)
+        setPosterUrl(kaydedilen.posterUrl || '')
+        setTurler(kaydedilen.turler || k.kategori || '')
+        setSayfaSayisi(kaydedilen.sayfaSayisi || k.sayfaSayisi || '')
+        setYayinevi(kaydedilen.yayinevi || k.yayinevi || '')
       } catch (err) {
         console.warn('Kitap kataloğuna kaydetme başarısız:', err.message)
       } finally {
@@ -608,19 +599,9 @@ export default function GonderiEkle() {
                         ? { url: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '', ad: item.title }
                         : hedef === 'dizi'
                           ? { url: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '', ad: item.name }
-                          : {
-                              url: (item.volumeInfo?.imageLinks?.thumbnail || item.volumeInfo?.imageLinks?.smallThumbnail || '').replace(
-                                'http://',
-                                'https://'
-                              ),
-                              ad: item.volumeInfo?.title,
-                            }
+                          : { url: '', ad: item.ham?.baslik }
                     const kitapAltSatir =
-                      hedef === 'kitap'
-                        ? [(item.volumeInfo?.authors || []).join(', '), item.volumeInfo?.publisher, DIL_ADLARI[item.volumeInfo?.language] || item.volumeInfo?.language]
-                            .filter(Boolean)
-                            .join(' · ')
-                        : ''
+                      hedef === 'kitap' ? [item.ham?.yazar, item.ham?.yayinevi, item.ham?.yil].filter(Boolean).join(' · ') : ''
                     return (
                       <button
                         key={item.id}

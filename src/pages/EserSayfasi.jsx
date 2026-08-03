@@ -17,7 +17,8 @@ import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
-import { kitapGetir, kitapGuncelle, kitapAramaSonucundanKaydet, kitapElleEkle } from '../utils/kitapKatalog.js'
+import { kitapGetir, kitapGuncelle, kitapElleEkle } from '../utils/kitapKatalog.js'
+import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { alintiEkle, alintiBegenDegistir, alintiSil, kitapAlintilariGetir } from '../utils/alinti.js'
 import { useKisiselListeler } from '../hooks/useKisiselListeler.js'
 import { ogeEkle as listeyeOgeEkle, esereAitListeleriGetir } from '../utils/kisiselListe.js'
@@ -28,8 +29,6 @@ import AlintiKarti from '../components/AlintiKarti.jsx'
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const TMDB_SAGLAYICI_LOGO = 'https://image.tmdb.org/t/p/w92'
-const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
-const DIL_ADLARI = { tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', fr: 'Fransızca', es: 'İspanyolca', it: 'İtalyanca', ru: 'Rusça' }
 
 function KisiListesi({ kisiler, etiket }) {
   if (!kisiler || kisiler.length === 0) return null
@@ -111,11 +110,8 @@ export default function EserSayfasi({ tur }) {
     setIlgiliSonuclar([])
     try {
       if (ilgiliHedefTur === 'kitap') {
-        const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
-        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(ilgiliArama)}&maxResults=10${anahtarParcasi}`
-        const res = await fetch(url)
-        const data = await res.json()
-        setIlgiliSonuclar(data.items || [])
+        const trSonuclar = await turkceKitapAra(ilgiliArama, 10)
+        setIlgiliSonuclar(trSonuclar.map((k) => ({ id: `tr_${k.id}`, ham: k })))
       } else {
         if (!TMDB_API_KEY) return
         const uc = ilgiliHedefTur === 'sinema' ? 'movie' : 'tv'
@@ -135,8 +131,8 @@ export default function EserSayfasi({ tur }) {
     try {
       let hedef
       if (ilgiliHedefTur === 'kitap') {
-        const kitap = await kitapAramaSonucundanKaydet(item)
-        hedef = { tur: 'kitap', disId: item.id, baslik: kitap.baslik, alt: kitap.yazar, posterUrl: kitap.posterUrl }
+        const kitap = await turkceKitaptanKaydet(item.ham)
+        hedef = { tur: 'kitap', disId: kitap.id, baslik: kitap.baslik, alt: kitap.yazar, posterUrl: kitap.posterUrl }
       } else {
         const v = item
         hedef = {
@@ -894,17 +890,12 @@ export default function EserSayfasi({ tur }) {
                         {ilgiliSonuclar.length > 0 && (
                           <ul className="max-h-56 space-y-1 overflow-y-auto">
                             {ilgiliSonuclar.slice(0, 10).map((item) => {
-                              const v = ilgiliHedefTur === 'kitap' ? item.volumeInfo || {} : item
-                              const ad = ilgiliHedefTur === 'kitap' ? v.title : ilgiliHedefTur === 'sinema' ? v.title : v.name
-                              const kapak =
-                                ilgiliHedefTur === 'kitap'
-                                  ? (v.imageLinks?.thumbnail || '').replace('http://', 'https://')
-                                  : v.poster_path
-                                    ? `${TMDB_POSTER}${v.poster_path}`
-                                    : ''
+                              const v = ilgiliHedefTur === 'kitap' ? item.ham : item
+                              const ad = ilgiliHedefTur === 'kitap' ? v.baslik : ilgiliHedefTur === 'sinema' ? v.title : v.name
+                              const kapak = ilgiliHedefTur === 'kitap' ? '' : v.poster_path ? `${TMDB_POSTER}${v.poster_path}` : ''
                               const altSatir =
                                 ilgiliHedefTur === 'kitap'
-                                  ? [(v.authors || []).join(', '), v.publisher, DIL_ADLARI[v.language] || v.language].filter(Boolean).join(' · ')
+                                  ? [v.yazar, v.yayinevi, v.yil].filter(Boolean).join(' · ')
                                   : (ilgiliHedefTur === 'sinema' ? v.release_date : v.first_air_date)?.slice(0, 4) || ''
                               return (
                                 <li key={item.id}>
@@ -914,7 +905,15 @@ export default function EserSayfasi({ tur }) {
                                     disabled={ilgiliEkleniyor === item.id}
                                     className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left hover:bg-kagitKoyu disabled:opacity-40"
                                   >
-                                    {kapak && <img src={kapak} alt="" className="h-9 w-6 shrink-0 rounded-sm object-cover" />}
+                                    {kapak ? (
+                                      <img src={kapak} alt="" className="h-9 w-6 shrink-0 rounded-sm object-cover" />
+                                    ) : (
+                                      ilgiliHedefTur === 'kitap' && (
+                                        <div className="flex h-9 w-6 shrink-0 items-center justify-center rounded-sm bg-kagitKoyu text-[9px]">
+                                          📖
+                                        </div>
+                                      )
+                                    )}
                                     <div className="min-w-0 flex-1">
                                       <p className="truncate text-xs text-murekkep">{ilgiliEkleniyor === item.id ? 'Ekleniyor...' : ad}</p>
                                       {altSatir && <p className="truncate text-[10px] text-kraft">{altSatir}</p>}
