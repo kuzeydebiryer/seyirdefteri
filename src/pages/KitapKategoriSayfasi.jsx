@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
-import { kategorideKitaplariGetir } from '../utils/turkceKitapVeriTabani.js'
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { kategorideKitaplariGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 
 export default function KitapKategoriSayfasi() {
   const { kategori } = useParams()
+  const navigate = useNavigate()
   const [aramaParametreleri] = useSearchParams()
   const kategoriAdi = decodeURIComponent(kategori)
   const gosterilenAd = aramaParametreleri.get('ad') || kategoriAdi
@@ -11,6 +12,17 @@ export default function KitapKategoriSayfasi() {
   const [kitaplar, setKitaplar] = useState([])
   const [limit, setLimit] = useState(60)
   const [yukleniyor, setYukleniyor] = useState(true)
+  const [inceleniyorId, setInceleniyorId] = useState(null)
+
+  async function incele(kitap) {
+    setInceleniyorId(kitap.id)
+    try {
+      const kaydedilen = await turkceKitaptanKaydet(kitap)
+      navigate(`/kitap/${kaydedilen.id}`)
+    } finally {
+      setInceleniyorId(null)
+    }
+  }
 
   useEffect(() => {
     setYukleniyor(true)
@@ -32,7 +44,13 @@ export default function KitapKategoriSayfasi() {
         {kitaplar.map((k) => (
           <div key={k.id} className="flex items-center justify-between gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-murekkep">{k.baslik}</p>
+              <button
+                onClick={() => incele(k)}
+                disabled={inceleniyorId === k.id}
+                className="truncate text-left text-sm font-medium text-murekkep hover:text-deniz hover:underline disabled:opacity-40"
+              >
+                {inceleniyorId === k.id ? 'Açılıyor...' : k.baslik}
+              </button>
               <p className="truncate text-xs text-kraft">
                 {[k.yazar, k.yayinevi, k.yil, k.sayfaSayisi && `${k.sayfaSayisi} s.`].filter(Boolean).join(' · ')}
               </p>
@@ -42,9 +60,9 @@ export default function KitapKategoriSayfasi() {
                 href={k.url}
                 target="_blank"
                 rel="noreferrer"
-                className="shrink-0 rounded-sm bg-kagit px-2 py-1 text-[11px] text-deniz ring-1 ring-cizgi hover:underline"
+                className="shrink-0 rounded-sm bg-kagit px-2 py-1 text-[11px] text-kraft ring-1 ring-cizgi hover:underline"
               >
-                Kaynağa Git →
+                Kaynak →
               </a>
             )}
           </div>

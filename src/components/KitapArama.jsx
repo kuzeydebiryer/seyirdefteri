@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { kitapFiltrele, tumKategorileriGetir } from '../utils/turkceKitapVeriTabani.js'
+import { useNavigate, Link } from 'react-router-dom'
+import { kitapFiltrele, tumKategorileriGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 
 export default function KitapArama() {
+  const navigate = useNavigate()
   const [kategoriler, setKategoriler] = useState([])
   const [acik, setAcik] = useState(false)
   const [form, setForm] = useState({ metin: '', kategori: '', yilBaslangic: '', yilBitis: '', sayfaMin: '', sayfaMaks: '' })
   const [sonuclar, setSonuclar] = useState([])
   const [yukleniyor, setYukleniyor] = useState(false)
   const [aramaYapildi, setAramaYapildi] = useState(false)
+  const [inceleniyorId, setInceleniyorId] = useState(null)
 
   useEffect(() => {
     tumKategorileriGetir().then((liste) => setKategoriler(liste.slice(0, 40)))
@@ -23,6 +25,16 @@ export default function KitapArama() {
       setSonuclar(liste)
     } finally {
       setYukleniyor(false)
+    }
+  }
+
+  async function incele(kitap) {
+    setInceleniyorId(kitap.id)
+    try {
+      const kaydedilen = await turkceKitaptanKaydet(kitap)
+      navigate(`/kitap/${kaydedilen.id}`)
+    } finally {
+      setInceleniyorId(null)
     }
   }
 
@@ -127,7 +139,13 @@ export default function KitapArama() {
           {sonuclar.map((k) => (
             <div key={k.id} className="flex items-center justify-between gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-murekkep">{k.baslik}</p>
+                <button
+                  onClick={() => incele(k)}
+                  disabled={inceleniyorId === k.id}
+                  className="truncate text-left text-sm font-medium text-murekkep hover:text-deniz hover:underline disabled:opacity-40"
+                >
+                  {inceleniyorId === k.id ? 'Açılıyor...' : k.baslik}
+                </button>
                 <p className="truncate text-xs text-kraft">
                   {[k.yazar, k.yayinevi, k.yil, k.sayfaSayisi && `${k.sayfaSayisi} s.`].filter(Boolean).join(' · ')}
                 </p>
@@ -145,9 +163,9 @@ export default function KitapArama() {
                   href={k.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="shrink-0 rounded-sm bg-kagit px-2 py-1 text-[11px] text-deniz ring-1 ring-cizgi hover:underline"
+                  className="shrink-0 rounded-sm bg-kagit px-2 py-1 text-[11px] text-kraft ring-1 ring-cizgi hover:underline"
                 >
-                  Kaynağa Git →
+                  Kaynak →
                 </a>
               )}
             </div>

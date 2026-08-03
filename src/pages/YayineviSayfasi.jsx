@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
-import { yayineviKitaplariniGetir } from '../utils/turkceKitapVeriTabani.js'
+import { yayineviKitaplariniGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 
 export default function YayineviSayfasi() {
   const { ad } = useParams()
+  const navigate = useNavigate()
   const yayineviAdi = decodeURIComponent(ad)
   const { kullanici } = useAuth()
 
@@ -14,6 +15,17 @@ export default function YayineviSayfasi() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const [favoriMi_, setFavoriMi_] = useState(false)
   const [favoriIsleniyor, setFavoriIsleniyor] = useState(false)
+  const [inceleniyorId, setInceleniyorId] = useState(null)
+
+  async function incele(kitap) {
+    setInceleniyorId(kitap.id)
+    try {
+      const kaydedilen = await turkceKitaptanKaydet(kitap)
+      navigate(`/kitap/${kaydedilen.id}`)
+    } finally {
+      setInceleniyorId(null)
+    }
+  }
 
   useEffect(() => {
     let iptal = false
@@ -77,7 +89,13 @@ export default function YayineviSayfasi() {
         {kitaplar.map((k) => (
           <div key={k.id} className="flex items-center justify-between gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-murekkep">{k.baslik}</p>
+              <button
+                onClick={() => incele(k)}
+                disabled={inceleniyorId === k.id}
+                className="truncate text-left text-sm font-medium text-murekkep hover:text-deniz hover:underline disabled:opacity-40"
+              >
+                {inceleniyorId === k.id ? 'Açılıyor...' : k.baslik}
+              </button>
               <p className="truncate text-xs text-kraft">
                 {[k.yazar, k.yil, k.sayfaSayisi && `${k.sayfaSayisi} s.`].filter(Boolean).join(' · ')}
               </p>
@@ -88,9 +106,9 @@ export default function YayineviSayfasi() {
                 href={k.url}
                 target="_blank"
                 rel="noreferrer"
-                className="shrink-0 rounded-sm bg-kagit px-2 py-1 text-[11px] text-deniz ring-1 ring-cizgi hover:underline"
+                className="shrink-0 rounded-sm bg-kagit px-2 py-1 text-[11px] text-kraft ring-1 ring-cizgi hover:underline"
               >
-                Kaynağa Git →
+                Kaynak →
               </a>
             )}
           </div>
