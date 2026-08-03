@@ -133,7 +133,120 @@ export async function turkceKitaptanKaydet(kitap) {
   return { id, ...veri }
 }
 
-// Yazar Sayfası için: bu veri tabanında TAM olarak bu yazara ait tüm kitaplar.
+// "Günün Kitabı" için rastgele bir kayıt seçer. Veri kalitesi düşük (ISBN'i
+// olmayan, çok az sayfalı vb.) kayıtları elemek için basit bir kalite filtresi
+// uyguluyoruz — aksi hâlde bazen çok obskür/hatalı kayıtlar çıkabiliyordu.
+export async function gununKitabiGetir() {
+  const veri = await veriyiYukle()
+  for (let deneme = 0; deneme < 10; deneme++) {
+    const i = Math.floor(Math.random() * veri.length)
+    const [, , , isbn, , sayfaSayisi] = veri[i]
+    if (isbn && sayfaSayisi && sayfaSayisi > 30) {
+      return satiriNesneyeGevir(veri[i], i)
+    }
+  }
+  return satiriNesneyeGevir(veri[0], 0)
+}
+
+// Sayfa Sayısına Göre Meydan Okuma — birkaç hazır meydan okuma türünden
+// rastgele biri seçilip ona uyan gerçek bir kitap öneriliyor. Bu bir "takip
+// sistemi" değil (kimin tamamladığını kaydetmiyoruz), sadece keşif/ilham
+// amaçlı — basit ve düşük riskli tutmak için bilerek böyle.
+const MEYDAN_OKUMALAR = [
+  { etiket: '250 Sayfadan Kısa Bir Kitap Oku', filtre: { sayfaMaks: 250 } },
+  { etiket: '500 Sayfadan Uzun Bir Klasik Oku', filtre: { sayfaMin: 500 } },
+  { etiket: 'Bu Yıl Çıkmış Bir Kitap Oku', filtre: { yilBaslangic: new Date().getFullYear() } },
+  { etiket: '100 Sayfadan Kısa Bir Kitap Oku (Hızlı Okuma)', filtre: { sayfaMaks: 100 } },
+]
+
+export async function meydanOkumaOner() {
+  const meydanOkuma = MEYDAN_OKUMALAR[Math.floor(Math.random() * MEYDAN_OKUMALAR.length)]
+  const veri = await veriyiYukle()
+
+  // Filtreye uyan rastgele bir kitap bulmak için veriden rastgele noktalardan
+  // başlayıp ilk uyanı alıyoruz (tüm veriyi taramak yerine) — hızlı.
+  for (let deneme = 0; deneme < 30; deneme++) {
+    const i = Math.floor(Math.random() * veri.length)
+    const [, , , isbn, yil, sayfaSayisi] = veri[i]
+    if (!isbn) continue
+    const { sayfaMaks, sayfaMin, yilBaslangic } = meydanOkuma.filtre
+    if (sayfaMaks && (!sayfaSayisi || sayfaSayisi > sayfaMaks)) continue
+    if (sayfaMin && (!sayfaSayisi || sayfaSayisi < sayfaMin)) continue
+    if (yilBaslangic && (!yil || Number(yil) < yilBaslangic)) continue
+    return { meydanOkuma: meydanOkuma.etiket, kitap: satiriNesneyeGevir(veri[i], i) }
+  }
+  return { meydanOkuma: meydanOkuma.etiket, kitap: null }
+}
+export async function yayineviKitaplariniGetir(yayineviAdi) {
+  const veri = await veriyiYukle()
+  const q = yayineviAdi.trim().toLocaleLowerCase('tr-TR')
+  const sonuclar = []
+  for (let i = 0; i < veri.length; i++) {
+    if (veri[i][2].toLocaleLowerCase('tr-TR') === q) {
+      sonuclar.push(satiriNesneyeGevir(veri[i], i))
+    }
+  }
+  sonuclar.sort((a, b) => (b.yil || '0').localeCompare(a.yil || '0'))
+  return sonuclar
+}
+
+// Kategori Keşfi için: bu kategorideki tüm kitaplar. Kategoriler bazen
+// binlerce kitap içerebildiği için (ör. "Roman (Yerli)") tamamını değil,
+// çağıran taraf sayfalama yapabilsin diye ilk N'i döndürüyoruz.
+export async function kategorideKitaplariGetir(kategoriAdi, enFazla = 60) {
+  const veri = await veriyiYukle()
+  const q = kategoriAdi.trim().toLocaleLowerCase('tr-TR')
+  const sonuclar = []
+  for (let i = 0; i < veri.length; i++) {
+    if (veri[i][6].toLocaleLowerCase('tr-TR') === q) {
+      sonuclar.push(satiriNesneyeGevir(veri[i], i))
+      if (sonuclar.length >= enFazla) break
+    }
+  }
+  return sonuclar
+}
+
+// Tüm benzersiz kategori adlarını (ve her birinde kaç kitap olduğunu) getirir
+// — Kategori Keşfi'nin ana listeleme sayfası için.
+export async function tumKategorileriGetir() {
+  const veri = await veriyiYukle()
+  const sayaclar = new Map()
+  for (let i = 0; i < veri.length; i++) {
+    const kategori = veri[i][6]
+    if (!kategori) continue
+    sayaclar.set(kategori, (sayaclar.get(kategori) || 0) + 1)
+  }
+  return Array.from(sayaclar.entries())
+    .map(([kategori, sayi]) => ({ kategori, sayi }))
+    .sort((a, b) => b.sayi - a.sayi)
+}
+
+// Gelişmiş Kitap Arama/Filtreleme için: metin + kategori + yayınevi + yıl
+// aralığı + sayfa sayısı aralığına göre filtreler. Tüm filtreler opsiyonel.
+export async function kitapFiltrele({ metin, kategori, yayinevi, yilBaslangic, yilBitis, sayfaMin, sayfaMaks } = {}, enFazla = 60) {
+  const veri = await veriyiYukle()
+  const metinQ = metin?.trim().toLocaleLowerCase('tr-TR') || ''
+  const sonuclar = []
+
+  for (let i = 0; i < veri.length; i++) {
+    const [baslik, yazar, yayineviAdi, , yil, sayfaSayisi, kategoriAdi] = veri[i]
+
+    if (metinQ) {
+      const eslesiyor = baslik.toLocaleLowerCase('tr-TR').includes(metinQ) || yazar.toLocaleLowerCase('tr-TR').includes(metinQ)
+      if (!eslesiyor) continue
+    }
+    if (kategori && kategoriAdi !== kategori) continue
+    if (yayinevi && yayineviAdi !== yayinevi) continue
+    if (yilBaslangic && (!yil || Number(yil) < Number(yilBaslangic))) continue
+    if (yilBitis && (!yil || Number(yil) > Number(yilBitis))) continue
+    if (sayfaMin && (!sayfaSayisi || sayfaSayisi < Number(sayfaMin))) continue
+    if (sayfaMaks && (!sayfaSayisi || sayfaSayisi > Number(sayfaMaks))) continue
+
+    sonuclar.push(satiriNesneyeGevir(veri[i], i))
+    if (sonuclar.length >= enFazla) break
+  }
+  return sonuclar
+}
 // Not: Yazar adı serbest metin olarak girildiği için (aynı yazarın farklı
 // kayıtlarda farklı yazılmış olma ihtimali var) bu bir TAM eşleşme — bazı
 // baskılar farklı yazılmışsa kaçırılabilir, bu bilinen bir sınırlama.

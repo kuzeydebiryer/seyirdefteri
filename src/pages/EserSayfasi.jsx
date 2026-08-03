@@ -611,6 +611,10 @@ export default function EserSayfasi({ tur }) {
                   {i < detay.turListesi.length - 1 && ','}
                 </span>
               ))
+            ) : detay.turler && tur === 'kitap' ? (
+              <Link to={`/kitap-kategori/${encodeURIComponent(detay.turler)}`} className="hover:text-deniz hover:underline">
+                {detay.turler}
+              </Link>
             ) : (
               detay.turler && <span>{detay.turler}</span>
             )}
@@ -618,7 +622,14 @@ export default function EserSayfasi({ tur }) {
             {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
             {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
             {detay.sayfaSayisi && <span>📄 {detay.sayfaSayisi} sayfa</span>}
-            {detay.yayinevi && <span>{detay.yayinevi}</span>}
+            {detay.yayinevi &&
+              (tur === 'kitap' ? (
+                <Link to={`/yayinevi/${encodeURIComponent(detay.yayinevi)}`} className="hover:text-deniz hover:underline">
+                  {detay.yayinevi}
+                </Link>
+              ) : (
+                <span>{detay.yayinevi}</span>
+              ))}
             {detay.dbPuan && <span>{tur === 'kitap' ? 'Google' : 'TMDB'} {detay.dbPuan}</span>}
           </div>
 

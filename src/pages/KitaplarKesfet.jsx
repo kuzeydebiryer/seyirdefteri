@@ -12,6 +12,9 @@ import YildizPuan from '../components/YildizPuan.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import HaberBolumu from '../components/HaberBolumu.jsx'
 import ListelerBolumu from '../components/ListelerBolumu.jsx'
+import KitapArama from '../components/KitapArama.jsx'
+import GununKitabi from '../components/GununKitabi.jsx'
+import MeydanOkuma from '../components/MeydanOkuma.jsx'
 
 function SuankiKitapWidget() {
   const { kullanici } = useAuth()
@@ -192,6 +195,13 @@ export default function KitaplarKesfet() {
       </div>
 
       <SuankiKitapWidget />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <GununKitabi />
+        <MeydanOkuma />
+      </div>
+
+      <KitapArama />
 
       <SonAlintilarBolumu limitSayisi={5} />
 
