@@ -11,6 +11,8 @@ const ALT_TURLER = [
   { id: 'kisi-yazisi', etiket: 'Kişi Yazısı' },
   { id: 'liste-yazisi', etiket: 'Liste Yazısı' },
   { id: 'soylesi', etiket: 'Söyleşi' },
+  { id: 'hikaye', etiket: 'Hikaye' },
+  { id: 'bilinc-akisi', etiket: 'Bilinç Akışı' },
 ]
 
 export default function YaziArama() {

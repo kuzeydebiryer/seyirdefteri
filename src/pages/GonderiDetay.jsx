@@ -182,6 +182,8 @@ export default function GonderiDetay() {
                     'kisi-yazisi': 'Kişi Yazısı',
                     'liste-yazisi': 'Liste Yazısı',
                     soylesi: 'Söyleşi',
+                    hikaye: 'Hikaye',
+                    'bilinc-akisi': 'Bilinç Akışı',
                   }[gonderi.altTur]
                 }
               </p>

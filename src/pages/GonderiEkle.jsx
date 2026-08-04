@@ -33,11 +33,13 @@ const YAZI_ALT_TURLERI = [
   { id: 'kisi-yazisi', etiket: 'Kişi Yazısı' },
   { id: 'liste-yazisi', etiket: 'Liste Yazısı' },
   { id: 'soylesi', etiket: 'Söyleşi' },
+  { id: 'hikaye', etiket: 'Hikaye' },
+  { id: 'bilinc-akisi', etiket: 'Bilinç Akışı' },
 ]
 // Puanlama sadece bir "esere" (film/kitap/sanat eseri) dair incelemelerde
 // anlamlı — bir kişi yazısını ya da liste yazısını yıldızla puanlamak tuhaf
 // kaçardı, bu yüzden bu alt türlerde puanlama alanı hiç gösterilmiyor.
-const PUANSIZ_YAZI_ALT_TURLERI = ['deneme', 'kisi-yazisi', 'liste-yazisi', 'soylesi']
+const PUANSIZ_YAZI_ALT_TURLERI = ['deneme', 'kisi-yazisi', 'liste-yazisi', 'soylesi', 'hikaye', 'bilinc-akisi']
 
 // Bir kategori TMDB/Google Books araması kullanıyor mu?
 const API_KATEGORILERI = ['sinema', 'dizi', 'kitap']
@@ -258,6 +260,7 @@ export default function GonderiEkle() {
   useEffect(() => {
     const urlTur = aramaParametreleri.get('tur')
     const urlDisId = aramaParametreleri.get('disId')
+    const urlAltTur = aramaParametreleri.get('altTur')
     if (urlTur && urlDisId) {
       setKategori(urlTur)
       disIdIleGetir(urlTur, urlDisId)
@@ -265,6 +268,7 @@ export default function GonderiEkle() {
       // Gezi/Etkinlik gibi dış veritabanı ID'si gerekmeyen kategoriler için:
       // sadece ?tur=gezi ile gelindiğinde de o kategoriye geçilsin.
       kategoriDegistir(urlTur)
+      if (urlTur === 'yazi' && urlAltTur) setYaziAltTur(urlAltTur)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -1080,9 +1084,11 @@ export default function GonderiEkle() {
             onChange={(e) => setGunce(e.target.value)}
             rows={kategori === 'yazi' ? 16 : 5}
             placeholder={
-              kategori === 'yazi'
-                ? 'Yazmaya başla...\n\nİpucu: # Başlık, > Alıntı, *kalın metin* ve boş satırla ayrılmış bir resim linki kullanabilirsin.'
-                : 'Ne düşünüyorsun, nasıl geçti?'
+              kategori === 'yazi' && yaziAltTur === 'bilinc-akisi'
+                ? 'Aklından geçeni serbestçe yaz — bu bir tartışma başlangıcı, altındaki yorumlarda devam edilir.'
+                : kategori === 'yazi'
+                  ? 'Yazmaya başla...\n\nİpucu: # Başlık, > Alıntı, *kalın metin* ve boş satırla ayrılmış bir resim linki kullanabilirsin.'
+                  : 'Ne düşünüyorsun, nasıl geçti?'
             }
             className={
               kategori === 'yazi'

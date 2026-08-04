@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useGonderiler } from '../hooks/useGonderiler.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import YaziArama from '../components/YaziArama.jsx'
@@ -10,6 +11,8 @@ const ALT_TUR_BASLIKLARI = [
   { id: 'kisi-yazisi', baslik: 'Kişi Yazıları' },
   { id: 'liste-yazisi', baslik: 'Liste Yazıları' },
   { id: 'soylesi', baslik: 'Söyleşiler' },
+  { id: 'hikaye', baslik: 'Hikayeler' },
+  { id: 'bilinc-akisi', baslik: 'Bilinç Akışı' },
 ]
 
 export default function Yazilar() {
@@ -18,7 +21,7 @@ export default function Yazilar() {
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-2">Yazı</h1>
-      <p className="text-sm text-kraft mb-6">Denemeler, incelemeler, kişi yazıları, liste yazıları ve söyleşiler.</p>
+      <p className="text-sm text-kraft mb-6">Denemeler, incelemeler, hikayeler, kişi yazıları, liste yazıları, söyleşiler ve bilinç akışı.</p>
 
       <YaziArama />
 
@@ -30,7 +33,12 @@ export default function Yazilar() {
           const buGrup = gonderiler.filter((g) => g.altTur === id)
           return (
             <div key={id} className="mb-10">
-              <h2 className="font-baslik text-lg text-murekkep mb-3">{baslik}</h2>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
+                <Link to={`/gonderi-ekle?tur=yazi&altTur=${id}`} className="text-xs text-deniz hover:underline">
+                  + Yazı Ekle
+                </Link>
+              </div>
               {buGrup.length === 0 ? (
                 <p className="text-sm text-kraft">Henüz bu türde bir yazı yok.</p>
               ) : (
