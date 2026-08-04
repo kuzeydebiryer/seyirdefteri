@@ -91,6 +91,14 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
+    // Öne Çıkan Etkinlikler: Etkinlik.io'dan seçilen en fazla 3 etkinlik.
+    // Herkes okuyabilir, giriş yapmış herkes ekleyip kaldırabilir (en fazla 3
+    // sınırı istemci tarafında kontrol ediliyor — pragmatik, küçük topluluk).
+    match /etkinlikOneCikanlar/{kayitId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
     // Etkinlik Habercisi: ileriye dönük etkinlik duyuru panosu. "katilacaklar"
     // dizisi herkes tarafından güncellenebilir (katılım işareti); diğer alanlar
     // sadece ekleyen tarafından silinebilir.
@@ -105,6 +113,17 @@ service cloud.firestore {
     // Herkes okuyabilir, giriş yapmış herkes ekleyip düzeltebilir (kitaplar
     // kataloğuyla aynı pragmatik desen).
     match /ilgiliEserler/{ilgiliId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Festival Bölümü — Oscar Yolculuğu'yla aynı pragmatik desen: herkes
+    // okuyabilir, giriş yapmış herkes sezon/film ekleyip düzenleyebilir.
+    match /festivalSezonlari/{sezonId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /festivalFilmleri/{filmId} {
       allow read: if true;
       allow write: if request.auth != null;
     }

@@ -48,6 +48,7 @@ export async function etkinlikleriGetir({ kategori, sehir, sayfa = 1 } = {}) {
       gorselUrl: e.image || e.image_url || e.cover_image || '',
       sehir: e.city?.name || e.venue?.city?.name || '',
       mekan: e.venue?.name || '',
+      kategori: e.category?.name || e.type?.name || e.tags?.[0]?.name || '',
     })),
     toplamSayfa,
   }

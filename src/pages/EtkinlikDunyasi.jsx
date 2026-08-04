@@ -6,6 +6,7 @@ import GonderiKarti from '../components/GonderiKarti.jsx'
 import HabercKarti from '../components/HabercKarti.jsx'
 import SanatEserleriKesfet from '../components/SanatEserleriKesfet.jsx'
 import EtkinlikleriKesfet from '../components/EtkinlikleriKesfet.jsx'
+import EtkinlikOneCikanlar from '../components/EtkinlikOneCikanlar.jsx'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
 import { habercEkle, habercileriGetir, katilimDegistir, habercSil } from '../utils/etkinlikHabercisi.js'
 
@@ -24,6 +25,8 @@ const BOS_FORM = {
 export default function EtkinlikDunyasi() {
   const { kullanici, profil } = useAuth()
   const { gonderiler: etkinlikler, yukleniyor: etkinlikYukleniyor, dahaFazlaVarMi, dahaFazlaYukle } = useGonderiler({ tur: 'etkinlik' })
+  const [oneCikanSayisi, setOneCikanSayisi] = useState(0)
+  const [oneCikanYenile, setOneCikanYenile] = useState(0)
 
   const [habercler, setHaberciler] = useState([])
   const [habercYukleniyor, setHabercYukleniyor] = useState(true)
@@ -107,7 +110,9 @@ export default function EtkinlikDunyasi() {
 
       <SanatEserleriKesfet />
 
-      <EtkinlikleriKesfet />
+      <EtkinlikOneCikanlar yenidenYukle={oneCikanYenile} onSayiDegisti={setOneCikanSayisi} />
+
+      <EtkinlikleriKesfet oneCikanSayisi={oneCikanSayisi} onOneCikanDegisti={() => setOneCikanYenile((n) => n + 1)} />
 
       {/* Etkinlik Habercisi — ileriye dönük duyuru panosu, aşağıdaki "yaşadım"
           güncelerinden farklı olarak henüz olmamış etkinlikleri haber veriyor */}
