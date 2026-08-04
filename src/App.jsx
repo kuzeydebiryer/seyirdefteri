@@ -20,6 +20,7 @@ import KitaplarKesfet from './pages/KitaplarKesfet.jsx'
 import KitapKatalogBakimi from './pages/KitapKatalogBakimi.jsx'
 import Listelerim from './pages/Listelerim.jsx'
 import Oscar from './pages/Oscar.jsx'
+import Festivaller from './pages/Festivaller.jsx'
 import TurSayfasi from './pages/TurSayfasi.jsx'
 import KisiselListeDetay from './pages/KisiselListeDetay.jsx'
 import AlintiDuvari from './pages/AlintiDuvari.jsx'
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="/kitaplar/bakim" element={<OzelRota><KitapKatalogBakimi /></OzelRota>} />
           <Route path="/listelerim" element={<OzelRota><Listelerim /></OzelRota>} />
           <Route path="/oscar" element={<OzelRota><Oscar /></OzelRota>} />
+          <Route path="/festival" element={<OzelRota><Festivaller /></OzelRota>} />
           <Route path="/tur/:tur/:turId" element={<OzelRota><TurSayfasi /></OzelRota>} />
           <Route path="/liste/:listeId" element={<OzelRota><KisiselListeDetay /></OzelRota>} />
           <Route path="/alintilar" element={<OzelRota><AlintiDuvari /></OzelRota>} />

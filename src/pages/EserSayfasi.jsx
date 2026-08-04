@@ -17,7 +17,7 @@ import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
-import { kitapGetir, kitapGuncelle, kitapElleEkle } from '../utils/kitapKatalog.js'
+import { kitapGetir, kitapGuncelle, kitapElleEkle, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
 import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { alintiEkle, alintiBegenDegistir, alintiSil, kitapAlintilariGetir } from '../utils/alinti.js'
 import { useKisiselListeler } from '../hooks/useKisiselListeler.js'
@@ -29,6 +29,7 @@ import AlintiKarti from '../components/AlintiKarti.jsx'
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const TMDB_SAGLAYICI_LOGO = 'https://image.tmdb.org/t/p/w92'
+const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
 function KisiListesi({ kisiler, etiket }) {
   if (!kisiler || kisiler.length === 0) return null
@@ -110,8 +111,21 @@ export default function EserSayfasi({ tur }) {
     setIlgiliSonuclar([])
     try {
       if (ilgiliHedefTur === 'kitap') {
-        const trSonuclar = await turkceKitapAra(ilgiliArama, 10)
-        setIlgiliSonuclar(trSonuclar.map((k) => ({ id: `tr_${k.id}`, ham: k })))
+        const [trSonuclar, googleData] = await Promise.all([
+          turkceKitapAra(ilgiliArama, 8),
+          (async () => {
+            const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
+            const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(ilgiliArama)}&langRestrict=tr&maxResults=6${anahtarParcasi}`
+            const res = await fetch(url)
+            const data = await res.json()
+            if (!res.ok) return []
+            return data.items || []
+          })(),
+        ])
+        setIlgiliSonuclar([
+          ...trSonuclar.map((k) => ({ id: `tr_${k.id}`, kaynak: 'tr', ham: k })),
+          ...googleData.map((item) => ({ id: item.id, kaynak: 'google', ham: item })),
+        ])
       } else {
         if (!TMDB_API_KEY) return
         const uc = ilgiliHedefTur === 'sinema' ? 'movie' : 'tv'
@@ -131,7 +145,7 @@ export default function EserSayfasi({ tur }) {
     try {
       let hedef
       if (ilgiliHedefTur === 'kitap') {
-        const kitap = await turkceKitaptanKaydet(item.ham)
+        const kitap = item.kaynak === 'tr' ? await turkceKitaptanKaydet(item.ham) : await kitapAramaSonucundanKaydet(item.ham)
         hedef = { tur: 'kitap', disId: kitap.id, baslik: kitap.baslik, alt: kitap.yazar, posterUrl: kitap.posterUrl }
       } else {
         const v = item
@@ -901,12 +915,23 @@ export default function EserSayfasi({ tur }) {
                         {ilgiliSonuclar.length > 0 && (
                           <ul className="max-h-56 space-y-1 overflow-y-auto">
                             {ilgiliSonuclar.slice(0, 10).map((item) => {
-                              const v = ilgiliHedefTur === 'kitap' ? item.ham : item
-                              const ad = ilgiliHedefTur === 'kitap' ? v.baslik : ilgiliHedefTur === 'sinema' ? v.title : v.name
-                              const kapak = ilgiliHedefTur === 'kitap' ? '' : v.poster_path ? `${TMDB_POSTER}${v.poster_path}` : ''
+                              const kitapTrMi = ilgiliHedefTur === 'kitap' && item.kaynak === 'tr'
+                              const v = ilgiliHedefTur === 'kitap' ? (kitapTrMi ? item.ham : item.ham?.volumeInfo || {}) : item
+                              const ad = ilgiliHedefTur === 'kitap' ? (kitapTrMi ? v.baslik : v.title) : ilgiliHedefTur === 'sinema' ? v.title : v.name
+                              const kapak =
+                                ilgiliHedefTur === 'kitap'
+                                  ? kitapTrMi
+                                    ? ''
+                                    : (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
+                                  : v.poster_path
+                                    ? `${TMDB_POSTER}${v.poster_path}`
+                                    : ''
                               const altSatir =
                                 ilgiliHedefTur === 'kitap'
-                                  ? [v.yazar, v.yayinevi, v.yil].filter(Boolean).join(' · ')
+                                  ? kitapTrMi
+                                    ? [v.yazar, v.yayinevi, v.yil].filter(Boolean).join(' · ')
+                                    : [(v.authors || []).join(', '), v.publisher, v.publishedDate?.slice(0, 4)].filter(Boolean).join(' · ') +
+                                      ' · Google Books'
                                   : (ilgiliHedefTur === 'sinema' ? v.release_date : v.first_air_date)?.slice(0, 4) || ''
                               return (
                                 <li key={item.id}>

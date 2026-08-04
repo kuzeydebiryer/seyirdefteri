@@ -5,6 +5,7 @@ import { useGonderiler } from '../hooks/useGonderiler.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import HabercKarti from '../components/HabercKarti.jsx'
 import SanatEserleriKesfet from '../components/SanatEserleriKesfet.jsx'
+import EtkinlikIoTest from '../components/EtkinlikIoTest.jsx'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
 import { habercEkle, habercileriGetir, katilimDegistir, habercSil } from '../utils/etkinlikHabercisi.js'
 
@@ -105,6 +106,8 @@ export default function EtkinlikDunyasi() {
       <p className="mb-6 text-sm text-kraft">Tiyatro, opera, bale, konser, festival, müze, sergi ve daha fazlası.</p>
 
       <SanatEserleriKesfet />
+
+      <EtkinlikIoTest />
 
       {/* Etkinlik Habercisi — ileriye dönük duyuru panosu, aşağıdaki "yaşadım"
           güncelerinden farklı olarak henüz olmamış etkinlikleri haber veriyor */}

@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { kitapElleEkle } from '../utils/kitapKatalog.js'
+import { kitapAramaSonucundanKaydet, kitapElleEkle } from '../utils/kitapKatalog.js'
 import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { useAuth } from '../context/AuthContext.jsx'
+
+const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
 // Bağımsız kitap arama/seçme bileşeni. GonderiEkle'nin "günce yaz" akışına
 // gömülü olan kitap aramasından farklı olarak, herhangi bir formun içine
@@ -10,12 +12,11 @@ import { useAuth } from '../context/AuthContext.jsx'
 // seçebilmesi için. Seçilen kitap otomatik olarak dahili kataloğa yazılır
 // (henüz kimse günce yazmamış olsa bile).
 //
-// Arama, Kitapyurdu'ndan derlenmiş 67.000+ kitaplık Türkçe veri tabanımızda
-// yapılıyor — yabancı kaynaklara (Google Books arama sonuçları) bilerek yer
-// verilmiyor. Seçilen kitabın ISBN'i varsa SADECE kapak görseli için sessizce
-// Google Books'a bakılıyor (bu bir "arama" değil, görsel tamamlama). Aranan
-// kitap veri tabanında hiç yoksa "Elle Ekle" formuyla dahili kataloğa direkt
-// yazılabiliyor.
+// Önce Kitapyurdu'ndan derlenmiş 67.000+ kitaplık Türkçe veri tabanımız
+// aranıyor, ardından Google Books'a `langRestrict=tr` ile SADECE Türkçe
+// sonuçlar için bakılıyor — veri setimiz belli bir tarihte (2025 ortası)
+// donduğu için 2026 ve sonrası çıkan kitaplar hiç yok, bu boşluk her yıl
+// büyüyecek. Google Books, bu YENİ kitaplar için bir tamamlayıcı/yedek kaynak.
 export default function KitapSecici({ onSecim, secili, onTemizle }) {
   const { kullanici } = useAuth()
   const [arama, setArama] = useState('')
@@ -34,15 +35,41 @@ export default function KitapSecici({ onSecim, secili, onTemizle }) {
     setYukleniyor(true)
     setHata('')
     try {
-      const trSonuclar = await turkceKitapAra(arama, 15)
-      const normallesmis = trSonuclar.map((k) => ({
+      const [trSonuclar, googleData] = await Promise.all([
+        turkceKitapAra(arama, 12),
+        (async () => {
+          const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
+          const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(arama)}&langRestrict=tr&maxResults=8${anahtarParcasi}`
+          const res = await fetch(url)
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`)
+          return data.items || []
+        })(),
+      ])
+
+      const trNormallesmis = trSonuclar.map((k) => ({
+        kaynak: 'tr',
         id: `tr_${k.id}`,
         ham: k,
         ad: k.baslik,
         altSatir: [k.yazar, k.yayinevi, k.yil].filter(Boolean).join(' · '),
+        kapak: '',
       }))
-      setSonuclar(normallesmis)
-      if (normallesmis.length === 0) setHata('Sonuç bulunamadı.')
+      const googleNormallesmis = googleData.map((item) => {
+        const v = item.volumeInfo || {}
+        return {
+          kaynak: 'google',
+          id: item.id,
+          ham: item,
+          ad: v.title,
+          altSatir: [(v.authors || []).join(', '), v.publisher, v.publishedDate?.slice(0, 4)].filter(Boolean).join(' · ') + ' · Google Books',
+          kapak: (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://'),
+        }
+      })
+
+      const hepsi = [...trNormallesmis, ...googleNormallesmis]
+      setSonuclar(hepsi)
+      if (hepsi.length === 0) setHata('Sonuç bulunamadı.')
     } catch (err) {
       setHata('Arama sırasında hata: ' + err.message)
     } finally {
@@ -53,7 +80,7 @@ export default function KitapSecici({ onSecim, secili, onTemizle }) {
   async function sec(sonuc) {
     setKaydediliyorId(sonuc.id)
     try {
-      const kitap = await turkceKitaptanKaydet(sonuc.ham)
+      const kitap = sonuc.kaynak === 'tr' ? await turkceKitaptanKaydet(sonuc.ham) : await kitapAramaSonucundanKaydet(sonuc.ham)
       onSecim(kitap)
       setSonuclar([])
       setArama('')
@@ -188,7 +215,11 @@ export default function KitapSecici({ onSecim, secili, onTemizle }) {
                 disabled={kaydediliyorId === sonuc.id}
                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-kagitKoyu disabled:opacity-40"
               >
-                <div className="flex h-10 w-7 shrink-0 items-center justify-center rounded-sm bg-kagitKoyu text-[9px] text-kraft">📖</div>
+                {sonuc.kapak ? (
+                  <img src={sonuc.kapak} alt={sonuc.ad} className="h-10 w-7 shrink-0 rounded-sm object-cover" />
+                ) : (
+                  <div className="flex h-10 w-7 shrink-0 items-center justify-center rounded-sm bg-kagitKoyu text-[9px] text-kraft">📖</div>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-medium text-murekkep">{sonuc.ad}</p>
                   <p className="truncate text-[11px] text-kraft">{sonuc.altSatir}</p>

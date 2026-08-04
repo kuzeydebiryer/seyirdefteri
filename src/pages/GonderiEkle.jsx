@@ -4,13 +4,14 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ULKELER } from '../data/ulkeler.js'
-import { kitapGetir } from '../utils/kitapKatalog.js'
+import { kitapGetir, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
 import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { eserIstatistikGuncelle } from '../utils/eserIstatistik.js'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
+const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 const YILDIZ_SECENEKLERI = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 const KATEGORILER = [
@@ -283,9 +284,23 @@ export default function GonderiEkle() {
         setSonuclar(data.results || [])
         if ((data.results || []).length === 0) setAramaHatasi('Sonuç bulunamadı.')
       } else if (hedef === 'kitap') {
-        const trSonuclar = await turkceKitapAra(arama, 12)
-        setSonuclar(trSonuclar.map((k) => ({ id: `tr_${k.id}`, ham: k })))
-        if (trSonuclar.length === 0) setAramaHatasi('Sonuç bulunamadı.')
+        const [trSonuclar, googleData] = await Promise.all([
+          turkceKitapAra(arama, 10),
+          (async () => {
+            const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
+            const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(arama)}&langRestrict=tr&maxResults=8${anahtarParcasi}`
+            const res = await fetch(url)
+            const data = await res.json()
+            if (!res.ok) return []
+            return data.items || []
+          })(),
+        ])
+        const hepsi = [
+          ...trSonuclar.map((k) => ({ id: `tr_${k.id}`, kaynak: 'tr', ham: k })),
+          ...googleData.map((item) => ({ id: item.id, kaynak: 'google', ham: item })),
+        ]
+        setSonuclar(hepsi)
+        if (hepsi.length === 0) setAramaHatasi('Sonuç bulunamadı.')
       }
     } catch (err) {
       setAramaHatasi('Arama sırasında hata: ' + err.message)
@@ -374,39 +389,47 @@ export default function GonderiEkle() {
         setDetayYukleniyor(false)
       }
     } else if (hedef === 'kitap') {
+      const trMi = item.kaynak === 'tr'
       const k = item.ham
+      const v = trMi ? null : k.volumeInfo || {}
+      const kapakOnizleme = trMi ? '' : (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
+
+      const onIzlemeBaslik = trMi ? k.baslik : v.title
+      const onIzlemeYazar = trMi ? k.yazar : (v.authors || []).join(', ')
 
       if (kategori === 'yazi') {
         setSeciliId(item.id)
-        setIlgiliBaslik(k.baslik || '')
-        setIlgiliYazar(k.yazar || '')
-        setIlgiliPosterUrl('')
+        setIlgiliBaslik(onIzlemeBaslik || '')
+        setIlgiliYazar(onIzlemeYazar || '')
+        setIlgiliPosterUrl(kapakOnizleme)
         setIlgiliDisId(item.id)
         return
       }
 
       // Önce ham veriyle anında doldur (bekleme hissi olmasın), ardından
-      // dahili kataloğa yazıp (kapak için ISBN'den Google Books'a bakıp) üzerine güncelle.
+      // dahili kataloğa yazıp (Türkçe veri tabanı: kapak için ISBN'den Google
+      // Books'a bakılır; Google Books: doğrudan gelen bilgiyle) üzerine güncelle.
       setSeciliId(item.id)
       setGoogleBooksId(item.id)
-      setBaslik(k.baslik || '')
-      setYazar(k.yazar || '')
-      setPosterUrl('')
-      setOzet('')
-      setTurler(k.kategori || '')
-      setSayfaSayisi(k.sayfaSayisi || '')
-      setYayinevi(k.yayinevi || '')
-      setYil(k.yil || '')
-      setDbPuan('')
+      setBaslik(onIzlemeBaslik || '')
+      setYazar(onIzlemeYazar || '')
+      setPosterUrl(kapakOnizleme)
+      setOzet(trMi ? '' : v.description || '')
+      setTurler(trMi ? k.kategori || '' : (v.categories || []).join(', '))
+      setSayfaSayisi(trMi ? k.sayfaSayisi || '' : v.pageCount || '')
+      setYayinevi(trMi ? k.yayinevi || '' : v.publisher || '')
+      setYil(trMi ? k.yil || '' : v.publishedDate ? v.publishedDate.slice(0, 4) : '')
+      setDbPuan(trMi ? '' : v.averageRating ? v.averageRating.toFixed(1) : '')
 
       setDetayYukleniyor(true)
       try {
-        const kaydedilen = await turkceKitaptanKaydet(k)
+        const kaydedilen = trMi ? await turkceKitaptanKaydet(k) : await kitapAramaSonucundanKaydet(k)
         setGoogleBooksId(kaydedilen.id)
-        setPosterUrl(kaydedilen.posterUrl || '')
-        setTurler(kaydedilen.turler || k.kategori || '')
-        setSayfaSayisi(kaydedilen.sayfaSayisi || k.sayfaSayisi || '')
-        setYayinevi(kaydedilen.yayinevi || k.yayinevi || '')
+        setPosterUrl(kaydedilen.posterUrl || kapakOnizleme)
+        setOzet(kaydedilen.ozet || (trMi ? '' : v.description || ''))
+        setTurler(kaydedilen.turler || (trMi ? k.kategori || '' : (v.categories || []).join(', ')))
+        setSayfaSayisi(kaydedilen.sayfaSayisi || (trMi ? k.sayfaSayisi || '' : v.pageCount || ''))
+        setYayinevi(kaydedilen.yayinevi || (trMi ? k.yayinevi || '' : v.publisher || ''))
       } catch (err) {
         console.warn('Kitap kataloğuna kaydetme başarısız:', err.message)
       } finally {
@@ -594,14 +617,26 @@ export default function GonderiEkle() {
                 <div className="mb-8 grid grid-cols-3 gap-3 sm:grid-cols-5">
                   {sonuclar.slice(0, 10).map((item) => {
                     const hedef = kategori === 'yazi' ? yaziAramaHedefi : kategori
+                    const kitapTrMi = hedef === 'kitap' && item.kaynak === 'tr'
+                    const kitapV = hedef === 'kitap' && !kitapTrMi ? item.ham?.volumeInfo || {} : null
                     const gorselVeAd =
                       hedef === 'sinema'
                         ? { url: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '', ad: item.title }
                         : hedef === 'dizi'
                           ? { url: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '', ad: item.name }
-                          : { url: '', ad: item.ham?.baslik }
+                          : kitapTrMi
+                            ? { url: '', ad: item.ham?.baslik }
+                            : {
+                                url: (kitapV.imageLinks?.thumbnail || kitapV.imageLinks?.smallThumbnail || '').replace('http://', 'https://'),
+                                ad: kitapV.title,
+                              }
                     const kitapAltSatir =
-                      hedef === 'kitap' ? [item.ham?.yazar, item.ham?.yayinevi, item.ham?.yil].filter(Boolean).join(' · ') : ''
+                      hedef === 'kitap'
+                        ? kitapTrMi
+                          ? [item.ham?.yazar, item.ham?.yayinevi, item.ham?.yil].filter(Boolean).join(' · ')
+                          : [(kitapV.authors || []).join(', '), kitapV.publisher, kitapV.publishedDate?.slice(0, 4)].filter(Boolean).join(' · ') +
+                            ' · Google Books'
+                        : ''
                     return (
                       <button
                         key={item.id}
