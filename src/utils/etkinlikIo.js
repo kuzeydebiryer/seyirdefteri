@@ -36,6 +36,10 @@ export async function etkinlikleriGetir({ kategori, sehir, sayfa = 1 } = {}) {
   const { veri, hata } = await istek('/events', params)
   if (hata) return { hata }
   const liste = veri?.data || veri?.items || []
+  if (liste[0]) {
+    // eslint-disable-next-line no-console
+    console.log('🔍 Etkinlik.io ham veri (görsel alan adını bulmak için):', liste[0])
+  }
   const toplamSayfa = veri?.pagination?.total_pages || veri?.meta?.total_pages || 1
   return {
     etkinlikler: liste.map((e) => ({
@@ -45,7 +49,7 @@ export async function etkinlikleriGetir({ kategori, sehir, sayfa = 1 } = {}) {
       baslangic: e.start,
       bitis: e.end,
       url: e.url,
-      gorselUrl: e.image || e.image_url || e.cover_image || '',
+      gorselUrl: e.afis || e.afis_url || e.poster || e.poster_url || e.gorsel || e.gorsel_url || e.image || e.image_url || e.cover_image || '',
       sehir: e.city?.name || e.venue?.city?.name || '',
       mekan: e.venue?.name || '',
       kategori: e.category?.name || e.type?.name || e.tags?.[0]?.name || '',
