@@ -22,25 +22,32 @@ export default function HabercKarti({ haberci, kullanici, onKatilimDegistir, onS
   const bilgiUzunMu = haberci.bilgi && haberci.bilgi.length > BILGI_KISALTMA_UZUNLUGU
 
   return (
-    <div className="flex gap-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-      {haberci.gorselUrl && (
-        <img src={haberci.gorselUrl} alt={haberci.baslik} className="h-24 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi" />
-      )}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <span className="rounded-full bg-kagit px-2 py-0.5 text-[11px] text-kraft ring-1 ring-cizgi">{haberci.tur}</span>
-            <h3 className="mt-1 font-baslik text-lg text-murekkep">{haberci.baslik}</h3>
-            <p className="text-xs text-kraft">{[haberci.mekan, haberci.sehir].filter(Boolean).join(', ')}</p>
-          </div>
-          {kullanici?.uid === haberci.ekleyenId && (
-            <button onClick={() => onSil(haberci.id)} className="shrink-0 text-[11px] text-kraft hover:text-muhur">
-              Sil
-            </button>
-          )}
-        </div>
+    <div className="overflow-hidden rounded-sm ring-1 ring-cizgi">
+      <div className="relative">
+        {haberci.gorselUrl ? (
+          <img src={haberci.gorselUrl} alt={haberci.baslik} className="h-40 w-full object-cover" />
+        ) : (
+          <div className="flex h-40 w-full items-center justify-center bg-kagit text-3xl">🎟️</div>
+        )}
+        <span className="absolute left-2 top-2 rounded-sm bg-murekkep/90 px-2 py-1 text-[10px] font-medium text-kagit">
+          {haberci.tur}
+        </span>
+        {kullanici?.uid === haberci.ekleyenId && (
+          <button
+            onClick={() => onSil(haberci.id)}
+            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-kagit/90 text-xs text-kraft hover:text-muhur"
+            title="Duyuruyu sil"
+          >
+            ✕
+          </button>
+        )}
+      </div>
 
-        {/* Tarihler — daha belirgin: rozet/pill görünümü, kalın font */}
+      <div className="bg-kagitKoyu p-4">
+        <h3 className="font-baslik text-lg text-murekkep">{haberci.baslik}</h3>
+        <p className="text-xs text-kraft">{[haberci.mekan, haberci.sehir].filter(Boolean).join(', ')}</p>
+
+        {/* Tarihler — belirgin rozet/pill görünümü, kalın font */}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {tekTarih ? (
             <span className="rounded-sm bg-muhur px-2 py-1 font-govde text-xs font-medium text-kagit">
