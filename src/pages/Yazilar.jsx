@@ -1,10 +1,15 @@
 import { useGonderiler } from '../hooks/useGonderiler.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
+import YaziArama from '../components/YaziArama.jsx'
 
 const ALT_TUR_BASLIKLARI = [
   { id: 'deneme', baslik: 'Denemeler' },
   { id: 'film-incelemesi', baslik: 'Film İncelemeleri' },
   { id: 'kitap-incelemesi', baslik: 'Kitap İncelemeleri' },
+  { id: 'sanat-elestirisi', baslik: 'Sanat Eleştirileri' },
+  { id: 'kisi-yazisi', baslik: 'Kişi Yazıları' },
+  { id: 'liste-yazisi', baslik: 'Liste Yazıları' },
+  { id: 'soylesi', baslik: 'Söyleşiler' },
 ]
 
 export default function Yazilar() {
@@ -13,7 +18,9 @@ export default function Yazilar() {
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-2">Yazı</h1>
-      <p className="text-sm text-kraft mb-6">Denemeler, film incelemeleri ve kitap incelemeleri.</p>
+      <p className="text-sm text-kraft mb-6">Denemeler, incelemeler, kişi yazıları, liste yazıları ve söyleşiler.</p>
+
+      <YaziArama />
 
       {yukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {hata && <p className="text-sm text-muhur">Bir hata oldu: {hata}</p>}

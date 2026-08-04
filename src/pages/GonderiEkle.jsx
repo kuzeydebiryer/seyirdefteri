@@ -6,11 +6,13 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { ULKELER } from '../data/ulkeler.js'
 import { kitapGetir, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
 import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import { sanatEseriAra } from '../utils/sanatEserleri.js'
 import { eserIstatistikGuncelle } from '../utils/eserIstatistik.js'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
+const TMDB_PROFIL = 'https://image.tmdb.org/t/p/w300'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 const YILDIZ_SECENEKLERI = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
@@ -27,7 +29,15 @@ const YAZI_ALT_TURLERI = [
   { id: 'deneme', etiket: 'Deneme' },
   { id: 'film-incelemesi', etiket: 'Film İncelemesi' },
   { id: 'kitap-incelemesi', etiket: 'Kitap İncelemesi' },
+  { id: 'sanat-elestirisi', etiket: 'Sanat Eleştirisi' },
+  { id: 'kisi-yazisi', etiket: 'Kişi Yazısı' },
+  { id: 'liste-yazisi', etiket: 'Liste Yazısı' },
+  { id: 'soylesi', etiket: 'Söyleşi' },
 ]
+// Puanlama sadece bir "esere" (film/kitap/sanat eseri) dair incelemelerde
+// anlamlı — bir kişi yazısını ya da liste yazısını yıldızla puanlamak tuhaf
+// kaçardı, bu yüzden bu alt türlerde puanlama alanı hiç gösterilmiyor.
+const PUANSIZ_YAZI_ALT_TURLERI = ['deneme', 'kisi-yazisi', 'liste-yazisi', 'soylesi']
 
 // Bir kategori TMDB/Google Books araması kullanıyor mu?
 const API_KATEGORILERI = ['sinema', 'dizi', 'kitap']
@@ -87,6 +97,7 @@ export default function GonderiEkle() {
   const [ilgiliPosterUrl, setIlgiliPosterUrl] = useState('')
   const [ilgiliTmdbId, setIlgiliTmdbId] = useState(null)
   const [ilgiliDisId, setIlgiliDisId] = useState(null) // kitap incelemesi: hangi kitaba ait (googleBooksId)
+  const [ilgiliKaynakUrl, setIlgiliKaynakUrl] = useState('') // sanat eleştirisi: Met/AIC kaynak linki
 
   const [kullaniciPuani, setKullaniciPuani] = useState(4)
   const [gunce, setGunce] = useState('')
@@ -100,7 +111,11 @@ export default function GonderiEkle() {
         ? 'sinema'
         : yaziAltTur === 'kitap-incelemesi'
           ? 'kitap'
-          : null
+          : yaziAltTur === 'kisi-yazisi'
+            ? 'kisi'
+            : yaziAltTur === 'sanat-elestirisi'
+              ? 'sanat'
+              : null
       : null
   const aramaGosterilsinMi = apiliKategori || yaziAramaHedefi
 
@@ -301,6 +316,21 @@ export default function GonderiEkle() {
         ]
         setSonuclar(hepsi)
         if (hepsi.length === 0) setAramaHatasi('Sonuç bulunamadı.')
+      } else if (hedef === 'kisi') {
+        if (!TMDB_API_KEY) {
+          setAramaHatasi('TMDB API anahtarı tanımlı değil.')
+          return
+        }
+        const url = `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(arama)}`
+        const res = await fetch(url)
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.status_message || `HTTP ${res.status}`)
+        setSonuclar((data.results || []).filter((k) => k.known_for_department))
+        if ((data.results || []).length === 0) setAramaHatasi('Sonuç bulunamadı.')
+      } else if (hedef === 'sanat') {
+        const sonuclarListesi = await sanatEseriAra(arama)
+        setSonuclar(sonuclarListesi)
+        if (sonuclarListesi.length === 0) setAramaHatasi('Sonuç bulunamadı.')
       }
     } catch (err) {
       setAramaHatasi('Arama sırasında hata: ' + err.message)
@@ -435,6 +465,23 @@ export default function GonderiEkle() {
       } finally {
         setDetayYukleniyor(false)
       }
+    } else if (hedef === 'kisi') {
+      // Kişi Yazısı her zaman "yazı" kategorisi altında olduğu için burada
+      // sadece ilgili* alanları dolduruyoruz — ayrı bir kişi kataloğuna
+      // kaydetmeye gerek yok, /kisi/:id sayfası zaten TMDB ID'siyle çalışıyor.
+      setSeciliId(item.id)
+      setIlgiliBaslik(item.name)
+      setIlgiliYazar(item.known_for_department || '')
+      setIlgiliPosterUrl(item.profile_path ? `${TMDB_PROFIL}${item.profile_path}` : '')
+      setIlgiliTmdbId(item.id)
+    } else if (hedef === 'sanat') {
+      // Sanat Eleştirisi de aynı şekilde — Met/AIC'den gelen eseri dahili bir
+      // kataloğa kaydetmiyoruz, sadece referans bilgisini gönderiye yazıyoruz.
+      setSeciliId(item.id)
+      setIlgiliBaslik(item.title || 'İsimsiz')
+      setIlgiliYazar(item.artistDisplayName || '')
+      setIlgiliPosterUrl(item.imageUrl || '')
+      setIlgiliKaynakUrl(item.sourceUrl || '')
     }
   }
 
@@ -511,7 +558,8 @@ export default function GonderiEkle() {
         ilgiliPosterUrl: kategori === 'yazi' ? ilgiliPosterUrl : '',
         ilgiliTmdbId: kategori === 'yazi' ? ilgiliTmdbId : null,
         ilgiliDisId: kategori === 'yazi' && yaziAltTur === 'kitap-incelemesi' ? ilgiliDisId : null,
-        kullaniciPuani: kategori === 'yazi' && yaziAltTur === 'deneme' ? null : kullaniciPuani,
+        ilgiliKaynakUrl: kategori === 'yazi' && yaziAltTur === 'sanat-elestirisi' ? ilgiliKaynakUrl : '',
+        kullaniciPuani: kategori === 'yazi' && PUANSIZ_YAZI_ALT_TURLERI.includes(yaziAltTur) ? null : kullaniciPuani,
         gunce,
         tarih: serverTimestamp(),
         begenenler: [],
@@ -624,19 +672,27 @@ export default function GonderiEkle() {
                         ? { url: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '', ad: item.title }
                         : hedef === 'dizi'
                           ? { url: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '', ad: item.name }
-                          : kitapTrMi
-                            ? { url: '', ad: item.ham?.baslik }
-                            : {
-                                url: (kitapV.imageLinks?.thumbnail || kitapV.imageLinks?.smallThumbnail || '').replace('http://', 'https://'),
-                                ad: kitapV.title,
-                              }
+                          : hedef === 'kisi'
+                            ? { url: item.profile_path ? `${TMDB_PROFIL}${item.profile_path}` : '', ad: item.name }
+                            : hedef === 'sanat'
+                              ? { url: item.imageUrl || '', ad: item.title || 'İsimsiz' }
+                              : kitapTrMi
+                                ? { url: '', ad: item.ham?.baslik }
+                                : {
+                                    url: (kitapV.imageLinks?.thumbnail || kitapV.imageLinks?.smallThumbnail || '').replace('http://', 'https://'),
+                                    ad: kitapV.title,
+                                  }
                     const kitapAltSatir =
                       hedef === 'kitap'
                         ? kitapTrMi
                           ? [item.ham?.yazar, item.ham?.yayinevi, item.ham?.yil].filter(Boolean).join(' · ')
                           : [(kitapV.authors || []).join(', '), kitapV.publisher, kitapV.publishedDate?.slice(0, 4)].filter(Boolean).join(' · ') +
                             ' · Google Books'
-                        : ''
+                        : hedef === 'kisi'
+                          ? item.known_for_department || ''
+                          : hedef === 'sanat'
+                            ? [item.artistDisplayName, item.kaynakAdi].filter(Boolean).join(' · ')
+                            : ''
                     return (
                       <button
                         key={item.id}
@@ -985,7 +1041,7 @@ export default function GonderiEkle() {
           </>
         )}
 
-        {!(kategori === 'yazi' && yaziAltTur === 'deneme') && (
+        {!(kategori === 'yazi' && PUANSIZ_YAZI_ALT_TURLERI.includes(yaziAltTur)) && (
           <div>
             <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Puanın</label>
             <select
@@ -1023,7 +1079,11 @@ export default function GonderiEkle() {
             value={gunce}
             onChange={(e) => setGunce(e.target.value)}
             rows={kategori === 'yazi' ? 16 : 5}
-            placeholder={kategori === 'yazi' ? 'Yazmaya başla...' : 'Ne düşünüyorsun, nasıl geçti?'}
+            placeholder={
+              kategori === 'yazi'
+                ? 'Yazmaya başla...\n\nİpucu: # Başlık, > Alıntı, *kalın metin* ve boş satırla ayrılmış bir resim linki kullanabilirsin.'
+                : 'Ne düşünüyorsun, nasıl geçti?'
+            }
             className={
               kategori === 'yazi'
                 ? 'w-full resize-y rounded-sm bg-kagitKoyu px-4 py-4 font-govde text-base leading-relaxed text-murekkep placeholder-kraft/50 ring-1 ring-cizgi focus:ring-2 focus:ring-deniz focus:outline-none min-h-[50vh]'

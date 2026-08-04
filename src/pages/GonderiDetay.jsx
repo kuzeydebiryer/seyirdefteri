@@ -173,12 +173,33 @@ export default function GonderiDetay() {
             {gonderi.tur === 'kitap' && gonderi.yazar && <p className="text-sm text-kraft">{gonderi.yazar}</p>}
             {gonderi.tur === 'yazi' && (
               <p className="text-xs uppercase tracking-widest text-deniz">
-                {{ deneme: 'Deneme', 'film-incelemesi': 'Film İncelemesi', 'kitap-incelemesi': 'Kitap İncelemesi' }[gonderi.altTur]}
+                {
+                  {
+                    deneme: 'Deneme',
+                    'film-incelemesi': 'Film İncelemesi',
+                    'kitap-incelemesi': 'Kitap İncelemesi',
+                    'sanat-elestirisi': 'Sanat Eleştirisi',
+                    'kisi-yazisi': 'Kişi Yazısı',
+                    'liste-yazisi': 'Liste Yazısı',
+                    soylesi: 'Söyleşi',
+                  }[gonderi.altTur]
+                }
               </p>
             )}
             {gonderi.tur === 'yazi' && gonderi.ilgiliBaslik && (
               <p className="text-sm text-kraft">
-                {gonderi.ilgiliBaslik} {gonderi.ilgiliYil && `(${gonderi.ilgiliYil})`}
+                {gonderi.altTur === 'kisi-yazisi' && gonderi.ilgiliTmdbId ? (
+                  <Link to={`/kisi/${gonderi.ilgiliTmdbId}`} className="hover:text-deniz hover:underline">
+                    {gonderi.ilgiliBaslik}
+                  </Link>
+                ) : gonderi.altTur === 'sanat-elestirisi' && gonderi.ilgiliKaynakUrl ? (
+                  <a href={gonderi.ilgiliKaynakUrl} target="_blank" rel="noreferrer" className="hover:text-deniz hover:underline">
+                    {gonderi.ilgiliBaslik}
+                  </a>
+                ) : (
+                  gonderi.ilgiliBaslik
+                )}{' '}
+                {gonderi.ilgiliYil && `(${gonderi.ilgiliYil})`}
                 {gonderi.ilgiliYazar && ` · ${gonderi.ilgiliYazar}`}
               </p>
             )}
