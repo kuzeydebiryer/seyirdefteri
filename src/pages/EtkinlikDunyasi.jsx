@@ -5,7 +5,7 @@ import { useGonderiler } from '../hooks/useGonderiler.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import HabercKarti from '../components/HabercKarti.jsx'
 import SanatEserleriKesfet from '../components/SanatEserleriKesfet.jsx'
-import EtkinlikIoTest from '../components/EtkinlikIoTest.jsx'
+import EtkinlikleriKesfet from '../components/EtkinlikleriKesfet.jsx'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
 import { habercEkle, habercileriGetir, katilimDegistir, habercSil } from '../utils/etkinlikHabercisi.js'
 
@@ -107,7 +107,7 @@ export default function EtkinlikDunyasi() {
 
       <SanatEserleriKesfet />
 
-      <EtkinlikIoTest />
+      <EtkinlikleriKesfet />
 
       {/* Etkinlik Habercisi — ileriye dönük duyuru panosu, aşağıdaki "yaşadım"
           güncelerinden farklı olarak henüz olmamış etkinlikleri haber veriyor */}
