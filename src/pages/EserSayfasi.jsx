@@ -809,7 +809,7 @@ export default function EserSayfasi({ tur }) {
                 <Link to="/oscar" className="flex flex-col items-center gap-1">
                   <span className="text-2xl">🏆</span>
                   <span className="text-[10px] uppercase tracking-wide text-kraft">
-                    {oscarSezonlari.map((s) => (s.torenTarihi ? s.torenTarihi.slice(0, 4) : '')).join(', ')}
+                    {oscarSezonlari.reduce((n, s) => n + s.kategoriler.length, 0)} dal · {oscarSezonlari.map((s) => s.yil).join(', ')}
                   </span>
                 </Link>
               )}
@@ -1042,6 +1042,31 @@ export default function EserSayfasi({ tur }) {
                     </div>
                   )
                 })}
+              </div>
+            </div>
+          )}
+
+          {oscarSezonlari.length > 0 && (
+            <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="mb-2 text-xs uppercase tracking-widest text-gise">🏆 Oscar Adaylıkları</p>
+              <div className="space-y-2">
+                {oscarSezonlari.map((s) => (
+                  <div key={s.sezonId}>
+                    <p className="text-xs font-medium text-murekkep">
+                      {s.sezonAdi} {s.yil && `(${s.yil})`}
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {s.kategoriler.map((k, i) => (
+                        <li key={i} className="text-xs text-kraft">
+                          {k.kazandiMi && '🏆 '}
+                          {k.ad}
+                          {k.kisiAdi && ` — ${k.kisiAdi}`}
+                          {k.kazandiMi && <span className="text-gise"> (Kazandı)</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
             </div>
           )}

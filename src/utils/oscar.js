@@ -184,11 +184,39 @@ export async function kahinOlduguSezonlariGetir(uid) {
 
 // Eser sayfasında "🏆 Oscar Adayı" rozeti için: bu film hangi sezon(lar)ın
 // adayı — varsa hangi yıl(lar) gösterilecek.
+// Eser sayfasında "🏆 Oscar Adaylıkları" bölümü için: bu film hangi sezon(lar)da
+// hangi kategori(ler)de aday — hem doğrudan film adaylıkları (En İyi Film gibi)
+// hem de bu filmle bağlantılı KİŞİ adaylıkları (En İyi Yönetmen/Oyuncu gibi,
+// artık tmdbId ile filme bağlı) TEK bir listede toplanıyor.
 export async function filmOscarBilgisiGetir(tmdbId) {
   const q = query(collection(db, 'oscarAdaylari'), where('tmdbId', '==', tmdbId))
   const adaySnap = await getDocs(q)
   if (adaySnap.empty) return []
-  const sezonIdleri = [...new Set(adaySnap.docs.map((d) => d.data().sezonId))]
-  const sezonlar = await Promise.all(sezonIdleri.map((id) => getDoc(doc(db, 'oscarSezonlari', id))))
-  return sezonlar.filter((s) => s.exists()).map((s) => ({ id: s.id, ...s.data() }))
+  const adaylar = adaySnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+
+  const sezonIdleri = [...new Set(adaylar.map((a) => a.sezonId))]
+  const kategoriIdleri = [...new Set(adaylar.map((a) => a.kategoriId))]
+  const [sezonSnaplari, kategoriSnaplari] = await Promise.all([
+    Promise.all(sezonIdleri.map((id) => getDoc(doc(db, 'oscarSezonlari', id)))),
+    Promise.all(kategoriIdleri.map((id) => getDoc(doc(db, 'oscarKategorileri', id)))),
+  ])
+  const sezonMap = new Map(sezonSnaplari.filter((s) => s.exists()).map((s) => [s.id, s.data()]))
+  const kategoriMap = new Map(kategoriSnaplari.filter((k) => k.exists()).map((k) => [k.id, k.data()]))
+
+  const sezonGruplari = new Map()
+  adaylar.forEach((a) => {
+    const kategori = kategoriMap.get(a.kategoriId)
+    const sezon = sezonMap.get(a.sezonId)
+    if (!kategori || !sezon) return
+    if (!sezonGruplari.has(a.sezonId)) {
+      sezonGruplari.set(a.sezonId, { sezonId: a.sezonId, sezonAdi: sezon.ad, yil: sezon.torenTarihi?.slice(0, 4) || '', kategoriler: [] })
+    }
+    sezonGruplari.get(a.sezonId).kategoriler.push({
+      ad: kategori.ad,
+      kazandiMi: kategori.kazananAdayId === a.id,
+      kisiAdi: a.kisiAdi || '',
+    })
+  })
+
+  return Array.from(sezonGruplari.values())
 }
