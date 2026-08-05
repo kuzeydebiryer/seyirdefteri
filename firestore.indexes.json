@@ -106,6 +106,14 @@
       ]
     },
     {
+      "collectionGroup": "sohbetMesajlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "konumId", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "gelecekEtkinlikler",
       "queryScope": "COLLECTION",
       "fields": [

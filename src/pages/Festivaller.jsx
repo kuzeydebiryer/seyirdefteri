@@ -12,6 +12,7 @@ import {
   festivalIzlemeIlerlemesiHesapla,
 } from '../utils/festival.js'
 import FestivalFilmIceAktar from '../components/FestivalFilmIceAktar.jsx'
+import SohbetPaneli from '../components/SohbetPaneli.jsx'
 
 export default function Festivaller() {
   const { kullanici } = useAuth()
@@ -158,6 +159,8 @@ export default function Festivaller() {
                   <p className="mt-1 text-xs text-kraft">seçkideki film topluluk tarafından izlendi</p>
                 </div>
               )}
+
+              <SohbetPaneli konumId={`festival_${seciliSezonId}`} baslik="💬 Festival Sohbeti" />
 
               {kullanici && (
                 <div className="mb-4">

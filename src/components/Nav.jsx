@@ -1,6 +1,7 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import OscarHeykelIkon from './ikonlar/OscarHeykelIkon.jsx'
 import Avatar from './Avatar.jsx'
 import Logo from './Logo.jsx'
 
@@ -118,7 +119,7 @@ export default function Nav() {
                 onClick={() => setMenuAcik(false)}
                 className={({ isActive }) => `flex items-center gap-3 rounded-sm px-2 py-2 ${isActive ? 'text-muhur' : 'text-kraft'}`}
               >
-                <span className="w-5 text-center">{l.ikon}</span>
+                <span className="w-5 text-center">{l.yol === '/oscar' ? <OscarHeykelIkon boyut={16} className="inline-block" /> : l.ikon}</span>
                 {l.etiket}
               </NavLink>
             ))}
@@ -132,7 +133,7 @@ export default function Nav() {
                 onClick={() => setMenuAcik(false)}
                 className={({ isActive }) => `flex items-center gap-3 rounded-sm px-2 py-2 ${isActive ? 'text-muhur' : 'text-kraft'}`}
               >
-                <span className="w-5 text-center">{l.ikon}</span>
+                <span className="w-5 text-center">{l.yol === '/oscar' ? <OscarHeykelIkon boyut={16} className="inline-block" /> : l.ikon}</span>
                 {l.etiket}
               </NavLink>
             ))}

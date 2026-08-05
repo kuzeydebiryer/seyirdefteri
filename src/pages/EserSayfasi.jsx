@@ -23,6 +23,7 @@ import { alintiEkle, alintiBegenDegistir, alintiSil, kitapAlintilariGetir } from
 import { useKisiselListeler } from '../hooks/useKisiselListeler.js'
 import { ogeEkle as listeyeOgeEkle, esereAitListeleriGetir } from '../utils/kisiselListe.js'
 import { filmOscarBilgisiGetir } from '../utils/oscar.js'
+import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 
@@ -807,7 +808,7 @@ export default function EserSayfasi({ tur }) {
 
               {oscarSezonlari.length > 0 && (
                 <Link to="/oscar" className="flex flex-col items-center gap-1">
-                  <span className="text-2xl">🏆</span>
+                  <OscarHeykelIkon boyut={24} className="text-gise" />
                   <span className="text-[10px] uppercase tracking-wide text-kraft">
                     {oscarSezonlari.reduce((n, s) => n + s.kategoriler.length, 0)} dal · {oscarSezonlari.map((s) => s.yil).join(', ')}
                   </span>
@@ -1048,7 +1049,9 @@ export default function EserSayfasi({ tur }) {
 
           {oscarSezonlari.length > 0 && (
             <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-              <p className="mb-2 text-xs uppercase tracking-widest text-gise">🏆 Oscar Adaylıkları</p>
+              <p className="mb-2 flex items-center gap-1 text-xs uppercase tracking-widest text-gise">
+                <OscarHeykelIkon boyut={14} /> Oscar Adaylıkları
+              </p>
               <div className="space-y-2">
                 {oscarSezonlari.map((s) => (
                   <div key={s.sezonId}>
@@ -1057,11 +1060,13 @@ export default function EserSayfasi({ tur }) {
                     </p>
                     <ul className="mt-1 space-y-0.5">
                       {s.kategoriler.map((k, i) => (
-                        <li key={i} className="text-xs text-kraft">
-                          {k.kazandiMi && '🏆 '}
-                          {k.ad}
-                          {k.kisiAdi && ` — ${k.kisiAdi}`}
-                          {k.kazandiMi && <span className="text-gise"> (Kazandı)</span>}
+                        <li key={i} className="flex items-center gap-1 text-xs text-kraft">
+                          {k.kazandiMi && <OscarHeykelIkon boyut={12} className="shrink-0 text-gise" />}
+                          <span>
+                            {k.ad}
+                            {k.kisiAdi && ` — ${k.kisiAdi}`}
+                            {k.kazandiMi && <span className="text-gise"> (Kazandı)</span>}
+                          </span>
                         </li>
                       ))}
                     </ul>

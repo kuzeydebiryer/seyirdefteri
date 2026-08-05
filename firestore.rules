@@ -117,6 +117,13 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
+    // Sohbet: Oscar/Festival sezonuna özel hafif mesajlaşma. Herkes okuyabilir,
+    // sadece kendi adına mesaj gönderebilir, düzenleme/silme yok (basit tutuldu).
+    match /sohbetMesajlari/{mesajId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+    }
+
     // Festival Bölümü — Oscar Yolculuğu'yla aynı pragmatik desen: herkes
     // okuyabilir, giriş yapmış herkes sezon/film ekleyip düzenleyebilir.
     match /festivalSezonlari/{sezonId} {

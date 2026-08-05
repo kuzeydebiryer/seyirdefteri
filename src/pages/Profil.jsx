@@ -17,6 +17,7 @@ import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
 import BinKitapIkon from '../components/ikonlar/BinKitapIkon.jsx'
 import PuanIceAktar from '../components/PuanIceAktar.jsx'
 import { kahinOlduguSezonlariGetir } from '../utils/oscar.js'
+import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { tumIstatistikleriYenidenHesapla } from '../utils/istatistikYenidenHesapla.js'
 import { kullaniciKoleksiyonuGetir, eseriKoleksiyondanCikar } from '../utils/sanatKoleksiyonu.js'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
@@ -284,9 +285,9 @@ export default function Profil() {
                 <span
                   key={s.id}
                   title={s.ad}
-                  className="rounded-full bg-gise/15 px-2.5 py-1 text-xs font-medium text-gise ring-1 ring-gise/40"
+                  className="flex items-center gap-1 rounded-full bg-gise/15 px-2.5 py-1 text-xs font-medium text-gise ring-1 ring-gise/40"
                 >
-                  🏆 {s.ad} Kahini
+                  <OscarHeykelIkon boyut={12} /> {s.ad} Kahini
                 </span>
               ))}
             </div>

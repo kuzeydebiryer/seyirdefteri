@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
+import SohbetPaneli from '../components/SohbetPaneli.jsx'
 import {
   sezonOlustur,
   tumSezonlariGetir,
@@ -383,7 +385,7 @@ export default function Oscar() {
   if (!sezon) {
     return (
       <div>
-        <h1 className="font-baslik text-2xl text-murekkep mb-1">🏆 Oscar Yolculuğu</h1>
+        <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> Oscar Yolculuğu</h1>
         <p className="mb-6 text-sm text-kraft">
           {gecmisSezonlar.length > 0 ? 'Yeni bir sezon henüz başlamadı.' : 'Henüz bir Oscar sezonu oluşturulmadı.'}
         </p>
@@ -420,7 +422,7 @@ export default function Oscar() {
               {gecmisSezonlar.map((s) => (
                 <li key={s.id} className="flex items-center justify-between rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
                   <span className="text-sm text-murekkep">{s.ad}</span>
-                  <span className="text-sm text-kraft">🏆 {s.kahinAdi}</span>
+                  <span className="flex items-center gap-1 text-sm text-kraft"><OscarHeykelIkon boyut={14} /> {s.kahinAdi}</span>
                 </li>
               ))}
             </ul>
@@ -446,7 +448,7 @@ export default function Oscar() {
 
   return (
     <div>
-      <h1 className="font-baslik text-2xl text-murekkep mb-1">🏆 Oscar Yolculuğu</h1>
+      <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> Oscar Yolculuğu</h1>
       <p className="mb-1 text-sm text-kraft">{sezon.ad}</p>
       {gun != null && (
         <p className="mb-4 text-sm text-kraft">
@@ -468,6 +470,8 @@ export default function Oscar() {
           <p className="mt-1 text-xs text-kraft">aday film topluluk tarafından izlendi</p>
         </div>
       )}
+
+      <SohbetPaneli konumId={`oscar_${sezon.id}`} baslik="💬 Oscar Sohbeti" />
 
       {kategoriler.length > 0 && (
         <div className="mb-6 flex items-center justify-between rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
@@ -501,7 +505,7 @@ export default function Oscar() {
             {skorTablosu.map((k, i) => (
               <li key={k.kullaniciId} className="flex items-center justify-between text-xs">
                 <span className="text-murekkep">
-                  {i === 0 && '🏆 '}
+                  {i === 0 && <OscarHeykelIkon boyut={12} className='inline-block mr-1' />}
                   {i + 1}. {k.kullaniciId === kullanici?.uid ? 'Sen' : k.kullaniciAdi}
                 </span>
                 <span className="text-kraft">
@@ -589,7 +593,7 @@ export default function Oscar() {
                 <h2 className="font-baslik text-lg text-murekkep">{k.ad}</h2>
                 <div className="flex items-center gap-2">
                   {sezon.kilitli && !k.kazananAdayId && kullanici && (
-                    <span className="text-[11px] text-kraft">🏆 kazananı işaretlemek için afişe tıkla</span>
+                    <span className="flex items-center gap-1 text-[11px] text-kraft"><OscarHeykelIkon boyut={12} /> kazananı işaretlemek için afişe tıkla</span>
                   )}
                   {kullanici && (
                     <button onClick={() => kategoriSilTiklandi(k.id)} className="text-[11px] text-kraft hover:text-muhur">
@@ -624,7 +628,7 @@ export default function Oscar() {
                           {gorselUrl && <img src={gorselUrl} alt={ustBaslik} className="h-full w-full object-cover" />}
                           {buKazanan && (
                             <span className="absolute left-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-gise text-xs">
-                              🏆
+                              <OscarHeykelIkon boyut={14} />
                             </span>
                           )}
                           {buBenimTahminim && (
