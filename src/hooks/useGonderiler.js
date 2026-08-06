@@ -15,7 +15,7 @@ const SAYFA_BOYUTU = 20
 // TÜM koleksiyonun (ya da "Herkes" sekmesinde tüm günceler) yeniden okunması
 // anlamına geliyordu. Artık varsayılan olarak 20 günce çekiliyor, "Daha Fazla
 // Göster" ile devamı isteniyor.
-export function useGonderiler({ tur, yazarId, yazarIdListesi, sayfaBoyutu = SAYFA_BOYUTU } = {}) {
+export function useGonderiler({ tur, altTur, yazarId, yazarIdListesi, sayfaBoyutu = SAYFA_BOYUTU } = {}) {
   const [gonderiler, setGonderiler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hata, setHata] = useState('')
@@ -43,6 +43,7 @@ export function useGonderiler({ tur, yazarId, yazarIdListesi, sayfaBoyutu = SAYF
           gruplar.map((grup) => {
             const kisitlar = [where('yazarId', 'in', grup)]
             if (tur) kisitlar.push(where('tur', '==', tur))
+            if (altTur) kisitlar.push(where('altTur', '==', altTur))
             kisitlar.push(orderBy('tarih', 'desc'), limit(grupSayfaBoyutu))
             return getDocs(query(collection(db, 'gonderiler'), ...kisitlar))
           })
@@ -55,6 +56,7 @@ export function useGonderiler({ tur, yazarId, yazarIdListesi, sayfaBoyutu = SAYF
       } else {
         const kisitlar = [orderBy('tarih', 'desc')]
         if (tur) kisitlar.unshift(where('tur', '==', tur))
+        if (altTur) kisitlar.unshift(where('altTur', '==', altTur))
         if (yazarId) kisitlar.unshift(where('yazarId', '==', yazarId))
         kisitlar.push(limit(sayfaBoyutu))
         const q = query(collection(db, 'gonderiler'), ...kisitlar)
@@ -74,7 +76,7 @@ export function useGonderiler({ tur, yazarId, yazarIdListesi, sayfaBoyutu = SAYF
     setGrupSayfaBoyutu(sayfaBoyutu)
     ilkSayfayiYukle()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tur, yazarId, yazarIdListesiAnahtar])
+  }, [tur, altTur, yazarId, yazarIdListesiAnahtar])
 
   async function dahaFazlaYukle() {
     if (yazarIdListesi) {
@@ -89,6 +91,7 @@ export function useGonderiler({ tur, yazarId, yazarIdListesi, sayfaBoyutu = SAYF
     try {
       const kisitlar = [orderBy('tarih', 'desc')]
       if (tur) kisitlar.unshift(where('tur', '==', tur))
+      if (altTur) kisitlar.unshift(where('altTur', '==', altTur))
       if (yazarId) kisitlar.unshift(where('yazarId', '==', yazarId))
       kisitlar.push(startAfter(sonBelge), limit(sayfaBoyutu))
       const q = query(collection(db, 'gonderiler'), ...kisitlar)

@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGonderiler } from '../hooks/useGonderiler.js'
 import { takipEdilenUidleriGetir } from '../hooks/useTakip.js'
+import { alintiBegenDegistir, sonAlintilariGetir } from '../utils/alinti.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import HabercKarti from '../components/HabercKarti.jsx'
-import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
+import AlintiKarti from '../components/AlintiKarti.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import TavsiyeBildirimSeridi from '../components/TavsiyeBildirimSeridi.jsx'
 import OneCikanlarSeridi from '../components/OneCikanlarSeridi.jsx'
@@ -13,19 +14,32 @@ import GunlukKesif from '../components/GunlukKesif.jsx'
 import Logo from '../components/Logo.jsx'
 import { sonHabercileriGetir, katilimDegistir, habercSil } from '../utils/etkinlikHabercisi.js'
 
-// Gerçek gönderi türleri (GonderiEkle.jsx'teki KATEGORILER ile birebir aynı).
-// Not: "Sanat" ayrı bir üst-tür değil — Yazı altında "Sanat Eleştirisi" alt
-// türü olarak var; şimdilik Yazı filtresine dahil (ayrıca filtrelemek yeni
-// bir composite index gerektirir).
+const ALINTI_FILTRE_ID = 'alinti'
+const SANAT_FILTRE_ID = 'sanat'
+
+// Gerçek gönderi türleri (GonderiEkle.jsx'teki KATEGORILER ile birebir aynı)
+// + Alıntı ve Sanat için özel eşlemeler. "Sanat" ayrı bir üst-tür değil —
+// Yazı altında "Sanat Eleştirisi" alt türü, bu yüzden tur+altTur birlikte
+// filtreleniyor. "Alıntı" ise hiç gönderi değil, ayrı bir koleksiyon —
+// seçilince gönderi sorgusu tamamen devre dışı kalıp alıntılar çekiliyor.
 const TUR_FILTRELERI = [
   { id: '', etiket: 'Tümü' },
   { id: 'sinema', etiket: '🎬 Film' },
   { id: 'dizi', etiket: '📺 Dizi' },
   { id: 'kitap', etiket: '📖 Kitap' },
+  { id: ALINTI_FILTRE_ID, etiket: '💬 Alıntı' },
+  { id: SANAT_FILTRE_ID, etiket: '🖼️ Sanat' },
   { id: 'yazi', etiket: '✍️ Yazı' },
   { id: 'gezi', etiket: '🧳 Gezi' },
   { id: 'etkinlik', etiket: '🎟️ Etkinlik' },
 ]
+
+// turFiltre değerini gerçek Firestore alan(lar)ına çevirir.
+function turAltTurEsle(turFiltre) {
+  if (turFiltre === SANAT_FILTRE_ID) return { tur: 'yazi', altTur: 'sanat-elestirisi' }
+  if (turFiltre === '' || turFiltre === ALINTI_FILTRE_ID) return { tur: undefined, altTur: undefined }
+  return { tur: turFiltre, altTur: undefined }
+}
 
 export default function Anasayfa() {
   const { kullanici } = useAuth()
@@ -55,15 +69,54 @@ export default function Anasayfa() {
   const takipFiltresi = takipHazirMi ? [...takipEdilenler, kullanici.uid] : []
   const sorguAktifMi = sekme === 'herkes' || takipHazirMi
 
+  // "Alıntı" filtresi bir gönderi türü değil — seçiliyken gönderi sorgusu
+  // tamamen devre dışı bırakılıp aşağıdaki ayrı efektle alıntılar çekiliyor.
+  const alintiFiltresiAktifMi = turFiltre === ALINTI_FILTRE_ID
+  const { tur: efektifTur, altTur: efektifAltTur } = turAltTurEsle(turFiltre)
+
   const { gonderiler, yukleniyor, hata, dahaFazlaVarMi, dahaFazlaYukle } = useGonderiler(
-    !sorguAktifMi
+    alintiFiltresiAktifMi
+      ? { yazarIdListesi: [] } // ağ isteği yapmadan boş sonuç döner — alıntılar ayrı bir kaynaktan geliyor
+      : !sorguAktifMi
       ? undefined
       : sekme === 'takip'
-      ? { yazarIdListesi: takipFiltresi, tur: turFiltre || undefined }
-      : { tur: turFiltre || undefined }
+      ? { yazarIdListesi: takipFiltresi, tur: efektifTur, altTur: efektifAltTur }
+      : { tur: efektifTur, altTur: efektifAltTur }
   )
 
-  const gercektenYukleniyor = !sorguAktifMi || (sekme === 'takip' && takipListesiYukleniyor) || yukleniyor
+  const [alintiListesi, setAlintiListesi] = useState([])
+  const [alintiYukleniyor, setAlintiYukleniyor] = useState(false)
+
+  useEffect(() => {
+    if (!alintiFiltresiAktifMi) return
+    let iptal = false
+    setAlintiYukleniyor(true)
+    sonAlintilariGetir(30).then((liste) => {
+      if (iptal) return
+      setAlintiListesi(liste)
+      setAlintiYukleniyor(false)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [alintiFiltresiAktifMi])
+
+  async function alintiBegenTiklandi(alinti) {
+    if (!kullanici) return
+    const begeniyorMu = (alinti.begenenler || []).includes(kullanici.uid)
+    setAlintiListesi((liste) =>
+      liste.map((a) =>
+        a.id === alinti.id
+          ? { ...a, begenenler: begeniyorMu ? a.begenenler.filter((u) => u !== kullanici.uid) : [...(a.begenenler || []), kullanici.uid] }
+          : a
+      )
+    )
+    await alintiBegenDegistir(alinti.id, kullanici.uid, begeniyorMu)
+  }
+
+  const gercektenYukleniyor = alintiFiltresiAktifMi
+    ? alintiYukleniyor
+    : !sorguAktifMi || (sekme === 'takip' && takipListesiYukleniyor) || yukleniyor
 
   // Etkinlik Habercisi'nde paylaşılan duyurular da akışta günce gibi (ama ayrı
   // bir kart tasarımıyla) beliriyor — sabit bir bölüm değil, tarihe göre karışık.
@@ -125,6 +178,10 @@ export default function Anasayfa() {
         </Link>
       </div>
 
+      <GunlukKesif />
+
+      <KitapDunyasiWidget />
+
       <div className="mb-4 flex gap-4 text-sm font-govde">
         <button
           onClick={() => setSekme('takip')}
@@ -154,49 +211,60 @@ export default function Anasayfa() {
         ))}
       </div>
 
-      <GunlukKesif />
-
-      <KitapDunyasiWidget />
-
-      <SonAlintilarBolumu limitSayisi={5} />
-
       {gercektenYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {hata && <p className="text-sm text-muhur">Bir hata oldu: {hata}</p>}
 
-      {!gercektenYukleniyor && gonderiler.length === 0 && sekme === 'takip' && (
-        <p className="text-sm text-kraft">
-          Henüz kimseyi takip etmiyorsun. <button onClick={() => setSekme('herkes')} className="text-muhur">Herkes</button> sekmesinden
-          keşfedip takip edebilirsin.
-        </p>
-      )}
-      {!gercektenYukleniyor && gonderiler.length === 0 && sekme === 'herkes' && (
-        <p className="text-sm text-kraft">
-          Henüz hiç günce yok. İlk paylaşımı sen yap: <Link to="/gonderi-ekle" className="text-muhur">Günce Ekle</Link>
-        </p>
-      )}
+      {alintiFiltresiAktifMi ? (
+        <>
+          {!gercektenYukleniyor && alintiListesi.length === 0 && (
+            <p className="text-sm text-kraft">Henüz hiç alıntı paylaşılmamış.</p>
+          )}
+          {!gercektenYukleniyor && alintiListesi.length > 0 && (
+            <ul className="space-y-3">
+              {alintiListesi.map((a) => (
+                <AlintiKarti key={a.id} alinti={a} kullanici={kullanici} onBegenTiklandi={alintiBegenTiklandi} />
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <>
+          {!gercektenYukleniyor && gonderiler.length === 0 && sekme === 'takip' && (
+            <p className="text-sm text-kraft">
+              Henüz kimseyi takip etmiyorsun. <button onClick={() => setSekme('herkes')} className="text-muhur">Herkes</button> sekmesinden
+              keşfedip takip edebilirsin.
+            </p>
+          )}
+          {!gercektenYukleniyor && gonderiler.length === 0 && sekme === 'herkes' && (
+            <p className="text-sm text-kraft">
+              Henüz hiç günce yok. İlk paylaşımı sen yap: <Link to="/gonderi-ekle" className="text-muhur">Günce Ekle</Link>
+            </p>
+          )}
 
-      {!gercektenYukleniyor && (
-        <div className="space-y-4">
-          {akisOgeleri.map((oge, i) => (
-            <div key={oge.id}>
-              {oge._tur === 'haberci' ? (
-                <HabercKarti haberci={oge} kullanici={kullanici} onKatilimDegistir={habercKatilimDegistir} onSil={habercSilTiklandi} />
-              ) : (
-                <GonderiKarti gonderi={oge} />
-              )}
-              {i < akisOgeleri.length - 1 && <div className="defter-cizgi mt-4" />}
+          {!gercektenYukleniyor && (
+            <div className="space-y-4">
+              {akisOgeleri.map((oge, i) => (
+                <div key={oge.id}>
+                  {oge._tur === 'haberci' ? (
+                    <HabercKarti haberci={oge} kullanici={kullanici} onKatilimDegistir={habercKatilimDegistir} onSil={habercSilTiklandi} />
+                  ) : (
+                    <GonderiKarti gonderi={oge} />
+                  )}
+                  {i < akisOgeleri.length - 1 && <div className="defter-cizgi mt-4" />}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-      {!gercektenYukleniyor && dahaFazlaVarMi && (
-        <button
-          onClick={dahaFazlaYukle}
-          disabled={yukleniyor}
-          className="mt-6 rounded-sm bg-kagitKoyu px-4 py-2 font-govde text-sm text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:opacity-40"
-        >
-          {yukleniyor ? 'Yükleniyor...' : 'Daha Fazla Göster'}
-        </button>
+          )}
+          {!gercektenYukleniyor && dahaFazlaVarMi && (
+            <button
+              onClick={dahaFazlaYukle}
+              disabled={yukleniyor}
+              className="mt-6 rounded-sm bg-kagitKoyu px-4 py-2 font-govde text-sm text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:opacity-40"
+            >
+              {yukleniyor ? 'Yükleniyor...' : 'Daha Fazla Göster'}
+            </button>
+          )}
+        </>
       )}
     </div>
   )

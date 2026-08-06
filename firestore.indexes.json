@@ -291,6 +291,46 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "gonderiler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "altTur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gonderiler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "yazarId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "altTur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
