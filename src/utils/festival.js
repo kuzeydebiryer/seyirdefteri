@@ -6,7 +6,7 @@
 // seçkileri için ücretsiz/açık bir API yok, ama Letterboxd'da sinefillerin
 // tuttuğu listeler zaten var.
 
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export async function festivalSezonOlustur(kullanici, { festivalId, festivalAdi, yil }) {
@@ -58,18 +58,19 @@ export async function festivalOduluGuncelle(filmId, odul) {
   await updateDoc(doc(db, 'festivalFilmleri', filmId), { odul })
 }
 
-// Topluluk genelinde izleme ilerlemesi — Oscar'daki AYNI desen: TÜM
-// eserPuanlari koleksiyonunu taramak yerine sadece bu sezonun filmlerini
-// (30'arlık gruplar halinde `in` sorgusuyla) sorguluyoruz.
-export async function festivalIzlemeIlerlemesiHesapla(tmdbIdSeti) {
-  const tmdbIdler = [...tmdbIdSeti]
-  if (tmdbIdler.length === 0) return { izlenen: 0, toplam: 0 }
-  const izlenenler = new Set()
-  for (let i = 0; i < tmdbIdler.length; i += 30) {
-    const parca = tmdbIdler.slice(i, i + 30)
-    const sorgu = query(collection(db, 'eserPuanlari'), where('tur', '==', 'sinema'), where('disId', 'in', parca))
-    const snap = await getDocs(sorgu)
-    snap.docs.forEach((d) => izlenenler.add(d.data().disId))
-  }
-  return { izlenen: izlenenler.size, toplam: tmdbIdler.length }
+// Festival Banner'ı — her festival için (sezon bazlı değil, festivalin
+// kendisi için) tek bir görsel. Kullanıcı bir URL girip kaydediyor, ayrı bir
+// yükleme sistemi kurmaya gerek yok.
+export async function festivalBanneriGetir(festivalId) {
+  const ref = doc(db, 'festivalBannerlari', festivalId)
+  const snap = await getDoc(ref)
+  return snap.exists() ? snap.data().gorselUrl : ''
+}
+
+export async function festivalBanneriGuncelle(festivalId, gorselUrl, kullanici) {
+  await setDoc(doc(db, 'festivalBannerlari', festivalId), {
+    gorselUrl,
+    guncelleyenId: kullanici.uid,
+    guncellemeTarihi: serverTimestamp(),
+  })
 }

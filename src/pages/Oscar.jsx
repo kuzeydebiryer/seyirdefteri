@@ -12,7 +12,6 @@ import {
   adayEkle,
   adaySil,
   adaylarGetir,
-  izlemeIlerlemesiHesapla,
   sezonuKilitle,
   tahminVer,
   tahminleriGetir,
@@ -200,7 +199,6 @@ export default function Oscar() {
   const [adaylar, setAdaylar] = useState([])
   const [tahminler, setTahminler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
-  const [ilerleme, setIlerleme] = useState(null)
 
   const [sezonAdi, setSezonAdi] = useState('99. Akademi Ödülleri')
   const [torenTarihi, setTorenTarihi] = useState('2027-03-14')
@@ -224,8 +222,6 @@ export default function Oscar() {
       setKategoriler(k)
       setAdaylar(a)
       setTahminler(t)
-      const tmdbIdSeti = new Set(a.map((x) => x.tmdbId))
-      setIlerleme(await izlemeIlerlemesiHesapla(tmdbIdSeti))
     }
     setYukleniyor(false)
   }
@@ -457,19 +453,7 @@ export default function Oscar() {
         </p>
       )}
 
-      {ilerleme && ilerleme.toplam > 0 && (
-        <div className="mb-4 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-          <div className="flex items-center gap-3">
-            <span className="font-baslik text-xl text-muhur">
-              {ilerleme.izlenen}/{ilerleme.toplam}
-            </span>
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-kagit">
-              <div className="h-full bg-muhur" style={{ width: `${(ilerleme.izlenen / ilerleme.toplam) * 100}%` }} />
-            </div>
-          </div>
-          <p className="mt-1 text-xs text-kraft">aday film topluluk tarafından izlendi</p>
-        </div>
-      )}
+      
 
       <SohbetPaneli konumId={`oscar_${sezon.id}`} baslik="💬 Oscar Sohbeti" />
 

@@ -9,7 +9,8 @@ import {
   festivalFilmleriGetir,
   festivalFilmSil,
   festivalOduluGuncelle,
-  festivalIzlemeIlerlemesiHesapla,
+  festivalBanneriGetir,
+  festivalBanneriGuncelle,
 } from '../utils/festival.js'
 import FestivalFilmIceAktar from '../components/FestivalFilmIceAktar.jsx'
 import SohbetPaneli from '../components/SohbetPaneli.jsx'
@@ -20,12 +21,15 @@ export default function Festivaller() {
   const [sezonlar, setSezonlar] = useState([])
   const [seciliSezonId, setSeciliSezonId] = useState(null)
   const [filmler, setFilmler] = useState([])
-  const [ilerleme, setIlerleme] = useState(null)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [yeniYil, setYeniYil] = useState(String(new Date().getFullYear()))
   const [iceAktarAcik, setIceAktarAcik] = useState(false)
   const [oduluDuzenlenenFilmId, setOduluDuzenlenenFilmId] = useState(null)
   const [odulTaslak, setOdulTaslak] = useState('')
+  const [bannerUrl, setBannerUrl] = useState('')
+  const [bannerDuzenleAcik, setBannerDuzenleAcik] = useState(false)
+  const [bannerTaslak, setBannerTaslak] = useState('')
+  const [bannerKaydediliyor, setBannerKaydediliyor] = useState(false)
 
   const festival = FESTIVALLER.find((f) => f.id === seciliFestival)
 
@@ -41,18 +45,18 @@ export default function Festivaller() {
   useEffect(() => {
     setSeciliSezonId(null)
     setFilmler([])
-    setIlerleme(null)
     sezonlariYukle()
+    setBannerDuzenleAcik(false)
+    festivalBanneriGetir(seciliFestival).then((url) => {
+      setBannerUrl(url)
+      setBannerTaslak(url)
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seciliFestival])
 
   useEffect(() => {
     if (!seciliSezonId) return
-    festivalFilmleriGetir(seciliSezonId).then(async (liste) => {
-      setFilmler(liste)
-      const tmdbIdSeti = new Set(liste.map((f) => f.tmdbId))
-      setIlerleme(await festivalIzlemeIlerlemesiHesapla(tmdbIdSeti))
-    })
+    festivalFilmleriGetir(seciliSezonId).then(setFilmler)
   }, [seciliSezonId])
 
   async function sezonOlusturTiklandi(e) {
@@ -61,6 +65,19 @@ export default function Festivaller() {
     const sezonId = await festivalSezonOlustur(kullanici, { festivalId: seciliFestival, festivalAdi: festival.ad, yil: yeniYil.trim() })
     await sezonlariYukle()
     setSeciliSezonId(sezonId)
+  }
+
+  async function bannerKaydet(e) {
+    e.preventDefault()
+    if (!kullanici) return
+    setBannerKaydediliyor(true)
+    try {
+      await festivalBanneriGuncelle(seciliFestival, bannerTaslak.trim(), kullanici)
+      setBannerUrl(bannerTaslak.trim())
+      setBannerDuzenleAcik(false)
+    } finally {
+      setBannerKaydediliyor(false)
+    }
   }
 
   async function sezonSilTiklandi() {
@@ -99,6 +116,54 @@ export default function Festivaller() {
           </button>
         ))}
       </div>
+
+      {bannerUrl && !bannerDuzenleAcik && (
+        <div className="relative mb-6">
+          <img src={bannerUrl} alt={festival.ad} className="h-32 w-full rounded-sm object-cover ring-1 ring-cizgi sm:h-48" />
+          {kullanici && (
+            <button
+              onClick={() => setBannerDuzenleAcik(true)}
+              className="absolute right-2 top-2 rounded-sm bg-kagit/90 px-2 py-1 text-[11px] text-kraft ring-1 ring-cizgi hover:text-murekkep"
+            >
+              Banner'ı Değiştir
+            </button>
+          )}
+        </div>
+      )}
+
+      {!bannerUrl && kullanici && !bannerDuzenleAcik && (
+        <button
+          onClick={() => setBannerDuzenleAcik(true)}
+          className="mb-6 flex h-24 w-full items-center justify-center rounded-sm bg-kagitKoyu text-sm text-kraft ring-1 ring-dashed ring-cizgi hover:text-murekkep"
+        >
+          + {festival.ad} için Banner Görseli Ekle
+        </button>
+      )}
+
+      {bannerDuzenleAcik && (
+        <form onSubmit={bannerKaydet} className="mb-6 flex gap-2">
+          <input
+            type="text"
+            value={bannerTaslak}
+            onChange={(e) => setBannerTaslak(e.target.value)}
+            placeholder="Banner görseli URL'i..."
+            className="flex-1 rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+          />
+          <button type="submit" disabled={bannerKaydediliyor} className="rounded-sm bg-muhur px-3 py-2 font-govde text-xs text-kagit disabled:opacity-40">
+            Kaydet
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setBannerDuzenleAcik(false)
+              setBannerTaslak(bannerUrl)
+            }}
+            className="rounded-sm bg-kagitKoyu px-3 py-2 font-govde text-xs text-kraft ring-1 ring-cizgi"
+          >
+            Vazgeç
+          </button>
+        </form>
+      )}
 
       {yukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
 
@@ -146,20 +211,6 @@ export default function Festivaller() {
                 )}
               </div>
 
-              {ilerleme && ilerleme.toplam > 0 && (
-                <div className="mb-4 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-                  <div className="flex items-center gap-3">
-                    <span className="font-baslik text-xl text-muhur">
-                      {ilerleme.izlenen}/{ilerleme.toplam}
-                    </span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-kagit">
-                      <div className="h-full bg-muhur" style={{ width: `${(ilerleme.izlenen / ilerleme.toplam) * 100}%` }} />
-                    </div>
-                  </div>
-                  <p className="mt-1 text-xs text-kraft">seçkideki film topluluk tarafından izlendi</p>
-                </div>
-              )}
-
               <SohbetPaneli konumId={`festival_${seciliSezonId}`} baslik="💬 Festival Sohbeti" />
 
               {kullanici && (
@@ -177,10 +228,7 @@ export default function Festivaller() {
                         mevcutFilmSayisi={filmler.length}
                         onTamamlandi={async () => {
                           setIceAktarAcik(false)
-                          const liste = await festivalFilmleriGetir(seciliSezonId)
-                          setFilmler(liste)
-                          const tmdbIdSeti = new Set(liste.map((f) => f.tmdbId))
-                          setIlerleme(await festivalIzlemeIlerlemesiHesapla(tmdbIdSeti))
+                          setFilmler(await festivalFilmleriGetir(seciliSezonId))
                         }}
                       />
                     </div>

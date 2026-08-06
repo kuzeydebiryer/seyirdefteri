@@ -87,20 +87,6 @@ export async function adaylarGetir(sezonId) {
 // büyüdükçe (ör. toplu Letterboxd puan içe aktarımından sonra binlerce kayıt
 // olduğunda) her sayfa açılışında TÜM koleksiyonu okumayı — ve Firestore
 // kotasını gereksiz yere tüketmeyi — önlüyor.
-export async function izlemeIlerlemesiHesapla(tmdbIdSeti) {
-  const tmdbIdler = [...tmdbIdSeti]
-  if (tmdbIdler.length === 0) return { izlenen: 0, toplam: 0 }
-
-  const izlenenler = new Set()
-  for (let i = 0; i < tmdbIdler.length; i += 30) {
-    const parca = tmdbIdler.slice(i, i + 30)
-    const q = query(collection(db, 'eserPuanlari'), where('tur', '==', 'sinema'), where('disId', 'in', parca))
-    const snap = await getDocs(q)
-    snap.docs.forEach((d) => izlenenler.add(d.data().disId))
-  }
-  return { izlenen: izlenenler.size, toplam: tmdbIdler.length }
-}
-
 // --- Faz 2: Tahmin / Anket sistemi ---------------------------------------
 // Puanlama tamamen elle yapılacağı için (bkz. Faz 3) burada karmaşık bir
 // ağırlıklandırma yok — sadece "kim hangi kategoride kimi tahmin etti" kaydı.

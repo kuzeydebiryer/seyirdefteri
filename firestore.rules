@@ -134,6 +134,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null;
     }
+    match /festivalBannerlari/{festivalId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
 
     // Oscar Yolculuğu (Faz 1) — sezon/kategori/aday referans verisi. Akademi'nin
     // resmi bir API'si olmadığı için elle giriliyor; küçük/davetli topluluk
