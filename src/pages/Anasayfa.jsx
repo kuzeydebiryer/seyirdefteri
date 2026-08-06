@@ -8,6 +8,8 @@ import HabercKarti from '../components/HabercKarti.jsx'
 import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import TavsiyeBildirimSeridi from '../components/TavsiyeBildirimSeridi.jsx'
+import OneCikanlarSeridi from '../components/OneCikanlarSeridi.jsx'
+import GunlukKesif from '../components/GunlukKesif.jsx'
 import Logo from '../components/Logo.jsx'
 import { sonHabercileriGetir, katilimDegistir, habercSil } from '../utils/etkinlikHabercisi.js'
 
@@ -89,6 +91,8 @@ export default function Anasayfa() {
         </p>
       </div>
 
+      <OneCikanlarSeridi />
+
       <TavsiyeBildirimSeridi />
 
       <div className="flex items-center justify-between mb-4">
@@ -112,6 +116,8 @@ export default function Anasayfa() {
           Herkes
         </button>
       </div>
+
+      <GunlukKesif />
 
       <KitapDunyasiWidget />
 
