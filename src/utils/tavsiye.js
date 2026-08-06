@@ -1,8 +1,8 @@
 import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-export async function tavsiyeEkle({ tur, disId, baslik, alt, posterUrl, not: notMetni, kullanici }) {
-  await addDoc(collection(db, 'tavsiyeler'), {
+export async function tavsiyeEkle({ tur, disId, baslik, alt, posterUrl, not: notMetni, kullanici, koleksiyon = 'tavsiyeler' }) {
+  await addDoc(collection(db, koleksiyon), {
     tur, // 'sinema' | 'dizi' | 'kitap'
     disId: tur === 'kitap' ? disId : Number(disId),
     baslik,
@@ -15,10 +15,10 @@ export async function tavsiyeEkle({ tur, disId, baslik, alt, posterUrl, not: not
   })
 }
 
-export async function tavsiyeGuncelle(tavsiyeId, { posterUrl }) {
-  await updateDoc(doc(db, 'tavsiyeler', tavsiyeId), { posterUrl })
+export async function tavsiyeGuncelle(tavsiyeId, { posterUrl }, koleksiyon = 'tavsiyeler') {
+  await updateDoc(doc(db, koleksiyon, tavsiyeId), { posterUrl })
 }
 
-export async function tavsiyeSil(tavsiyeId) {
-  await deleteDoc(doc(db, 'tavsiyeler', tavsiyeId))
+export async function tavsiyeSil(tavsiyeId, koleksiyon = 'tavsiyeler') {
+  await deleteDoc(doc(db, koleksiyon, tavsiyeId))
 }

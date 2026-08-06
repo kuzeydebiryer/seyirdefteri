@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGonderiler } from '../hooks/useGonderiler.js'
 import { takipEdilenUidleriGetir } from '../hooks/useTakip.js'
+import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
 import { alintiBegenDegistir, sonAlintilariGetir } from '../utils/alinti.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import HabercKarti from '../components/HabercKarti.jsx'
 import AlintiKarti from '../components/AlintiKarti.jsx'
+import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import TavsiyeBildirimSeridi from '../components/TavsiyeBildirimSeridi.jsx'
 import OneCikanlarSeridi from '../components/OneCikanlarSeridi.jsx'
@@ -47,6 +49,15 @@ export default function Anasayfa() {
   const [turFiltre, setTurFiltre] = useState('') // '' = tümü
   const [takipEdilenler, setTakipEdilenler] = useState(null) // null = henüz yüklenmedi
   const [takipListesiYukleniyor, setTakipListesiYukleniyor] = useState(true)
+
+  // Anasayfadaki 3 yatay şerit: Film Tavsiyeleri, Yeni Gelen Filmler, Kitap
+  // Tavsiyeleri. Film/Dizi/Kitap sayfalarındaki mevcut (grid görünümlü)
+  // widget'lara dokunmuyoruz — aynı veriyi burada yatay (letterboxd tarzı)
+  // gösteriyoruz. "Yeni Gelen Filmler" ayrı bir koleksiyon (yeniGelenFilmler),
+  // kişisel tavsiyelerle karışmasın diye.
+  const { tavsiyeler: filmTavsiyeleri, yenidenYukle: filmTavsiyeleriYenile } = useTavsiyeler('sinema')
+  const { tavsiyeler: yeniGelenFilmler, yenidenYukle: yeniGelenFilmleriYenile } = useTavsiyeler('sinema', 'yeniGelenFilmler')
+  const { tavsiyeler: kitapTavsiyeleri, yenidenYukle: kitapTavsiyeleriYenile } = useTavsiyeler('kitap')
 
   useEffect(() => {
     if (!kullanici) return
@@ -170,6 +181,35 @@ export default function Anasayfa() {
       <OneCikanlarSeridi />
 
       <TavsiyeBildirimSeridi />
+
+      <TavsiyeBolumu
+        tur="sinema"
+        tavsiyeler={filmTavsiyeleri}
+        yenidenYukle={filmTavsiyeleriYenile}
+        yatay
+        baslik="🎬 Film Tavsiyeleri"
+        tumunuGorLink="/filmler"
+      />
+
+      <TavsiyeBolumu
+        tur="sinema"
+        koleksiyon="yeniGelenFilmler"
+        tavsiyeler={yeniGelenFilmler}
+        yenidenYukle={yeniGelenFilmleriYenile}
+        yatay
+        baslik="🆕 Yeni Gelen Filmler"
+        tumunuGorLink="/filmler"
+        ekleButonuMetni="+ Film Ekle"
+      />
+
+      <TavsiyeBolumu
+        tur="kitap"
+        tavsiyeler={kitapTavsiyeleri}
+        yenidenYukle={kitapTavsiyeleriYenile}
+        yatay
+        baslik="📖 Kitap Tavsiyeleri"
+        tumunuGorLink="/kitaplar"
+      />
 
       <div className="flex items-center justify-between mb-4">
         <h1 className="font-baslik text-2xl text-murekkep">Akış</h1>

@@ -7,7 +7,16 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
-export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
+export default function TavsiyeBolumu({
+  tur,
+  tavsiyeler,
+  yenidenYukle,
+  koleksiyon = 'tavsiyeler',
+  baslik = 'Seyirdefteri Tavsiyeleri',
+  yatay = false,
+  tumunuGorLink = null,
+  ekleButonuMetni = '+ Tavsiye Ekle',
+}) {
   const { kullanici } = useAuth()
   const [formuAcik, setFormuAcik] = useState(false)
   const [arama, setArama] = useState('')
@@ -62,7 +71,7 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
     if (!secili || !kullanici) return
     setKaydediliyor(true)
     try {
-      await tavsiyeEkle({ tur, ...secili, not: not_, kullanici })
+      await tavsiyeEkle({ tur, ...secili, not: not_, kullanici, koleksiyon })
       setSecili(null)
       setNot_('')
       setFormuAcik(false)
@@ -74,7 +83,7 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
 
   async function sil(id) {
     if (!window.confirm('Bu tavsiyeyi kaldırmak istediğine emin misin?')) return
-    await tavsiyeSil(id)
+    await tavsiyeSil(id, koleksiyon)
     yenidenYukle()
   }
 
@@ -84,7 +93,7 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
   }
 
   async function duzenlemeyiKaydet(id) {
-    await tavsiyeGuncelle(id, { posterUrl: duzenlemeUrl })
+    await tavsiyeGuncelle(id, { posterUrl: duzenlemeUrl }, koleksiyon)
     setDuzenlenenId(null)
     yenidenYukle()
   }
@@ -94,15 +103,22 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
   return (
     <div className="mb-10">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-baslik text-lg text-murekkep">Seyirdefteri Tavsiyeleri</h2>
-        {kullanici && (
-          <button
-            onClick={() => setFormuAcik((a) => !a)}
-            className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
-          >
-            {formuAcik ? 'Vazgeç' : '+ Tavsiye Ekle'}
-          </button>
-        )}
+        <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
+        <div className="flex items-center gap-3">
+          {tumunuGorLink && (
+            <Link to={tumunuGorLink} className="text-[11px] text-kraft hover:text-deniz hover:underline">
+              Tümünü Gör →
+            </Link>
+          )}
+          {kullanici && (
+            <button
+              onClick={() => setFormuAcik((a) => !a)}
+              className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+            >
+              {formuAcik ? 'Vazgeç' : ekleButonuMetni}
+            </button>
+          )}
+        </div>
       </div>
 
       {formuAcik && (
@@ -187,11 +203,11 @@ export default function TavsiyeBolumu({ tur, tavsiyeler, yenidenYukle }) {
       )}
 
       {tavsiyeler.length === 0 ? (
-        <p className="text-sm text-kraft">Henüz tavsiye yok.</p>
+        <p className="text-sm text-kraft">Henüz {koleksiyon === 'yeniGelenFilmler' ? 'film eklenmemiş' : 'tavsiye yok'}.</p>
       ) : (
-        <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
+        <div className={yatay ? 'flex gap-3 overflow-x-auto pb-2' : 'grid grid-cols-3 gap-4 sm:grid-cols-6'}>
           {tavsiyeler.map((t) => (
-            <div key={t.id} className="group relative">
+            <div key={t.id} className={yatay ? 'group relative w-24 shrink-0 sm:w-28' : 'group relative'}>
               {duzenlenenId === t.id ? (
                 <div className="rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
                   <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu">
