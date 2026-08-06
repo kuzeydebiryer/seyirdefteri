@@ -13,9 +13,24 @@ import GunlukKesif from '../components/GunlukKesif.jsx'
 import Logo from '../components/Logo.jsx'
 import { sonHabercileriGetir, katilimDegistir, habercSil } from '../utils/etkinlikHabercisi.js'
 
+// Gerçek gönderi türleri (GonderiEkle.jsx'teki KATEGORILER ile birebir aynı).
+// Not: "Sanat" ayrı bir üst-tür değil — Yazı altında "Sanat Eleştirisi" alt
+// türü olarak var; şimdilik Yazı filtresine dahil (ayrıca filtrelemek yeni
+// bir composite index gerektirir).
+const TUR_FILTRELERI = [
+  { id: '', etiket: 'Tümü' },
+  { id: 'sinema', etiket: '🎬 Film' },
+  { id: 'dizi', etiket: '📺 Dizi' },
+  { id: 'kitap', etiket: '📖 Kitap' },
+  { id: 'yazi', etiket: '✍️ Yazı' },
+  { id: 'gezi', etiket: '🧳 Gezi' },
+  { id: 'etkinlik', etiket: '🎟️ Etkinlik' },
+]
+
 export default function Anasayfa() {
   const { kullanici } = useAuth()
   const [sekme, setSekme] = useState('takip') // 'takip' | 'herkes'
+  const [turFiltre, setTurFiltre] = useState('') // '' = tümü
   const [takipEdilenler, setTakipEdilenler] = useState(null) // null = henüz yüklenmedi
   const [takipListesiYukleniyor, setTakipListesiYukleniyor] = useState(true)
 
@@ -41,7 +56,11 @@ export default function Anasayfa() {
   const sorguAktifMi = sekme === 'herkes' || takipHazirMi
 
   const { gonderiler, yukleniyor, hata, dahaFazlaVarMi, dahaFazlaYukle } = useGonderiler(
-    !sorguAktifMi ? undefined : sekme === 'takip' ? { yazarIdListesi: takipFiltresi } : {}
+    !sorguAktifMi
+      ? undefined
+      : sekme === 'takip'
+      ? { yazarIdListesi: takipFiltresi, tur: turFiltre || undefined }
+      : { tur: turFiltre || undefined }
   )
 
   const gercektenYukleniyor = !sorguAktifMi || (sekme === 'takip' && takipListesiYukleniyor) || yukleniyor
@@ -75,7 +94,11 @@ export default function Anasayfa() {
   // Günceler + duyurular, tarihe göre karışık (duyurular "Takip Ettiklerim"
   // sekmesinde de görünür — bu bilerek böyle, çünkü bir duyuru kimin
   // paylaştığından bağımsız olarak topluluğa faydalı bir bilgi).
-  const akisOgeleri = [...gonderiler.map((g) => ({ ...g, _tur: 'gonderi' })), ...habercler]
+  // Duyurular (Etkinlik Habercisi) her zaman "etkinlik" temalı olduğu için,
+  // bir tür filtresi aktifken sadece "Tümü" veya "Etkinlik" seçiliyse akışa
+  // karışıyor — aksi halde ör. "Kitap" filtresinde alakasız bir duyuru çıkardı.
+  const habercilerGosterilsinMi = turFiltre === '' || turFiltre === 'etkinlik'
+  const akisOgeleri = [...gonderiler.map((g) => ({ ...g, _tur: 'gonderi' })), ...(habercilerGosterilsinMi ? habercler : [])]
   akisOgeleri.sort((a, b) => {
     const aZaman = (a._tur === 'haberci' ? a.eklemeTarihi : a.tarih)?.toMillis?.() || 0
     const bZaman = (b._tur === 'haberci' ? b.eklemeTarihi : b.tarih)?.toMillis?.() || 0
@@ -102,7 +125,7 @@ export default function Anasayfa() {
         </Link>
       </div>
 
-      <div className="mb-6 flex gap-4 text-sm font-govde">
+      <div className="mb-4 flex gap-4 text-sm font-govde">
         <button
           onClick={() => setSekme('takip')}
           className={sekme === 'takip' ? 'text-muhur font-medium' : 'text-kraft hover:text-murekkep'}
@@ -115,6 +138,20 @@ export default function Anasayfa() {
         >
           Herkes
         </button>
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        {TUR_FILTRELERI.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setTurFiltre(f.id)}
+            className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
+              turFiltre === f.id ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagit text-kraft ring-cizgi hover:text-murekkep'
+            }`}
+          >
+            {f.etiket}
+          </button>
+        ))}
       </div>
 
       <GunlukKesif />
