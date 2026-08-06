@@ -10,6 +10,7 @@ export async function sezonOlustur(kullanici, { ad, torenTarihi }) {
   const ref = await addDoc(collection(db, 'oscarSezonlari'), {
     ad,
     torenTarihi,
+    kilitli: false,
     olusturanId: kullanici.uid,
     olusturmaTarihi: serverTimestamp(),
   })

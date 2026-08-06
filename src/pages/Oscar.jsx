@@ -222,6 +222,14 @@ export default function Oscar() {
       setKategoriler(k)
       setAdaylar(a)
       setTahminler(t)
+      // Eski sezonlar `kilitli` alanı olmadan oluşturulmuştu — Firestore
+      // kuralı bu alanın var olmasını bekliyor, o yüzden ilk açılışta
+      // sessizce onarıyoruz (tek seferlik, sonraki yüklemede tekrar tetiklenmez).
+      if (bitmemis.kilitli === undefined) {
+        sezonuKilitle(bitmemis.id, false)
+          .then(() => setSezon((s) => (s?.id === bitmemis.id ? { ...s, kilitli: false } : s)))
+          .catch(() => {})
+      }
     }
     setYukleniyor(false)
   }
@@ -335,11 +343,15 @@ export default function Oscar() {
 
   async function tahminSec(kategoriId, adayId) {
     if (!kullanici || sezon.kilitli) return
-    await tahminVer(sezon.id, kategoriId, kullanici, profil, adayId)
-    setTahminler((onceki) => {
-      const digerleri = onceki.filter((t) => !(t.kategoriId === kategoriId && t.kullaniciId === kullanici.uid))
-      return [...digerleri, { kategoriId, kullaniciId: kullanici.uid, kullaniciAdi: profil?.adSoyad || 'Sen', adayId }]
-    })
+    try {
+      await tahminVer(sezon.id, kategoriId, kullanici, profil, adayId)
+      setTahminler((onceki) => {
+        const digerleri = onceki.filter((t) => !(t.kategoriId === kategoriId && t.kullaniciId === kullanici.uid))
+        return [...digerleri, { kategoriId, kullaniciId: kullanici.uid, kullaniciAdi: profil?.adSoyad || 'Sen', adayId }]
+      })
+    } catch (e) {
+      window.alert('Tahmin kaydedilemedi: ' + (e?.message || 'bilinmeyen bir hata oluştu.'))
+    }
   }
 
   async function sonucSec(kategoriId, adayId) {
