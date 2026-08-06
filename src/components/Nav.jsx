@@ -1,6 +1,7 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useTema } from '../context/TemaContext.jsx'
 import OscarHeykelIkon from './ikonlar/OscarHeykelIkon.jsx'
 import Avatar from './Avatar.jsx'
 import Logo from './Logo.jsx'
@@ -23,6 +24,7 @@ const TOPLULUK_LINKLERI = [{ yol: '/topluluklar', etiket: 'Topluluk', ikon: '�
 
 export default function Nav() {
   const { kullanici, profil, cikisYap } = useAuth()
+  const { tema, temaDegistir } = useTema()
   const navigate = useNavigate()
   const [menuAcik, setMenuAcik] = useState(false)
 
@@ -58,12 +60,22 @@ export default function Nav() {
                   {profil?.kullaniciAdi || 'Profil'}
                 </span>
               </NavLink>
+              <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
+                {tema === 'koyu' ? '☀️' : '🌙'}
+              </button>
               <button onClick={cikis} className="text-kraft hover:text-murekkep">
                 Çıkış
               </button>
             </nav>
 
             {/* Mobilde hamburger düğmesi */}
+            <button
+              onClick={temaDegistir}
+              className="sm:hidden flex h-9 w-9 items-center justify-center rounded-sm text-murekkep"
+              aria-label={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}
+            >
+              {tema === 'koyu' ? '☀️' : '🌙'}
+            </button>
             <button
               onClick={() => setMenuAcik((a) => !a)}
               className="sm:hidden flex h-9 w-9 items-center justify-center rounded-sm text-murekkep"
@@ -74,6 +86,9 @@ export default function Nav() {
           </div>
         ) : (
           <nav className="ml-auto flex items-center gap-4 font-govde text-sm">
+            <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
+              {tema === 'koyu' ? '☀️' : '🌙'}
+            </button>
             <NavLink to="/giris" className="text-kraft hover:text-murekkep">
               Giriş
             </NavLink>
@@ -137,6 +152,13 @@ export default function Nav() {
                 {l.etiket}
               </NavLink>
             ))}
+
+            <div className="defter-cizgi my-1" />
+
+            <button onClick={temaDegistir} className="flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left text-kraft">
+              <span className="w-5 text-center">{tema === 'koyu' ? '☀️' : '🌙'}</span>
+              {tema === 'koyu' ? 'Aydınlık Mod' : 'Karanlık Mod'}
+            </button>
 
             <div className="defter-cizgi my-1" />
 

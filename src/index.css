@@ -2,23 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Aydınlık (varsayılan) palet — R G B, virgülsüz (Tailwind'in
+     rgb(var(--x) / <alpha-value>) opaklık numarasıyla çalışması için) */
+  --kagit: 245 239 225;
+  --kagitKoyu: 237 228 206;
+  --murekkep: 31 36 33;
+  --muhur: 179 58 58;
+  --kraft: 140 131 104;
+  --cizgi: 216 203 170;
+  --deniz: 74 110 107;
+  --gise: 166 118 63;
+}
+
+.dark {
+  /* Karanlık palet — aynı "kağıt/mürekkep" kimliğini korumak için ters
+     çevrilmiş sıcak tonlar (soğuk gri değil), okunabilirlik için kraft/
+     muhur/deniz/gise biraz açıldı. */
+  --kagit: 27 24 18;
+  --kagitKoyu: 37 32 23;
+  --murekkep: 237 230 211;
+  --muhur: 209 85 76;
+  --kraft: 169 154 120;
+  --cizgi: 58 51 36;
+  --deniz: 125 162 157;
+  --gise: 201 148 86;
+}
+
 body {
-  background-color: #F5EFE1;
-  color: #1F2421;
+  background-color: rgb(var(--kagit));
+  color: rgb(var(--murekkep));
 }
 
 /* İmza öğe: defter çizgisi — bölüm ayırıcı */
 .defter-cizgi {
   height: 1px;
-  background-image: repeating-linear-gradient(to right, #D8CBAA 0, #D8CBAA 6px, transparent 6px, transparent 11px);
+  background-image: repeating-linear-gradient(to right, rgb(var(--cizgi)) 0, rgb(var(--cizgi)) 6px, transparent 6px, transparent 11px);
 }
 
 /* Gönderi kartı: temel görünüm; renkli şerit artık JSX içinde dinamik olarak ekleniyor */
 .gonderi-karti {
-  background-color: #EDE4CE;
+  background-color: rgb(var(--kagitKoyu));
   border-radius: 2px;
 }
 
 .yildiz {
-  color: #B33A3A;
+  color: rgb(var(--muhur));
 }

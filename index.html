@@ -6,6 +6,16 @@
     <title>Seyirdefteri</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Newsreader:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+      // Sayfa boyanmadan önce çalışır — React yüklenene kadar bir an için
+      // yanlış tema (beyaz flaş) görünmesin diye <html>'e "dark" sınıfını
+      // burada, senkron olarak ekliyoruz. TemaContext.jsx ile aynı mantık.
+      (function () {
+        var kayitli = localStorage.getItem('tema')
+        var koyuMu = kayitli === 'koyu' || (kayitli !== 'acik' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        if (koyuMu) document.documentElement.classList.add('dark')
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
