@@ -579,6 +579,9 @@ export default function Oscar() {
                   {sezon.kilitli && !k.kazananAdayId && kullanici && (
                     <span className="flex items-center gap-1 text-[11px] text-kraft"><OscarHeykelIkon boyut={12} /> kazananı işaretlemek için afişe tıkla</span>
                   )}
+                  {!sezon.kilitli && kullanici && (
+                    <span className="text-[11px] text-kraft">👆 tahmin etmek için afişe tıkla</span>
+                  )}
                   {kullanici && (
                     <button onClick={() => kategoriSilTiklandi(k.id)} className="text-[11px] text-kraft hover:text-muhur">
                       Kategoriyi Sil
