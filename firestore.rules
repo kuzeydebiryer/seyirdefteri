@@ -58,6 +58,15 @@ service cloud.firestore {
         allow read: if true;
         allow write: if request.auth != null && request.auth.uid == takipciUid;
       }
+
+      // Push bildirim token'ları (FCM) — sadece hesap sahibi kendi
+      // cihazlarının token'ını yazıp silebilir. Okumaya kimsenin ihtiyacı yok
+      // dışarıdan (gönderme işlemi Cloud Functions'ta Admin SDK ile yapılıyor,
+      // o da güvenlik kurallarına tabi değil), bu yüzden read de sahibe kapalı
+      // tutulabilirdi ama debug kolaylığı için sahibine açık bırakıldı.
+      match /bildirimTokenlari/{tokenId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
     }
 
     // Davet kodları: herkes okuyabilir (kayıt öncesi doğrulama için),
@@ -133,9 +142,17 @@ service cloud.firestore {
 
     // Sohbet: Oscar/Festival sezonuna özel hafif mesajlaşma. Herkes okuyabilir,
     // sadece kendi adına mesaj gönderebilir, düzenleme/silme yok (basit tutuldu).
+    // Sohbet Mesajları: Oscar/Festival sezonları herkese açık kalıyor (eski
+    // davranış). "topluluk_{id}" öneki taşıyan konumId'ler (topluluk sohbeti)
+    // için ek olarak o topluluğun ÜYESİ olma şartı var — aksi halde herhangi
+    // bir giriş yapmış kullanıcı herhangi bir topluluğun "özel" hissettiren
+    // sohbetine yazabilirdi.
     match /sohbetMesajlari/{mesajId} {
       allow read: if true;
-      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid && (
+        !request.resource.data.konumId.matches('^topluluk_.*') ||
+        exists(/databases/$(database)/documents/topluluklar/$(request.resource.data.konumId.split('_')[1])/uyeler/$(request.auth.uid))
+      );
     }
 
     // Festival Bölümü — Oscar Yolculuğu'yla aynı pragmatik desen: herkes

@@ -1,7 +1,8 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useTema } from '../context/TemaContext.jsx'
+import { bildirimDurumu, bildirimleriEtkinlestir, bildirimleriKapat } from '../utils/bildirim.js'
 import OscarHeykelIkon from './ikonlar/OscarHeykelIkon.jsx'
 import Avatar from './Avatar.jsx'
 import Logo from './Logo.jsx'
@@ -27,6 +28,34 @@ export default function Nav() {
   const { tema, temaDegistir } = useTema()
   const navigate = useNavigate()
   const [menuAcik, setMenuAcik] = useState(false)
+  const [bildirimIzni, setBildirimIzni] = useState('default')
+  const [bildirimDestekli, setBildirimDestekli] = useState(false)
+  const [bildirimIsleniyor, setBildirimIsleniyor] = useState(false)
+
+  useEffect(() => {
+    bildirimDurumu().then(({ destekleniyor, izin }) => {
+      setBildirimDestekli(destekleniyor)
+      setBildirimIzni(izin)
+    })
+  }, [])
+
+  async function bildirimDegistir() {
+    if (!kullanici || bildirimIsleniyor) return
+    setBildirimIsleniyor(true)
+    try {
+      if (bildirimIzni === 'granted') {
+        await bildirimleriKapat(kullanici)
+        setBildirimIzni('default')
+      } else {
+        await bildirimleriEtkinlestir(kullanici)
+        setBildirimIzni('granted')
+      }
+    } catch (e) {
+      window.alert(e.message)
+    } finally {
+      setBildirimIsleniyor(false)
+    }
+  }
 
   async function cikis() {
     setMenuAcik(false)
@@ -60,6 +89,16 @@ export default function Nav() {
                   {profil?.kullaniciAdi || 'Profil'}
                 </span>
               </NavLink>
+              {bildirimDestekli && bildirimIzni !== 'denied' && (
+                <button
+                  onClick={bildirimDegistir}
+                  disabled={bildirimIsleniyor}
+                  className="text-kraft hover:text-murekkep disabled:opacity-40"
+                  title={bildirimIzni === 'granted' ? 'Bildirimleri kapat' : 'Bildirimleri aç'}
+                >
+                  {bildirimIzni === 'granted' ? '🔔' : '🔕'}
+                </button>
+              )}
               <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
                 {tema === 'koyu' ? '☀️' : '🌙'}
               </button>
@@ -154,6 +193,17 @@ export default function Nav() {
             ))}
 
             <div className="defter-cizgi my-1" />
+
+            {bildirimDestekli && bildirimIzni !== 'denied' && (
+              <button
+                onClick={bildirimDegistir}
+                disabled={bildirimIsleniyor}
+                className="flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left text-kraft disabled:opacity-40"
+              >
+                <span className="w-5 text-center">{bildirimIzni === 'granted' ? '🔔' : '🔕'}</span>
+                {bildirimIzni === 'granted' ? 'Bildirimleri Kapat' : 'Bildirimleri Aç'}
+              </button>
+            )}
 
             <button onClick={temaDegistir} className="flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left text-kraft">
               <span className="w-5 text-center">{tema === 'koyu' ? '☀️' : '🌙'}</span>

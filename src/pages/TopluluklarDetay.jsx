@@ -22,6 +22,7 @@ import Avatar from '../components/Avatar.jsx'
 import GelecekEtkinlikKarti from '../components/GelecekEtkinlikKarti.jsx'
 import EtkinlikOnerileriBolumu from '../components/EtkinlikOnerileriBolumu.jsx'
 import ListeOnizleme from '../components/ListeOnizleme.jsx'
+import SohbetPaneli from '../components/SohbetPaneli.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -61,6 +62,7 @@ export default function TopluluklarDetay() {
   const [etkinlikBaslik, setEtkinlikBaslik] = useState('')
   const [etkinlikAciklama, setEtkinlikAciklama] = useState('')
   const [etkinlikTarihi, setEtkinlikTarihi] = useState('')
+  const [etkinlikZoomLinki, setEtkinlikZoomLinki] = useState('')
   const [eserKategori, setEserKategori] = useState('sinema')
   const [eserArama, setEserArama] = useState('')
   const [eserSonuclari, setEserSonuclari] = useState([])
@@ -325,11 +327,13 @@ export default function TopluluklarDetay() {
           topluluk,
           kullanici,
           tekrarSeriId,
+          zoomLinki: etkinlikZoomLinki.trim(),
         })
       }
       setEtkinlikBaslik('')
       setEtkinlikAciklama('')
       setEtkinlikTarihi('')
+      setEtkinlikZoomLinki('')
       setSeciliEser(null)
       setTekrarTur('yok')
       setTekrarSayisi(4)
@@ -485,6 +489,8 @@ export default function TopluluklarDetay() {
 
       <div className="defter-cizgi my-6" />
 
+      {uyeMi && <SohbetPaneli konumId={`topluluk_${id}`} baslik="💬 Topluluk Sohbeti" />}
+
       {/* Gelecek Etkinlikler */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
@@ -509,6 +515,16 @@ export default function TopluluklarDetay() {
                 onChange={(e) => setEtkinlikBaslik(e.target.value)}
                 required
                 placeholder="Örn. Aylık film gecesi"
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Zoom/Toplantı Linki (opsiyonel)</label>
+              <input
+                type="text"
+                value={etkinlikZoomLinki}
+                onChange={(e) => setEtkinlikZoomLinki(e.target.value)}
+                placeholder="https://zoom.us/j/..."
                 className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>

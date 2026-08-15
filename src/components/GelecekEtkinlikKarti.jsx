@@ -43,6 +43,7 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
   const [dBaslik, setDBaslik] = useState(etkinlik.baslik)
   const [dAciklama, setDAciklama] = useState(etkinlik.aciklama || '')
   const [dTarih, setDTarih] = useState(etkinlik.tarih || '')
+  const [dZoomLinki, setDZoomLinki] = useState(etkinlik.zoomLinki || '')
   const [dEserArama, setDEserArama] = useState('')
   const [dEserSonuclari, setDEserSonuclari] = useState([])
   const [dEserKategori, setDEserKategori] = useState('sinema')
@@ -225,10 +226,11 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
     e.preventDefault()
     setDKaydediliyor(true)
     try {
-      await gelecekEtkinlikGuncelle(etkinlik.id, { baslik: dBaslik, aciklama: dAciklama, tarih: dTarih, eser: dEser })
+      await gelecekEtkinlikGuncelle(etkinlik.id, { baslik: dBaslik, aciklama: dAciklama, tarih: dTarih, eser: dEser, zoomLinki: dZoomLinki })
       etkinlik.baslik = dBaslik
       etkinlik.aciklama = dAciklama
       etkinlik.tarih = dTarih
+      etkinlik.zoomLinki = dZoomLinki
       Object.assign(etkinlik, dEser)
       setDuzenlemeAcik(false)
     } finally {
@@ -304,6 +306,16 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
+          {etkinlik.zoomLinki && !gectiMi && (
+            <a
+              href={etkinlik.zoomLinki}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-sm bg-murekkep px-3 py-1.5 font-govde text-xs text-kagit"
+            >
+              🔗 Toplantıya Katıl
+            </a>
+          )}
           {gunceYazLinki && (
             <Link to={gunceYazLinki} className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit">
               ✎ Günce Yaz
@@ -344,6 +356,13 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
             value={dAciklama}
             onChange={(e) => setDAciklama(e.target.value)}
             rows={2}
+            className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+          />
+          <input
+            type="text"
+            value={dZoomLinki}
+            onChange={(e) => setDZoomLinki(e.target.value)}
+            placeholder="Zoom/Toplantı Linki (opsiyonel)"
             className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
           />
 
