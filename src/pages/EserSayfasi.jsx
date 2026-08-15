@@ -740,11 +740,50 @@ export default function EserSayfasi({ tur }) {
               ) : (
                 <span>{detay.yayinevi}</span>
               ))}
-            {detay.dbPuan && <span>{tur === 'kitap' ? 'Google' : 'TMDB'} {detay.dbPuan}</span>}
-            {disPuanlar?.imdb && <span>IMDb {disPuanlar.imdb}</span>}
-            {disPuanlar?.rottenTomatoes && <span>🍅 {disPuanlar.rottenTomatoes}</span>}
-            {disPuanlar?.metacritic && <span>Metacritic {disPuanlar.metacritic}</span>}
+            {detay.dbPuan && !disPuanlar && <span>{tur === 'kitap' ? 'Google' : 'TMDB'} {detay.dbPuan}</span>}
           </div>
+
+          {/* Dış puanlar — ayrı bir satırda, kendi görsel ağırlıklarıyla.
+              Öncelik sırası: IMDb > Rotten Tomatoes > Metacritic > TMDB/Google
+              (IMDb en tanıdık/güvenilen kaynak olduğu için en başta ve en
+              belirgin). Gerçek logoları kullanmıyoruz (telif/marka hakkı),
+              bunun yerine markaların kendi tanıdık renk şemasını kullanan
+              sade rozetler — Metacritic'in kendisi de puanı renk kodluyor,
+              aynı mantığı uyguladık. */}
+          {(disPuanlar?.imdb || disPuanlar?.rottenTomatoes || disPuanlar?.metacritic || detay.dbPuan) && (
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              {disPuanlar?.imdb && (
+                <span className="flex items-center gap-1.5">
+                  <span className="rounded-sm bg-[#F5C518] px-1.5 py-0.5 text-[10px] font-bold tracking-tight text-black">IMDb</span>
+                  <span className="text-sm font-medium text-murekkep">{disPuanlar.imdb}</span>
+                </span>
+              )}
+              {disPuanlar?.rottenTomatoes && (
+                <span className="flex items-center gap-1 text-sm text-murekkep">
+                  <span>🍅</span> {disPuanlar.rottenTomatoes}
+                </span>
+              )}
+              {disPuanlar?.metacritic &&
+                (() => {
+                  const puan = parseInt(disPuanlar.metacritic, 10)
+                  const renk = puan >= 75 ? 'bg-[#66cc33]' : puan >= 50 ? 'bg-[#ffcc33]' : 'bg-[#ff0000]'
+                  const yaziRengi = puan >= 50 && puan < 75 ? 'text-black' : 'text-white'
+                  return (
+                    <span className="flex items-center gap-1.5">
+                      <span className={`flex h-5 w-6 items-center justify-center rounded-sm text-[11px] font-bold ${renk} ${yaziRengi}`}>
+                        {isNaN(puan) ? '–' : puan}
+                      </span>
+                      <span className="text-xs text-kraft">Metacritic</span>
+                    </span>
+                  )
+                })()}
+              {detay.dbPuan && (disPuanlar?.imdb || disPuanlar?.rottenTomatoes || disPuanlar?.metacritic) && (
+                <span className="text-xs text-kraft">
+                  {tur === 'kitap' ? 'Google' : 'TMDB'} {detay.dbPuan}
+                </span>
+              )}
+            </div>
+          )}
 
           <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
 
