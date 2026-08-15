@@ -26,6 +26,8 @@ import GonderiKarti from '../components/GonderiKarti.jsx'
 import Avatar from '../components/Avatar.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YilOzeti from '../components/YilOzeti.jsx'
+import GunlukListesi from '../components/GunlukListesi.jsx'
+import { gunlukKayitlariniGetir } from '../utils/gunluk.js'
 
 const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
@@ -90,6 +92,10 @@ export default function Profil() {
   const { favoriler: tumFavoriler } = useFavoriler(uid)
   const { izlenecekler, yenidenYukle: izlenecekleriYenile } = useIzlenecekler(uid)
   const { puanlar: eserPuanlarim } = useEserPuanlarim(uid)
+  const [gunlukKayitlari, setGunlukKayitlari] = useState([])
+  useEffect(() => {
+    gunlukKayitlariniGetir(uid).then(setGunlukKayitlari)
+  }, [uid])
   const { raflar, yenidenYukle: raflariYenile } = useRaflar(uid)
   const [rafFormuAcik, setRafFormuAcik] = useState(false)
   const [rafBaslik, setRafBaslik] = useState('')
@@ -220,6 +226,7 @@ export default function Profil() {
 
   const SEKMELER = [
     { id: 'yilozeti', etiket: '📊 Yılın Özeti' },
+    { id: 'gunluk', etiket: '📔 Günlük' },
     { id: 'izlediklerim', etiket: '🎬 İzlediklerim' },
     { id: 'okuduklarim', etiket: '📖 Okuduklarım' },
     { id: 'yazigezi', etiket: '✍️ Yazı & Gezi' },
@@ -564,7 +571,15 @@ export default function Profil() {
       </div>
 
       {/* İzlediklerim (sadece Film/Dizi) */}
-      {sekme === 'yilozeti' && <YilOzeti gonderiler={gonderiler} eserPuanlarim={eserPuanlarim} />}
+      {sekme === 'yilozeti' && <YilOzeti gonderiler={gonderiler} eserPuanlarim={eserPuanlarim} gunlukKayitlari={gunlukKayitlari} />}
+
+      {sekme === 'gunluk' && (
+        <GunlukListesi
+          kayitlar={gunlukKayitlari}
+          kendiProfiliMi={benimProfilimMi}
+          onDegisti={() => gunlukKayitlariniGetir(uid).then(setGunlukKayitlari)}
+        />
+      )}
 
       {sekme === 'izlediklerim' && (
         <>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Papa from 'papaparse'
 import { useAuth } from '../context/AuthContext.jsx'
 import { eserPuanla } from '../utils/eserPuani.js'
+import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { filmSatirlariniAyikla, tmdbdeAra, esZamanliIsle, TMDB_POSTER } from '../utils/letterboxdCsv.js'
 import { turIsimleriGetir } from '../data/tmdbTurler.js'
 
@@ -87,6 +88,23 @@ export default function PuanIceAktar({ onTamamlandi }) {
           yil: s.eslesme.yil,
           turler: s.eslesme.turler,
         })
+        // Aggregate puanın yanında GERÇEK izleme tarihiyle bir günlük kaydı da
+        // düşüyoruz — CSV'de tarih yoksa (bazı export'larda olmayabilir)
+        // günlük kaydı hiç oluşturulmuyor (Yılın Özeti'nde "bugün izlendi"
+        // gibi yanlış bir kayıt bırakmamak için, boş bırakmak yanlış bir
+        // tarih uydurmaktan daha doğru).
+        if (s.izlemeTarihi) {
+          await gunlukKaydiEkle(kullanici, {
+            tur: 'sinema',
+            disId: s.eslesme.tmdbId,
+            baslik: s.eslesme.baslik,
+            posterUrl: s.eslesme.posterUrl,
+            yil: s.eslesme.yil,
+            izlemeTarihiISO: s.izlemeTarihi,
+            puan: Number(s.puan),
+            tekrarMi: s.tekrarMi,
+          })
+        }
       },
       8,
       (tamam, toplam) => setIlerleme({ tamam, toplam })
@@ -104,7 +122,9 @@ export default function PuanIceAktar({ onTamamlandi }) {
         Letterboxd'dan indirdiğin export ZIP'inin içinden <code>ratings.csv</code> (ya da puanları da içeren{' '}
         <code>diary.csv</code>) dosyasını yükle. Puan ölçeği (0.5-5 yıldız) birebir aynı olduğu için hiçbir dönüşüm
         gerekmiyor. Bu, sadece puanlarını dolduracak — geçmişe dönük yüzlerce gönderi oluşturmayacak, akışın
-        şişmeyecek.
+        şişmeyecek. Dosyada "Watched Date"/"Date" sütunu varsa (ikisinde de genelde var), gerçek izleme tarihi de
+        kaydedilip Günlük'üne ve Yılın Özeti'ne doğru tarihle yansıyor — yoksa o satır için günlük kaydı
+        oluşturulmuyor (tarihi olmayan bir satırı "bugün izlendi" gibi göstermemek için).
       </p>
 
       <input
@@ -155,6 +175,8 @@ export default function PuanIceAktar({ onTamamlandi }) {
                 <span className="min-w-0 flex-1 truncate text-murekkep">
                   {s.isim} {s.yil && `(${s.yil})`}
                 </span>
+                {s.izlemeTarihi && <span className="shrink-0 text-[10px] text-kraft">{s.izlemeTarihi}</span>}
+                {s.tekrarMi && <span className="shrink-0 text-[10px] text-kraft">🔄</span>}
                 <span className="shrink-0 text-kraft">★ {s.puan}</span>
                 {!s.eslesme && <span className="shrink-0 text-muhur">Eşleşme yok</span>}
               </li>

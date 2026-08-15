@@ -14,19 +14,52 @@ function esereLink(tur, disId) {
   return `/film/${disId}`
 }
 
-// Profilde zaten var olan iki veri kaynağından (günceler + doğrudan puanlar)
-// yıllık bir özet hesaplar — yeni bir Firestore koleksiyonu gerekmiyor, hepsi
-// istemci tarafında, elde olan veriden türetiliyor.
-export default function YilOzeti({ gonderiler, eserPuanlarim }) {
-  // Verideki tüm yılların birleşimi (en yeniden eskiye) — kullanıcı geçmiş
-  // yılları da görebilsin diye.
-  const tumYillar = [
-    ...new Set(
-      [...gonderiler.map((g) => g.tarih), ...eserPuanlarim.map((e) => e.tarih)]
-        .map((t) => tariheDevir(t)?.getFullYear())
-        .filter(Boolean)
-    ),
-  ].sort((a, b) => b - a)
+// Profilde zaten var olan üç veri kaynağından yıllık bir özet hesaplar.
+//
+// ÖNEMLİ — tarih kaynağı önceliği: "gunlukKayitlari" (bkz. utils/gunluk.js)
+// birincil kaynak, çünkü orada tutulan "izlemeTarihi" kullanıcının kendi
+// belirttiği GERÇEK tarih (Letterboxd içe aktarımında CSV'den, elle
+// eklemede kullanıcının seçtiği tarihten). "gonderiler" ve "eserPuanlarim"
+// ise sadece o kaydın OLUŞTURULMA anını taşıyor — organik (içe aktarılmamış)
+// paylaşımlar için genelde izleme tarihine yakın olur, ama garantisi yok.
+// Bu yüzden: bir esere zaten bir gunlukKaydı varsa, o esere ait gönderi/puan
+// bu hesaplamaya ikinci kez dahil edilmiyor (çift saymamak için).
+export default function YilOzeti({ gonderiler, eserPuanlarim, gunlukKayitlari = [] }) {
+  const eserAnahtari = (tur, disId) => `${tur}_${disId}`
+  const gunlukKapsananlar = new Set(gunlukKayitlari.map((g) => eserAnahtari(g.tur, g.disId)))
+
+  // Tüm kaynakları TEK bir şekle indirgiyoruz: {tur, disId, baslik, posterUrl, tarih, puan, kaynak}
+  const gunlukOlaylari = gunlukKayitlari.map((g) => ({
+    tur: g.tur,
+    disId: g.disId,
+    baslik: g.baslik,
+    posterUrl: g.posterUrl,
+    tarih: g.izlemeTarihi,
+    puan: g.puan,
+    kaynak: 'gunluk',
+  }))
+  const gonderiOlaylari = gonderiler
+    .filter((g) => g.posterUrl && !gunlukKapsananlar.has(eserAnahtari(g.tur, g.tmdbId || g.googleBooksId)))
+    .map((g) => ({
+      tur: g.tur,
+      disId: g.tmdbId || g.googleBooksId,
+      baslik: g.baslik,
+      posterUrl: g.posterUrl,
+      tarih: g.tarih,
+      puan: g.kullaniciPuani,
+      kaynak: 'gonderi',
+      gonderiId: g.id,
+    }))
+  const puanOlaylari = eserPuanlarim
+    .filter((e) => !gunlukKapsananlar.has(eserAnahtari(e.tur, e.disId)))
+    .filter((e) => !gonderiOlaylari.some((g) => g.tur === e.tur && g.disId === e.disId))
+    .map((e) => ({ tur: e.tur, disId: e.disId, baslik: e.baslik, posterUrl: e.posterUrl, tarih: e.tarih, puan: e.puan, kaynak: 'puan' }))
+
+  const tumOlaylar = [...gunlukOlaylari, ...gonderiOlaylari, ...puanOlaylari]
+
+  const tumYillar = [...new Set(tumOlaylar.map((o) => tariheDevir(o.tarih)?.getFullYear()).filter(Boolean))].sort(
+    (a, b) => b - a
+  )
 
   const [seciliYil, setSeciliYil] = useState(tumYillar[0] || new Date().getFullYear())
 
@@ -34,37 +67,26 @@ export default function YilOzeti({ gonderiler, eserPuanlarim }) {
     return <p className="text-sm text-kraft">Henüz özetlenecek bir etkinlik yok.</p>
   }
 
-  const buYilGonderiler = gonderiler.filter((g) => tariheDevir(g.tarih)?.getFullYear() === seciliYil)
-  const buYilPuanlar = eserPuanlarim.filter((e) => tariheDevir(e.tarih)?.getFullYear() === seciliYil)
+  const buYilOlaylar = tumOlaylar.filter((o) => tariheDevir(o.tarih)?.getFullYear() === seciliYil)
 
-  // "İzlediklerim" sekmesindeki mantığın aynısı: günce + doğrudan puanı
-  // birleştirip aynı esere ait tekrarları ele (bir eser hem günce hem ayrı
-  // puanla değerlendirilmiş olabilir).
   function turSayisi(tur) {
-    const gundenGelenler = buYilGonderiler.filter((g) => g.tur === tur && g.posterUrl)
-    const puandanGelenler = buYilPuanlar.filter(
-      (e) => e.tur === tur && !gundenGelenler.some((g) => g.tmdbId === e.disId || g.googleBooksId === e.disId)
-    )
-    return gundenGelenler.length + puandanGelenler.length
+    return buYilOlaylar.filter((o) => o.tur === tur).length
   }
 
   const filmSayisi = turSayisi('sinema')
   const diziSayisi = turSayisi('dizi')
   const kitapSayisi = turSayisi('kitap')
-  const yaziSayisi = buYilGonderiler.filter((g) => g.tur === 'yazi').length
-  const geziSayisi = buYilGonderiler.filter((g) => g.tur === 'gezi').length
+  const yaziSayisi = gonderiler.filter((g) => g.tur === 'yazi' && tariheDevir(g.tarih)?.getFullYear() === seciliYil).length
+  const geziSayisi = gonderiler.filter((g) => g.tur === 'gezi' && tariheDevir(g.tarih)?.getFullYear() === seciliYil).length
 
-  const tumPuanlar = [
-    ...buYilGonderiler.filter((g) => g.kullaniciPuani != null).map((g) => ({ ...g, puan: g.kullaniciPuani, kaynak: 'gonderi' })),
-    ...buYilPuanlar.map((e) => ({ ...e, kaynak: 'puan' })),
-  ]
-  const ortalamaPuan = tumPuanlar.length ? tumPuanlar.reduce((t, p) => t + p.puan, 0) / tumPuanlar.length : null
-  const enYuksekPuanli = [...tumPuanlar].sort((a, b) => (b.puan || 0) - (a.puan || 0))[0]
+  const puanliOlaylar = buYilOlaylar.filter((o) => o.puan != null)
+  const ortalamaPuan = puanliOlaylar.length ? puanliOlaylar.reduce((t, o) => t + o.puan, 0) / puanliOlaylar.length : null
+  const enYuksekPuanli = [...puanliOlaylar].sort((a, b) => (b.puan || 0) - (a.puan || 0))[0]
 
-  // En aktif ay — o ay içindeki toplam günce sayısına göre.
+  // En aktif ay — o ay içindeki toplam olay sayısına göre (günce + günlük kaydı).
   const ayDagilimi = Array(12).fill(0)
-  buYilGonderiler.forEach((g) => {
-    const ay = tariheDevir(g.tarih)?.getMonth()
+  buYilOlaylar.forEach((o) => {
+    const ay = tariheDevir(o.tarih)?.getMonth()
     if (ay != null) ayDagilimi[ay]++
   })
   const enAktifAyIndex = ayDagilimi.some((n) => n > 0) ? ayDagilimi.indexOf(Math.max(...ayDagilimi)) : null
@@ -89,7 +111,7 @@ export default function YilOzeti({ gonderiler, eserPuanlarim }) {
         </div>
       )}
 
-      {toplamEser === 0 && buYilGonderiler.length === 0 ? (
+      {toplamEser === 0 && yaziSayisi === 0 && geziSayisi === 0 ? (
         <p className="text-sm text-kraft">{seciliYil} yılında henüz bir etkinlik yok.</p>
       ) : (
         <>
@@ -137,11 +159,7 @@ export default function YilOzeti({ gonderiler, eserPuanlarim }) {
               <div className="min-w-0">
                 <p className="text-[11px] uppercase tracking-widest text-gise">{seciliYil}'in en yükseğini verdiğin</p>
                 <Link
-                  to={
-                    enYuksekPuanli.kaynak === 'gonderi'
-                      ? `/gonderi/${enYuksekPuanli.id}`
-                      : esereLink(enYuksekPuanli.tur, enYuksekPuanli.disId)
-                  }
+                  to={enYuksekPuanli.kaynak === 'gonderi' ? `/gonderi/${enYuksekPuanli.gonderiId}` : esereLink(enYuksekPuanli.tur, enYuksekPuanli.disId)}
                   className="font-baslik text-base text-murekkep hover:underline"
                 >
                   {enYuksekPuanli.baslik}

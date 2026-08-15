@@ -377,6 +377,38 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "gunlukKayitlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "kullaniciId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "izlemeTarihi",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gunlukKayitlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "kullaniciId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "izlemeTarihi",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

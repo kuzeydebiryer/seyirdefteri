@@ -8,6 +8,7 @@ import { kitapGetir, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js
 import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { sanatEseriAra } from '../utils/sanatEserleri.js'
 import { eserIstatistikGuncelle } from '../utils/eserIstatistik.js'
+import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -102,6 +103,8 @@ export default function GonderiEkle() {
   const [ilgiliKaynakUrl, setIlgiliKaynakUrl] = useState('') // sanat eleştirisi: Met/AIC kaynak linki
 
   const [kullaniciPuani, setKullaniciPuani] = useState(4)
+  const [gunlukTarihi, setGunlukTarihi] = useState(new Date().toISOString().slice(0, 10))
+  const [gunlukTekrar, setGunlukTekrar] = useState(false)
   const [gunce, setGunce] = useState('')
   const [spoiler, setSpoiler] = useState(false)
   const [kaydediliyor, setKaydediliyor] = useState(false)
@@ -577,6 +580,18 @@ export default function GonderiEkle() {
       if (apiliKategori && kullaniciPuani != null) {
         const disId = kategori === 'kitap' ? googleBooksId : Number(tmdbId)
         await eserIstatistikGuncelle(kategori, disId, { baslik: baslik.trim(), alt: yazar || yonetmen || '', posterUrl, yil }, kullaniciPuani, null)
+        // Gerçek izleme/okuma tarihiyle bir günlük kaydı da düşüyoruz (bkz.
+        // utils/gunluk.js) — Yılın Özeti ve Günlük sekmesi bunu kullanıyor.
+        await gunlukKaydiEkle(kullanici, {
+          tur: kategori,
+          disId,
+          baslik: baslik.trim(),
+          posterUrl,
+          yil,
+          izlemeTarihiISO: gunlukTarihi,
+          puan: kullaniciPuani,
+          tekrarMi: gunlukTekrar,
+        })
       }
 
       navigate('/')
@@ -1061,6 +1076,23 @@ export default function GonderiEkle() {
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {apiliKategori && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-kraft">
+            <span>{kategori === 'kitap' ? 'Ne zaman okudun?' : 'Ne zaman izledin?'}</span>
+            <input
+              type="date"
+              value={gunlukTarihi}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setGunlukTarihi(e.target.value)}
+              className="rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+            />
+            <label className="flex items-center gap-1">
+              <input type="checkbox" checked={gunlukTekrar} onChange={(e) => setGunlukTekrar(e.target.checked)} />
+              🔄 Yeniden {kategori === 'kitap' ? 'okuma' : 'izleme'}
+            </label>
           </div>
         )}
 

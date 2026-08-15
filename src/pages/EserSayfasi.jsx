@@ -13,8 +13,10 @@ import {
   ilerlemeGuncelle,
   baslangicTarihiTamamla,
   dizideIlerlemeGuncelle,
+  baslangicTarihiniDuzelt,
 } from '../utils/izlenecek.js'
 import { eserPuanla } from '../utils/eserPuani.js'
+import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { tavsiyePosterleriniSenkronizeEt } from '../utils/tavsiye.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
@@ -278,6 +280,10 @@ export default function EserSayfasi({ tur }) {
   const [sayfaTaslak, setSayfaTaslak] = useState(0)
   const [sezonTaslak, setSezonTaslak] = useState(1)
   const [bolumTaslak, setBolumTaslak] = useState(0)
+  const [baslangicDuzenleAcik, setBaslangicDuzenleAcik] = useState(false)
+  const [baslangicTaslak, setBaslangicTaslak] = useState('')
+  const [gunlukTarihi, setGunlukTarihi] = useState(new Date().toISOString().slice(0, 10))
+  const [gunlukTekrar, setGunlukTekrar] = useState(false)
   const [favoriIsleniyor, setFavoriIsleniyor] = useState(false)
   const [izlenecekIsleniyor, setIzlenecekIsleniyor] = useState(false)
 
@@ -657,6 +663,19 @@ export default function EserSayfasi({ tur }) {
     }
   }
 
+  async function baslangicTarihiniKaydet(e) {
+    e.preventDefault()
+    if (!kullanici || !baslangicTaslak) return
+    setIzlenecekIsleniyor(true)
+    try {
+      await baslangicTarihiniDuzelt(kullanici.uid, tur, id, baslangicTaslak)
+      setIzlenecekKaydi((onceki) => ({ ...onceki, baslangicTarihi: { toMillis: () => new Date(baslangicTaslak).getTime() } }))
+      setBaslangicDuzenleAcik(false)
+    } finally {
+      setIzlenecekIsleniyor(false)
+    }
+  }
+
   async function puanGonder(puan) {
     if (!kullanici) return
     setPuanKaydediliyor(true)
@@ -667,6 +686,20 @@ export default function EserSayfasi({ tur }) {
         posterUrl: detay.posterUrl,
         yil: detay.yil || '',
         turler: detay.turler || '',
+      })
+      // Aggregate puanın yanında, kullanıcının seçtiği GERÇEK tarihle bir
+      // günlük kaydı da düşüyoruz (bkz. utils/gunluk.js) — Yılın Özeti ve
+      // Günlük sekmesi buradan besleniyor, "ne zaman puanladım" değil
+      // "ne zaman izledim/okudum" sorusuna cevap versin diye.
+      await gunlukKaydiEkle(kullanici, {
+        tur,
+        disId: id,
+        baslik: detay.baslik,
+        posterUrl: detay.posterUrl,
+        yil: detay.yil || '',
+        izlemeTarihiISO: gunlukTarihi,
+        puan,
+        tekrarMi: gunlukTekrar,
       })
       puanlariYenidenYukle()
     } finally {
@@ -1215,9 +1248,50 @@ export default function EserSayfasi({ tur }) {
 
           {izlenecekKaydi?.durum === 'okunuyor' && (
             <div className="mt-3 max-w-xs rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-              <p className="text-xs uppercase tracking-widest text-gise">
-                {tur === 'kitap' ? 'Şu An Okuyorsun' : 'Şu An İzliyorsun'}
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs uppercase tracking-widest text-gise">
+                  {tur === 'kitap' ? 'Şu An Okuyorsun' : 'Şu An İzliyorsun'}
+                </p>
+                {izlenecekKaydi.baslangicTarihi?.toMillis && !baslangicDuzenleAcik && (
+                  <button
+                    onClick={() => {
+                      const ms = izlenecekKaydi.baslangicTarihi.toMillis()
+                      setBaslangicTaslak(new Date(ms).toISOString().slice(0, 10))
+                      setBaslangicDuzenleAcik(true)
+                    }}
+                    className="shrink-0 text-[10px] text-kraft hover:text-deniz hover:underline"
+                  >
+                    ✎ Başlangıcı Düzelt
+                  </button>
+                )}
+              </div>
+
+              {baslangicDuzenleAcik && (
+                <form onSubmit={baslangicTarihiniKaydet} className="mt-1.5 mb-2 flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={baslangicTaslak}
+                    onChange={(e) => setBaslangicTaslak(e.target.value)}
+                    max={new Date().toISOString().slice(0, 10)}
+                    className="rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                  />
+                  <button
+                    type="submit"
+                    disabled={izlenecekIsleniyor}
+                    className="rounded-sm bg-deniz px-2 py-1 font-govde text-[11px] text-kagit disabled:opacity-40"
+                  >
+                    Kaydet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBaslangicDuzenleAcik(false)}
+                    className="text-[11px] text-kraft hover:text-murekkep"
+                  >
+                    Vazgeç
+                  </button>
+                </form>
+              )}
+
               {tur === 'kitap' && izlenecekKaydi.toplamSayfa ? (
                 <>
                   <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-kagit ring-1 ring-cizgi">
@@ -1232,7 +1306,7 @@ export default function EserSayfasi({ tur }) {
                     const hiz = okumaHiziHesapla(izlenecekKaydi.baslangicTarihi, izlenecekKaydi.suankiSayfa || 0)
                     if (!hiz) return null
                     return (
-                      <p className="mt-1 text-[11px] text-kraft">
+                      <p className="mt-1.5 text-xs text-kraft">
                         {hiz.gunSayisi}. gün{hiz.gunlukOrtalama > 0 && <> · günde ortalama ~{hiz.gunlukOrtalama} sayfa</>}
                       </p>
                     )
@@ -1267,43 +1341,48 @@ export default function EserSayfasi({ tur }) {
                         <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-kagit ring-1 ring-cizgi">
                           <div className="h-full bg-deniz" style={{ width: `${yuzde}%` }} />
                         </div>
-                        <p className="mt-1 text-[11px] text-kraft">
+                        <p className="mt-1.5 text-xs text-kraft">
                           {izlenen}/{detay.bolumSayisi} bölüm
                           {hiz && hiz.gunlukOrtalama > 0 && <> · {hiz.gunSayisi}. gün · günde ortalama ~{hiz.gunlukOrtalama} bölüm</>}
                         </p>
                       </>
                     )
                   })()}
-                  <form onSubmit={diziIlerlemesiniKaydet} className="mt-2 flex flex-wrap items-center gap-2">
-                    <select
-                      value={sezonTaslak}
-                      onChange={(e) => {
-                        setSezonTaslak(Number(e.target.value))
-                        setBolumTaslak(0)
-                      }}
-                      className="rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
-                    >
-                      {detay.sezonlar.map((s) => (
-                        <option key={s.season_number} value={s.season_number}>
-                          {s.name || `${s.season_number}. Sezon`}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      max={detay.sezonlar.find((s) => s.season_number === sezonTaslak)?.episode_count || 99}
-                      value={bolumTaslak}
-                      onChange={(e) => setBolumTaslak(Number(e.target.value))}
-                      className="w-16 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
-                    />
-                    <span className="text-xs text-kraft">
-                      / {detay.sezonlar.find((s) => s.season_number === sezonTaslak)?.episode_count || '?'} bölüm
-                    </span>
+                  <form onSubmit={diziIlerlemesiniKaydet} className="mt-3 space-y-2">
+                    <div>
+                      <label className="mb-1 block text-[10px] uppercase tracking-wide text-kraft">Konumun</label>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={sezonTaslak}
+                          onChange={(e) => {
+                            setSezonTaslak(Number(e.target.value))
+                            setBolumTaslak(0)
+                          }}
+                          className="min-w-0 flex-1 rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+                        >
+                          {detay.sezonlar.map((s) => (
+                            <option key={s.season_number} value={s.season_number}>
+                              {s.name || `${s.season_number}. Sezon`}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          min="0"
+                          max={detay.sezonlar.find((s) => s.season_number === sezonTaslak)?.episode_count || 99}
+                          value={bolumTaslak}
+                          onChange={(e) => setBolumTaslak(Number(e.target.value))}
+                          className="w-14 shrink-0 rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+                        />
+                        <span className="shrink-0 text-xs text-kraft">
+                          / {detay.sezonlar.find((s) => s.season_number === sezonTaslak)?.episode_count || '?'} bölüm
+                        </span>
+                      </div>
+                    </div>
                     <button
                       type="submit"
                       disabled={izlenecekIsleniyor}
-                      className="rounded-sm bg-muhur px-2 py-1 font-govde text-[11px] text-kagit disabled:opacity-40"
+                      className="w-full rounded-sm bg-muhur px-2 py-1.5 font-govde text-[11px] text-kagit disabled:opacity-40"
                     >
                       Güncelle
                     </button>
@@ -1337,6 +1416,22 @@ export default function EserSayfasi({ tur }) {
                   : 'Puan vermek için giriş yap'}
             </span>
           </div>
+          {kullanici && (tur === 'sinema' || tur === 'dizi' || tur === 'kitap') && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-kraft">
+              <span>{tur === 'kitap' ? 'Ne zaman okudun?' : 'Ne zaman izledin?'}</span>
+              <input
+                type="date"
+                value={gunlukTarihi}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setGunlukTarihi(e.target.value)}
+                className="rounded-sm bg-kagit px-2 py-0.5 text-xs text-murekkep ring-1 ring-cizgi"
+              />
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={gunlukTekrar} onChange={(e) => setGunlukTekrar(e.target.checked)} />
+                🔄 Yeniden {tur === 'kitap' ? 'okuma' : 'izleme'}
+              </label>
+            </div>
+          )}
         </div>
       </div>
 

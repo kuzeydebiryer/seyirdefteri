@@ -16,6 +16,17 @@ service cloud.firestore {
       );
     }
 
+    // Günlük Kayıtları (Diary) — bir eseri gerçekte ne zaman izlediğin/okuduğun
+    // OLAYI, "eserPuanlarim"daki güncel puandan bağımsız (bkz. utils/gunluk.js
+    // başındaki not). Sadece sahibi yazabilir/silebilir/güncelleyebilir;
+    // okuma herkese açık (profildeki günlük sekmesi başkaları tarafından da
+    // görülebilsin diye).
+    match /gunlukKayitlari/{kayitId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
     // Eser/Kişi İstatistikleri: "Bizim Aramızda Popüler" listelerinin okuduğu
     // özet kayıtlar — her puan verildiğinde otomatik güncellenir (bkz.
     // eserIstatistik.js, kisiDegerlendirme.js). Kişi kendi yazdığı değil,

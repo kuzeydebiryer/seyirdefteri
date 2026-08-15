@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, Timestamp, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 function izlenecekDokId(uid, tur, disId) {
@@ -64,6 +64,17 @@ export async function ilerlemeGuncelle(uid, tur, disId, suankiSayfa) {
 // olduğun sezon bilgisi olmadan anlamsız (her sezonun bölüm sayısı farklı).
 export async function dizideIlerlemeGuncelle(uid, disId, mevcutSezon, mevcutBolum) {
   await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, 'dizi', disId)), { mevcutSezon, mevcutBolum })
+}
+
+// Başlangıç tarihi ilk kayıtta bilinmiyorsa "şimdi" varsayılıyordu (bkz.
+// baslangicTarihiTamamla) — ama bu, "aslında 2 yıldır izliyorum, sadece
+// ilerlememi girmedim" durumunda "günde 20 bölüm izliyorsun" gibi anlamsız
+// bir tempo hesabına yol açıyor. Kullanıcı gerçek başlangıç tarihini elle
+// düzeltebilsin diye ayrı bir fonksiyon.
+export async function baslangicTarihiniDuzelt(uid, tur, disId, yeniTarihISO) {
+  await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), {
+    baslangicTarihi: Timestamp.fromDate(new Date(yeniTarihISO)),
+  })
 }
 
 // "Okumaya Başlıyorum" özelliği baslangicTarihi alanı olmadan önce başlanmış
