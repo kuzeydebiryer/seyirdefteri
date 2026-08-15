@@ -78,32 +78,41 @@ export default function PuanIceAktar({ onTamamlandi }) {
     if (secilenler.length === 0 || !kullanici) return
     setIceAktariliyor(true)
     setIlerleme({ tamam: 0, toplam: secilenler.length })
+    const basarisizlar = []
     await esZamanliIsle(
       secilenler,
       async (s) => {
-        await eserPuanla('sinema', s.eslesme.tmdbId, Number(s.puan), kullanici, {
-          baslik: s.eslesme.baslik,
-          alt: s.eslesme.yil,
-          posterUrl: s.eslesme.posterUrl,
-          yil: s.eslesme.yil,
-          turler: s.eslesme.turler,
-        })
-        // Aggregate puanın yanında GERÇEK izleme tarihiyle bir günlük kaydı da
-        // düşüyoruz — CSV'de tarih yoksa (bazı export'larda olmayabilir)
-        // günlük kaydı hiç oluşturulmuyor (Yılın Özeti'nde "bugün izlendi"
-        // gibi yanlış bir kayıt bırakmamak için, boş bırakmak yanlış bir
-        // tarih uydurmaktan daha doğru).
-        if (s.izlemeTarihi) {
-          await gunlukKaydiEkle(kullanici, {
-            tur: 'sinema',
-            disId: s.eslesme.tmdbId,
+        // Tek bir satırdaki hata (ör. izin/ağ sorunu) tüm içe aktarmayı
+        // sessizce çökertip donuk bırakmasın diye — hatayı burada
+        // yakalayıp o satırı "başarısız" olarak işaretleyip devam ediyoruz.
+        try {
+          await eserPuanla('sinema', s.eslesme.tmdbId, Number(s.puan), kullanici, {
             baslik: s.eslesme.baslik,
+            alt: s.eslesme.yil,
             posterUrl: s.eslesme.posterUrl,
             yil: s.eslesme.yil,
-            izlemeTarihiISO: s.izlemeTarihi,
-            puan: Number(s.puan),
-            tekrarMi: s.tekrarMi,
+            turler: s.eslesme.turler,
           })
+          // Aggregate puanın yanında GERÇEK izleme tarihiyle bir günlük kaydı da
+          // düşüyoruz — CSV'de tarih yoksa (bazı export'larda olmayabilir)
+          // günlük kaydı hiç oluşturulmuyor (Yılın Özeti'nde "bugün izlendi"
+          // gibi yanlış bir kayıt bırakmamak için, boş bırakmak yanlış bir
+          // tarih uydurmaktan daha doğru).
+          if (s.izlemeTarihi) {
+            await gunlukKaydiEkle(kullanici, {
+              tur: 'sinema',
+              disId: s.eslesme.tmdbId,
+              baslik: s.eslesme.baslik,
+              posterUrl: s.eslesme.posterUrl,
+              yil: s.eslesme.yil,
+              izlemeTarihiISO: s.izlemeTarihi,
+              puan: Number(s.puan),
+              tekrarMi: s.tekrarMi,
+            })
+          }
+        } catch (err) {
+          console.warn(`İçe aktarma hatası (${s.isim}):`, err.message)
+          basarisizlar.push(s.isim)
         }
       },
       8,
@@ -111,6 +120,9 @@ export default function PuanIceAktar({ onTamamlandi }) {
     )
     setIceAktariliyor(false)
     setTamamlandi(true)
+    if (basarisizlar.length > 0) {
+      setHata(`${basarisizlar.length} satır kaydedilemedi (izin/ağ hatası). Konsolda (F12) hangileri olduğunu görebilirsin.`)
+    }
     onTamamlandi?.()
   }
 
