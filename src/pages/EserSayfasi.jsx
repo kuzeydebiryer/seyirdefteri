@@ -1116,22 +1116,22 @@ export default function EserSayfasi({ tur }) {
                 )}
               </div>
 
-              {tur === 'kitap' && !izlenecekKaydi && (
+              {(tur === 'kitap' || tur === 'dizi') && !izlenecekKaydi && (
                 <button
                   onClick={dogrudanOkumayaBasla}
                   disabled={izlenecekIsleniyor}
                   className="self-center rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
                 >
-                  Okumaya Başlıyorum
+                  {tur === 'kitap' ? 'Okumaya Başlıyorum' : 'İzlemeye Başlıyorum'}
                 </button>
               )}
-              {tur === 'kitap' && izlenecekKaydi?.durum === 'planlanan' && (
+              {(tur === 'kitap' || tur === 'dizi') && izlenecekKaydi?.durum === 'planlanan' && (
                 <button
                   onClick={okumayaBaslaTiklandi}
                   disabled={izlenecekIsleniyor}
                   className="self-center rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
                 >
-                  Okumaya Başla
+                  {tur === 'kitap' ? 'Okumaya Başla' : 'İzlemeye Başla'}
                 </button>
               )}
             </div>
