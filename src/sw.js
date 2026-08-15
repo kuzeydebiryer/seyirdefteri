@@ -2,6 +2,15 @@ import { precacheAndRoute } from 'workbox-precaching'
 import { initializeApp } from 'firebase/app'
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw'
 
+// Yeni bir servis çalışanı sürümü yüklenir yüklenmez hemen devreye girsin
+// (self.skipWaiting) ve açık olan tüm sekmelerin kontrolünü hemen alsın
+// (clients.claim) — bunlar olmadan, yeni deploy sunucuda hazır olsa bile
+// tarayıcı TÜM sekmeler kapatılıp yeniden açılana kadar eski önbellekteki
+// sürümü göstermeye devam ediyordu (bu yüzden bazı değişiklikler görünüp
+// bazıları görünmüyordu — kafa karıştırıcı, kısmi bir önbellek durumuydu).
+self.skipWaiting()
+self.addEventListener('activate', () => self.clients.claim())
+
 // vite-plugin-pwa (injectManifest stratejisi) build sırasında bu satırı
 // gerçek dosya listesiyle değiştiriyor — offline'da açılabilme burada.
 precacheAndRoute(self.__WB_MANIFEST)
