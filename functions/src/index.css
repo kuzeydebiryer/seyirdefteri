@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Aydınlık (varsayılan) palet — R G B, virgülsüz (Tailwind'in
+     rgb(var(--x) / <alpha-value>) opaklık numarasıyla çalışması için) */
+  --kagit: 245 239 225;
+  --kagitKoyu: 237 228 206;
+  --murekkep: 31 36 33;
+  --muhur: 179 58 58;
+  --kraft: 140 131 104;
+  --cizgi: 216 203 170;
+  --deniz: 74 110 107;
+  --gise: 166 118 63;
+}
+
+.dark {
+  /* Karanlık palet — aynı "kağıt/mürekkep" kimliğini korumak için ters
+     çevrilmiş sıcak tonlar (soğuk gri değil), okunabilirlik için kraft/
+     muhur/deniz/gise biraz açıldı. İlk denemede (27 24 18) neredeyse saf
+     siyaha yakındı — Letterboxd gibi platformlar da tam siyah değil, yumuşak
+     bir kömür/antrasit tonu kullanıyor. Değerler belirgin şekilde açıldı. */
+  --kagit: 42 38 31;
+  --kagitKoyu: 58 52 42;
+  --murekkep: 235 227 209;
+  --muhur: 214 93 84;
+  --kraft: 181 166 132;
+  --cizgi: 78 70 56;
+  --deniz: 132 168 163;
+  --gise: 201 148 86;
+}
+
+body {
+  background-color: rgb(var(--kagit));
+  color: rgb(var(--murekkep));
+}
+
+/* İmza öğe: defter çizgisi — bölüm ayırıcı */
+.defter-cizgi {
+  height: 1px;
+  background-image: repeating-linear-gradient(to right, rgb(var(--cizgi)) 0, rgb(var(--cizgi)) 6px, transparent 6px, transparent 11px);
+}
+
+/* Gönderi kartı: temel görünüm; renkli şerit artık JSX içinde dinamik olarak ekleniyor */
+.gonderi-karti {
+  background-color: rgb(var(--kagitKoyu));
+  border-radius: 2px;
+}
+
+.yildiz {
+  color: rgb(var(--muhur));
+}

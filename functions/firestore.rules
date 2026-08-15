@@ -1,0 +1,447 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Bir kullanıcının bir topluluğun kurucusu veya moderatörü olup olmadığını
+    // kontrol eder — Topluluklar/Etkinlikler/İstekler kurallarında tekrar
+    // tekrar kullanılıyor. Moderatör rolü opsiyonel bir alan olduğundan
+    // .get('rol','') ile güvenli okunuyor (alan hiç yoksa hata vermesin diye).
+    function topluluklaYoneticiMi(topluluklId) {
+      return request.auth != null && (
+        get(/databases/$(database)/documents/topluluklar/$(topluluklId)).data.kurucuId == request.auth.uid ||
+        (
+          exists(/databases/$(database)/documents/topluluklar/$(topluluklId)/uyeler/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/topluluklar/$(topluluklId)/uyeler/$(request.auth.uid)).data.get('rol', '') == 'moderator'
+        )
+      );
+    }
+
+    // Eser/Kişi İstatistikleri: "Bizim Aramızda Popüler" listelerinin okuduğu
+    // özet kayıtlar — her puan verildiğinde otomatik güncellenir (bkz.
+    // eserIstatistik.js, kisiDegerlendirme.js). Kişi kendi yazdığı değil,
+    // sistemin ürettiği bir özet olduğu için "write" pragmatik olarak
+    // giriş yapmış herkese açık (kitaplar kataloğuyla aynı desen).
+    match /eserIstatistikleri/{istatistikId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /kisiIstatistikleri/{istatistikId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Sanat Koleksiyonum: Sanat Eserleri Keşfet'te (Met/AIC) beğenilen eserlerin
+    // kişisel koleksiyonu. Herkes görebilir (Poster Duvarı gibi), sadece sahibi
+    // ekleyip silebilir.
+    match /sanatKoleksiyonu/{kayitId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Kullanıcı profilleri: herkes okuyabilir, sadece kendi profilini oluşturup düzenleyebilir
+    match /kullanicilar/{uid} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && request.auth.uid == uid;
+
+      // Takip ettiklerim: sadece ben kendi listeme yazabilirim
+      match /takipEdilenler/{hedefUid} {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // Beni takip edenler: doküman ID'si takip eden kişinin uid'si olduğu için
+      // "başkasının profili altına yazıyor" gibi görünse de aslında herkes
+      // sadece kendi adına (kendi uid'si ile) doküman oluşturabiliyor.
+      match /takipciler/{takipciUid} {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.uid == takipciUid;
+      }
+
+      // Push bildirim token'ları (FCM) — sadece hesap sahibi kendi
+      // cihazlarının token'ını yazıp silebilir. Okumaya kimsenin ihtiyacı yok
+      // dışarıdan (gönderme işlemi Cloud Functions'ta Admin SDK ile yapılıyor,
+      // o da güvenlik kurallarına tabi değil), bu yüzden read de sahibe kapalı
+      // tutulabilirdi ama debug kolaylığı için sahibine açık bırakıldı.
+      match /bildirimTokenlari/{tokenId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // Davet kodları: herkes okuyabilir (kayıt öncesi doğrulama için),
+    // sadece giriş yapmış kullanıcı kendi adına kod oluşturabilir,
+    // kodu "tüketmek" (kullanildiMi=true yapmak) için update serbest bırakıldı —
+    // Faz 1 için pragmatik bir seçim, ileride sıkılaştırılabilir.
+    // Davet kodları: kayıt akışı, kullanıcı henüz giriş yapmadan tek bir kodu
+    // (doküman ID'si = kodun kendisi) ID ile kontrol edebilmeli — bu yüzden
+    // "get" (tekil okuma) herkese açık. Ama "list" (koleksiyonun TAMAMINI
+    // sorgulama/listeleme) sadece giriş yapmış kullanıcılara açık — aksi hâlde
+    // biri koleksiyonu doğrudan sorgulayıp tüm kullanılmamış kodları görebilir
+    // ve daveti olmadan kayıt olabilirdi.
+    match /davetKodlari/{kod} {
+      allow get: if true;
+      allow list: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.olusturanId == request.auth.uid;
+      allow update: if request.auth != null;
+    }
+
+    // Gönderiler (günceler): herkes okuyabilir, sadece kendi adına oluşturup silebilir.
+    // "update" beğeni sayacı gibi ortak alanlar için serbest bırakıldı (Faz 1).
+    match /gonderiler/{gonderiId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
+    }
+
+    // Yorumlar: üst seviye koleksiyon (gonderiId alanıyla filtreleniyor) — hem bir
+    // güncenin yorumlarını hem "Yorumlarım" profil sekmesini basit where() ile
+    // sorgulayabilmek için.
+    match /yorumlar/{yorumId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
+    }
+
+    // Alıntı Duvarı: bir kitaptan beğenilen bir alıntının paylaşılması.
+    // "update" beğeni sayacı (begenenler dizisi) için serbest bırakıldı — diğer
+    // beğeni/katılım alanlarıyla aynı pragmatik desen.
+    match /alintilar/{alintiId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Öne Çıkan Etkinlikler: Etkinlik.io'dan seçilen en fazla 3 etkinlik.
+    // Herkes okuyabilir, giriş yapmış herkes ekleyip kaldırabilir (en fazla 3
+    // sınırı istemci tarafında kontrol ediliyor — pragmatik, küçük topluluk).
+    match /etkinlikOneCikanlar/{kayitId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Etkinlik Habercisi: ileriye dönük etkinlik duyuru panosu. "katilacaklar"
+    // dizisi herkes tarafından güncellenebilir (katılım işareti); diğer alanlar
+    // sadece ekleyen tarafından silinebilir.
+    match /etkinlikHabercileri/{habercId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
+    // İlgili Eserler: bir filmin uyarlandığı kitap gibi çift yönlü bağlantılar.
+    // Herkes okuyabilir, giriş yapmış herkes ekleyip düzeltebilir (kitaplar
+    // kataloğuyla aynı pragmatik desen).
+    match /ilgiliEserler/{ilgiliId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Sohbet: Oscar/Festival sezonuna özel hafif mesajlaşma. Herkes okuyabilir,
+    // sadece kendi adına mesaj gönderebilir, düzenleme/silme yok (basit tutuldu).
+    // Sohbet Mesajları: Oscar/Festival sezonları herkese açık kalıyor (eski
+    // davranış). "topluluk_{id}" öneki taşıyan konumId'ler (topluluk sohbeti)
+    // için ek olarak o topluluğun ÜYESİ olma şartı var — aksi halde herhangi
+    // bir giriş yapmış kullanıcı herhangi bir topluluğun "özel" hissettiren
+    // sohbetine yazabilirdi.
+    match /sohbetMesajlari/{mesajId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid && (
+        !request.resource.data.konumId.matches('^topluluk_.*') ||
+        exists(/databases/$(database)/documents/topluluklar/$(request.resource.data.konumId.split('_')[1])/uyeler/$(request.auth.uid))
+      );
+    }
+
+    // Festival Bölümü — Oscar Yolculuğu'yla aynı pragmatik desen: herkes
+    // okuyabilir, giriş yapmış herkes sezon/film ekleyip düzenleyebilir.
+    match /festivalSezonlari/{sezonId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /festivalFilmleri/{filmId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /festivalBannerlari/{festivalId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Oscar Yolculuğu (Faz 1) — sezon/kategori/aday referans verisi. Akademi'nin
+    // resmi bir API'si olmadığı için elle giriliyor; küçük/davetli topluluk
+    // olduğumuz için herkesin düzenleyebildiği pragmatik desen (bkz. kitaplar).
+    match /oscarSezonlari/{sezonId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /oscarKategorileri/{kategoriId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /oscarAdaylari/{adayId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    // Tahminler: sadece kendi tahminini yazabilirsin, VE sezon kilitliyse
+    // (Faz 2'deki elle kilitleme) sunucu tarafında da reddedilir — sadece
+    // arayüzde gizlemekle yetinmiyoruz.
+    match /oscarTahminleri/{tahminId} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.resource.data.kullaniciId == request.auth.uid
+        && get(/databases/$(database)/documents/oscarSezonlari/$(request.resource.data.sezonId)).data.get('kilitli', false) != true;
+    }
+
+    // Kişisel Listeler (Letterboxd tarzı, topluluklardaki ortak izleme
+    // listesinden ayrı) — sahibi dışında kimse düzenleyemez/silemez;
+    // "herkeseAcik: false" olan listeler sadece sahibine görünür.
+    match /kisiselListeler/{listeId} {
+      allow read: if resource.data.herkeseAcik == true || (request.auth != null && resource.data.kullaniciId == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    match /kisiselListeOgeleri/{ogeId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && get(/databases/$(database)/documents/kisiselListeler/$(request.resource.data.listeId)).data.kullaniciId == request.auth.uid;
+      allow update, delete: if request.auth != null
+        && get(/databases/$(database)/documents/kisiselListeler/$(resource.data.listeId)).data.kullaniciId == request.auth.uid;
+    }
+
+    // Kitap Kataloğu (Faz 1) — Google Books + Open Library'den birleştirilip
+    // kalıcı olarak yazılan dahili SSOT. Doküman ID'si Google Books volume ID'si
+    // (mevcut favoriler/izlenecekler/eserPuanlari/gonderiler ile aynı disId şeması).
+    // Herkes okuyabilir; sadece giriş yapmış kullanıcılar yazabilir (otomatik
+    // doldurma sırasında). Faz 2'de kullanıcı düzenlemesi eklenince buradaki
+    // "write" kuralı alan bazlı kısıtlamalarla sıkılaştırılacak.
+    match /kitaplar/{kitapId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+
+      // Faz 2 düzenleme geçmişi: kim, ne zaman, hangi alanı değiştirdi.
+      // Kayıtlar değiştirilemez/silinemez (moderasyon/denetim izi olarak kalır).
+      match /duzenlemeGecmisi/{kayitId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      }
+    }
+
+    // Favoriler ve İzleyecekler listesi: doküman ID'si `${uid}_${tur}_${disId}` olacak
+    // şekilde sabit, bu yüzden "create" kuralında resource.data üzerinden kullaniciId
+    // kontrolü yeterli; "update" gerekmiyor (setDoc ile üzerine yazılıyor, o da create
+    // olarak değerlendirilir çünkü doküman içeriği tamamen değişiyor).
+    match /favoriler/{favoriId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null;
+    }
+
+    match /izlenecekler/{izlenecekId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null;
+    }
+
+    // Kişi (yönetmen/oyuncu) değerlendirmeleri: doküman ID'si `${kisiTmdbId}_${uid}`
+    // olduğu için her kullanıcı bir kişiye tek değerlendirme bırakabiliyor.
+    match /kisiDegerlendirmeleri/{degerlendirmeId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Doğrudan eser puanlaması (günce yazmadan). Doküman ID'si `${tur}_${disId}_${uid}`.
+    match /eserPuanlari/{puanId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Seyirdefteri Tavsiyeleri: film/dizi hub sayfalarında üyelerin öne çıkardığı eserler.
+    match /tavsiyeler/{tavsiyeId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
+    // Yeni Gelen Filmler: Anasayfa'da elle eklenen, "vizyona yeni giren" film şeridi.
+    // Yapı olarak tavsiyeler ile birebir aynı, ayrı bir koleksiyonda tutuluyor ki
+    // kişisel tavsiyelerle (tavsiyeler) karışmasın.
+    match /yeniGelenFilmler/{filmId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
+    // Haberler: Film/Dizi/Oyuncu bölümlerindeki kısa duyurular.
+    match /haberler/{haberId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
+    // Kişisel okuma/izleme rafları — sadece sahibi oluşturup silebilir.
+    match /raflar/{rafId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow update: if request.auth != null; // ogeSayisi güncellemesi için serbest
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    match /rafOgeleri/{ogeId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Yönetmenler: üyelerin elle eklediği küratörlü liste, doküman ID'si TMDB kişi ID'si.
+    match /yonetmenler/{tmdbId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null;
+
+      match /ilgiliKitaplar/{kitapId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+        allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+      }
+    }
+
+    // Topluluklar: herkes okuyabilir, sadece kurucu adına oluşturulabilir.
+    // "update": tam düzenleme kurucu VEYA moderatöre açık; üye olmayan herkes
+    // için sadece "uyeSayisi" alanını değiştirmesine izin veriliyor (katıl/ayrıl
+    // batch'i bunu yapıyor).
+    match /topluluklar/{topluluklId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kurucuId == request.auth.uid;
+      allow update: if request.auth != null && (
+        resource.data.kurucuId == request.auth.uid ||
+        topluluklaYoneticiMi(topluluklId) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uyeSayisi'])
+      );
+      allow delete: if request.auth != null && resource.data.kurucuId == request.auth.uid;
+
+      // Üyeler: herkes rol/katılma tarihini görebilir. Katılma (create) ve ayrılma
+      // (delete) herkes kendi kaydı için yapabilir; yönetici de bir üyeyi
+      // çıkarabilir (delete). "rol" alanını (moderatör atama) SADECE kurucu,
+      // ve sadece "rol" alanını değiştirerek güncelleyebilir.
+      match /uyeler/{uyeUid} {
+        allow read: if true;
+        allow create: if request.auth != null && (
+          topluluklaYoneticiMi(topluluklId) ||
+          (request.auth.uid == uyeUid && get(/databases/$(database)/documents/topluluklar/$(topluluklId)).data.get('gizli', false) == false)
+        );
+        allow delete: if request.auth != null && (request.auth.uid == uyeUid || topluluklaYoneticiMi(topluluklId));
+        allow update: if request.auth != null
+          && get(/databases/$(database)/documents/topluluklar/$(topluluklId)).data.kurucuId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rol']);
+      }
+
+      // Katılma istekleri (kapalı/davetli topluluklar için) — isteği açan
+      // kendi isteğini görüp iptal edebilir; kurucu/moderatör tüm istekleri
+      // görüp onaylayabilir/reddedebilir (onaylama = uyeler'e yazıp isteği silme).
+      match /istekler/{istekUid} {
+        allow read: if request.auth != null && (request.auth.uid == istekUid || topluluklaYoneticiMi(topluluklId));
+        allow create: if request.auth != null && request.auth.uid == istekUid;
+        allow delete: if request.auth != null && (request.auth.uid == istekUid || topluluklaYoneticiMi(topluluklId));
+      }
+
+      // Topluluk listeleri (örn. "200 Film Serüveni") — sadece başlık/açıklama gibi
+      // meta bilgi burada; öğeler artık üst seviye "listeOgeleri" koleksiyonunda (aşağıda).
+      // Sadece üyeler liste açabilir. "update": tam düzenleme (başlık/kapak/açıklama)
+      // sadece açan veya yöneticiye açık; "ogeSayisi" artışı (öğe eklerken) herkese
+      // (üyeye) serbest.
+      match /listeler/{listeId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.resource.data.olusturanId == request.auth.uid
+          && exists(/databases/$(database)/documents/topluluklar/$(topluluklId)/uyeler/$(request.auth.uid));
+        allow update: if request.auth != null && (
+          resource.data.olusturanId == request.auth.uid ||
+          topluluklaYoneticiMi(topluluklId) ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ogeSayisi'])
+        );
+        allow delete: if request.auth != null && (resource.data.olusturanId == request.auth.uid || topluluklaYoneticiMi(topluluklId));
+      }
+    }
+
+    // Etkinlik Önerileri: üyelerin "sıradaki buluşmada bunu konuşalım" dediği
+    // eserler, beğeni sayısına göre sıralanıyor. "update": beğenme herkese
+    // (üyeye) açık — sadece "begenenler" alanı; öneriyi tam düzenlemek/silmek
+    // sadece öneren veya yöneticiye açık.
+    match /etkinlikOnerileri/{oneriId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.onerenId == request.auth.uid
+        && exists(/databases/$(database)/documents/topluluklar/$(request.resource.data.topluluklId)/uyeler/$(request.auth.uid));
+      allow update: if request.auth != null && (
+        resource.data.onerenId == request.auth.uid ||
+        topluluklaYoneticiMi(resource.data.topluluklId) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['begenenler'])
+      );
+      allow delete: if request.auth != null && (
+        resource.data.onerenId == request.auth.uid || topluluklaYoneticiMi(resource.data.topluluklId)
+      );
+    }
+
+    // Gelecek Etkinlikler — üst seviye koleksiyon (topluluklId alanıyla filtreleniyor).
+    // Hem topluluk sayfasında hem küresel Etkinlikler sayfasında collectionGroup
+    // sorgusuna/özel indekse gerek kalmadan basit where() ile sorgulanabilsin diye.
+    // "create": sadece o topluluğun ÜYESİ etkinlik ekleyebilir. "update"/"delete":
+    // etkinliği açan VEYA topluluğun kurucusu/moderatörü tam düzenleyebilir;
+    // diğer üyeler sadece "katilacaklar" (katılıyorum/vazgeçtim) alanını değiştirebilir.
+    match /gelecekEtkinlikler/{etkinlikId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.olusturanId == request.auth.uid
+        && exists(/databases/$(database)/documents/topluluklar/$(request.resource.data.topluluklId)/uyeler/$(request.auth.uid));
+      allow update: if request.auth != null && (
+        resource.data.olusturanId == request.auth.uid ||
+        topluluklaYoneticiMi(resource.data.topluluklId) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['katilacaklar'])
+      );
+      allow delete: if request.auth != null && (
+        resource.data.olusturanId == request.auth.uid || topluluklaYoneticiMi(resource.data.topluluklId)
+      );
+
+      match /kaynaklar/{kaynakId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+        allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+      }
+    }
+
+    // Liste öğeleri (bir listedeki her film/dizi/kitap) — üst seviye koleksiyon
+    // (topluluklId + listeId alanlarıyla filtreleniyor), aynı gerekçeyle.
+    // "create": sadece o topluluğun ÜYESİ eser ekleyebilir. "update": tam düzenleme
+    // (başlık/sıra/vb.) ekleyen VEYA yöneticiye açık; diğer üyeler sadece "puanlar"
+    // ve "tamamlayanlar" (kendi puanı/tamamlama işareti) alanlarını değiştirebilir.
+    match /listeOgeleri/{ogeId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid
+        && exists(/databases/$(database)/documents/topluluklar/$(request.resource.data.topluluklId)/uyeler/$(request.auth.uid));
+      allow update: if request.auth != null && (
+        resource.data.ekleyenId == request.auth.uid ||
+        topluluklaYoneticiMi(resource.data.topluluklId) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['puanlar', 'tamamlayanlar']) &&
+          exists(/databases/$(database)/documents/topluluklar/$(resource.data.topluluklId)/uyeler/$(request.auth.uid))
+        )
+      );
+      allow delete: if request.auth != null && (
+        resource.data.ekleyenId == request.auth.uid || topluluklaYoneticiMi(resource.data.topluluklId)
+      );
+    }
+
+    // Tartışma etkinlikleri ("bu film/kitap hakkında konuşalım")
+    match /tartismaEtkinlikleri/{etkinlikId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.olusturanId == request.auth.uid;
+      allow update: if request.auth != null; // katılımcı listesi güncellemesi için serbest
+      allow delete: if request.auth != null && resource.data.olusturanId == request.auth.uid;
+    }
+  }
+}

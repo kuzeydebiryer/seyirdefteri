@@ -1,0 +1,109 @@
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
+import { favoriEkle, favoriKaldir } from '../utils/favori.js'
+import { favoriMi } from '../hooks/useFavoriler.js'
+import { yayineviKitaplariniGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+
+export default function YayineviSayfasi() {
+  const { ad } = useParams()
+  const navigate = useNavigate()
+  const yayineviAdi = decodeURIComponent(ad)
+  const { kullanici } = useAuth()
+
+  const [kitaplar, setKitaplar] = useState([])
+  const [yukleniyor, setYukleniyor] = useState(true)
+  const [favoriMi_, setFavoriMi_] = useState(false)
+  const [favoriIsleniyor, setFavoriIsleniyor] = useState(false)
+  const [inceleniyorId, setInceleniyorId] = useState(null)
+
+  async function incele(kitap) {
+    setInceleniyorId(kitap.id)
+    try {
+      const kaydedilen = await turkceKitaptanKaydet(kitap)
+      navigate(`/kitap/${kaydedilen.id}`)
+    } finally {
+      setInceleniyorId(null)
+    }
+  }
+
+  useEffect(() => {
+    let iptal = false
+    setYukleniyor(true)
+    yayineviKitaplariniGetir(yayineviAdi).then((liste) => {
+      if (!iptal) {
+        setKitaplar(liste)
+        setYukleniyor(false)
+      }
+    })
+    if (kullanici) {
+      favoriMi(kullanici.uid, 'yayinevi', ad).then((v) => {
+        if (!iptal) setFavoriMi_(v)
+      })
+    }
+    return () => {
+      iptal = true
+    }
+  }, [ad, yayineviAdi, kullanici])
+
+  async function favoriDegistir() {
+    if (!kullanici) return
+    setFavoriIsleniyor(true)
+    try {
+      if (favoriMi_) {
+        await favoriKaldir(kullanici.uid, 'yayinevi', ad)
+      } else {
+        await favoriEkle(kullanici, { tur: 'yayinevi', disId: ad, baslik: yayineviAdi })
+      }
+      setFavoriMi_(!favoriMi_)
+    } finally {
+      setFavoriIsleniyor(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-start justify-between">
+        <h1 className="font-baslik text-2xl text-murekkep">{yayineviAdi}</h1>
+        {kullanici && (
+          <button
+            onClick={favoriDegistir}
+            disabled={favoriIsleniyor}
+            className={`shrink-0 rounded-sm px-3 py-1.5 font-govde text-xs ${
+              favoriMi_ ? 'bg-muhur text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+            } disabled:opacity-40`}
+          >
+            {favoriMi_ ? '★ Favorilerimde' : '☆ Favorilere Ekle'}
+          </button>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-kraft">
+        {yukleniyor ? 'Yükleniyor...' : `${kitaplar.length} kitap · Türkçe Kitap Veri Tabanı`}
+      </p>
+
+      <div className="defter-cizgi my-6" />
+
+      {!yukleniyor && kitaplar.length === 0 && <p className="text-sm text-kraft">Bu yayınevine ait kitap bulunamadı.</p>}
+
+      <div className="space-y-2">
+        {kitaplar.map((k) => (
+          <div key={k.id} className="flex items-center justify-between gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+            <div className="min-w-0">
+              <button
+                onClick={() => incele(k)}
+                disabled={inceleniyorId === k.id}
+                className="truncate text-left text-sm font-medium text-murekkep hover:text-deniz hover:underline disabled:opacity-40"
+              >
+                {inceleniyorId === k.id ? 'Açılıyor...' : k.baslik}
+              </button>
+              <p className="truncate text-xs text-kraft">
+                {[k.yazar, k.yil, k.sayfaSayisi && `${k.sayfaSayisi} s.`].filter(Boolean).join(' · ')}
+              </p>
+              {k.kategori && <p className="truncate text-[11px] text-kraft">{k.kategori}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

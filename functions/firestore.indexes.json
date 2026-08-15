@@ -1,0 +1,383 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "kitaplar",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "dogrulanmis",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sonGuncellemeTarihi",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "alintilar",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "kitapId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "izlenecekler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "durum",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "eklemeTarihi",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "kisiselListeler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "kullaniciId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "olusturmaTarihi",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "kisiselListeOgeleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "listeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sira",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "oscarKategorileri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sezonId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sira",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "etkinlikHabercileri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sonTarih",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ilkTarih",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tavsiyeler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "eserPuanlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "disId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "eserIstatistikleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "puanSayisi",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "sanatKoleksiyonu",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "kullaniciId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "eklemeTarihi",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "festivalSezonlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "festivalId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "yil",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "festivalFilmleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sezonId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sira",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "sohbetMesajlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "konumId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gelecekEtkinlikler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "toplulukId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "listeOgeleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "listeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "toplulukId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "etkinlikTarihi",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gonderiler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "yazarId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gonderiler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "tartismaEtkinlikleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "gonderiId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gonderiler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "yazarId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gonderiler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "altTur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gonderiler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "yazarId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "altTur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gelecekEtkinlikler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "topluluklId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "etkinlikOnerileri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "topluluklId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "oneriTarihi",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "listeOgeleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "topluluklId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "listeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sira",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
