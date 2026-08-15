@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-export function useListeOgeleri(topluluklId, listeId) {
-  const [ogeler, setOgeler] = useState([])
+export function useEtkinlikOnerileri(topluluklId) {
+  const [oneriler, setOneriler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const [hata, setHata] = useState('')
   const [yenile, setYenile] = useState(0)
@@ -15,16 +15,18 @@ export function useListeOgeleri(topluluklId, listeId) {
       setHata('')
       try {
         const q = query(
-          collection(db, 'listeOgeleri'),
+          collection(db, 'etkinlikOnerileri'),
           where('topluluklId', '==', topluluklId),
-          where('listeId', '==', listeId),
-          orderBy('sira', 'asc')
+          orderBy('oneriTarihi', 'desc')
         )
         const snap = await getDocs(q)
         if (iptal) return
-        setOgeler(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+        const liste = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        // En çok beğenilen en üstte — eşitlikte en yeni öneri önce.
+        liste.sort((a, b) => (b.begenenler || []).length - (a.begenenler || []).length)
+        setOneriler(liste)
       } catch (e) {
-        console.error('useListeOgeleri hata:', e.code, e.message, e)
+        console.error('useEtkinlikOnerileri hata:', e.code, e.message, e)
         if (!iptal) setHata(`${e.code || ''} ${e.message}`)
       } finally {
         if (!iptal) setYukleniyor(false)
@@ -34,7 +36,7 @@ export function useListeOgeleri(topluluklId, listeId) {
     return () => {
       iptal = true
     }
-  }, [topluluklId, listeId, yenile])
+  }, [topluluklId, yenile])
 
-  return { ogeler, yukleniyor, hata, yenidenYukle: () => setYenile((n) => n + 1) }
+  return { oneriler, yukleniyor, hata, yenidenYukle: () => setYenile((n) => n + 1) }
 }

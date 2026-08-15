@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import Nav from './components/Nav.jsx'
 import OzelRota from './components/OzelRota.jsx'
 import Anasayfa from './pages/Anasayfa.jsx'
@@ -28,11 +28,17 @@ import Oyuncular from './pages/Oyuncular.jsx'
 import Yazilar from './pages/Yazilar.jsx'
 import Gezi from './pages/Gezi.jsx'
 import EtkinlikDunyasi from './pages/EtkinlikDunyasi.jsx'
-import YonetmenSayfasi from './pages/YonetmenSayfasi.jsx'
 import YazarSayfasi from './pages/YazarSayfasi.jsx'
 import YayineviSayfasi from './pages/YayineviSayfasi.jsx'
 import KitapKategoriSayfasi from './pages/KitapKategoriSayfasi.jsx'
 import RafDetay from './pages/RafDetay.jsx'
+
+// Sayfalar birleştirildi (bkz. KisiSayfasi.jsx) — eski /yonetmen/:id linkleri
+// (yer imleri, dışarıdan gelen linkler) kırılmasın diye /kisi/:id'ye yönlendiriyoruz.
+function YonetmenYonlendirme() {
+  const { id } = useParams()
+  return <Navigate to={`/kisi/${id}`} replace />
+}
 
 export default function App() {
   return (
@@ -65,7 +71,7 @@ export default function App() {
           <Route path="/yazilar" element={<OzelRota><Yazilar /></OzelRota>} />
           <Route path="/gezi" element={<OzelRota><Gezi /></OzelRota>} />
           <Route path="/etkinlik-dunyasi" element={<OzelRota><EtkinlikDunyasi /></OzelRota>} />
-          <Route path="/yonetmen/:id" element={<OzelRota><YonetmenSayfasi /></OzelRota>} />
+          <Route path="/yonetmen/:id" element={<OzelRota><YonetmenYonlendirme /></OzelRota>} />
           <Route path="/yazar/:ad" element={<OzelRota><YazarSayfasi /></OzelRota>} />
           <Route path="/yayinevi/:ad" element={<OzelRota><YayineviSayfasi /></OzelRota>} />
           <Route path="/kitap-kategori/:kategori" element={<OzelRota><KitapKategoriSayfasi /></OzelRota>} />

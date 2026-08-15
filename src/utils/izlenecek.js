@@ -47,11 +47,31 @@ export async function okumayaBasla(uid, tur, disId, toplamSayfa) {
     durum: 'okunuyor',
     toplamSayfa: toplamSayfa || null,
     suankiSayfa: 0,
+    // Dizi için "sayfa" kavramı yok — sezon/bölüm bazlı ilerleme kullanılıyor
+    // (bkz. dizideIlerlemeGuncelle). Kitap kaydına dokunmaması için sadece
+    // tur 'dizi' olduğunda başlangıç değerleri yazılıyor.
+    ...(tur === 'dizi' ? { mevcutSezon: 1, mevcutBolum: 0 } : {}),
+    baslangicTarihi: serverTimestamp(),
   })
 }
 
 export async function ilerlemeGuncelle(uid, tur, disId, suankiSayfa) {
   await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), { suankiSayfa })
+}
+
+// Dizi ilerlemesi kitaptaki "sayfa" yerine "sezon + bölüm" ile tutuluyor —
+// tek bir sayı yerine ikisi birlikte, çünkü bir dizinin kaçıncı bölümde
+// olduğun sezon bilgisi olmadan anlamsız (her sezonun bölüm sayısı farklı).
+export async function dizideIlerlemeGuncelle(uid, disId, mevcutSezon, mevcutBolum) {
+  await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, 'dizi', disId)), { mevcutSezon, mevcutBolum })
+}
+
+// "Okumaya Başlıyorum" özelliği baslangicTarihi alanı olmadan önce başlanmış
+// kayıtlar için geriye dönük onarım: gerçek başlangıç tarihi bilinmediğinden
+// en iyi tahmin olarak "şimdi" yazılıyor (günlük ortalama o andan itibaren
+// sayılmaya başlar — geçmişe dönük yanlış bir ortalama vermektense budur).
+export async function baslangicTarihiTamamla(uid, tur, disId) {
+  await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), { baslangicTarihi: serverTimestamp() })
 }
 
 // "Okumaya Başlıyorum" tıklandığı anda kitabın sayfa sayısı katalogda henüz

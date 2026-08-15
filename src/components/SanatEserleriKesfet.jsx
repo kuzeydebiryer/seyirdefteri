@@ -4,11 +4,22 @@ import { sanatEseriAra, rastgeleEserGetir } from '../utils/sanatEserleri.js'
 import { eseriKoleksiyonaEkle, eseriKoleksiyondanCikar, kullaniciKoleksiyonEserIdleriGetir } from '../utils/sanatKoleksiyonu.js'
 
 function EserKarti({ eser, kaydedildiMi, onKoleksiyonDegistir }) {
+  const [gorselYok, setGorselYok] = useState(!eser.imageUrl)
   return (
     <div>
       <a href={eser.sourceUrl} target="_blank" rel="noreferrer" className="block">
         <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
-          <img src={eser.imageUrl} alt={eser.title} loading="lazy" className="h-full w-full object-cover" />
+          {gorselYok ? (
+            <div className="flex h-full w-full items-center justify-center text-xl">🖼️</div>
+          ) : (
+            <img
+              src={eser.imageUrl}
+              alt={eser.title}
+              loading="lazy"
+              onError={() => setGorselYok(true)}
+              className="h-full w-full object-cover"
+            />
+          )}
           <span className="absolute bottom-0 right-0 rounded-tl-sm bg-murekkep/80 px-1 py-0.5 text-[9px] text-kagit">
             {eser.kaynakAdi}
           </span>
@@ -41,6 +52,7 @@ export default function SanatEserleriKesfet() {
   const { kullanici } = useAuth()
   const [gununEseri, setGununEseri] = useState(null)
   const [gununEseriYukleniyor, setGununEseriYukleniyor] = useState(true)
+  const [resimDenemeSayaci, setResimDenemeSayaci] = useState(0)
   const [arama, setArama] = useState('')
   const [sonuclar, setSonuclar] = useState([])
   const [aramaYukleniyor, setAramaYukleniyor] = useState(false)
@@ -49,9 +61,23 @@ export default function SanatEserleriKesfet() {
 
   async function gununEseriniYenile() {
     setGununEseriYukleniyor(true)
+    setResimDenemeSayaci(0)
     const eser = await rastgeleEserGetir()
     setGununEseri(eser)
     setGununEseriYukleniyor(false)
+  }
+
+  // Bkz. GunlukKesif.jsx'teki aynı yorum: müze API'lerindeki bazı eserlerin
+  // image_id'si var ama gerçek IIIF görseli 403/404 dönüyor. Sessizce başka
+  // bir eser deniyoruz, birkaç denemeden sonra görselsiz gösteriyoruz.
+  async function gununEseriResmiYuklenemedi() {
+    if (resimDenemeSayaci >= 2) {
+      setGununEseri((e) => (e ? { ...e, imageUrl: '' } : e))
+      return
+    }
+    setResimDenemeSayaci((n) => n + 1)
+    const eser = await rastgeleEserGetir()
+    setGununEseri(eser)
   }
 
   useEffect(() => {
@@ -102,7 +128,16 @@ export default function SanatEserleriKesfet() {
       {!gununEseriYukleniyor && gununEseri && (
         <div className="mb-4 flex gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
           <a href={gununEseri.sourceUrl} target="_blank" rel="noreferrer" className="shrink-0">
-            <img src={gununEseri.imageUrl} alt={gununEseri.title} className="h-28 w-20 rounded-sm object-cover ring-1 ring-cizgi" />
+            {gununEseri.imageUrl ? (
+              <img
+                src={gununEseri.imageUrl}
+                alt={gununEseri.title}
+                onError={gununEseriResmiYuklenemedi}
+                className="h-28 w-20 rounded-sm object-cover ring-1 ring-cizgi"
+              />
+            ) : (
+              <div className="flex h-28 w-20 items-center justify-center rounded-sm bg-kagit text-2xl ring-1 ring-cizgi">🖼️</div>
+            )}
           </a>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] uppercase tracking-widest text-gise">Günün Eseri · {gununEseri.kaynakAdi}</p>

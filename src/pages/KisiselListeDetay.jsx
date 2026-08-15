@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useKisiselListeOgeleri } from '../hooks/useKisiselListeOgeleri.js'
 import { listeGetir, ogeEkle, ogeSil, listeSil } from '../utils/kisiselListe.js'
 import { kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
+import { kisiselListedenTopluluğaKopyala } from '../utils/liste.js'
+import { useTopluluklar, uyeMi as uyelikKontrolEt } from '../hooks/useTopluluklar.js'
 import LetterboxdIceAktar from '../components/LetterboxdIceAktar.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -14,6 +16,7 @@ export default function KisiselListeDetay() {
   const { listeId } = useParams()
   const { kullanici } = useAuth()
   const { ogeler, yukleniyor, yenidenYukle } = useKisiselListeOgeleri(listeId)
+  const { topluluklar } = useTopluluklar()
 
   const [liste, setListe] = useState(null)
   const [formuAcik, setFormuAcik] = useState(false)
@@ -23,6 +26,11 @@ export default function KisiselListeDetay() {
   const [sonuclar, setSonuclar] = useState([])
   const [aramaYukleniyor, setAramaYukleniyor] = useState(false)
   const [ekleniyor, setEkleniyor] = useState(null) // hangi öğe ekleniyor
+
+  const [kopyalaFormuAcik, setKopyalaFormuAcik] = useState(false)
+  const [uyeOlduklarim, setUyeOlduklarim] = useState([])
+  const [hedefTopluluk, setHedefTopluluk] = useState('')
+  const [kopyalaniyor, setKopyalaniyor] = useState(false)
 
   useEffect(() => {
     listeGetir(listeId).then(setListe)
@@ -101,6 +109,25 @@ export default function KisiselListeDetay() {
     window.location.href = '/listelerim'
   }
 
+  async function kopyalaFormunuAc() {
+    setKopyalaFormuAcik((a) => !a)
+    if (!kopyalaFormuAcik && kullanici && uyeOlduklarim.length === 0) {
+      const uyelikler = await Promise.all(topluluklar.map((t) => uyelikKontrolEt(t.id, kullanici.uid)))
+      setUyeOlduklarim(topluluklar.filter((_, i) => uyelikler[i]))
+    }
+  }
+
+  async function kopyalaTiklandi() {
+    if (!hedefTopluluk || !kullanici) return
+    setKopyalaniyor(true)
+    try {
+      const yeniListeId = await kisiselListedenTopluluğaKopyala(liste, ogeler, hedefTopluluk, kullanici)
+      window.location.href = `/topluluk/${hedefTopluluk}/liste/${yeniListeId}`
+    } finally {
+      setKopyalaniyor(false)
+    }
+  }
+
   if (!liste) return <p className="text-sm text-kraft">Yükleniyor...</p>
 
   return (
@@ -122,6 +149,46 @@ export default function KisiselListeDetay() {
           </button>
         )}
       </div>
+
+      {sahibiMi && ogeler.length > 0 && (
+        <div className="mt-2">
+          <button onClick={kopyalaFormunuAc} className="text-xs text-kraft hover:text-deniz hover:underline">
+            {kopyalaFormuAcik ? 'Vazgeç' : '📋 Bir Topluluğa Kopyala'}
+          </button>
+          {kopyalaFormuAcik && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              {uyeOlduklarim.length === 0 ? (
+                <p className="text-xs text-kraft">Üyesi olduğun bir topluluk bulunamadı.</p>
+              ) : (
+                <>
+                  <select
+                    value={hedefTopluluk}
+                    onChange={(e) => setHedefTopluluk(e.target.value)}
+                    className="rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+                  >
+                    <option value="">Topluluk seç...</option>
+                    {uyeOlduklarim.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.ad}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={kopyalaTiklandi}
+                    disabled={!hedefTopluluk || kopyalaniyor}
+                    className="rounded-sm bg-deniz px-3 py-1.5 text-xs text-kagit disabled:opacity-40"
+                  >
+                    {kopyalaniyor ? 'Kopyalanıyor...' : 'Kopyala'}
+                  </button>
+                  <p className="w-full text-[11px] text-kraft">
+                    Kişisel listen olduğu gibi kalır, topluluğa {ogeler.length} eserlik yeni bir kopya oluşturulur.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {sahibiMi && (
         <button

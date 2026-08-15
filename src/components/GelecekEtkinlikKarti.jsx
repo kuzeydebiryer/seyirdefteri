@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { katilacagimDegistir, kaynakEkle, gelecekEtkinlikGuncelle } from '../utils/gelecekEtkinlik.js'
 import { useKaynaklar } from '../hooks/useKaynaklar.js'
+import Avatar from './Avatar.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -51,6 +54,8 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
           eserPosterUrl: etkinlik.eserPosterUrl,
           eserTur: etkinlik.eserTur,
           eserTmdbId: etkinlik.eserTmdbId,
+          eserGoogleBooksId: etkinlik.eserGoogleBooksId,
+          eserYazar: etkinlik.eserYazar,
           yonetmen: etkinlik.yonetmen,
           oyuncular: etkinlik.oyuncular,
         }
@@ -61,6 +66,33 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
   const { kaynaklar, yenidenYukle } = useKaynaklar(etkinlik.id)
   const katiliyorMu = kullanici && katilacaklar.includes(kullanici.uid)
   const benimEtkinliğimMi = kullanici?.uid === etkinlik.olusturanId
+
+  // Katılımcı avatarları — sadece isim/görsel gerektiğinden ilk birkaç kişiyi
+  // çözüp geri kalanı "+N" olarak özetliyoruz, katılımcı sayısı ne olursa olsun
+  // okuma maliyeti sabit kalsın diye.
+  const GOSTERILECEK_AVATAR_SAYISI = 6
+  const [katilimciProfilleri, setKatilimciProfilleri] = useState([])
+
+  useEffect(() => {
+    let iptal = false
+    const gosterilecekler = katilacaklar.slice(0, GOSTERILECEK_AVATAR_SAYISI)
+    if (gosterilecekler.length === 0) {
+      setKatilimciProfilleri([])
+      return
+    }
+    Promise.all(
+      gosterilecekler.map(async (uid) => {
+        const snap = await getDoc(doc(db, 'kullanicilar', uid))
+        return snap.exists() ? { id: uid, ...snap.data() } : { id: uid, adSoyad: 'Bilinmeyen' }
+      })
+    ).then((profiller) => {
+      if (!iptal) setKatilimciProfilleri(profiller)
+    })
+    return () => {
+      iptal = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [katilacaklar.join(',')])
 
   const yaziVideoMakaleKaynaklari = kaynaklar.filter((k) => k.tur !== 'kitap')
   const kitapKaynaklari = kaynaklar.filter((k) => k.tur === 'kitap')
@@ -133,7 +165,16 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
 
   async function dEserAra(e) {
     e.preventDefault()
-    if (!dEserArama.trim() || !TMDB_API_KEY) return
+    if (!dEserArama.trim()) return
+    if (dEserKategori === 'kitap') {
+      const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
+      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(dEserArama)}&maxResults=16${anahtarParcasi}`
+      const res = await fetch(url)
+      const data = await res.json()
+      setDEserSonuclari(data.items || [])
+      return
+    }
+    if (!TMDB_API_KEY) return
     const uc = dEserKategori === 'sinema' ? 'movie' : 'tv'
     const url = `https://api.themoviedb.org/3/search/${uc}?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(dEserArama)}`
     const res = await fetch(url)
@@ -142,6 +183,20 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
   }
 
   async function dEserSec(item) {
+    if (dEserKategori === 'kitap') {
+      const v = item.volumeInfo || {}
+      setDEser({
+        eserTur: 'kitap',
+        eserGoogleBooksId: item.id,
+        eserBaslik: v.title || '',
+        eserYazar: (v.authors || []).join(', '),
+        eserYil: (v.publishedDate || '').slice(0, 4),
+        eserPosterUrl: (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://'),
+      })
+      setDEserSonuclari([])
+      setDEserArama('')
+      return
+    }
     const baslik = dEserKategori === 'sinema' ? item.title : item.name
     const yil = (dEserKategori === 'sinema' ? item.release_date : item.first_air_date)?.slice(0, 4)
     const posterUrl = item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : ''
@@ -184,6 +239,17 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
   const eserSayfasiLinki =
     etkinlik.eserTmdbId && (etkinlik.eserTur === 'dizi' ? `/dizi/${etkinlik.eserTmdbId}` : `/film/${etkinlik.eserTmdbId}`)
 
+  // Etkinlik geçtiyse ve bir eser bağlıysa, "bu eser hakkında günce yaz" CTA'sı
+  // için GonderiEkle'nin zaten desteklediği ?tur=&disId= prefill'ini kullanıyoruz.
+  const gectiMi = etkinlik.tarih && new Date(etkinlik.tarih).getTime() < Date.now()
+  const gunceYazLinki =
+    gectiMi &&
+    (etkinlik.eserTmdbId
+      ? `/gonderi-ekle?tur=${etkinlik.eserTur}&disId=${etkinlik.eserTmdbId}`
+      : etkinlik.eserGoogleBooksId
+      ? `/gonderi-ekle?tur=kitap&disId=${etkinlik.eserGoogleBooksId}`
+      : null)
+
   return (
     <div className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
       <div className="flex items-start justify-between gap-3">
@@ -192,7 +258,10 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
             <img src={etkinlik.eserPosterUrl} alt={etkinlik.eserBaslik} className="h-24 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi" />
           )}
           <div>
-            <p className="font-govde text-sm text-murekkep">{etkinlik.baslik}</p>
+            <p className="font-govde text-sm text-murekkep">
+              {etkinlik.baslik}
+              {etkinlik.tekrarSeriId && <span title="Tekrarlayan etkinlik"> 🔁</span>}
+            </p>
             {etkinlik.topluluklAd && (
               <Link to={`/topluluk/${etkinlik.topluluklId}`} className="text-[11px] text-deniz hover:underline">
                 🏛 {etkinlik.topluluklAd}
@@ -213,12 +282,33 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
             )}
             {etkinlik.yonetmen && <p className="text-[11px] text-kraft">Yönetmen: {etkinlik.yonetmen}</p>}
             {etkinlik.oyuncular && <p className="text-[11px] text-kraft">Oyuncular: {etkinlik.oyuncular}</p>}
+            {etkinlik.eserYazar && <p className="text-[11px] text-kraft">Yazar: {etkinlik.eserYazar}</p>}
             <p className="text-xs text-kraft mt-0.5">{tarihSaatGoster(etkinlik.tarih)}</p>
             {etkinlik.aciklama && <p className="mt-1 text-xs text-murekkep/90">{etkinlik.aciklama}</p>}
-            <p className="mt-1 text-xs text-kraft">{katilacaklar.length} kişi katılacak</p>
+            {katilacaklar.length > 0 ? (
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <div className="flex -space-x-2">
+                  {katilimciProfilleri.map((p) => (
+                    <Link key={p.id} to={`/profil/${p.id}`} title={p.adSoyad}>
+                      <Avatar adSoyad={p.adSoyad} avatarUrl={p.avatarUrl} boyut="h-6 w-6" />
+                    </Link>
+                  ))}
+                </div>
+                {katilacaklar.length > GOSTERILECEK_AVATAR_SAYISI && (
+                  <span className="text-xs text-kraft">+{katilacaklar.length - GOSTERILECEK_AVATAR_SAYISI}</span>
+                )}
+              </div>
+            ) : (
+              <p className="mt-1 text-xs text-kraft">Henüz katılımcı yok</p>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
+          {gunceYazLinki && (
+            <Link to={gunceYazLinki} className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit">
+              ✎ Günce Yaz
+            </Link>
+          )}
           <button
             onClick={katilDegistir}
             disabled={!kullanici}
@@ -262,6 +352,7 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
               {dEser.eserPosterUrl && <img src={dEser.eserPosterUrl} alt="" className="h-12 w-8 rounded-sm object-cover" />}
               <p className="flex-1 text-xs text-murekkep">
                 {dEser.eserBaslik} {dEser.eserYil && `(${dEser.eserYil})`}
+                {dEser.eserYazar && ` — ${dEser.eserYazar}`}
               </p>
               <button type="button" onClick={() => setDEser(null)} className="text-[11px] text-kraft hover:text-muhur">
                 Kaldır
@@ -284,6 +375,13 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
                 >
                   Dizi
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setDEserKategori('kitap')}
+                  className={`rounded-sm px-2 py-1 text-[11px] ${dEserKategori === 'kitap' ? 'bg-deniz text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
+                >
+                  Kitap
+                </button>
               </div>
               <div className="flex gap-2">
                 <input
@@ -296,7 +394,7 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
                       dEserAra(e)
                     }
                   }}
-                  placeholder="Film/dizi ara (opsiyonel)..."
+                  placeholder={dEserKategori === 'kitap' ? 'Kitap ara (opsiyonel)...' : 'Film/dizi ara (opsiyonel)...'}
                   className="flex-1 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
                 />
                 <button onClick={dEserAra} type="button" className="rounded-sm bg-deniz px-2 py-1 text-[11px] text-kagit">
@@ -305,13 +403,19 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
               </div>
               {dEserSonuclari.length > 0 && (
                 <div className="grid grid-cols-5 gap-1">
-                  {dEserSonuclari.slice(0, 10).map((item) => (
-                    <button key={item.id} type="button" onClick={() => dEserSec(item)} className="text-left">
-                      <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
-                        {item.poster_path && <img src={`${TMDB_POSTER}${item.poster_path}`} alt="" className="h-full w-full object-cover" />}
-                      </div>
-                    </button>
-                  ))}
+                  {dEserSonuclari.slice(0, 10).map((item) => {
+                    const posterUrl =
+                      dEserKategori === 'kitap'
+                        ? (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                        : item.poster_path && `${TMDB_POSTER}${item.poster_path}`
+                    return (
+                      <button key={item.id} type="button" onClick={() => dEserSec(item)} className="text-left">
+                        <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
+                          {posterUrl && <img src={posterUrl} alt="" className="h-full w-full object-cover" />}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>

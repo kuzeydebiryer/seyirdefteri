@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useTopluluklar } from '../hooks/useTopluluklar.js'
 
 const TURLER = ['Sinema', 'Kitap', 'Genel']
+const FILTRE_TURLERI = ['Tümü', ...TURLER]
 
 export default function Topluluklar() {
   const { kullanici, profil } = useAuth()
@@ -16,7 +17,10 @@ export default function Topluluklar() {
   const [aciklama, setAciklama] = useState('')
   const [tur, setTur] = useState('Sinema')
   const [kapakUrl, setKapakUrl] = useState('')
+  const [gizli, setGizli] = useState(false)
   const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [arama, setArama] = useState('')
+  const [turFiltre, setTurFiltre] = useState('Tümü')
 
   async function olustur(e) {
     e.preventDefault()
@@ -28,22 +32,30 @@ export default function Topluluklar() {
         aciklama,
         tur,
         kapakUrl,
+        gizli,
         kurucuId: kullanici.uid,
         kurucuAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
         kurulmaTarihi: serverTimestamp(),
         uyeSayisi: 1,
       })
       // Kurucu otomatik olarak ilk üye
-      await setDoc(doc(db, 'topluluklar', ref.id, 'uyeler', kullanici.uid), { katilmaTarihi: serverTimestamp() })
+      await setDoc(doc(db, 'topluluklar', ref.id, 'uyeler', kullanici.uid), { katilmaTarihi: serverTimestamp(), rol: 'kurucu' })
       setAd('')
       setAciklama('')
       setKapakUrl('')
+      setGizli(false)
       setFormuAcik(false)
       yenidenYukle()
     } finally {
       setKaydediliyor(false)
     }
   }
+
+  const filtrelenmisTopluluklar = topluluklar.filter((t) => {
+    if (turFiltre !== 'Tümü' && t.tur !== turFiltre) return false
+    if (arama.trim() && !t.ad?.toLowerCase().includes(arama.trim().toLowerCase())) return false
+    return true
+  })
 
   return (
     <div>
@@ -108,6 +120,10 @@ export default function Topluluklar() {
               className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
             />
           </div>
+          <label className="flex items-center gap-2 text-xs text-murekkep">
+            <input type="checkbox" checked={gizli} onChange={(e) => setGizli(e.target.checked)} />
+            🔒 Kapalı topluluk — katılım isteği onayımdan geçsin
+          </label>
           <button
             type="submit"
             disabled={kaydediliyor}
@@ -121,8 +137,37 @@ export default function Topluluklar() {
       {yukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {!yukleniyor && topluluklar.length === 0 && <p className="text-sm text-kraft">Henüz bir topluluk yok.</p>}
 
+      {!yukleniyor && topluluklar.length > 0 && (
+        <div className="mb-4 space-y-2">
+          <input
+            type="text"
+            value={arama}
+            onChange={(e) => setArama(e.target.value)}
+            placeholder="Topluluk ara..."
+            className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+          />
+          <div className="flex flex-wrap gap-2">
+            {FILTRE_TURLERI.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTurFiltre(t)}
+                className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
+                  turFiltre === t ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagit text-kraft ring-cizgi hover:text-murekkep'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!yukleniyor && topluluklar.length > 0 && filtrelenmisTopluluklar.length === 0 && (
+        <p className="text-sm text-kraft">Bu kritere uyan bir topluluk bulunamadı.</p>
+      )}
+
       <ul className="space-y-3">
-        {topluluklar.map((t) => (
+        {filtrelenmisTopluluklar.map((t) => (
           <li key={t.id}>
             <Link
               to={`/topluluk/${t.id}`}
@@ -133,7 +178,10 @@ export default function Topluluklar() {
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
-                  <p className="font-baslik text-lg text-murekkep">{t.ad}</p>
+                  <p className="font-baslik text-lg text-murekkep">
+                    {t.gizli && <span title="Kapalı topluluk">🔒 </span>}
+                    {t.ad}
+                  </p>
                   <span className="rounded-full bg-kagit px-2 py-0.5 text-[10px] uppercase tracking-wide text-kraft ring-1 ring-cizgi">
                     {t.tur}
                   </span>

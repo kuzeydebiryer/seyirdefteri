@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { topluluktaPopulerKisiler } from '../hooks/useKisiPopulerlik.js'
 import { useHaberler } from '../hooks/useHaberler.js'
 import { useYonetmenler } from '../hooks/useYonetmenler.js'
@@ -7,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { yonetmenEkle } from '../utils/yonetmen.js'
 import HaberBolumu from '../components/HaberBolumu.jsx'
 import KisiArama from '../components/KisiArama.jsx'
+import KisiKarti from '../components/KisiKarti.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_PROFIL = 'https://image.tmdb.org/t/p/w300'
@@ -29,6 +29,27 @@ export default function Oyuncular() {
     async function getir() {
       const topluluktakiler = await topluluktaPopulerKisiler()
       if (!iptal) setTopluluk(topluluktakiler)
+
+      // "Bizim Aramızda Popüler" kartlarına meslek rozeti eklemek için — bu
+      // liste en fazla 12 kişi olduğundan (topluluktaPopulerKisiler'in
+      // varsayılanı), 12 ek TMDB çağrısı gözden çıkarılabilir bir maliyet.
+      // Yönetmen olanlar için de "+ Yönetmenler'e Ekle" hızlı eylemi
+      // eklenebilsin diye departman bilgisini burada zenginleştiriyoruz.
+      if (TMDB_API_KEY && topluluktakiler.length > 0) {
+        Promise.all(
+          topluluktakiler.map(async (k) => {
+            try {
+              const res = await fetch(`https://api.themoviedb.org/3/person/${k.id}?api_key=${TMDB_API_KEY}&language=tr-TR`)
+              const data = await res.json()
+              return { ...k, departman: data.known_for_department }
+            } catch {
+              return k
+            }
+          })
+        ).then((zenginlesmis) => {
+          if (!iptal) setTopluluk(zenginlesmis)
+        })
+      }
 
       if (TMDB_API_KEY) {
         try {
@@ -72,6 +93,14 @@ export default function Oyuncular() {
     } finally {
       setYonetmenEkleniyor(false)
     }
+  }
+
+  // "Bizim Aramızda Popüler" kartındaki hızlı eylem — kişi zaten yönetmen
+  // rozetiyle görünüyorsa (TMDB'den zenginleştirilmiş departman verisiyle) ve
+  // henüz küratörlü listede değilse, tekrar arama yapmadan tek tıkla ekler.
+  async function hizliYonetmenEkle(kisi) {
+    await yonetmenEkle(kisi.id, { ad: kisi.kisiAdi, fotoUrl: kisi.kisiFotoUrl, kullanici })
+    yonetmenleriYenile()
   }
 
   return (
@@ -138,12 +167,7 @@ export default function Oyuncular() {
         )}
         <div className="grid grid-cols-4 gap-4 sm:grid-cols-6">
           {yonetmenler.map((y) => (
-            <Link key={y.id} to={`/yonetmen/${y.tmdbId}`} className="block text-center">
-              <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                {y.fotoUrl && <img src={y.fotoUrl} alt={y.ad} className="h-full w-full object-cover" />}
-              </div>
-              <p className="mt-1 truncate text-xs text-murekkep">{y.ad}</p>
-            </Link>
+            <KisiKarti key={y.id} id={y.tmdbId} ad={y.ad} fotoUrl={y.fotoUrl} rozet="🎬 Yönetmen" />
           ))}
         </div>
       </div>
@@ -154,14 +178,29 @@ export default function Oyuncular() {
       {yukleniyor && <p className="text-sm text-kraft mb-6">Yükleniyor...</p>}
       {!yukleniyor && topluluk.length === 0 && <p className="text-sm text-kraft mb-6">Henüz kimse kimseyi değerlendirmedi.</p>}
       <div className="mb-10 grid grid-cols-4 gap-4 sm:grid-cols-6">
-        {topluluk.map((k) => (
-          <Link key={k.id} to={`/kisi/${k.id}`} className="block text-center">
-            <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-              {k.kisiFotoUrl && <img src={k.kisiFotoUrl} alt={k.kisiAdi} className="h-full w-full object-cover" />}
+        {topluluk.map((k) => {
+          const zatenYonetmenListesindeMi = yonetmenler.some((y) => y.tmdbId === k.id)
+          return (
+            <div key={k.id}>
+              <KisiKarti
+                id={k.id}
+                ad={k.kisiAdi}
+                fotoUrl={k.kisiFotoUrl}
+                departman={k.departman}
+                ortalamaPuan={k.ortalamaPuan}
+                puanSayisi={k.puanSayisi}
+              />
+              {kullanici && k.departman === 'Directing' && !zatenYonetmenListesindeMi && (
+                <button
+                  onClick={() => hizliYonetmenEkle(k)}
+                  className="mt-1 w-full truncate rounded-sm bg-kagitKoyu px-1 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi hover:text-murekkep"
+                >
+                  + Yönetmenler'e Ekle
+                </button>
+              )}
             </div>
-            <p className="mt-1 truncate text-xs text-murekkep">{k.kisiAdi}</p>
-          </Link>
-        ))}
+          )
+        })}
       </div>
 
       {populer.length > 0 && (
@@ -169,12 +208,14 @@ export default function Oyuncular() {
           <h2 className="font-baslik text-lg text-murekkep mb-3">TMDB'de Şu An Popüler</h2>
           <div className="grid grid-cols-4 gap-4 sm:grid-cols-6">
             {populer.map((k) => (
-              <Link key={k.id} to={`/kisi/${k.id}`} className="block text-center">
-                <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                  {k.profile_path && <img src={`${TMDB_PROFIL}${k.profile_path}`} alt={k.name} className="h-full w-full object-cover" />}
-                </div>
-                <p className="mt-1 truncate text-xs text-murekkep">{k.name}</p>
-              </Link>
+              <KisiKarti
+                key={k.id}
+                id={k.id}
+                ad={k.name}
+                fotoUrl={k.profile_path ? `${TMDB_PROFIL}${k.profile_path}` : ''}
+                departman={k.known_for_department}
+                enBilinenler={(k.known_for || []).slice(0, 2).map((e) => e.title || e.name).filter(Boolean)}
+              />
             ))}
           </div>
         </>

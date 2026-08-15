@@ -1,11 +1,11 @@
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { doc, getDoc } from 'firebase/firestore'
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import { collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useListeOgeleri } from '../hooks/useListeOgeleri.js'
-import { ogeEkle } from '../utils/liste.js'
+import { uyeMi as uyelikKontrolEt } from '../hooks/useTopluluklar.js'
+import { ogeEkle, listeGuncelle, listeSil } from '../utils/liste.js'
 import ListeOgesi from '../components/ListeOgesi.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -18,6 +18,10 @@ export default function ListeDetay() {
   const { ogeler, yukleniyor, hata, yenidenYukle } = useListeOgeleri(topluluklId, listeId)
 
   const [liste, setListe] = useState(null)
+  const [topluluk, setTopluluk] = useState(null)
+  const [uyeMi, setUyeMi] = useState(false)
+  const [rolum, setRolum] = useState(null)
+
   const [formuAcik, setFormuAcik] = useState(false)
   const [kategori, setKategori] = useState('sinema')
   const [arama, setArama] = useState('')
@@ -27,11 +31,75 @@ export default function ListeDetay() {
   const [etkinlikTarihi, setEtkinlikTarihi] = useState('')
   const [ekleniyor, setEkleniyor] = useState(false)
 
+  const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
+  const [dBaslik, setDBaslik] = useState('')
+  const [dAciklama, setDAciklama] = useState('')
+  const [dKapakUrl, setDKapakUrl] = useState('')
+  const [dKaydediliyor, setDKaydediliyor] = useState(false)
+
   useEffect(() => {
-    getDoc(doc(db, 'topluluklar', topluluklId, 'listeler', listeId)).then((snap) => {
-      if (snap.exists()) setListe({ id: snap.id, ...snap.data() })
-    })
-  }, [topluluklId, listeId])
+    let iptal = false
+    async function getir() {
+      const listeSnap = await getDoc(doc(db, 'topluluklar', topluluklId, 'listeler', listeId))
+      if (iptal) return
+      if (listeSnap.exists()) {
+        const veri = listeSnap.data()
+        setListe({ id: listeSnap.id, ...veri })
+        setDBaslik(veri.baslik)
+        setDAciklama(veri.aciklama || '')
+        setDKapakUrl(veri.kapakUrl || '')
+      }
+
+      const topluklukSnap = await getDoc(doc(db, 'topluluklar', topluluklId))
+      if (!iptal && topluklukSnap.exists()) setTopluluk({ id: topluklukSnap.id, ...topluklukSnap.data() })
+
+      if (kullanici) {
+        const [uyelik, uyelikBelgesi] = await Promise.all([
+          uyelikKontrolEt(topluluklId, kullanici.uid),
+          getDoc(doc(db, 'topluluklar', topluluklId, 'uyeler', kullanici.uid)),
+        ])
+        if (iptal) return
+        setUyeMi(uyelik)
+        setRolum(uyelikBelgesi.exists() ? uyelikBelgesi.data().rol : null)
+      }
+    }
+    getir()
+    return () => {
+      iptal = true
+    }
+  }, [topluluklId, listeId, kullanici])
+
+  const yoneticiMiyim = kullanici && topluluk && (kullanici.uid === topluluk.kurucuId || rolum === 'moderator')
+
+  // Kendiliğinden onarım: "sira" alanı bu güncellemeden önce yoktu. Firestore'un
+  // orderBy('sira') sorgusu, alanı hiç olmayan belgeleri sonuçtan tamamen düşürür
+  // (null değil, YOK sayar) — yani eski öğeler useListeOgeleri'nden hiç dönmüyor
+  // olabilir. Yönetici sayfayı ilk ziyaret ettiğinde, orderBy KULLANMADAN ham bir
+  // sorguyla tüm öğeleri çekip eksik olanlara eklenme tarihine göre sıra atıyoruz.
+  // Bir öğe zaten sira'ya sahipse dokunmuyoruz; hepsi doldurulunca bu bir daha
+  // hiç çalışmaz (idempotent).
+  useEffect(() => {
+    if (!yoneticiMiyim || !topluluklId || !listeId) return
+    let iptal = false
+    async function onar() {
+      const q = query(collection(db, 'listeOgeleri'), where('topluluklId', '==', topluluklId), where('listeId', '==', listeId))
+      const snap = await getDocs(q)
+      if (iptal) return
+      const eksikOlanlar = snap.docs.filter((d) => d.data().sira === undefined)
+      if (eksikOlanlar.length === 0) return
+      const mevcutSiralar = snap.docs.map((d) => d.data().sira).filter((s) => s !== undefined)
+      const enYuksekSira = mevcutSiralar.length > 0 ? Math.max(...mevcutSiralar) : -1
+      const siraliEksikler = [...eksikOlanlar].sort(
+        (a, b) => (a.data().eklemeTarihi?.toMillis?.() || 0) - (b.data().eklemeTarihi?.toMillis?.() || 0)
+      )
+      await Promise.all(siraliEksikler.map((d, i) => updateDoc(d.ref, { sira: enYuksekSira + 1 + i })))
+      if (!iptal) yenidenYukle()
+    }
+    onar().catch((e) => console.warn('Sıra onarımı başarısız:', e.message))
+    return () => {
+      iptal = true
+    }
+  }, [yoneticiMiyim, topluluklId, listeId])
 
   async function ara(e) {
     e.preventDefault()
@@ -87,41 +155,139 @@ export default function ListeDetay() {
 
   async function ekle(e) {
     e.preventDefault()
-    if (!secili) return
+    if (!secili || !kullanici) return
     setEkleniyor(true)
     try {
-      await ogeEkle(topluluklId, listeId, {
-        tur: kategori,
-        ...secili,
-        etkinlikTarihi: etkinlikTarihi || null,
-        ekleyenId: kullanici.uid,
-      })
+      await ogeEkle(
+        topluluklId,
+        listeId,
+        { tur: kategori, ...secili, etkinlikTarihi: etkinlikTarihi || null, ekleyenId: kullanici.uid },
+        kullanici,
+        liste.ogeSayisi
+      )
       setSecili(null)
       setArama('')
       setSonuclar([])
       setEtkinlikTarihi('')
       setFormuAcik(false)
+      setListe((onceki) => ({ ...onceki, ogeSayisi: (onceki.ogeSayisi || 0) + 1 }))
       yenidenYukle()
     } finally {
       setEkleniyor(false)
     }
   }
 
+  async function duzenlemeyiKaydet(e) {
+    e.preventDefault()
+    setDKaydediliyor(true)
+    try {
+      await listeGuncelle(topluluklId, listeId, { baslik: dBaslik.trim(), aciklama: dAciklama, kapakUrl: dKapakUrl })
+      setListe((onceki) => ({ ...onceki, baslik: dBaslik.trim(), aciklama: dAciklama, kapakUrl: dKapakUrl }))
+      setDuzenlemeAcik(false)
+    } finally {
+      setDKaydediliyor(false)
+    }
+  }
+
+  async function listeyiSilTiklandi() {
+    if (!window.confirm(`"${liste.baslik}" listesini kalıcı olarak silmek istediğine emin misin?`)) return
+    await listeSil(topluluklId, listeId)
+    window.location.href = `/topluluk/${topluluklId}`
+  }
+
   if (!liste) return <p className="text-sm text-kraft">Yükleniyor...</p>
+
+  const benTamamladiklarim = kullanici ? ogeler.filter((o) => (o.tamamlayanlar || []).includes(kullanici.uid)).length : 0
 
   return (
     <div>
-      <h1 className="font-baslik text-2xl text-murekkep">{liste.baslik}</h1>
-      {liste.aciklama && <p className="mt-1 text-sm text-kraft">{liste.aciklama}</p>}
-      <p className="mt-1 text-xs text-kraft">{ogeler.length} eser</p>
+      {liste.kapakUrl && (
+        <div className="mb-4 h-40 w-full overflow-hidden rounded-sm ring-1 ring-cizgi">
+          <img src={liste.kapakUrl} alt={liste.baslik} className="h-full w-full object-cover" />
+        </div>
+      )}
 
-      {kullanici && (
-        <button
-          onClick={() => setFormuAcik((a) => !a)}
-          className="mt-4 rounded-sm bg-muhur px-3 py-1.5 font-govde text-sm text-kagit"
-        >
-          {formuAcik ? 'Vazgeç' : '+ Eser Ekle'}
-        </button>
+      <Link to={`/topluluk/${topluluklId}`} className="text-xs text-kraft hover:text-murekkep">
+        ← {topluluk?.ad || 'Topluluğa dön'}
+      </Link>
+
+      <h1 className="font-baslik text-2xl text-murekkep mt-1">{liste.baslik}</h1>
+      {liste.aciklama && <p className="mt-1 text-sm text-kraft">{liste.aciklama}</p>}
+      <p className="mt-1 text-xs text-kraft">
+        {liste.olusturanAdi && `${liste.olusturanAdi} tarafından oluşturuldu · `}
+        {ogeler.length} eser
+      </p>
+
+      {kullanici && ogeler.length > 0 && (
+        <div className="mt-3 max-w-xs">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-kagit ring-1 ring-cizgi">
+            <div className="h-full bg-deniz" style={{ width: `${Math.round((benTamamladiklarim / ogeler.length) * 100)}%` }} />
+          </div>
+          <p className="mt-1 text-[11px] text-kraft">
+            {benTamamladiklarim}/{ogeler.length} tamamladın
+          </p>
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-3">
+        {uyeMi && (
+          <button onClick={() => setFormuAcik((a) => !a)} className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-sm text-kagit">
+            {formuAcik ? 'Vazgeç' : '+ Eser Ekle'}
+          </button>
+        )}
+        {(kullanici?.uid === liste.olusturanId || yoneticiMiyim) && (
+          <>
+            <button
+              onClick={() => setDuzenlemeAcik((a) => !a)}
+              className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi"
+            >
+              {duzenlemeAcik ? 'Vazgeç' : 'Listeyi Düzenle'}
+            </button>
+            <button onClick={listeyiSilTiklandi} className="rounded-sm px-3 py-1.5 font-govde text-xs text-kraft hover:text-muhur">
+              Listeyi Sil
+            </button>
+          </>
+        )}
+      </div>
+
+      {duzenlemeAcik && (
+        <form onSubmit={duzenlemeyiKaydet} className="mt-3 max-w-sm space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Liste Başlığı</label>
+            <input
+              type="text"
+              value={dBaslik}
+              onChange={(e) => setDBaslik(e.target.value)}
+              className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Açıklama</label>
+            <textarea
+              value={dAciklama}
+              onChange={(e) => setDAciklama(e.target.value)}
+              rows={2}
+              className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Kapak Görsel URL</label>
+            <input
+              type="text"
+              value={dKapakUrl}
+              onChange={(e) => setDKapakUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={dKaydediliyor}
+            className="rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+          >
+            {dKaydediliyor ? 'Kaydediliyor...' : 'Kaydet'}
+          </button>
+        </form>
       )}
 
       {formuAcik && (
@@ -209,7 +375,7 @@ export default function ListeDetay() {
                 />
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Etkinlik Tarihi</label>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Etkinlik Tarihi (opsiyonel)</label>
                 <input
                   type="date"
                   value={etkinlikTarihi}
@@ -241,8 +407,19 @@ export default function ListeDetay() {
       {!yukleniyor && !hata && ogeler.length === 0 && <p className="text-sm text-kraft">Bu listede henüz eser yok.</p>}
 
       <div className="space-y-2">
-        {ogeler.map((oge) => (
-          <ListeOgesi key={oge.id} topluluklId={topluluklId} listeId={listeId} oge={oge} />
+        {ogeler.map((oge, i) => (
+          <ListeOgesi
+            key={oge.id}
+            topluluklId={topluluklId}
+            listeId={listeId}
+            oge={oge}
+            sirano={i + 1}
+            uyeMi={uyeMi}
+            yoneticiMiyim={yoneticiMiyim}
+            oncekiOge={i > 0 ? ogeler[i - 1] : null}
+            sonrakiOge={i < ogeler.length - 1 ? ogeler[i + 1] : null}
+            onDegisti={yenidenYukle}
+          />
         ))}
       </div>
     </div>

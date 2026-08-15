@@ -103,6 +103,7 @@ export default function GonderiEkle() {
 
   const [kullaniciPuani, setKullaniciPuani] = useState(4)
   const [gunce, setGunce] = useState('')
+  const [spoiler, setSpoiler] = useState(false)
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const gunceRef = useRef(null)
 
@@ -565,6 +566,7 @@ export default function GonderiEkle() {
         ilgiliKaynakUrl: kategori === 'yazi' && yaziAltTur === 'sanat-elestirisi' ? ilgiliKaynakUrl : '',
         kullaniciPuani: kategori === 'yazi' && PUANSIZ_YAZI_ALT_TURLERI.includes(yaziAltTur) ? null : kullaniciPuani,
         gunce,
+        spoiler,
         tarih: serverTimestamp(),
         begenenler: [],
         yorumSayisi: 0,
@@ -1100,6 +1102,12 @@ export default function GonderiEkle() {
             <p className="mt-1 text-right text-xs text-kraft">
               {gunce.trim() ? gunce.trim().split(/\s+/).length : 0} kelime
             </p>
+          )}
+          {(apiliKategori || (kategori === 'yazi' && ['film-incelemesi', 'kitap-incelemesi'].includes(yaziAltTur))) && (
+            <label className="mt-2 flex items-center gap-2 text-xs text-murekkep">
+              <input type="checkbox" checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />
+              ⚠️ Bu yazıda spoiler var
+            </label>
           )}
         </div>
 

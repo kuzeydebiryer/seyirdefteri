@@ -25,6 +25,7 @@ import { uretDavetKodu } from '../utils/davetKodu.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import Avatar from '../components/Avatar.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
+import YilOzeti from '../components/YilOzeti.jsx'
 
 const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
@@ -81,9 +82,12 @@ export default function Profil() {
   }, [uid])
   const [takipIsleniyor, setTakipIsleniyor] = useState(false)
 
-  const [sekme, setSekme] = useState('izlediklerim')
+  const [sekme, setSekme] = useState('yilozeti')
   const [favoriSekmesi, setFavoriSekmesi] = useState('sinema')
   const { favoriler, yenidenYukle: favorileriYenile } = useFavoriler(uid, favoriSekmesi)
+  // Profilin en üstündeki "Sabitlenmiş Favoriler" vitrini için — sekmedeki
+  // gibi tek türe filtrelemeden, tüm favorilerden en yeni eklenen 4 tanesi.
+  const { favoriler: tumFavoriler } = useFavoriler(uid)
   const { izlenecekler, yenidenYukle: izlenecekleriYenile } = useIzlenecekler(uid)
   const { puanlar: eserPuanlarim } = useEserPuanlarim(uid)
   const { raflar, yenidenYukle: raflariYenile } = useRaflar(uid)
@@ -215,15 +219,16 @@ export default function Profil() {
   if (!hedefProfil) return <p className="text-kraft text-sm">Yükleniyor...</p>
 
   const SEKMELER = [
-    { id: 'izlediklerim', etiket: 'İzlediklerim' },
-    { id: 'okuduklarim', etiket: 'Okuduklarım' },
-    { id: 'yazigezi', etiket: 'Yazı & Gezi' },
-    { id: 'suanda', etiket: 'Şu An' },
-    { id: 'izleyecegim', etiket: 'İzleyecek/Okuyacaklarım' },
-    { id: 'favoriler', etiket: 'Favoriler' },
-    { id: 'raflarim', etiket: 'Raflarım' },
-    { id: 'yorumlarim', etiket: 'Yorumlarım' },
-    { id: 'sanatKoleksiyonum', etiket: 'Sanat Koleksiyonlarım' },
+    { id: 'yilozeti', etiket: '📊 Yılın Özeti' },
+    { id: 'izlediklerim', etiket: '🎬 İzlediklerim' },
+    { id: 'okuduklarim', etiket: '📖 Okuduklarım' },
+    { id: 'yazigezi', etiket: '✍️ Yazı & Gezi' },
+    { id: 'suanda', etiket: '⏳ Şu An' },
+    { id: 'izleyecegim', etiket: '📋 İzleyecek/Okuyacaklarım' },
+    { id: 'favoriler', etiket: '♥ Favoriler' },
+    { id: 'raflarim', etiket: '📚 Raflarım' },
+    { id: 'yorumlarim', etiket: '💬 Yorumlarım' },
+    { id: 'sanatKoleksiyonum', etiket: '🖼️ Sanat Koleksiyonlarım' },
   ]
 
   async function rafOlusturTiklandi(e) {
@@ -320,6 +325,21 @@ export default function Profil() {
             </div>
           )}
           {!duzenlemeAcik && hedefProfil.bio && <p className="mt-2 text-sm text-murekkep">{hedefProfil.bio}</p>}
+
+          {!duzenlemeAcik && tumFavoriler.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[11px] uppercase tracking-widest text-kraft">📌 Favoriler</p>
+              <div className="flex gap-2">
+                {tumFavoriler.slice(0, 4).map((f) => (
+                  <Link key={f.id} to={esereLink(f.tur, f.disId)} className="block w-14 shrink-0" title={f.baslik}>
+                    <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                      {f.posterUrl && <img src={f.posterUrl} alt={f.baslik} className="h-full w-full object-cover" />}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {duzenlemeAcik && (
             <form onSubmit={profiliKaydet} className="mt-3 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
@@ -544,6 +564,8 @@ export default function Profil() {
       </div>
 
       {/* İzlediklerim (sadece Film/Dizi) */}
+      {sekme === 'yilozeti' && <YilOzeti gonderiler={gonderiler} eserPuanlarim={eserPuanlarim} />}
+
       {sekme === 'izlediklerim' && (
         <>
           {(() => {

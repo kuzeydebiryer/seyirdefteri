@@ -20,6 +20,7 @@ export default function GonderiKarti({ gonderi }) {
   const { kullanici, profil } = useAuth()
   const navigate = useNavigate()
   const [begenenler, setBegenenler] = useState(gonderi.begenenler || [])
+  const [spoilerAcik, setSpoilerAcik] = useState(false)
   const benBegendimMi = kullanici && begenenler.includes(kullanici.uid)
   const bilgi = kategoriBilgi(gonderi.tur)
   const gorsel = gonderi.posterUrl || gonderi.ilgiliPosterUrl
@@ -81,6 +82,11 @@ export default function GonderiKarti({ gonderi }) {
 
         <h3 className="font-baslik text-lg text-murekkep mt-1">
           {gonderi.baslik} {gonderi.yil && <span className="text-kraft text-sm">({gonderi.yil})</span>}
+          {gonderi.spoiler && (
+            <span className="ml-2 rounded-full bg-muhur/10 px-2 py-0.5 text-[10px] font-govde uppercase tracking-wide text-muhur align-middle">
+              ⚠️ Spoiler
+            </span>
+          )}
         </h3>
 
         {gonderi.tur === 'kitap' && gonderi.yazar && <p className="text-xs text-kraft -mt-1">{gonderi.yazar}</p>}
@@ -126,8 +132,22 @@ export default function GonderiKarti({ gonderi }) {
 
         {gonderi.gunce && (
           <>
-            <GonderiIcerik metin={gonderi.gunce} tam={false} />
-            <span className="mt-0.5 inline-block text-xs text-kraft">Devamını oku →</span>
+            {gonderi.spoiler && !spoilerAcik ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSpoilerAcik(true)
+                }}
+                className="mt-1 block rounded-sm bg-kagit px-2 py-1.5 text-xs text-kraft ring-1 ring-cizgi hover:text-murekkep"
+              >
+                ⚠️ Bu yazıda spoiler var — Yine de Göster
+              </button>
+            ) : (
+              <>
+                <GonderiIcerik metin={gonderi.gunce} tam={false} />
+                <span className="mt-0.5 inline-block text-xs text-kraft">Devamını oku →</span>
+              </>
+            )}
           </>
         )}
 

@@ -12,6 +12,7 @@ import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import TavsiyeBildirimSeridi from '../components/TavsiyeBildirimSeridi.jsx'
 import OneCikanlarSeridi from '../components/OneCikanlarSeridi.jsx'
+import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
 import GunlukKesif from '../components/GunlukKesif.jsx'
 import Logo from '../components/Logo.jsx'
 import { sonHabercileriGetir, katilimDegistir, habercSil } from '../utils/etkinlikHabercisi.js'
@@ -181,6 +182,8 @@ export default function Anasayfa() {
       <OneCikanlarSeridi />
 
       <TavsiyeBildirimSeridi />
+
+      <TopluluklarBildirimSeridi />
 
       <TavsiyeBolumu
         tur="sinema"

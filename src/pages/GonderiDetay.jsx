@@ -44,6 +44,7 @@ export default function GonderiDetay() {
 
   const [gonderi, setGonderi] = useState(null)
   const [yorumlar, setYorumlar] = useState([])
+  const [spoilerAcik, setSpoilerAcik] = useState(false)
   const [yeniYorum, setYeniYorum] = useState('')
   const [yukleniyor, setYukleniyor] = useState(true)
   const [gonderiliyor, setGonderiliyor] = useState(false)
@@ -353,7 +354,16 @@ export default function GonderiDetay() {
 
       {gonderi.gunce && (
         <div className="mt-4">
-          <GonderiIcerik metin={gonderi.gunce} tam={true} />
+          {gonderi.spoiler && !spoilerAcik ? (
+            <button
+              onClick={() => setSpoilerAcik(true)}
+              className="w-full rounded-sm bg-kagitKoyu px-4 py-3 text-sm text-kraft ring-1 ring-cizgi hover:text-murekkep"
+            >
+              ⚠️ Bu yazıda spoiler var — Yine de Göster
+            </button>
+          ) : (
+            <GonderiIcerik metin={gonderi.gunce} tam={true} />
+          )}
         </div>
       )}
 

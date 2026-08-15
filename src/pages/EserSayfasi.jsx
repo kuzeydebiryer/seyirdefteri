@@ -11,8 +11,11 @@ import {
   toplamSayfaTamamla,
   okumayaBasla,
   ilerlemeGuncelle,
+  baslangicTarihiTamamla,
+  dizideIlerlemeGuncelle,
 } from '../utils/izlenecek.js'
 import { eserPuanla } from '../utils/eserPuani.js'
+import { tavsiyePosterleriniSenkronizeEt } from '../utils/tavsiye.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
@@ -26,11 +29,40 @@ import { filmOscarBilgisiGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
+import EserKarti from '../components/EserKarti.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
+const OMDB_API_KEY = import.meta.env.VITE_OMDB_API_KEY
 const TMDB_SAGLAYICI_LOGO = 'https://image.tmdb.org/t/p/w92'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
+
+// Okuma başlangıcından bu yana geçen gün sayısı ve günlük ortalama sayfa
+// hızı. Başladığı gün "1. gün" sayılır (0 değil) — kullanıcıya daha sezgisel
+// geliyor ("bugün başladım" iken "0 gündür okuyorsun" tuhaf kaçardı).
+function okumaHiziHesapla(baslangicTarihi, suankiSayfa) {
+  if (!baslangicTarihi?.toMillis) return null
+  const gunSayisi = Math.max(1, Math.floor((Date.now() - baslangicTarihi.toMillis()) / 86400000) + 1)
+  const gunlukOrtalama = suankiSayfa > 0 ? Math.round((suankiSayfa / gunSayisi) * 10) / 10 : 0
+  return { gunSayisi, gunlukOrtalama }
+}
+
+// Sezon + bölüm çiftini, dizinin başından itibaren kaçıncı bölüm olduğuna
+// çevirir — ilerleme çubuğu ve "günde ortalama X bölüm" hesabı için tek bir
+// sayı gerekiyor. 0. sezon (Özel Bölümler) sayılmıyor, detay.sezonlar zaten
+// bunu filtrelemiş geliyor.
+function toplamIzlenenBolum(sezonlar, mevcutSezon, mevcutBolum) {
+  if (!sezonlar) return mevcutBolum || 0
+  let toplam = 0
+  for (const s of sezonlar) {
+    if (s.season_number < mevcutSezon) toplam += s.episode_count || 0
+    else if (s.season_number === mevcutSezon) {
+      toplam += mevcutBolum || 0
+      break
+    }
+  }
+  return toplam
+}
 
 function KisiListesi({ kisiler, etiket }) {
   if (!kisiler || kisiler.length === 0) return null
@@ -236,6 +268,7 @@ export default function EserSayfasi({ tur }) {
   }
 
   const [detay, setDetay] = useState(null)
+  const [disPuanlar, setDisPuanlar] = useState(null) // { imdb, rottenTomatoes, metacritic }
   const [saglayicilar, setSaglayicilar] = useState(null)
   const [detayYukleniyor, setDetayYukleniyor] = useState(true)
   const [hata, setHata] = useState('')
@@ -243,6 +276,8 @@ export default function EserSayfasi({ tur }) {
   const [favoriMi_, setFavoriMi_] = useState(false)
   const [izlenecekKaydi, setIzlenecekKaydi] = useState(null)
   const [sayfaTaslak, setSayfaTaslak] = useState(0)
+  const [sezonTaslak, setSezonTaslak] = useState(1)
+  const [bolumTaslak, setBolumTaslak] = useState(0)
   const [favoriIsleniyor, setFavoriIsleniyor] = useState(false)
   const [izlenecekIsleniyor, setIzlenecekIsleniyor] = useState(false)
 
@@ -251,11 +286,12 @@ export default function EserSayfasi({ tur }) {
     async function getir() {
       setDetayYukleniyor(true)
       setHata('')
+      setDisPuanlar(null)
       try {
         if (tur === 'sinema' || tur === 'dizi') {
           if (!TMDB_API_KEY) throw new Error('TMDB API anahtarı tanımlı değil.')
           const uc = tur === 'sinema' ? 'movie' : 'tv'
-          const url = `https://api.themoviedb.org/3/${uc}/${id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits,videos,similar,images&include_image_language=null,tr,en`
+          const url = `https://api.themoviedb.org/3/${uc}/${id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits,videos,similar,images,external_ids&include_image_language=null,tr,en`
           const res = await fetch(url)
           const data = await res.json()
           if (!res.ok) throw new Error(data.status_message || `HTTP ${res.status}`)
@@ -289,13 +325,41 @@ export default function EserSayfasi({ tur }) {
             sureDk: tur === 'sinema' ? data.runtime : null,
             sezonSayisi: tur === 'dizi' ? data.number_of_seasons : null,
             bolumSayisi: tur === 'dizi' ? data.number_of_episodes : null,
+            // Sezon başına bölüm sayısı — ilerleme çubuğunu hesaplamak için
+            // (bkz. "Şu An İzliyorsun" paneli). 0 numaralı sezon genelde
+            // "Özel Bölümler" oluyor, ana ilerlemeye dahil etmiyoruz.
+            sezonlar:
+              tur === 'dizi'
+                ? (data.seasons || []).filter((s) => s.season_number > 0).sort((a, b) => a.season_number - b.season_number)
+                : null,
             yonetmenler,
             oyuncular,
             dbPuan: data.vote_average ? data.vote_average.toFixed(1) : null,
+            imdbId: data.external_ids?.imdb_id || null,
             fragmanId: fragman?.key || null,
             benzerler,
             gorseller,
           })
+
+          // Dış puanlar (IMDb / Rotten Tomatoes / Metacritic) — TMDB'nin
+          // vote_average'ı zaten var, bunlar "dünya ne diyor" özetini
+          // tamamlıyor. OMDb tek çağrıda üçünü birden veriyor (Ratings
+          // dizisi), IMDb ID'si TMDB'nin external_ids'inden geliyor,
+          // ekstra bir arama/eşleştirme gerekmiyor.
+          if (OMDB_API_KEY && data.external_ids?.imdb_id) {
+            fetch(`https://www.omdbapi.com/?i=${data.external_ids.imdb_id}&apikey=${OMDB_API_KEY}`)
+              .then((r) => r.json())
+              .then((omdb) => {
+                if (iptal || omdb.Response === 'False') return
+                const bul = (kaynak) => omdb.Ratings?.find((r) => r.Source === kaynak)?.Value || null
+                setDisPuanlar({
+                  imdb: omdb.imdbRating && omdb.imdbRating !== 'N/A' ? omdb.imdbRating : null,
+                  rottenTomatoes: bul('Rotten Tomatoes'),
+                  metacritic: bul('Metacritic') || (omdb.Metascore !== 'N/A' ? `${omdb.Metascore}/100` : null),
+                })
+              })
+              .catch(() => {}) // sessizce geç — dış puanlar opsiyonel bir ek, sayfayı bloklamasın
+          }
 
           // Nerede İzlenebilir (Türkiye) — TMDB'nin JustWatch verisi üzerinden sağladığı uç nokta
           try {
@@ -348,6 +412,8 @@ export default function EserSayfasi({ tur }) {
         setFavoriMi_(fav)
         setIzlenecekKaydi(izl)
         if (izl?.suankiSayfa != null) setSayfaTaslak(izl.suankiSayfa)
+        if (izl?.mevcutSezon != null) setSezonTaslak(izl.mevcutSezon)
+        if (izl?.mevcutBolum != null) setBolumTaslak(izl.mevcutBolum)
       }
     }
     kontrolEt()
@@ -370,6 +436,18 @@ export default function EserSayfasi({ tur }) {
       setIzlenecekKaydi((onceki) => ({ ...onceki, toplamSayfa: detay.sayfaSayisi }))
     }
   }, [tur, id, kullanici, detay?.sayfaSayisi, izlenecekKaydi?.durum, izlenecekKaydi?.toplamSayfa])
+
+  // Kendiliğinden onarım: "Okumaya Başlıyorum" başlangıç tarihi kaydetme
+  // özelliğinden önce başlanmış okumalar için baslangicTarihi eksik kalmış
+  // olabilir — varsa doldurmuyoruz (elimizde gerçek tarih yok), sadece bir
+  // kez "şimdi" olarak yazıp günlük ortalamanın buradan itibaren sayılmasını
+  // sağlıyoruz.
+  useEffect(() => {
+    if (izlenecekKaydi?.durum === 'okunuyor' && !izlenecekKaydi.baslangicTarihi && kullanici) {
+      baslangicTarihiTamamla(kullanici.uid, tur, id)
+      setIzlenecekKaydi((onceki) => ({ ...onceki, baslangicTarihi: { toMillis: () => Date.now() } }))
+    }
+  }, [tur, id, kullanici, izlenecekKaydi?.durum, izlenecekKaydi?.baslangicTarihi])
 
   useEffect(() => {
     if (tur !== 'kitap' || !id) {
@@ -461,6 +539,11 @@ export default function EserSayfasi({ tur }) {
         sayfaSayisi: guncellenen.sayfaSayisi,
         yayinevi: guncellenen.yayinevi,
       }))
+      // Bu kitap daha önce kapaksız tavsiye edildiyse, o tavsiye kartlarını da
+      // geriye dönük dolduruyoruz (bkz. tavsiyePosterleriniSenkronizeEt yorumu).
+      if (guncellenen.posterUrl) {
+        tavsiyePosterleriniSenkronizeEt('kitap', id, guncellenen.posterUrl).catch(() => {})
+      }
       setDuzenleModuAcik(false)
     } catch (err) {
       window.alert('Kaydedilemedi: ' + err.message)
@@ -562,6 +645,18 @@ export default function EserSayfasi({ tur }) {
     }
   }
 
+  async function diziIlerlemesiniKaydet(e) {
+    e.preventDefault()
+    if (!kullanici) return
+    setIzlenecekIsleniyor(true)
+    try {
+      await dizideIlerlemeGuncelle(kullanici.uid, id, sezonTaslak, bolumTaslak)
+      setIzlenecekKaydi((onceki) => ({ ...onceki, mevcutSezon: sezonTaslak, mevcutBolum: bolumTaslak }))
+    } finally {
+      setIzlenecekIsleniyor(false)
+    }
+  }
+
   async function puanGonder(puan) {
     if (!kullanici) return
     setPuanKaydediliyor(true)
@@ -646,6 +741,9 @@ export default function EserSayfasi({ tur }) {
                 <span>{detay.yayinevi}</span>
               ))}
             {detay.dbPuan && <span>{tur === 'kitap' ? 'Google' : 'TMDB'} {detay.dbPuan}</span>}
+            {disPuanlar?.imdb && <span>IMDb {disPuanlar.imdb}</span>}
+            {disPuanlar?.rottenTomatoes && <span>🍅 {disPuanlar.rottenTomatoes}</span>}
+            {disPuanlar?.metacritic && <span>Metacritic {disPuanlar.metacritic}</span>}
           </div>
 
           <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
@@ -1091,6 +1189,15 @@ export default function EserSayfasi({ tur }) {
                       }}
                     />
                   </div>
+                  {(() => {
+                    const hiz = okumaHiziHesapla(izlenecekKaydi.baslangicTarihi, izlenecekKaydi.suankiSayfa || 0)
+                    if (!hiz) return null
+                    return (
+                      <p className="mt-1 text-[11px] text-kraft">
+                        {hiz.gunSayisi}. gün{hiz.gunlukOrtalama > 0 && <> · günde ortalama ~{hiz.gunlukOrtalama} sayfa</>}
+                      </p>
+                    )
+                  })()}
                   <form onSubmit={ilerlemeyiKaydet} className="mt-2 flex items-center gap-2">
                     <input
                       type="number"
@@ -1110,9 +1217,62 @@ export default function EserSayfasi({ tur }) {
                     </button>
                   </form>
                 </>
-              ) : (
+              ) : tur === 'dizi' && detay.sezonlar?.length > 0 ? (
+                <>
+                  {(() => {
+                    const izlenen = toplamIzlenenBolum(detay.sezonlar, izlenecekKaydi.mevcutSezon || 1, izlenecekKaydi.mevcutBolum || 0)
+                    const yuzde = detay.bolumSayisi ? Math.min(100, Math.round((izlenen / detay.bolumSayisi) * 100)) : 0
+                    const hiz = okumaHiziHesapla(izlenecekKaydi.baslangicTarihi, izlenen)
+                    return (
+                      <>
+                        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-kagit ring-1 ring-cizgi">
+                          <div className="h-full bg-deniz" style={{ width: `${yuzde}%` }} />
+                        </div>
+                        <p className="mt-1 text-[11px] text-kraft">
+                          {izlenen}/{detay.bolumSayisi} bölüm
+                          {hiz && hiz.gunlukOrtalama > 0 && <> · {hiz.gunSayisi}. gün · günde ortalama ~{hiz.gunlukOrtalama} bölüm</>}
+                        </p>
+                      </>
+                    )
+                  })()}
+                  <form onSubmit={diziIlerlemesiniKaydet} className="mt-2 flex flex-wrap items-center gap-2">
+                    <select
+                      value={sezonTaslak}
+                      onChange={(e) => {
+                        setSezonTaslak(Number(e.target.value))
+                        setBolumTaslak(0)
+                      }}
+                      className="rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                    >
+                      {detay.sezonlar.map((s) => (
+                        <option key={s.season_number} value={s.season_number}>
+                          {s.name || `${s.season_number}. Sezon`}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      max={detay.sezonlar.find((s) => s.season_number === sezonTaslak)?.episode_count || 99}
+                      value={bolumTaslak}
+                      onChange={(e) => setBolumTaslak(Number(e.target.value))}
+                      className="w-16 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                    />
+                    <span className="text-xs text-kraft">
+                      / {detay.sezonlar.find((s) => s.season_number === sezonTaslak)?.episode_count || '?'} bölüm
+                    </span>
+                    <button
+                      type="submit"
+                      disabled={izlenecekIsleniyor}
+                      className="rounded-sm bg-muhur px-2 py-1 font-govde text-[11px] text-kagit disabled:opacity-40"
+                    >
+                      Güncelle
+                    </button>
+                  </form>
+                </>
+              ) : tur === 'kitap' ? (
                 <p className="mt-1 text-xs text-kraft">Sayfa bilgisi yok, ilerleme takip edilemiyor.</p>
-              )}
+              ) : null}
               <button onClick={izlenecektenKaldir} className="mt-2 text-[11px] text-kraft hover:text-muhur">
                 Bitirdim, listeden kaldır
               </button>
@@ -1258,19 +1418,16 @@ export default function EserSayfasi({ tur }) {
           <h2 className="font-baslik text-lg text-murekkep mb-2">Benzer {tur === 'dizi' ? 'Diziler' : 'Filmler'}</h2>
           <div className="flex gap-3 overflow-x-auto pb-1">
             {detay.benzerler.map((b) => (
-              <Link key={b.id} to={`/${tur === 'dizi' ? 'dizi' : 'film'}/${b.id}`} className="block w-20 shrink-0">
-                <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                  {b.poster_path && (
-                    <img
-                      src={`https://image.tmdb.org/t/p/w300${b.poster_path}`}
-                      alt={b.title || b.name}
-                      loading="lazy"
-                      className="h-full w-full object-cover"
-                    />
-                  )}
-                </div>
-                <p className="mt-1 truncate text-xs text-murekkep">{b.title || b.name}</p>
-              </Link>
+              <EserKarti
+                key={b.id}
+                id={b.id}
+                tur={tur}
+                baslik={b.title || b.name}
+                posterUrl={b.poster_path ? `https://image.tmdb.org/t/p/w300${b.poster_path}` : ''}
+                yil={(b.release_date || b.first_air_date)?.slice(0, 4)}
+                puan={b.vote_average}
+                boyut="kucuk"
+              />
             ))}
           </div>
         </div>
@@ -1310,11 +1467,13 @@ export default function EserSayfasi({ tur }) {
             <form onSubmit={alintiPaylas} className="mb-4 space-y-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
               <textarea
                 value={yeniAlintiMetni}
-                onChange={(e) => setYeniAlintiMetni(e.target.value)}
+                onChange={(e) => setYeniAlintiMetni(e.target.value.slice(0, 400))}
                 placeholder="Beğendiğin bir alıntıyı buraya yaz..."
                 rows={3}
+                maxLength={400}
                 className="w-full rounded-sm bg-kagit px-2 py-1 text-sm text-murekkep ring-1 ring-cizgi"
               />
+              <p className="text-right text-[11px] text-kraft">{yeniAlintiMetni.length}/400</p>
               <div className="flex items-center gap-2">
                 <input
                   type="number"

@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // Yönetmenler, TMDB'nin genel "kişi" kavramından farklı olarak üyelerin elle
@@ -32,4 +32,14 @@ export async function ilgiliKitapEkle(yonetmenTmdbId, { googleBooksId, baslik, y
 
 export async function ilgiliKitapSil(yonetmenTmdbId, kitapId) {
   await deleteDoc(doc(db, 'yonetmenler', String(yonetmenTmdbId), 'ilgiliKitaplar', kitapId))
+}
+
+// Sayfa birleşmesinden (bkz. KisiSayfasi.jsx) önce, "İlgili Kitaplar" özelliği
+// sadece Yönetmen sayfasında vardı ve bu alt koleksiyonu kullanıyordu. Artık
+// yeni eklemeler genel "ilgiliEser" sistemine gidiyor, ama eskiden burada
+// eklenmiş veriyi kaybetmemek için KisiSayfasi bunu da okuyup birleştiriyor.
+export async function ilgiliKitaplarGetir(yonetmenTmdbId) {
+  const q = query(collection(db, 'yonetmenler', String(yonetmenTmdbId), 'ilgiliKitaplar'), orderBy('eklemeTarihi', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }

@@ -15,7 +15,7 @@ export default function ListeOnizleme({ topluluklId, listeId, adet = 10 }) {
           collection(db, 'listeOgeleri'),
           where('topluluklId', '==', topluluklId),
           where('listeId', '==', listeId),
-          orderBy('etkinlikTarihi', 'desc'),
+          orderBy('sira', 'asc'),
           limit(adet)
         )
         const snap = await getDocs(q)

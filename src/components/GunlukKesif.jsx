@@ -13,19 +13,43 @@ export default function GunlukKesif() {
   const [icerik, setIcerik] = useState(null)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [aciliyor, setAciliyor] = useState(false)
+  // Müze API'lerinden gelen eserlerin bir kısmının image_id'si var ama
+  // gerçek IIIF görseli 403/404 dönüyor (haklar/arşiv tutarsızlığı) —
+  // bu yüzden ara sıra kırık resim ikonu çıkıyordu. Görsel yüklenemezse
+  // sessizce başka bir eser deniyoruz; birkaç denemeden sonra pes edip
+  // görselsiz gösteriyoruz.
+  const [resimDenemeSayaci, setResimDenemeSayaci] = useState(0)
+
+  async function eserGetirVeAyarla() {
+    const eser = await rastgeleEserGetir().catch(() => null)
+    setIcerik(eser)
+  }
 
   async function yenile(zorlaTur) {
     setYukleniyor(true)
+    setResimDenemeSayaci(0)
     const secilenTur = zorlaTur || (Math.random() < 0.5 ? 'kitap' : 'eser')
     setTur(secilenTur)
     if (secilenTur === 'kitap') {
       const kitap = await gununKitabiGetir().catch(() => null)
       setIcerik(kitap)
     } else {
-      const eser = await rastgeleEserGetir().catch(() => null)
-      setIcerik(eser)
+      await eserGetirVeAyarla()
     }
     setYukleniyor(false)
+  }
+
+  function resimYuklenemedi() {
+    setResimDenemeSayaci((n) => {
+      const yeni = n + 1
+      if (yeni > 2) {
+        // 3 denemeden sonra pes et, görsel olmadan göstermeye devam et
+        setIcerik((i) => (i ? { ...i, imageUrl: '' } : i))
+      } else {
+        eserGetirVeAyarla()
+      }
+      return yeni
+    })
   }
 
   useEffect(() => {
@@ -52,9 +76,17 @@ export default function GunlukKesif() {
 
   return (
     <div className="mb-6 flex items-center gap-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-      {tur === 'eser' && icerik.imageUrl && (
-        <img src={icerik.imageUrl} alt={icerik.title} className="h-20 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi" />
-      )}
+      {tur === 'eser' &&
+        (icerik.imageUrl ? (
+          <img
+            src={icerik.imageUrl}
+            alt={icerik.title}
+            onError={resimYuklenemedi}
+            className="h-20 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi"
+          />
+        ) : (
+          <div className="flex h-20 w-16 shrink-0 items-center justify-center rounded-sm bg-kagit text-xl ring-1 ring-cizgi">🖼️</div>
+        ))}
       <div className="min-w-0 flex-1">
         <p className="text-[11px] uppercase tracking-widest text-gise">
           {tur === 'kitap' ? '📖 Günün Kitabı' : `🖼️ Günün Eseri · ${icerik.kaynakAdi}`}

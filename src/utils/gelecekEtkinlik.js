@@ -10,7 +10,7 @@ import { db } from '../firebase.js'
 // topluluklId alanı ekleyip basit bir where() sorgusuyla filtreliyoruz;
 // bu, hiçbir özel indeks gerektirmez.
 
-export async function gelecekEtkinlikOlustur(topluluklId, { baslik, aciklama, tarih, eser, topluluk, kullanici }) {
+export async function gelecekEtkinlikOlustur(topluluklId, { baslik, aciklama, tarih, eser, topluluk, kullanici, tekrarSeriId }) {
   await addDoc(collection(db, 'gelecekEtkinlikler'), {
     baslik,
     aciklama,
@@ -19,6 +19,7 @@ export async function gelecekEtkinlikOlustur(topluluklId, { baslik, aciklama, ta
     topluluklId,
     topluluklAd: topluluk?.ad || '',
     topluluklTur: topluluk?.tur || 'Genel',
+    tekrarSeriId: tekrarSeriId || null,
     olusturanId: kullanici.uid,
     olusturanAdi: kullanici.displayName || 'İsimsiz',
     olusturmaTarihi: serverTimestamp(),

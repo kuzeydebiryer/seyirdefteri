@@ -76,11 +76,13 @@ export default function AlintiDuvari() {
           <KitapSecici secili={seciliKitap} onSecim={setSeciliKitap} onTemizle={() => setSeciliKitap(null)} />
           <textarea
             value={metin}
-            onChange={(e) => setMetin(e.target.value)}
+            onChange={(e) => setMetin(e.target.value.slice(0, 400))}
             placeholder="Beğendiğin bir alıntıyı buraya yaz..."
             rows={3}
+            maxLength={400}
             className="w-full rounded-sm bg-kagit px-2 py-1 text-sm text-murekkep ring-1 ring-cizgi"
           />
+          <p className="text-right text-[11px] text-kraft">{metin.length}/400</p>
           <div className="flex items-center gap-2">
             <input
               type="number"

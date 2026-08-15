@@ -18,14 +18,16 @@
 .dark {
   /* Karanlık palet — aynı "kağıt/mürekkep" kimliğini korumak için ters
      çevrilmiş sıcak tonlar (soğuk gri değil), okunabilirlik için kraft/
-     muhur/deniz/gise biraz açıldı. */
-  --kagit: 27 24 18;
-  --kagitKoyu: 37 32 23;
-  --murekkep: 237 230 211;
-  --muhur: 209 85 76;
-  --kraft: 169 154 120;
-  --cizgi: 58 51 36;
-  --deniz: 125 162 157;
+     muhur/deniz/gise biraz açıldı. İlk denemede (27 24 18) neredeyse saf
+     siyaha yakındı — Letterboxd gibi platformlar da tam siyah değil, yumuşak
+     bir kömür/antrasit tonu kullanıyor. Değerler belirgin şekilde açıldı. */
+  --kagit: 42 38 31;
+  --kagitKoyu: 58 52 42;
+  --murekkep: 235 227 209;
+  --muhur: 214 93 84;
+  --kraft: 181 166 132;
+  --cizgi: 78 70 56;
+  --deniz: 132 168 163;
   --gise: 201 148 86;
 }
 

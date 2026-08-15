@@ -36,9 +36,14 @@ function KulupBolumu({ baslik, tartismaEtkinlikleri, gelecekEtkinlikler }) {
 
 export default function Etkinlikler() {
   const { etkinlikler: tartismaEtkinlikleri, yukleniyor: tartismaYukleniyor } = useTartismaEtkinlikleri({})
-  const { etkinlikler: gelecekEtkinlikler, yukleniyor: gelecekYukleniyor, hata } = useTumGelecekEtkinlikler()
+  const { etkinlikler: tumGelecekEtkinlikler, yukleniyor: gelecekYukleniyor, hata } = useTumGelecekEtkinlikler()
 
   const yukleniyor = tartismaYukleniyor || gelecekYukleniyor
+
+  // Küresel Etkinlikler sayfası ileriye dönük olmalı — geçmiş buluşmalar
+  // burada değil, ilgili topluluğun kendi sayfasındaki arşivde görünür.
+  const simdi = Date.now()
+  const gelecekEtkinlikler = tumGelecekEtkinlikler.filter((e) => !e.tarih || new Date(e.tarih).getTime() >= simdi)
 
   const filmTartisma = tartismaEtkinlikleri.filter((e) => e.gonderiTuru === 'sinema' || e.gonderiTuru === 'dizi')
   const kitapTartisma = tartismaEtkinlikleri.filter((e) => e.gonderiTuru === 'kitap')

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342'
+const OMDB_API_KEY = import.meta.env.VITE_OMDB_API_KEY
 
 const ULKELER = [
   { kod: '', ad: 'Tümü' },
@@ -38,6 +39,8 @@ export default function FilmDiziArama({ tur }) {
   const [yilBaslangic, setYilBaslangic] = useState('')
   const [yilBitis, setYilBitis] = useState('')
   const [minPuan, setMinPuan] = useState('')
+  const [minImdbPuan, setMinImdbPuan] = useState('')
+  const [zenginlesiyor, setZenginlesiyor] = useState(false)
   const [ulke, setUlke] = useState('')
   const [siralama, setSiralama] = useState('popularity.desc')
 
@@ -64,6 +67,36 @@ export default function FilmDiziArama({ tur }) {
     }
   }
 
+  // OMDb'nin bir "keşfet/filtrele" uç noktası yok — sadece tek tek IMDb ID
+  // ile sorgulanabiliyor. Bu yüzden TMDB'nin zaten getirdiği sonuç sayfasını
+  // (en fazla ~18 öğe) tek tek zenginleştirip client-side filtreliyoruz;
+  // TMDB'nin tüm kataloğunu IMDb puanına göre taramak mümkün değil.
+  async function omdbIleZenginlestirVeFiltrele(liste) {
+    if (!minImdbPuan || !OMDB_API_KEY) return liste
+    setZenginlesiyor(true)
+    try {
+      const esikDeger = parseFloat(minImdbPuan)
+      const zenginlesmis = await Promise.all(
+        liste.slice(0, 18).map(async (item) => {
+          try {
+            const extRes = await fetch(`https://api.themoviedb.org/3/${uc}/${item.id}/external_ids?api_key=${TMDB_API_KEY}`)
+            const ext = await extRes.json()
+            if (!ext.imdb_id) return { ...item, imdbPuan: null }
+            const omdbRes = await fetch(`https://www.omdbapi.com/?i=${ext.imdb_id}&apikey=${OMDB_API_KEY}`)
+            const omdb = await omdbRes.json()
+            const puan = omdb.imdbRating && omdb.imdbRating !== 'N/A' ? parseFloat(omdb.imdbRating) : null
+            return { ...item, imdbPuan: puan }
+          } catch {
+            return { ...item, imdbPuan: null }
+          }
+        })
+      )
+      return zenginlesmis.filter((it) => it.imdbPuan != null && it.imdbPuan >= esikDeger)
+    } finally {
+      setZenginlesiyor(false)
+    }
+  }
+
   async function filtreUygula(e) {
     e.preventDefault()
     if (!TMDB_API_KEY) return
@@ -80,7 +113,8 @@ export default function FilmDiziArama({ tur }) {
       const url = `https://api.themoviedb.org/3/discover/${uc}?${parcalar.join('&')}`
       const res = await fetch(url)
       const data = await res.json()
-      setSonuclar(data.results || [])
+      const sonuc = await omdbIleZenginlestirVeFiltrele(data.results || [])
+      setSonuclar(sonuc)
     } finally {
       setYukleniyor(false)
     }
@@ -158,6 +192,18 @@ export default function FilmDiziArama({ tur }) {
               placeholder="Min TMDB puanı"
               className="rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
             />
+            {OMDB_API_KEY && (
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                value={minImdbPuan}
+                onChange={(e) => setMinImdbPuan(e.target.value)}
+                placeholder="Min IMDb puanı"
+                className="rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+              />
+            )}
             <select value={siralama} onChange={(e) => setSiralama(e.target.value)} className="rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi">
               {SIRALAMALAR.map((s) => (
                 <option key={s.deger} value={s.deger}>
@@ -167,10 +213,11 @@ export default function FilmDiziArama({ tur }) {
             </select>
           </div>
           <p className="text-[11px] text-kraft">
-            Not: Puan, TMDB'nin kendi kullanıcı puanı (IMDb değil).
+            Not: TMDB puanı kendi kullanıcı puanı (IMDb değil).
+            {OMDB_API_KEY && ' IMDb puanı filtresi sadece bu sayfadaki sonuçlara uygulanır (TMDB\'nin tüm kataloğu değil), bu yüzden bazı iyi filmler dar bir sonuç setinde elenmiş olabilir.'}
           </p>
           <button type="submit" className="rounded-sm bg-deniz px-4 py-2 font-govde text-xs text-kagit">
-            {yukleniyor ? 'Filtreleniyor...' : 'Uygula'}
+            {yukleniyor ? (zenginlesiyor ? 'IMDb puanları kontrol ediliyor...' : 'Filtreleniyor...') : 'Uygula'}
           </button>
         </form>
       )}
@@ -191,6 +238,7 @@ export default function FilmDiziArama({ tur }) {
                   )}
                 </div>
                 <p className="mt-1 truncate text-xs text-murekkep">{item.title || item.name}</p>
+                {item.imdbPuan != null && <p className="text-[10px] text-kraft">IMDb {item.imdbPuan}</p>}
               </Link>
             ))}
           </div>

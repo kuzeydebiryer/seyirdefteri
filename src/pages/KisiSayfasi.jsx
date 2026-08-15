@@ -9,6 +9,7 @@ import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
 import { esereAitListeleriGetir } from '../utils/kisiselListe.js'
 import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
+import { ilgiliKitaplarGetir as eskiYonetmenKitaplariGetir, ilgiliKitapSil as eskiIlgiliKitapSil } from '../utils/yonetmen.js'
 
 import { kitapAramaSonucundanKaydet, kitapElleEkle } from '../utils/kitapKatalog.js'
 
@@ -128,9 +129,24 @@ export default function KisiSayfasi() {
 
   useEffect(() => {
     let iptal = false
-    ilgiliEserleriGetir('kisi', Number(id), kullanici?.uid).then((l) => {
-      if (!iptal) setIlgiliKitaplar(l)
-    })
+    Promise.all([ilgiliEserleriGetir('kisi', Number(id), kullanici?.uid), eskiYonetmenKitaplariGetir(id).catch(() => [])]).then(
+      ([genelListe, eskiListe]) => {
+        if (iptal) return
+        // Eski (yönetmen sayfasına özel) kayıtları genel listeyle aynı şekle
+        // dönüştürüp birleştiriyoruz — kullanıcı ikisi arasındaki farkı hiç
+        // görmüyor, hepsi tek bir "İlgili Kitaplar" listesi gibi duruyor.
+        const eskiDonusturulmus = eskiListe.map((k) => ({
+          id: `eski-${k.id}`,
+          digerTur: 'kitap',
+          digerDisId: k.googleBooksId,
+          digerBaslik: k.baslik,
+          digerPosterUrl: k.posterUrl,
+          digerAlt: k.yazar,
+          eski: true,
+        }))
+        setIlgiliKitaplar([...genelListe, ...eskiDonusturulmus])
+      }
+    )
     return () => {
       iptal = true
     }
@@ -206,9 +222,14 @@ export default function KisiSayfasi() {
 
   async function ilgiliKaldirTiklandi(kitap) {
     if (!window.confirm('Bu bağlantıyı kaldırmak istediğine emin misin?')) return
-    const kaynak = { tur: 'kisi', disId: Number(id) }
-    await ilgiliEserSil(kaynak, { tur: 'kitap', disId: kitap.digerDisId })
-    setIlgiliKitaplar((onceki) => onceki.filter((k) => k.digerDisId !== kitap.digerDisId))
+    if (kitap.eski) {
+      // Eski (yönetmen sayfasına özel) kayıt — ayrı bir alt koleksiyonda duruyor.
+      await eskiIlgiliKitapSil(id, kitap.id.replace('eski-', ''))
+    } else {
+      const kaynak = { tur: 'kisi', disId: Number(id) }
+      await ilgiliEserSil(kaynak, { tur: 'kitap', disId: kitap.digerDisId })
+    }
+    setIlgiliKitaplar((onceki) => onceki.filter((k) => k !== kitap))
   }
 
   async function favoriDegistir() {
@@ -435,7 +456,7 @@ export default function KisiSayfasi() {
               <p className="mb-1 text-xs text-kraft">📚 İlgili Kitaplar</p>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {ilgiliKitaplar.map((k) => (
-                  <div key={k.digerDisId} className="group relative w-16 shrink-0">
+                  <div key={k.id || `yeni-${k.digerDisId}`} className="group relative w-16 shrink-0">
                     <Link to={`/kitap/${k.digerDisId}`}>
                       <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                         {k.digerPosterUrl && <img src={k.digerPosterUrl} alt={k.digerBaslik} className="h-full w-full object-cover" />}

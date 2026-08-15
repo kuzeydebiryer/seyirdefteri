@@ -1,10 +1,17 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Avatar from './Avatar.jsx'
+
+const KISALTMA_UZUNLUGU = 180
 
 // Alıntı Duvarı, Anasayfa akışı, Kitap hub'ı ve kitap sayfası — hepsi aynı
 // kart görünümünü kullanır ki kapak/beğen davranışı her yerde tutarlı olsun.
 export default function AlintiKarti({ alinti, kullanici, onBegenTiklandi, onSilTiklandi, kapakGoster = true }) {
   const begeniyorMu = kullanici && (alinti.begenenler || []).includes(kullanici.uid)
+  const [genisletildi, setGenisletildi] = useState(false)
+
+  const uzunMu = alinti.metin.length > KISALTMA_UZUNLUGU
+  const gosterilenMetin = genisletildi || !uzunMu ? alinti.metin : alinti.metin.slice(0, KISALTMA_UZUNLUGU).trimEnd() + '…'
 
   return (
     <li className="flex gap-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
@@ -14,7 +21,12 @@ export default function AlintiKarti({ alinti, kullanici, onBegenTiklandi, onSilT
         </Link>
       )}
       <div className="min-w-0 flex-1">
-        <p className="font-baslik text-sm italic text-murekkep">"{alinti.metin}"</p>
+        <p className="font-baslik text-sm italic text-murekkep">"{gosterilenMetin}"</p>
+        {uzunMu && (
+          <button onClick={() => setGenisletildi((g) => !g)} className="mt-0.5 text-[11px] text-kraft hover:text-deniz hover:underline">
+            {genisletildi ? '↑ Daha Az Göster' : 'Devamını Oku →'}
+          </button>
+        )}
         {kapakGoster && (
           <Link to={`/kitap/${alinti.kitapId}`} className="mt-1 block text-xs text-kraft hover:text-deniz hover:underline">
             {alinti.kitapBaslik}

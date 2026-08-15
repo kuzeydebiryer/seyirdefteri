@@ -331,6 +331,52 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "gelecekEtkinlikler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "topluluklId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "etkinlikOnerileri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "topluluklId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "oneriTarihi",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "listeOgeleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "topluluklId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "listeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sira",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
