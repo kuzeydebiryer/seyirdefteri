@@ -22,6 +22,19 @@ export async function bildirimDurumu() {
   }
 }
 
+// Firebase Messaging SDK'sı varsayılan olarak KENDİ /firebase-messaging-sw.js
+// dosyasını otomatik kaydetmeye çalışıyor — biz onun yerine tek, birleşik bir
+// servis çalışanı (src/sw.js -> /sw.js, hem offline önbellek hem push burada)
+// kullandığımızdan, o dosya hiç yok ve kayıt sessizce başarısız oluyordu
+// ("unsupported MIME type" hatası — Vercel'in SPA yönlendirmesi index.html
+// döndürüyor). Çözüm: zaten kayıtlı olan servis çalışanını (vite-plugin-pwa
+// sayfa yüklenirken otomatik kaydediyor) Firebase'e elle veriyoruz.
+async function kayitliServisCalisaniniGetir() {
+  if (!('serviceWorker' in navigator)) return undefined
+  const kayit = await navigator.serviceWorker.ready
+  return kayit
+}
+
 // İzin isteyip, verilirse cihaz token'ını alıp Firestore'a kaydeder. Birden
 // fazla cihazdan (telefon + bilgisayar) bildirim açılabilsin diye token'lar
 // bir dizi değil, kendi belge ID'si token olan bir alt koleksiyon.
@@ -33,7 +46,8 @@ export async function bildirimleriEtkinlestir(kullanici) {
   const izin = await Notification.requestPermission()
   if (izin !== 'granted') throw new Error('Bildirim izni verilmedi.')
 
-  const token = await getToken(messaging, { vapidKey: VAPID_KEY })
+  const kayit = await kayitliServisCalisaniniGetir()
+  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: kayit })
   if (!token) throw new Error("Cihaz token'ı alınamadı.")
 
   await setDoc(doc(db, 'kullanicilar', kullanici.uid, 'bildirimTokenlari', token), {
@@ -48,7 +62,8 @@ export async function bildirimleriEtkinlestir(kullanici) {
 export async function bildirimleriKapat(kullanici) {
   const messaging = await messagingGetir()
   if (!messaging) return
-  const token = await getToken(messaging, { vapidKey: VAPID_KEY }).catch(() => null)
+  const kayit = await kayitliServisCalisaniniGetir()
+  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: kayit }).catch(() => null)
   if (token) {
     await deleteToken(messaging).catch(() => {})
     await deleteDoc(doc(db, 'kullanicilar', kullanici.uid, 'bildirimTokenlari', token)).catch(() => {})
