@@ -10,7 +10,6 @@ import HabercKarti from '../components/HabercKarti.jsx'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
-import TavsiyeBildirimSeridi from '../components/TavsiyeBildirimSeridi.jsx'
 import OneCikanlarSeridi from '../components/OneCikanlarSeridi.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
 import GunlukKesif from '../components/GunlukKesif.jsx'
@@ -180,8 +179,6 @@ export default function Anasayfa() {
       </div>
 
       <OneCikanlarSeridi />
-
-      <TavsiyeBildirimSeridi />
 
       <TopluluklarBildirimSeridi />
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { oneCikanlariGetir } from '../utils/etkinlikOneCikan.js'
 import { aktifSezonuGetir } from '../utils/oscar.js'
+import OscarHeykelIkon from './ikonlar/OscarHeykelIkon.jsx'
 
 // Anasayfanın en üstünde, tüm siteye yayılmış "önemli şeyler"i (öne çıkan
 // etkinlikler + açık Oscar sezonu) tek satırlık kompakt bir şeritte özetler.
@@ -35,10 +36,10 @@ export default function OneCikanlarSeridi() {
       {oscarSezonu && (
         <Link
           to="/oscar"
-          className="flex shrink-0 items-center gap-2 rounded-sm bg-murekkep px-3 py-2 font-govde text-xs text-kagit hover:opacity-90"
+          title={`${oscarSezonu.ad} açık — tahminini ver`}
+          className="flex shrink-0 items-center justify-center rounded-full bg-murekkep p-2 text-kagit hover:opacity-90"
         >
-          <span>🏆</span>
-          <span className="whitespace-nowrap">{oscarSezonu.ad} açık — tahminini ver</span>
+          <OscarHeykelIkon boyut={18} />
         </Link>
       )}
       {etkinlikler.map((e) => (
