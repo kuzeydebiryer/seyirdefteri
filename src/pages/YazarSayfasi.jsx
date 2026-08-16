@@ -5,6 +5,7 @@ import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
 import { yazarinKitaplariniGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import YazarBiyografisi from '../components/YazarBiyografisi.jsx'
+import KitapyurdundanKitapEkle from '../components/KitapyurdundanKitapEkle.jsx'
 
 export default function YazarSayfasi() {
   const { ad } = useParams()
@@ -88,6 +89,9 @@ export default function YazarSayfasi() {
       <div className="defter-cizgi my-6" />
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Kitapları</h2>
+
+      <KitapyurdundanKitapEkle varsayilanYazar={yazarAdi} />
+
       {!yukleniyor && kitaplar.length === 0 && (
         <p className="text-sm text-kraft">Bu yazara ait kitap bulunamadı (yazar adı yazımı farklı olabilir).</p>
       )}

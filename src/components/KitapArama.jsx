@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { kitapFiltrele, tumKategorileriGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import KitapyurdundanKitapEkle from './KitapyurdundanKitapEkle.jsx'
 
 export default function KitapArama() {
   const navigate = useNavigate()
@@ -130,6 +131,8 @@ export default function KitapArama() {
           </div>
         )}
       </form>
+
+      <KitapyurdundanKitapEkle />
 
       {aramaYapildi && !yukleniyor && sonuclar.length === 0 && <p className="mt-3 text-sm text-kraft">Sonuç bulunamadı.</p>}
 
