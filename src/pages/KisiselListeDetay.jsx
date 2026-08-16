@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useKisiselListeOgeleri } from '../hooks/useKisiselListeOgeleri.js'
 import { listeGetir, ogeEkle, ogeSil, listeSil } from '../utils/kisiselListe.js'
 import { kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
 import { kisiselListedenTopluluğaKopyala } from '../utils/liste.js'
-import { useTopluluklar, uyeMi as uyelikKontrolEt } from '../hooks/useTopluluklar.js'
+import { useTopluluklar } from '../hooks/useTopluluklar.js'
 import LetterboxdIceAktar from '../components/LetterboxdIceAktar.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -112,8 +114,11 @@ export default function KisiselListeDetay() {
   async function kopyalaFormunuAc() {
     setKopyalaFormuAcik((a) => !a)
     if (!kopyalaFormuAcik && kullanici && uyeOlduklarim.length === 0) {
-      const uyelikler = await Promise.all(topluluklar.map((t) => uyelikKontrolEt(t.id, kullanici.uid)))
-      setUyeOlduklarim(topluluklar.filter((_, i) => uyelikler[i]))
+      // Ters indeksten (bkz. utils/topluluk.js) tek okumayla — eskiden
+      // sitedeki her topluluğu tek tek kontrol ediyorduk.
+      const profilSnap = await getDoc(doc(db, 'kullanicilar', kullanici.uid))
+      const uyeIdler = profilSnap.exists() ? profilSnap.data().uyeOlduklarim || [] : []
+      setUyeOlduklarim(topluluklar.filter((t) => uyeIdler.includes(t.id)))
     }
   }
 

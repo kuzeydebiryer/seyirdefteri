@@ -71,6 +71,36 @@ export default function ListeDetay() {
 
   const yoneticiMiyim = kullanici && topluluk && (kullanici.uid === topluluk.kurucuId || rolum === 'moderator')
 
+  // Eskiden burada, "sira" alanı eklendiğinde eski öğeleri onarmak için
+  // yönetici her ziyaret ettiğinde OTOMATİK çalışan bir kontrol vardı — ama
+  // bu, düzeltilecek bir şey kalmasa bile HER ZİYARETTE listenin tamamını
+  // okuyordu (Blaze planında bu, gereksiz sürekli bir maliyet). Artık manuel
+  // bir buton: sadece gerektiğinde, tek tıkla çalıştırılıyor (bkz. aşağıdaki
+  // "sıraOnar" fonksiyonu ve "🔧 Sırayı Onar" butonu).
+  const [siraOnariliyor, setSiraOnariliyor] = useState(false)
+  async function siraOnar() {
+    setSiraOnariliyor(true)
+    try {
+      const q = query(collection(db, 'listeOgeleri'), where('topluluklId', '==', topluluklId), where('listeId', '==', listeId))
+      const snap = await getDocs(q)
+      const eksikOlanlar = snap.docs.filter((d) => d.data().sira === undefined)
+      if (eksikOlanlar.length === 0) {
+        window.alert('Eksik sıra bulunamadı, hepsi zaten sıralı.')
+        return
+      }
+      const mevcutSiralar = snap.docs.map((d) => d.data().sira).filter((s) => s !== undefined)
+      const enYuksekSira = mevcutSiralar.length > 0 ? Math.max(...mevcutSiralar) : -1
+      const siraliEksikler = [...eksikOlanlar].sort(
+        (a, b) => (a.data().eklemeTarihi?.toMillis?.() || 0) - (b.data().eklemeTarihi?.toMillis?.() || 0)
+      )
+      await Promise.all(siraliEksikler.map((d, i) => updateDoc(d.ref, { sira: enYuksekSira + 1 + i })))
+      yenidenYukle()
+      window.alert(`${eksikOlanlar.length} öğenin sırası dolduruldu.`)
+    } finally {
+      setSiraOnariliyor(false)
+    }
+  }
+
   // Kendiliğinden onarım: "sira" alanı bu güncellemeden önce yoktu. Firestore'un
   // orderBy('sira') sorgusu, alanı hiç olmayan belgeleri sonuçtan tamamen düşürür
   // (null değil, YOK sayar) — yani eski öğeler useListeOgeleri'nden hiç dönmüyor
@@ -78,28 +108,6 @@ export default function ListeDetay() {
   // sorguyla tüm öğeleri çekip eksik olanlara eklenme tarihine göre sıra atıyoruz.
   // Bir öğe zaten sira'ya sahipse dokunmuyoruz; hepsi doldurulunca bu bir daha
   // hiç çalışmaz (idempotent).
-  useEffect(() => {
-    if (!yoneticiMiyim || !topluluklId || !listeId) return
-    let iptal = false
-    async function onar() {
-      const q = query(collection(db, 'listeOgeleri'), where('topluluklId', '==', topluluklId), where('listeId', '==', listeId))
-      const snap = await getDocs(q)
-      if (iptal) return
-      const eksikOlanlar = snap.docs.filter((d) => d.data().sira === undefined)
-      if (eksikOlanlar.length === 0) return
-      const mevcutSiralar = snap.docs.map((d) => d.data().sira).filter((s) => s !== undefined)
-      const enYuksekSira = mevcutSiralar.length > 0 ? Math.max(...mevcutSiralar) : -1
-      const siraliEksikler = [...eksikOlanlar].sort(
-        (a, b) => (a.data().eklemeTarihi?.toMillis?.() || 0) - (b.data().eklemeTarihi?.toMillis?.() || 0)
-      )
-      await Promise.all(siraliEksikler.map((d, i) => updateDoc(d.ref, { sira: enYuksekSira + 1 + i })))
-      if (!iptal) yenidenYukle()
-    }
-    onar().catch((e) => console.warn('Sıra onarımı başarısız:', e.message))
-    return () => {
-      iptal = true
-    }
-  }, [yoneticiMiyim, topluluklId, listeId])
 
   async function ara(e) {
     e.preventDefault()
@@ -245,6 +253,14 @@ export default function ListeDetay() {
             </button>
             <button onClick={listeyiSilTiklandi} className="rounded-sm px-3 py-1.5 font-govde text-xs text-kraft hover:text-muhur">
               Listeyi Sil
+            </button>
+            <button
+              onClick={siraOnar}
+              disabled={siraOnariliyor}
+              title="Eski öğelerde sıra numarası eksikse doldurur — normalde gerek duymazsın"
+              className="rounded-sm px-3 py-1.5 font-govde text-xs text-kraft hover:text-deniz disabled:opacity-40"
+            >
+              {siraOnariliyor ? 'Kontrol ediliyor...' : '🔧 Sırayı Onar'}
             </button>
           </>
         )}

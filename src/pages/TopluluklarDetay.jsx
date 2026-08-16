@@ -82,6 +82,7 @@ export default function TopluluklarDetay() {
 
   const [topluluk, setTopluluk] = useState(null)
   const [uyeler, setUyeler] = useState([])
+  const [digerUyeSayisi, setDigerUyeSayisi] = useState(0)
   const [uyeMi, setUyeMi] = useState(false)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [isleniyor, setIsleniyor] = useState(false)
@@ -130,8 +131,14 @@ export default function TopluluklarDetay() {
       const uyeIdler = uyeKayitlari.map((u) => u.id)
       setUyeMi(kullanici ? uyeIdler.includes(kullanici.uid) : false)
 
+      // İsim/avatar için her üyeye ayrı bir profil okuması gerekiyor — topluluk
+      // büyüdükçe bu, her ziyarette üye sayısıyla orantılı okumaya dönüşür.
+      // Sınırsız büyümesin diye ilk PROFIL_LIMIT üyenin profili çekiliyor,
+      // kalanlar "+N diğer üye" olarak (isim/avatar okumadan) gösteriliyor.
+      const PROFIL_LIMIT = 30
+      const profilCekilecekler = uyeKayitlari.slice(0, PROFIL_LIMIT)
       const profiller = await Promise.all(
-        uyeKayitlari.map(async (uyeKaydi) => {
+        profilCekilecekler.map(async (uyeKaydi) => {
           const pSnap = await getDoc(doc(db, 'kullanicilar', uyeKaydi.id))
           const profil = pSnap.exists() ? pSnap.data() : { adSoyad: 'Bilinmeyen' }
           return { id: uyeKaydi.id, rol: uyeKaydi.rol, ...profil }
@@ -139,6 +146,7 @@ export default function TopluluklarDetay() {
       )
       if (!iptal) {
         setUyeler(profiller)
+        setDigerUyeSayisi(Math.max(0, uyeKayitlari.length - PROFIL_LIMIT))
         setYukleniyor(false)
       }
 
@@ -828,6 +836,7 @@ export default function TopluluklarDetay() {
           )
         })}
       </ul>
+      {digerUyeSayisi > 0 && <p className="mt-2 text-xs text-kraft">+{digerUyeSayisi} diğer üye</p>}
     </div>
   )
 }

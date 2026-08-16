@@ -54,7 +54,14 @@ service cloud.firestore {
     match /kullanicilar/{uid} {
       allow read: if true;
       allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && (
+        request.auth.uid == uid ||
+        // "uyeOlduklarim" ters indeksi (bkz. utils/topluluk.js) katılma isteği
+        // ONAYLANDIĞINDA yöneticinin, başka bir kullanıcının kendi profiline bu
+        // alanı yazması gerekiyor — sadece bu tek alanla sınırlı, güvenlik
+        // kararı vermiyor (gerçek yetkilendirme hâlâ uyeler alt koleksiyonunda).
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uyeOlduklarim'])
+      );
 
       // Takip ettiklerim: sadece ben kendi listeme yazabilirim
       match /takipEdilenler/{hedefUid} {
