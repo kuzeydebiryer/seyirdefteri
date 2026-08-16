@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { kitapFiltrele, tumKategorileriGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import { canliKataloktaBaslikIleAra } from '../utils/kitapKatalog.js'
 import KitapyurdundanKitapEkle from './KitapyurdundanKitapEkle.jsx'
 
 export default function KitapArama() {
@@ -22,8 +23,18 @@ export default function KitapArama() {
     setYukleniyor(true)
     setAramaYapildi(true)
     try {
-      const liste = await kitapFiltrele(form, 60)
-      setSonuclar(liste)
+      const [statikListe, canliListe] = await Promise.all([
+        kitapFiltrele(form, 60),
+        // Statik 67 bin kayıtlı veri seti, elle eklenen/canlı kaydedilen
+        // kitaplardan habersiz — bu, en azından BAŞLIĞIN BAŞINA göre
+        // eşleşen canlı kayıtları da sonuçlara katıyor (yalnızca metin
+        // araması yapıldıysa; kategori/yıl/sayfa filtreleri statik veri
+        // setine özel olduğundan canlı arama sadece "metin" alanına bakıyor).
+        form.metin.trim() ? canliKataloktaBaslikIleAra(form.metin.trim(), 20).catch(() => []) : Promise.resolve([]),
+      ])
+      const statikIsbnler = new Set(statikListe.map((k) => k.isbn).filter(Boolean))
+      const yeniCanliListe = canliListe.filter((k) => !k.isbn13 || !statikIsbnler.has(k.isbn13))
+      setSonuclar([...statikListe, ...yeniCanliListe])
     } finally {
       setYukleniyor(false)
     }

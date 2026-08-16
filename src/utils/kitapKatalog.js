@@ -388,3 +388,35 @@ export async function kitapElleEkle({ baslik, yazar, yayinevi, yil, ozet, turler
   await setDoc(kitapRef(id), veri)
   return { id, ...veri }
 }
+
+// Canlı Firestore kataloğunda (dahili SSOT — elle eklenenler, Google Books
+// aramasından kaydedilenler, tekil ziyaretlerde önbelleğe alınan 67 bin
+// kayıtlı kitaplar dahil) bu yazara ait kitapları bulur. "Yazarın Kitapları"
+// listesi (yazarinKitaplariniGetir, turkceKitapVeriTabani.js) sadece STATİK
+// 67 bin kayıtlı veri setini tarıyor — canlı eklenen bir kitaptan hiç haberi
+// yok. Bu fonksiyon o boşluğu dolduruyor; ikisi birlikte kullanılıyor.
+// NOT: Firestore eşitlik sorgusu büyük/küçük harfe duyarlı — yazar adı yazar
+// sayfasındaki adla BİREBİR aynı yazılmışsa bulunur (yazar sayfası zaten
+// formu bu adla önceden dolduruyor, bkz. KitapyurdundanKitapEkle.jsx).
+export async function canliKataloktaYazarinKitaplariniGetir(yazarAdi) {
+  const q = query(collection(db, 'kitaplar'), where('yazar', '==', yazarAdi))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// "Kitap Ara" da aynı sebeple sadece statik veri setini tarıyor — canlı
+// eklenen kitaplar oraya da hiç düşmüyordu. Firestore serbest metin araması
+// desteklemediği için tam bir çözüm değil, ama en azından BAŞLIĞIN
+// BAŞLANGICINA göre eşleşen canlı kayıtları (elle eklenenler dahil) buluyor
+// — kullanıcı az önce eklediği kitabı adıyla aradığında artık karşısına çıkar.
+export async function canliKataloktaBaslikIleAra(metin, limitSayisi = 20) {
+  const q = query(
+    collection(db, 'kitaplar'),
+    orderBy('baslik'),
+    where('baslik', '>=', metin),
+    where('baslik', '<=', metin + '\uf8ff'),
+    limit(limitSayisi)
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}

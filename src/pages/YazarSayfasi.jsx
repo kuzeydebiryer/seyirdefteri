@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
 import { yazarinKitaplariniGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import { canliKataloktaYazarinKitaplariniGetir } from '../utils/kitapKatalog.js'
 import YazarBiyografisi from '../components/YazarBiyografisi.jsx'
 import KitapyurdundanKitapEkle from '../components/KitapyurdundanKitapEkle.jsx'
 
@@ -32,12 +33,20 @@ export default function YazarSayfasi() {
   useEffect(() => {
     let iptal = false
     setYukleniyor(true)
-    yazarinKitaplariniGetir(yazarAdi).then((liste) => {
-      if (!iptal) {
-        setKitaplar(liste)
+    Promise.all([yazarinKitaplariniGetir(yazarAdi), canliKataloktaYazarinKitaplariniGetir(yazarAdi)]).then(
+      ([statikListe, canliListe]) => {
+        if (iptal) return
+        // Aynı kitap iki kaynakta da olabilir (statik listeden görüntülenip
+        // canlı kataloğa kaydedilmiş olabilir, bkz. turkceKitaptanKaydet) —
+        // ISBN'i eşleşenleri statik listedekiyle (kapak senkronu zaten var)
+        // tekilleştiriyoruz, sadece gerçekten YENİ (statikte hiç olmayan,
+        // elle eklenmiş vb.) canlı kayıtları ekliyoruz.
+        const statikIsbnler = new Set(statikListe.map((k) => k.isbn).filter(Boolean))
+        const yeniCanliListe = canliListe.filter((k) => !k.isbn13 || !statikIsbnler.has(k.isbn13))
+        setKitaplar([...statikListe, ...yeniCanliListe])
         setYukleniyor(false)
       }
-    })
+    )
 
     if (kullanici) {
       favoriMi(kullanici.uid, 'yazar', ad).then((v) => {
