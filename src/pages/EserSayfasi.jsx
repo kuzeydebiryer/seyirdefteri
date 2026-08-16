@@ -15,7 +15,7 @@ import {
   dizideIlerlemeGuncelle,
   baslangicTarihiniDuzelt,
 } from '../utils/izlenecek.js'
-import { eserPuanla } from '../utils/eserPuani.js'
+import { eserPuanla, eserPuanindaGunlukVarIsaretle } from '../utils/eserPuani.js'
 import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { tavsiyePosterleriniSenkronizeEt } from '../utils/tavsiye.js'
 import YildizPuan from '../components/YildizPuan.jsx'
@@ -743,6 +743,7 @@ export default function EserSayfasi({ tur }) {
         puan,
         tekrarMi: gunlukTekrar,
       })
+      await eserPuanindaGunlukVarIsaretle(tur, id, kullanici.uid)
       puanlariYenidenYukle()
     } finally {
       setPuanKaydediliyor(false)

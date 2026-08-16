@@ -592,6 +592,12 @@ export default function GonderiEkle() {
           puan: kullaniciPuani,
           tekrarMi: gunlukTekrar,
         })
+        // NOT: burada eserPuanindaGunlukVarIsaretle çağırmıyoruz — GonderiEkle
+        // "eserPuanlari" koleksiyonuna hiç yazmıyor (sadece eserIstatistikleri
+        // özetini günceller), yani işaretlenecek bir doküman yok. Bu akışın
+        // Yılın Özeti'nde çift sayılma riski zaten düşük — sadece PuanIceAktar
+        // (toplu içe aktarma) ve EserSayfasi (doğrudan puanlama) "eserPuanlari"
+        // yazıyor, ikisinde de işaretleme var.
       }
 
       // Gezi ve Etkinlik güncelerinin kendi tarih alanları zaten var

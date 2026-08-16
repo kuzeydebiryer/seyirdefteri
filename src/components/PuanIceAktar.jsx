@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Papa from 'papaparse'
 import { useAuth } from '../context/AuthContext.jsx'
-import { eserPuanla } from '../utils/eserPuani.js'
+import { eserPuanla, eserPuaniGetir, eserPuanindaGunlukVarIsaretle } from '../utils/eserPuani.js'
 import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { filmSatirlariniAyikla, tmdbdeAra, esZamanliIsle, TMDB_POSTER } from '../utils/letterboxdCsv.js'
 import { turIsimleriGetir } from '../data/tmdbTurler.js'
@@ -86,6 +86,14 @@ export default function PuanIceAktar({ onTamamlandi }) {
         // sessizce çökertip donuk bırakmasın diye — hatayı burada
         // yakalayıp o satırı "başarısız" olarak işaretleyip devam ediyoruz.
         try {
+          // Bu esere DAHA ÖNCE (önceki bir içe aktarmada) zaten doğru
+          // tarihli bir günlük kaydı düşürülmüş mü diye kontrol ediyoruz —
+          // bu sayede içe aktarmayı güvenle TEKRAR çalıştırabilirsin (ör.
+          // bu düzeltmeden önce yapılmış, günlük kaydı olmayan eski bir
+          // içe aktarmayı düzeltmek için), mükerrer günlük satırı oluşmadan.
+          const mevcutKayit = await eserPuaniGetir('sinema', s.eslesme.tmdbId, kullanici.uid)
+          const gunlukZatenVar = mevcutKayit?.gunlukVar === true
+
           await eserPuanla('sinema', s.eslesme.tmdbId, Number(s.puan), kullanici, {
             baslik: s.eslesme.baslik,
             alt: s.eslesme.yil,
@@ -98,7 +106,7 @@ export default function PuanIceAktar({ onTamamlandi }) {
           // günlük kaydı hiç oluşturulmuyor (Yılın Özeti'nde "bugün izlendi"
           // gibi yanlış bir kayıt bırakmamak için, boş bırakmak yanlış bir
           // tarih uydurmaktan daha doğru).
-          if (s.izlemeTarihi) {
+          if (s.izlemeTarihi && !gunlukZatenVar) {
             await gunlukKaydiEkle(kullanici, {
               tur: 'sinema',
               disId: s.eslesme.tmdbId,
@@ -109,6 +117,7 @@ export default function PuanIceAktar({ onTamamlandi }) {
               puan: Number(s.puan),
               tekrarMi: s.tekrarMi,
             })
+            await eserPuanindaGunlukVarIsaretle('sinema', s.eslesme.tmdbId, kullanici.uid)
           }
         } catch (err) {
           console.warn(`İçe aktarma hatası (${s.isim}):`, err.message)
@@ -136,7 +145,9 @@ export default function PuanIceAktar({ onTamamlandi }) {
         gerekmiyor. Bu, sadece puanlarını dolduracak — geçmişe dönük yüzlerce gönderi oluşturmayacak, akışın
         şişmeyecek. Dosyada "Watched Date"/"Date" sütunu varsa (ikisinde de genelde var), gerçek izleme tarihi de
         kaydedilip Günlük'üne ve Yılın Özeti'ne doğru tarihle yansıyor — yoksa o satır için günlük kaydı
-        oluşturulmuyor (tarihi olmayan bir satırı "bugün izlendi" gibi göstermemek için).
+        oluşturulmuyor (tarihi olmayan bir satırı "bugün izlendi" gibi göstermemek için). Aynı dosyayı{' '}
+        <strong>güvenle tekrar yükleyebilirsin</strong> — daha önce doğru günlük kaydı düşürülmüş satırlar tekrar
+        işlenmez, mükerrer kayıt oluşmaz (sadece puanlar güncellenir).
       </p>
 
       <input

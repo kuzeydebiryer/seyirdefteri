@@ -57,6 +57,15 @@ export default function YilOzeti({ yil, yukleniyor, gonderiler, eserPuanlarim, g
 
   const buYilPuanlar = eserPuanlarim.filter((e) => tariheDevir(e.tarih)?.getFullYear() === yil)
   const puanOlaylari = buYilPuanlar
+    // "gunlukVar" — bu esere zaten (belki BAŞKA bir yılda, çünkü içe aktarma
+    // anının kendisi ayrı bir tarih) doğru tarihli bir günlük kaydı düşülmüş
+    // mü. Sadece SEÇİLİ YILın günlük kayıtlarına bakmak yetmiyordu — bir film
+    // 2021'de izlenmiş ama içe aktarma 2026'da yapılmışsa, "eserPuanlari.tarih"
+    // (=içe aktarma anı, 2026) o filmi yanlışlıkla 2026'ya da düşürüyordu.
+    // "gunlukVar" bayrağı, o esere HERHANGİ bir yılda zaten doğru bir günlük
+    // kaydı düşüldüğünü global olarak biliyor, tüm geçmişi çekmeye gerek
+    // kalmadan (bkz. utils/eserPuani.js).
+    .filter((e) => e.gunlukVar !== true)
     .filter((e) => !gunlukKapsananlar.has(eserAnahtari(e.tur, e.disId)))
     .filter((e) => !gonderiOlaylari.some((g) => g.tur === e.tur && g.disId === e.disId))
     .map((e) => ({ tur: e.tur, disId: e.disId, baslik: e.baslik, posterUrl: e.posterUrl, tarih: e.tarih, puan: e.puan, kaynak: 'puan' }))
