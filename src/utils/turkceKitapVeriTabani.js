@@ -287,5 +287,27 @@ export async function yazarinKitaplariniGetir(yazarAdi) {
     }
   }
   sonuclar.sort((a, b) => (b.yil || '0').localeCompare(a.yil || '0'))
+
+  // 67 bin kitaplık statik veri setinde (bkz. dosya başındaki not) kapak
+  // görseli hiç yok. Ama bir kitap daha önce ziyaret edilip (turkceKitaptanKaydet)
+  // veya elle düzenlenip kapak eklendiyse, bu artık "kitaplar/tr_{isbn}"
+  // altında CANLI bir kayıt olarak duruyor — statik listeden habersiz.
+  // Yazar sayfasında kapaksız görünmemesi için, ISBN'i olan her sonuç için bu
+  // canlı kaydı kontrol edip varsa kapağı (ve varsa güncel başlığı) devralıyoruz.
+  await Promise.all(
+    sonuclar.map(async (s) => {
+      if (!s.isbn) return
+      try {
+        const canliSnap = await getDoc(doc(db, 'kitaplar', `tr_${s.isbn}`))
+        if (canliSnap.exists()) {
+          const canli = canliSnap.data()
+          if (canli.posterUrl) s.posterUrl = canli.posterUrl
+        }
+      } catch {
+        // sessizce geç — kapaksız göstermeye devam
+      }
+    })
+  )
+
   return sonuclar
 }

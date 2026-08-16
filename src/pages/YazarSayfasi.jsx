@@ -94,8 +94,13 @@ export default function YazarSayfasi() {
 
       <div className="space-y-2">
         {kitaplar.map((k) => (
-          <div key={k.id} className="flex items-center justify-between gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-            <div className="min-w-0">
+          <div key={k.id} className="flex items-center gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+            {k.posterUrl ? (
+              <img src={k.posterUrl} alt={k.baslik} className="h-20 w-14 shrink-0 rounded-sm object-cover ring-1 ring-cizgi" />
+            ) : (
+              <div className="flex h-20 w-14 shrink-0 items-center justify-center rounded-sm bg-kagit text-lg ring-1 ring-cizgi">📖</div>
+            )}
+            <div className="min-w-0 flex-1">
               <button
                 onClick={() => incele(k)}
                 disabled={inceleniyorId === k.id}
