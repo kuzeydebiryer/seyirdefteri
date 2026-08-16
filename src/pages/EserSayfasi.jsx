@@ -14,6 +14,7 @@ import {
   baslangicTarihiTamamla,
   dizideIlerlemeGuncelle,
   baslangicTarihiniDuzelt,
+  izlenecekPosterleriniSenkronizeEt,
 } from '../utils/izlenecek.js'
 import { eserPuanla, eserPuanindaGunlukVarIsaretle } from '../utils/eserPuani.js'
 import { gunlukKaydiEkle } from '../utils/gunluk.js'
@@ -545,10 +546,13 @@ export default function EserSayfasi({ tur }) {
         sayfaSayisi: guncellenen.sayfaSayisi,
         yayinevi: guncellenen.yayinevi,
       }))
-      // Bu kitap daha önce kapaksız tavsiye edildiyse, o tavsiye kartlarını da
-      // geriye dönük dolduruyoruz (bkz. tavsiyePosterleriniSenkronizeEt yorumu).
+      // Bu kitap daha önce kapaksız tavsiye edildiyse / birinin "izleyecek-
+      // lerim/okuyorum" listesine kapaksız girdiyse, ikisini de geriye dönük
+      // dolduruyoruz (bkz. tavsiyePosterleriniSenkronizeEt ve
+      // izlenecekPosterleriniSenkronizeEt yorumları).
       if (guncellenen.posterUrl) {
         tavsiyePosterleriniSenkronizeEt('kitap', id, guncellenen.posterUrl).catch(() => {})
+        izlenecekPosterleriniSenkronizeEt('kitap', id, guncellenen.posterUrl).catch(() => {})
       }
       setDuzenleModuAcik(false)
     } catch (err) {

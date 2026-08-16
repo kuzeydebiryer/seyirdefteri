@@ -29,6 +29,22 @@ export function izlenecekDokIdOlustur(uid, tur, disId) {
   return izlenecekDokId(uid, tur, disId)
 }
 
+// Bir eser (kitap/film/dizi) "İzleyeceğim/Okuyacaklarım"a eklenirken veya
+// okumaya/izlemeye başlanırken kapak görseli anlık olarak kopyalanıyor
+// (izlenecekEkle içinde) — eser SONRADAN düzenlenip kapak eklenirse, bu eski
+// kopyalar hiç güncellenmiyordu. Bu, "Kitap Dünyası" (Anasayfa) widget'ında
+// kapaksız kartlara sebep oluyordu — tavsiyeler için daha önce yaptığımız
+// senkronizasyonun (bkz. tavsiye.js) izlenecekler karşılığı. Herkesin
+// (tüm kullanıcıların) o esere ait kapaksız kayıtlarını bulup dolduruyor.
+export async function izlenecekPosterleriniSenkronizeEt(tur, disId, posterUrl) {
+  if (!posterUrl) return
+  const q = query(collection(db, 'izlenecekler'), where('tur', '==', tur), where('disId', '==', disId))
+  const snap = await getDocs(q)
+  await Promise.all(
+    snap.docs.filter((d) => !d.data().posterUrl).map((d) => updateDoc(d.ref, { posterUrl }).catch(() => {}))
+  )
+}
+
 export async function izlenecekMi(uid, tur, disId) {
   if (!uid) return false
   const snap = await getDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)))

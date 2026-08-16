@@ -437,6 +437,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "izlenecekler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "disId",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

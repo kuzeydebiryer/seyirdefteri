@@ -29,6 +29,7 @@ import Yazilar from './pages/Yazilar.jsx'
 import Gezi from './pages/Gezi.jsx'
 import EtkinlikDunyasi from './pages/EtkinlikDunyasi.jsx'
 import YazarSayfasi from './pages/YazarSayfasi.jsx'
+import NobelYazarlari from './pages/NobelYazarlari.jsx'
 import YayineviSayfasi from './pages/YayineviSayfasi.jsx'
 import KitapKategoriSayfasi from './pages/KitapKategoriSayfasi.jsx'
 import RafDetay from './pages/RafDetay.jsx'
@@ -73,6 +74,7 @@ export default function App() {
           <Route path="/etkinlik-dunyasi" element={<OzelRota><EtkinlikDunyasi /></OzelRota>} />
           <Route path="/yonetmen/:id" element={<OzelRota><YonetmenYonlendirme /></OzelRota>} />
           <Route path="/yazar/:ad" element={<OzelRota><YazarSayfasi /></OzelRota>} />
+          <Route path="/nobel-yazarlari" element={<OzelRota><NobelYazarlari /></OzelRota>} />
           <Route path="/yayinevi/:ad" element={<OzelRota><YayineviSayfasi /></OzelRota>} />
           <Route path="/kitap-kategori/:kategori" element={<OzelRota><KitapKategoriSayfasi /></OzelRota>} />
           <Route path="/raf/:id" element={<OzelRota><RafDetay /></OzelRota>} />
