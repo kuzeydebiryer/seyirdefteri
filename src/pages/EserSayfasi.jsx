@@ -31,7 +31,7 @@ import { ogeEkle as listeyeOgeEkle, esereAitListeleriGetir } from '../utils/kisi
 import { filmOscarBilgisiGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
-import { kitaptanFilmOner, filmdenKitapOner } from '../utils/wikidata.js'
+import { kitaptanFilmOner, filmdenKitapOner, filmTriviaGetir } from '../utils/wikidata.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 import EserKarti from '../components/EserKarti.jsx'
 
@@ -135,6 +135,12 @@ export default function EserSayfasi({ tur }) {
   const [wikidataYukleniyor, setWikidataYukleniyor] = useState(false)
   const [wikidataDenendi, setWikidataDenendi] = useState(false)
   const [wikidataEkleniyor, setWikidataEkleniyor] = useState(null)
+
+  // Strateji 3: Otomatik İlginç Bilgiler — film/dizi sayfasında çekim yeri,
+  // sanat akımı gibi Wikidata trivia'sı. Diğer opsiyonel zenginleştirmeler
+  // (dış puanlar, sağlayıcılar) gibi sayfa yüklenirken sessizce denenir,
+  // veri yoksa hiçbir şey göstermez.
+  const [trivia, setTrivia] = useState(null)
 
   const ilgiliHedefTur = tur === 'kitap' ? ilgiliKategori : 'kitap'
 
@@ -330,6 +336,18 @@ export default function EserSayfasi({ tur }) {
       iptal = true
     }
   }, [tur, id])
+
+  useEffect(() => {
+    if (tur !== 'sinema' && tur !== 'dizi') return
+    let iptal = false
+    filmTriviaGetir(Number(id)).then((t) => {
+      if (!iptal) setTrivia(t)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [tur, id])
+
 
   useEffect(() => {
     let iptal = false
@@ -1445,6 +1463,42 @@ export default function EserSayfasi({ tur }) {
                     </ul>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {trivia && (
+            <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="mb-2 text-xs uppercase tracking-widest text-gise">🔍 İlginç Bilgiler</p>
+              <div className="space-y-1.5 text-xs text-kraft">
+                {trivia.cekimYerleri.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Çekildiği yerler:</span>{' '}
+                    {trivia.cekimYerleri.map((yer, i) => (
+                      <span key={yer}>
+                        {i > 0 && ', '}
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(yer)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-deniz hover:underline"
+                        >
+                          {yer}
+                        </a>
+                      </span>
+                    ))}
+                  </p>
+                )}
+                {trivia.akimlar.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Akım:</span> {trivia.akimlar.join(', ')}
+                  </p>
+                )}
+                {trivia.anlatiYerleri.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Hikayenin geçtiği yer:</span> {trivia.anlatiYerleri.join(', ')}
+                  </p>
+                )}
               </div>
             </div>
           )}

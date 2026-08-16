@@ -122,3 +122,103 @@ export async function filmdenKitapOner(tmdbId) {
   }
   return oneriler
 }
+
+// --- Strateji 2: Derin Bağlamsal Keşifler -------------------------------
+// Yönetmen/oyuncu sayfasında "İlham Kaynakları" — TMDB kişi ID'si üzerinden
+// Wikidata'daki karşılığını bulur (P4985: TMDB kişi ID'si — tekil/indeksli
+// bir alan olduğundan hızlı ve doğrudan eşleşir), sonra P737 (etkilenilen
+// kişi) ilişkisini HER İKİ yönde de tarar: kimlerden etkilenmiş, kimleri
+// etkilemiş. Çoğu kişi maddesinde bu alan boş — bu normal, sessizce boş
+// dizi döner.
+// Dönüş: [{ wikidataQid, ad, meslek, yon: 'etkilendi' | 'etkiledi' }]
+export async function kisiEtkilesimleriGetir(tmdbKisiId) {
+  if (!tmdbKisiId) return []
+  const sorgu = `
+    SELECT ?yon ?kisi2 ?kisi2Label ?meslekLabel WHERE {
+      ?kisi wdt:P4985 "${tmdbKisiId}".
+      {
+        ?kisi wdt:P737 ?kisi2.
+        BIND("etkilendi" AS ?yon)
+      } UNION {
+        ?kisi2 wdt:P737 ?kisi.
+        BIND("etkiledi" AS ?yon)
+      }
+      OPTIONAL { ?kisi2 wdt:P106 ?meslek. }
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "tr,en". }
+    }
+    LIMIT 20
+  `
+  const sonuclar = await sparqlSorgula(sorgu)
+
+  const gorulen = new Set()
+  const etkilesimler = []
+  for (const r of sonuclar) {
+    const qid = r.kisi2?.value?.split('/').pop() || ''
+    const yon = r.yon?.value || ''
+    const anahtar = `${qid}_${yon}`
+    if (!qid || gorulen.has(anahtar)) continue
+    gorulen.add(anahtar)
+    etkilesimler.push({
+      wikidataQid: qid,
+      ad: r.kisi2Label?.value || '',
+      meslek: r.meslekLabel?.value || '',
+      yon,
+    })
+  }
+  return etkilesimler
+}
+
+// --- Strateji 3: Otomatik İlginç Bilgiler (Trivia) ----------------------
+// Film/dizi sayfasında küçük bir "İlginç Bilgiler" kutusu için: çekim
+// yerleri, ait olduğu sanat/sinema akımı, ve hikayenin geçtiği (kurgusal
+// olabilir) mekan. TMDB ID üzerinden (P4947) tekil eşleşme aranıyor, bu da
+// sorguyu hızlı ve ucuz tutuyor. GROUP_CONCAT kullanıldığından ?xLabel
+// otomatik etiketleme servisi yerine elle rdfs:label + FILTER(LANG()) —
+// Wikidata'da agregasyonlu sorgularda otomatik etiket servisi güvenilir
+// çalışmıyor, bu yüzden bilinen bir çözüm.
+// Dönüş: { cekimYerleri: string[], akimlar: string[], anlatiYerleri: string[] } | null
+export async function filmTriviaGetir(tmdbId) {
+  if (!tmdbId) return null
+  const sorgu = `
+    SELECT
+      (GROUP_CONCAT(DISTINCT ?cekimYeriLabel; separator="|") AS ?cekimYerleri)
+      (GROUP_CONCAT(DISTINCT ?akimLabel; separator="|") AS ?akimlar)
+      (GROUP_CONCAT(DISTINCT ?anlatiYeriLabel; separator="|") AS ?anlatiYerleri)
+    WHERE {
+      ?film wdt:P4947 "${tmdbId}".
+      OPTIONAL {
+        ?film wdt:P915 ?cekimYeri.
+        ?cekimYeri rdfs:label ?cekimYeriLabel.
+        FILTER(LANG(?cekimYeriLabel) IN ("tr", "en"))
+      }
+      OPTIONAL {
+        ?film wdt:P135 ?akim.
+        ?akim rdfs:label ?akimLabel.
+        FILTER(LANG(?akimLabel) IN ("tr", "en"))
+      }
+      OPTIONAL {
+        ?film wdt:P840 ?anlatiYeri.
+        ?anlatiYeri rdfs:label ?anlatiYeriLabel.
+        FILTER(LANG(?anlatiYeriLabel) IN ("tr", "en"))
+      }
+    }
+    GROUP BY ?film
+  `
+  const sonuclar = await sparqlSorgula(sorgu)
+  const satir = sonuclar[0]
+  if (!satir) return null
+
+  const ayir = (deger) => {
+    if (!deger) return []
+    // Aynı etiketin hem tr hem en dilinde gelmesi ihtimaline karşı (FILTER
+    // ikisine de izin veriyor) basit bir tekilleştirme.
+    return [...new Set(deger.split('|').filter(Boolean))]
+  }
+
+  const cekimYerleri = ayir(satir.cekimYerleri?.value)
+  const akimlar = ayir(satir.akimlar?.value)
+  const anlatiYerleri = ayir(satir.anlatiYerleri?.value)
+
+  if (cekimYerleri.length === 0 && akimlar.length === 0 && anlatiYerleri.length === 0) return null
+  return { cekimYerleri, akimlar, anlatiYerleri }
+}

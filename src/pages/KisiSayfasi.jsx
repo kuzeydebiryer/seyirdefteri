@@ -12,6 +12,7 @@ import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilg
 import { ilgiliKitaplarGetir as eskiYonetmenKitaplariGetir, ilgiliKitapSil as eskiIlgiliKitapSil } from '../utils/yonetmen.js'
 
 import { kitapAramaSonucundanKaydet, kitapElleEkle } from '../utils/kitapKatalog.js'
+import { kisiEtkilesimleriGetir } from '../utils/wikidata.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342'
@@ -30,6 +31,11 @@ export default function KisiSayfasi() {
 
   const [favoriMi_, setFavoriMi_] = useState(false)
   const [favoriIsleniyor, setFavoriIsleniyor] = useState(false)
+
+  // Strateji 2: Derin Bağlamsal Keşifler — "İlham Kaynakları". Diğer
+  // opsiyonel zenginleştirmeler gibi sayfa yüklenirken sessizce denenir,
+  // Wikidata'da bu ilişki çoğu kişide boş — veri yoksa hiçbir şey gösterilmez.
+  const [etkilesimler, setEtkilesimler] = useState([])
 
   const {
     degerlendirmeler,
@@ -119,6 +125,16 @@ export default function KisiSayfasi() {
       iptal = true
     }
   }, [id, kullanici])
+
+  useEffect(() => {
+    let iptal = false
+    kisiEtkilesimleriGetir(Number(id)).then((liste) => {
+      if (!iptal) setEtkilesimler(liste)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [id])
 
   useEffect(() => {
     if (kullanicininDegerlendirmesi) {
@@ -311,6 +327,36 @@ export default function KisiSayfasi() {
           <h1 className="font-baslik text-2xl text-murekkep">{kisi.name}</h1>
           {kisi.known_for_department && <p className="text-xs text-kraft">{kisi.known_for_department}</p>}
           {kisi.biography && <p className="mt-2 text-sm text-murekkep leading-relaxed line-clamp-6">{kisi.biography}</p>}
+
+          {etkilesimler.length > 0 && (
+            <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="mb-2 text-xs uppercase tracking-widest text-gise">💡 İlham Kaynakları</p>
+              <div className="space-y-2">
+                {etkilesimler.some((e) => e.yon === 'etkilendi') && (
+                  <div>
+                    <p className="text-[11px] text-kraft">Etkilendiği isimler</p>
+                    <p className="text-xs text-murekkep">
+                      {etkilesimler
+                        .filter((e) => e.yon === 'etkilendi')
+                        .map((e) => (e.meslek ? `${e.ad} (${e.meslek})` : e.ad))
+                        .join(' · ')}
+                    </p>
+                  </div>
+                )}
+                {etkilesimler.some((e) => e.yon === 'etkiledi') && (
+                  <div>
+                    <p className="text-[11px] text-kraft">Etkilediği isimler</p>
+                    <p className="text-xs text-murekkep">
+                      {etkilesimler
+                        .filter((e) => e.yon === 'etkiledi')
+                        .map((e) => (e.meslek ? `${e.ad} (${e.meslek})` : e.ad))
+                        .join(' · ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {kisi.images?.profiles?.length > 1 && (
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
