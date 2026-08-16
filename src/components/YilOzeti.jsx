@@ -9,6 +9,7 @@ function tariheDevir(deger) {
 }
 
 function esereLink(tur, disId) {
+  if (tur === 'gezi' || tur === 'etkinlik') return `/gonderi/${disId}`
   if (tur === 'kitap') return `/kitap/${disId}`
   if (tur === 'dizi') return `/dizi/${disId}`
   return `/film/${disId}`
@@ -39,10 +40,12 @@ export default function YilOzeti({ gonderiler, eserPuanlarim, gunlukKayitlari = 
     kaynak: 'gunluk',
   }))
   const gonderiOlaylari = gonderiler
-    .filter((g) => g.posterUrl && !gunlukKapsananlar.has(eserAnahtari(g.tur, g.tmdbId || g.googleBooksId)))
+    .filter((g) => g.posterUrl || g.tur === 'gezi' || g.tur === 'etkinlik')
     .map((g) => ({
       tur: g.tur,
-      disId: g.tmdbId || g.googleBooksId,
+      // Gezi/Etkinlik'in kendi eser sayfası yok — "eser" gönderinin kendisi,
+      // bu yüzden eşleştirme/link için disId = gönderinin Firestore ID'si.
+      disId: g.tur === 'gezi' || g.tur === 'etkinlik' ? g.id : g.tmdbId || g.googleBooksId,
       baslik: g.baslik,
       posterUrl: g.posterUrl,
       tarih: g.tarih,
@@ -50,6 +53,7 @@ export default function YilOzeti({ gonderiler, eserPuanlarim, gunlukKayitlari = 
       kaynak: 'gonderi',
       gonderiId: g.id,
     }))
+    .filter((g) => !gunlukKapsananlar.has(eserAnahtari(g.tur, g.disId)))
   const puanOlaylari = eserPuanlarim
     .filter((e) => !gunlukKapsananlar.has(eserAnahtari(e.tur, e.disId)))
     .filter((e) => !gonderiOlaylari.some((g) => g.tur === e.tur && g.disId === e.disId))
@@ -69,15 +73,19 @@ export default function YilOzeti({ gonderiler, eserPuanlarim, gunlukKayitlari = 
 
   const buYilOlaylar = tumOlaylar.filter((o) => tariheDevir(o.tarih)?.getFullYear() === seciliYil)
 
+  // Aynı esere ait birden fazla olay olabilir (başladım + bitirdim + puanladım
+  // hepsi ayrı birer günlük kaydı) — "kaç film/dizi/kitap" sayısı OLAY değil,
+  // BENZERSİZ ESER sayısı olmalı, yoksa tek bir kitap "3 kitap okudun" gibi
+  // yanlış şişirilmiş bir sonuç üretirdi.
   function turSayisi(tur) {
-    return buYilOlaylar.filter((o) => o.tur === tur).length
+    return new Set(buYilOlaylar.filter((o) => o.tur === tur).map((o) => o.disId)).size
   }
 
   const filmSayisi = turSayisi('sinema')
   const diziSayisi = turSayisi('dizi')
   const kitapSayisi = turSayisi('kitap')
   const yaziSayisi = gonderiler.filter((g) => g.tur === 'yazi' && tariheDevir(g.tarih)?.getFullYear() === seciliYil).length
-  const geziSayisi = gonderiler.filter((g) => g.tur === 'gezi' && tariheDevir(g.tarih)?.getFullYear() === seciliYil).length
+  const geziEtkinlikSayisi = turSayisi('gezi') + turSayisi('etkinlik')
 
   const puanliOlaylar = buYilOlaylar.filter((o) => o.puan != null)
   const ortalamaPuan = puanliOlaylar.length ? puanliOlaylar.reduce((t, o) => t + o.puan, 0) / puanliOlaylar.length : null
@@ -111,7 +119,7 @@ export default function YilOzeti({ gonderiler, eserPuanlarim, gunlukKayitlari = 
         </div>
       )}
 
-      {toplamEser === 0 && yaziSayisi === 0 && geziSayisi === 0 ? (
+      {toplamEser === 0 && yaziSayisi === 0 && geziEtkinlikSayisi === 0 ? (
         <p className="text-sm text-kraft">{seciliYil} yılında henüz bir etkinlik yok.</p>
       ) : (
         <>
@@ -129,8 +137,8 @@ export default function YilOzeti({ gonderiler, eserPuanlarim, gunlukKayitlari = 
               <p className="text-xs text-kraft">📖 Kitap</p>
             </div>
             <div className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi">
-              <p className="font-baslik text-3xl text-murekkep">{yaziSayisi + geziSayisi}</p>
-              <p className="text-xs text-kraft">✍️ Yazı/Gezi</p>
+              <p className="font-baslik text-3xl text-murekkep">{yaziSayisi + geziEtkinlikSayisi}</p>
+              <p className="text-xs text-kraft">✍️ Yazı/Gezi/Etkinlik</p>
             </div>
           </div>
 

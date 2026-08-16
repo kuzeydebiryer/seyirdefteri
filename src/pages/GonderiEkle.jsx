@@ -521,7 +521,7 @@ export default function GonderiEkle() {
       const secilenUlke = kategori === 'gezi' ? ULKELER.find((u) => u.kod === ulkeKodu) : null
       const konumBilgisi = kategori === 'gezi' ? await sehirKonumunuGeocodeEt(konum, secilenUlke?.ad) : null
 
-      await addDoc(collection(db, 'gonderiler'), {
+      const gonderiRef = await addDoc(collection(db, 'gonderiler'), {
         tur: kategori,
         altTur: kategori === 'yazi' ? yaziAltTur : kategori === 'etkinlik' ? altTur : null,
         yazarId: kullanici.uid,
@@ -592,6 +592,25 @@ export default function GonderiEkle() {
           puan: kullaniciPuani,
           tekrarMi: gunlukTekrar,
         })
+      }
+
+      // Gezi ve Etkinlik güncelerinin kendi tarih alanları zaten var
+      // (baslangicTarihi / etkinlikTarihi) — ayrıca "ne zaman?" sormaya
+      // gerek yok, doğrudan onları kullanıyoruz. Eser sayfası olmadıkları
+      // için (TMDB/Google Books id'si yok) günlük kaydının "disId"si,
+      // gönderinin kendi Firestore ID'si — bağlantı /gonderi/{id}'ye gidiyor.
+      if ((kategori === 'gezi' || kategori === 'etkinlik') && kullanici) {
+        const olayTarihi = kategori === 'etkinlik' ? etkinlikTarihi : baslangicTarihi
+        if (olayTarihi) {
+          await gunlukKaydiEkle(kullanici, {
+            tur: kategori,
+            disId: gonderiRef.id,
+            baslik: baslik.trim(),
+            posterUrl,
+            izlemeTarihiISO: olayTarihi,
+            puan: kullaniciPuani,
+          })
+        }
       }
 
       navigate('/')

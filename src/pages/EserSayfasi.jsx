@@ -602,6 +602,15 @@ export default function EserSayfasi({ tur }) {
     if (!kullanici || !detay) return
     setIzlenecekIsleniyor(true)
     try {
+      await gunlukKaydiEkle(kullanici, {
+        tur,
+        disId: id,
+        baslik: detay.baslik,
+        posterUrl: detay.posterUrl,
+        yil: detay.yil || '',
+        izlemeTarihiISO: new Date().toISOString().slice(0, 10),
+        olayTuru: 'baslama',
+      })
       await izlenecekEkle(kullanici, {
         tur,
         disId: id,
@@ -612,6 +621,29 @@ export default function EserSayfasi({ tur }) {
         durum: 'okunuyor',
       })
       setIzlenecekKaydi({ durum: 'okunuyor', toplamSayfa: detay.sayfaSayisi || null, suankiSayfa: 0 })
+    } finally {
+      setIzlenecekIsleniyor(false)
+    }
+  }
+
+  async function izlemeyiBitir() {
+    if (!kullanici) return
+    setIzlenecekIsleniyor(true)
+    try {
+      // "Bitirdim" — gerçek bir tamamlama olayı, günlüğe düşüyor. (938.
+      // satırdaki genel "İzleyeceklerimden çıkar" ikon-butonu bunu
+      // çağırmıyor — o sadece listeden çıkarma, bitirme garantisi yok.)
+      await gunlukKaydiEkle(kullanici, {
+        tur,
+        disId: id,
+        baslik: detay.baslik,
+        posterUrl: detay.posterUrl,
+        yil: detay.yil || '',
+        izlemeTarihiISO: new Date().toISOString().slice(0, 10),
+        olayTuru: 'bitirme',
+      })
+      await izlenecekKaldir(kullanici.uid, tur, id)
+      setIzlenecekKaydi(null)
     } finally {
       setIzlenecekIsleniyor(false)
     }
@@ -632,6 +664,16 @@ export default function EserSayfasi({ tur }) {
     if (!kullanici) return
     setIzlenecekIsleniyor(true)
     try {
+      // "Başladım" da bir olay — günlüğe düşüyor.
+      await gunlukKaydiEkle(kullanici, {
+        tur,
+        disId: id,
+        baslik: detay.baslik,
+        posterUrl: detay.posterUrl,
+        yil: detay.yil || '',
+        izlemeTarihiISO: new Date().toISOString().slice(0, 10),
+        olayTuru: 'baslama',
+      })
       await okumayaBasla(kullanici.uid, tur, id, detay?.sayfaSayisi || null)
       setIzlenecekKaydi((onceki) => ({ ...onceki, durum: 'okunuyor', toplamSayfa: detay?.sayfaSayisi || null, suankiSayfa: 0 }))
     } finally {
@@ -1391,7 +1433,7 @@ export default function EserSayfasi({ tur }) {
               ) : tur === 'kitap' ? (
                 <p className="mt-1 text-xs text-kraft">Sayfa bilgisi yok, ilerleme takip edilemiyor.</p>
               ) : null}
-              <button onClick={izlenecektenKaldir} className="mt-2 text-[11px] text-kraft hover:text-muhur">
+              <button onClick={izlemeyiBitir} className="mt-2 text-[11px] text-kraft hover:text-muhur">
                 Bitirdim, listeden kaldır
               </button>
             </div>

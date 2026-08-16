@@ -9,13 +9,17 @@ function tariheDevir(deger) {
   return isNaN(d.getTime()) ? null : d
 }
 
+// Gezi/Etkinlik'in kendi bir TMDB/Google Books sayfası yok — "eser" doğrudan
+// gönderinin kendisi, bu yüzden disId aslında gönderinin Firestore ID'si.
 function esereLink(tur, disId) {
+  if (tur === 'gezi' || tur === 'etkinlik') return `/gonderi/${disId}`
   if (tur === 'kitap') return `/kitap/${disId}`
   if (tur === 'dizi') return `/dizi/${disId}`
   return `/film/${disId}`
 }
 
-const TUR_IKONU = { sinema: '🎬', dizi: '📺', kitap: '📖', gezi: '🧳' }
+const TUR_IKONU = { sinema: '🎬', dizi: '📺', kitap: '📖', gezi: '🧳', etkinlik: '🎟️' }
+const OLAY_ROZETI = { baslama: '▶ Başladı', bitirme: '✓ Bitirdi' }
 
 // Profildeki "Günlük" sekmesi — bir eserin ne zaman tekrar tekrar (yeniden
 // izleme/okuma dahil) tüketildiğinin tam kaydı. "Yılın Özeti"nin özet
@@ -25,7 +29,8 @@ export default function GunlukListesi({ kayitlar, kendiProfiliMi, onDegisti }) {
   if (kayitlar.length === 0) {
     return (
       <p className="text-sm text-kraft">
-        Henüz bir günlük kaydı yok. Bir eseri puanlarken "ne zaman?" alanını doldurunca burada birikmeye başlar.
+        Henüz bir günlük kaydı yok. Bir eseri puanlarken, başlarken/bitirirken ya da gezi-etkinlik güncesi paylaşırken
+        buraya otomatik düşer.
       </p>
     )
   }
@@ -63,11 +68,21 @@ export default function GunlukListesi({ kayitlar, kendiProfiliMi, onDegisti }) {
                 {k.posterUrl && (
                   <img src={k.posterUrl} alt={k.baslik} className="h-14 w-10 shrink-0 rounded-sm object-cover ring-1 ring-cizgi" />
                 )}
+                {/* min-w-0 olmadan flex çocukları taşan içeriği küçültmüyor —
+                    uzun başlıklar (özellikle Letterboxd'dan gelen İngilizce
+                    filmler) tüm satırı bozuyordu, bu satır o hatayı çözüyor. */}
                 <div className="min-w-0 flex-1">
-                  <Link to={esereLink(k.tur, k.disId)} className="truncate text-sm text-murekkep hover:underline">
+                  {/* Link varsayılan olarak inline (<a>) render ediyor —
+                      "truncate" (ellipsis) sadece block/inline-block
+                      elemanlarda çalışıyor, bu yüzden "block" eklenmeden
+                      truncate hiç etkisi olmuyordu. */}
+                  <Link to={esereLink(k.tur, k.disId)} className="block truncate text-sm text-murekkep hover:underline">
                     {TUR_IKONU[k.tur] || ''} {k.baslik} {k.yil && <span className="text-kraft">({k.yil})</span>}
                   </Link>
-                  <div className="mt-0.5 flex items-center gap-2">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                    {OLAY_ROZETI[k.olayTuru] && (
+                      <span className="text-xs font-medium text-deniz">{OLAY_ROZETI[k.olayTuru]}</span>
+                    )}
                     {k.puan != null && <YildizPuan puan={k.puan} boyut="text-xs" onluGoster={false} />}
                     {k.tekrarMi && (
                       <span className="text-xs text-kraft" title="Yeniden izleme/okuma">

@@ -13,11 +13,11 @@ import { db } from '../firebase.js'
 // gerçek tarih.
 export async function gunlukKaydiEkle(
   kullanici,
-  { tur, disId, baslik, alt, posterUrl, yil, izlemeTarihiISO, puan, tekrarMi, not: notMetni }
+  { tur, disId, baslik, alt, posterUrl, yil, izlemeTarihiISO, puan, tekrarMi, not: notMetni, olayTuru }
 ) {
   await addDoc(collection(db, 'gunlukKayitlari'), {
     kullaniciId: kullanici.uid,
-    tur, // 'sinema' | 'dizi' | 'kitap' | 'gezi'
+    tur, // 'sinema' | 'dizi' | 'kitap' | 'gezi' | 'etkinlik'
     disId,
     baslik,
     alt: alt || '',
@@ -27,6 +27,9 @@ export async function gunlukKaydiEkle(
     puan: puan ?? null,
     tekrarMi: !!tekrarMi,
     not: notMetni || '',
+    // 'baslama' | 'bitirme' | undefined (undefined = normal puanlama/günce —
+    // geriye dönük uyumluluk için, eski kayıtlarda bu alan hiç yok).
+    olayTuru: olayTuru || null,
     eklemeTarihi: serverTimestamp(),
   })
 }
