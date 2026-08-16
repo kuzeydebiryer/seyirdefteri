@@ -409,6 +409,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "gunlukKayitlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "kullaniciId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "izlemeTarihi",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

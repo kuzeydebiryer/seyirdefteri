@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
@@ -27,7 +27,7 @@ import Avatar from '../components/Avatar.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YilOzeti from '../components/YilOzeti.jsx'
 import GunlukListesi from '../components/GunlukListesi.jsx'
-import { gunlukKayitlariniGetir } from '../utils/gunluk.js'
+import { gunlukYilininKayitlariniGetir, gunlukIlkYiliGetir } from '../utils/gunluk.js'
 
 const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
@@ -92,10 +92,56 @@ export default function Profil() {
   const { favoriler: tumFavoriler } = useFavoriler(uid)
   const { izlenecekler, yenidenYukle: izlenecekleriYenile } = useIzlenecekler(uid)
   const { puanlar: eserPuanlarim } = useEserPuanlarim(uid)
+
+  // Günlük — 4+ yıllık (özellikle Letterboxd içe aktarımı sonrası binlerce
+  // kayıt olabilen) bir geçmişi her profil ziyaretinde tek seferde çekmek
+  // hem yavaştı hem gereksizdi. Artık sadece SEÇİLİ YILın kayıtları
+  // çekiliyor, "Yılın Özeti" ve "Günlük" sekmeleri aynı seçili yılı
+  // paylaşıyor. Yıl sekmelerini göstermek için de tüm geçmişi değil,
+  // sadece en eski kaydın yılını (tek, ucuz bir sorgu) öğreniyoruz.
+  const [gunlukYil, setGunlukYil] = useState(new Date().getFullYear())
+  const [gunlukIlkYil, setGunlukIlkYil] = useState(null)
   const [gunlukKayitlari, setGunlukKayitlari] = useState([])
+  const [gunlukYukleniyor, setGunlukYukleniyor] = useState(true)
+  const gunlukOnbellek = useRef({})
+
   useEffect(() => {
-    gunlukKayitlariniGetir(uid).then(setGunlukKayitlari)
+    gunlukIlkYiliGetir(uid).then(setGunlukIlkYil)
   }, [uid])
+
+  useEffect(() => {
+    let iptal = false
+    async function getir() {
+      setGunlukYukleniyor(true)
+      const anahtarim = `${uid}_${gunlukYil}`
+      if (gunlukOnbellek.current[anahtarim]) {
+        if (!iptal) {
+          setGunlukKayitlari(gunlukOnbellek.current[anahtarim])
+          setGunlukYukleniyor(false)
+        }
+        return
+      }
+      const kayitlar = await gunlukYilininKayitlariniGetir(uid, gunlukYil)
+      gunlukOnbellek.current[anahtarim] = kayitlar
+      if (!iptal) {
+        setGunlukKayitlari(kayitlar)
+        setGunlukYukleniyor(false)
+      }
+    }
+    getir()
+    return () => {
+      iptal = true
+    }
+  }, [uid, gunlukYil])
+
+  function gunlukYenidenYukle() {
+    delete gunlukOnbellek.current[`${uid}_${gunlukYil}`]
+    gunlukYilininKayitlariniGetir(uid, gunlukYil).then((kayitlar) => {
+      gunlukOnbellek.current[`${uid}_${gunlukYil}`] = kayitlar
+      setGunlukKayitlari(kayitlar)
+    })
+  }
+
   const { raflar, yenidenYukle: raflariYenile } = useRaflar(uid)
   const [rafFormuAcik, setRafFormuAcik] = useState(false)
   const [rafBaslik, setRafBaslik] = useState('')
@@ -570,15 +616,37 @@ export default function Profil() {
         ))}
       </div>
 
-      {/* İzlediklerim (sadece Film/Dizi) */}
-      {sekme === 'yilozeti' && <YilOzeti gonderiler={gonderiler} eserPuanlarim={eserPuanlarim} gunlukKayitlari={gunlukKayitlari} />}
+      {/* Yılın Özeti ve Günlük aynı yıl seçimini paylaşıyor — biri diğerini
+          etkilemesin diye ayrı state değil, tek bir seçim. */}
+      {(sekme === 'yilozeti' || sekme === 'gunluk') && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {Array.from({ length: new Date().getFullYear() - (gunlukIlkYil || new Date().getFullYear()) + 1 }, (_, i) => new Date().getFullYear() - i).map(
+            (y) => (
+              <button
+                key={y}
+                onClick={() => setGunlukYil(y)}
+                className={`rounded-sm px-3 py-1 font-govde text-xs ${
+                  gunlukYil === y ? 'bg-murekkep text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                }`}
+              >
+                {y}
+              </button>
+            )
+          )}
+        </div>
+      )}
+
+      {sekme === 'yilozeti' && (
+        <YilOzeti yil={gunlukYil} yukleniyor={gunlukYukleniyor} gonderiler={gonderiler} eserPuanlarim={eserPuanlarim} gunlukKayitlari={gunlukKayitlari} />
+      )}
 
       {sekme === 'gunluk' && (
-        <GunlukListesi
-          kayitlar={gunlukKayitlari}
-          kendiProfiliMi={benimProfilimMi}
-          onDegisti={() => gunlukKayitlariniGetir(uid).then(setGunlukKayitlari)}
-        />
+        <>
+          {gunlukYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
+          {!gunlukYukleniyor && (
+            <GunlukListesi kayitlar={gunlukKayitlari} kendiProfiliMi={benimProfilimMi} onDegisti={gunlukYenidenYukle} />
+          )}
+        </>
       )}
 
       {sekme === 'izlediklerim' && (
