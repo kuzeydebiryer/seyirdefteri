@@ -31,6 +31,7 @@ import { ogeEkle as listeyeOgeEkle, esereAitListeleriGetir } from '../utils/kisi
 import { filmOscarBilgisiGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
+import { kitaptanFilmOner, filmdenKitapOner } from '../utils/wikidata.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 import EserKarti from '../components/EserKarti.jsx'
 
@@ -126,6 +127,14 @@ export default function EserSayfasi({ tur }) {
   const [ilgiliElleAcik, setIlgiliElleAcik] = useState(false)
   const [ilgiliElleForm, setIlgiliElleForm] = useState({ baslik: '', yazar: '', yayinevi: '', yil: '', posterUrl: '' })
   const [ilgiliElleKaydediliyor, setIlgiliElleKaydediliyor] = useState(false)
+
+  // Wikidata Köprüsü — "İlgili Eser Ekle" panelinde tek tıkla öneri getirme.
+  // Sadece kullanıcı butona bastığında TEK bir SPARQL isteği atılır, sayfa
+  // yüklemesinde otomatik çağrı YOK (bkz. utils/wikidata.js).
+  const [wikidataOneriler, setWikidataOneriler] = useState([])
+  const [wikidataYukleniyor, setWikidataYukleniyor] = useState(false)
+  const [wikidataDenendi, setWikidataDenendi] = useState(false)
+  const [wikidataEkleniyor, setWikidataEkleniyor] = useState(null)
 
   const ilgiliHedefTur = tur === 'kitap' ? ilgiliKategori : 'kitap'
 
@@ -229,6 +238,86 @@ export default function EserSayfasi({ tur }) {
     const hedef = { tur: ilgili.digerTur, disId: ilgili.digerDisId }
     await ilgiliEserSil(kaynak, hedef)
     setIlgiliEserler((onceki) => onceki.filter((x) => !(x.digerTur === ilgili.digerTur && x.digerDisId === ilgili.digerDisId)))
+  }
+
+  // Wikidata'dan uyarlama önerisi getir — kitap sayfasında film/dizi, film/dizi
+  // sayfasında kaynak kitap arar. Wikidata'da her eserin bu ilişkisi işaretli
+  // olmadığından (özellikle Türkçe çeviri başlıklarında) boş dönebilir, bu normal.
+  async function wikidataOnerileriniGetir() {
+    setWikidataYukleniyor(true)
+    setWikidataDenendi(false)
+    setWikidataOneriler([])
+    try {
+      const sonuc =
+        tur === 'kitap' ? await kitaptanFilmOner(detay.baslik, detay.yazar) : await filmdenKitapOner(Number(id))
+      // Zaten eklenmiş film/dizi önerilerini gizle (kitap önerilerinde ID tipleri
+      // farklı olduğundan — Wikidata QID'si vs. Google Books ID'si — bu kontrolü
+      // atlıyoruz, kullanıcı zaten aynı kitabı tekrar eklerse setDoc üzerine yazar).
+      setWikidataOneriler(tur === 'kitap' ? sonuc.filter((oneri) => !ilgiliEserler.some((x) => x.digerDisId === oneri.tmdbId)) : sonuc)
+    } finally {
+      setWikidataYukleniyor(false)
+      setWikidataDenendi(true)
+    }
+  }
+
+  async function wikidataOneriEkle(oneri) {
+    if (!kullanici) return
+    setWikidataEkleniyor(oneri.wikidataQid)
+    try {
+      const kaynak = { tur, disId: tur === 'kitap' ? id : Number(id), baslik: detay.baslik, alt: detay.yazar || detay.yil || '', posterUrl: detay.posterUrl }
+      let hedef
+
+      if (tur === 'kitap') {
+        // Öneri bir film/dizi — Wikidata P144 hem filme hem diziye bağlanabildiğinden
+        // önce movie, olmazsa tv uç noktasını deneyip TMDB'den tam veriyi çekiyoruz.
+        if (!TMDB_API_KEY) return
+        let v = null
+        let hedefTur = 'sinema'
+        for (const deneme of [{ uc: 'movie', hedefTur: 'sinema' }, { uc: 'tv', hedefTur: 'dizi' }]) {
+          const res = await fetch(`https://api.themoviedb.org/3/${deneme.uc}/${oneri.tmdbId}?api_key=${TMDB_API_KEY}&language=tr-TR`)
+          if (res.ok) {
+            v = await res.json()
+            hedefTur = deneme.hedefTur
+            break
+          }
+        }
+        if (!v) return
+        hedef = {
+          tur: hedefTur,
+          disId: oneri.tmdbId,
+          baslik: hedefTur === 'sinema' ? v.title : v.name,
+          alt: (hedefTur === 'sinema' ? v.release_date : v.first_air_date)?.slice(0, 4) || '',
+          posterUrl: v.poster_path ? `${TMDB_POSTER}${v.poster_path}` : '',
+        }
+      } else {
+        // Öneri bir kitap — ISBN varsa Google Books'tan zengin veriyle kaydet,
+        // yoksa (veya bulunamazsa) sadece başlık/yazarla elle ekle akışına düş.
+        let kitap = null
+        if (oneri.isbn13) {
+          try {
+            const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
+            const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${oneri.isbn13}${anahtarParcasi}`)
+            const data = await res.json()
+            if (res.ok && data.items?.[0]) kitap = await kitapAramaSonucundanKaydet(data.items[0])
+          } catch {
+            // sessizce elle ekleme akışına düş
+          }
+        }
+        if (!kitap) {
+          kitap = await kitapElleEkle(
+            { baslik: oneri.baslik, yazar: oneri.yazar, yayinevi: '', yil: '', ozet: '', turler: '', sayfaSayisi: null, posterUrl: '' },
+            kullanici
+          )
+        }
+        hedef = { tur: 'kitap', disId: kitap.id, baslik: kitap.baslik, alt: kitap.yazar, posterUrl: kitap.posterUrl }
+      }
+
+      await ilgiliEserEkle(kaynak, hedef, kullanici)
+      setIlgiliEserler((onceki) => [...onceki, { digerTur: hedef.tur, digerDisId: hedef.disId, digerBaslik: hedef.baslik, digerPosterUrl: hedef.posterUrl, digerAlt: hedef.alt }])
+      setWikidataOneriler((onceki) => onceki.filter((o) => o.wikidataQid !== oneri.wikidataQid))
+    } finally {
+      setWikidataEkleniyor(null)
+    }
   }
 
   useEffect(() => {
@@ -1104,6 +1193,44 @@ export default function EserSayfasi({ tur }) {
                         {ilgiliAramaYukleniyor ? '...' : 'Ara'}
                       </button>
                     </form>
+
+                    {kullanici && !ilgiliElleAcik && (
+                      <div className="rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
+                        <button
+                          type="button"
+                          onClick={wikidataOnerileriniGetir}
+                          disabled={wikidataYukleniyor}
+                          className="text-[11px] text-deniz hover:underline disabled:opacity-40"
+                        >
+                          {wikidataYukleniyor ? 'Wikidata sorgulanıyor...' : "🔗 Wikidata'dan Öner"}
+                        </button>
+                        {wikidataDenendi && !wikidataYukleniyor && wikidataOneriler.length === 0 && (
+                          <p className="mt-1 text-[10px] text-kraft">Wikidata'da bir bağlantı bulunamadı.</p>
+                        )}
+                        {wikidataOneriler.length > 0 && (
+                          <ul className="mt-1.5 space-y-1">
+                            {wikidataOneriler.map((oneri) => (
+                              <li key={oneri.wikidataQid} className="flex items-center justify-between gap-2">
+                                <span className="min-w-0 flex-1 truncate text-xs text-murekkep">
+                                  {oneri.baslik}
+                                  {tur === 'kitap' && oneri.yil ? ` (${oneri.yil})` : ''}
+                                  {tur !== 'kitap' && oneri.yazar ? ` — ${oneri.yazar}` : ''}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => wikidataOneriEkle(oneri)}
+                                  disabled={wikidataEkleniyor === oneri.wikidataQid}
+                                  className="shrink-0 rounded-sm bg-deniz px-2 py-0.5 font-govde text-[10px] text-kagit disabled:opacity-40"
+                                >
+                                  {wikidataEkleniyor === oneri.wikidataQid ? '...' : '+ Ekle'}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
                     {ilgiliElleAcik ? (
                       <form onSubmit={ilgiliElleKaydet} className="space-y-2 rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
                         <p className="text-[11px] uppercase tracking-widest text-gise">Kitabı Elle Ekle</p>
