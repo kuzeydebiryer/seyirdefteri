@@ -48,6 +48,38 @@ export async function gunlukKaydiSil(kayitId) {
   await deleteDoc(doc(db, 'gunlukKayitlari', kayitId))
 }
 
+// Tek seferlik temizlik aracı — Letterboxd'u "gunlukVar" bayrağı eklenmeden
+// ÖNCE bir kez, sonra bayrak eklendikten SONRA bir kez daha içe aktarmış
+// olanlarda (bayrak ilk seferde hiç işaretlenmediği için güvenlik kontrolü
+// işe yaramamış, aynı esere aynı tarihle İKİNCİ bir günlük kaydı düşmüş)
+// oluşan mükerrer kayıtları temizler. Aynı eser + aynı gün + aynı puana
+// sahip birden fazla kayıt varsa, birini bırakıp geri kalanını siler.
+export async function mukerrerGunlukKayitlariniTemizle(uid) {
+  const q = query(collection(db, 'gunlukKayitlari'), where('kullaniciId', '==', uid))
+  const snap = await getDocs(q)
+  const hepsi = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+
+  const gruplar = new Map()
+  hepsi.forEach((k) => {
+    const tarih = typeof k.izlemeTarihi?.toDate === 'function' ? k.izlemeTarihi.toDate() : new Date(k.izlemeTarihi)
+    const gun = isNaN(tarih.getTime()) ? 'bilinmeyen' : tarih.toISOString().slice(0, 10)
+    const anahtar = `${k.tur}_${k.disId}_${gun}_${k.puan ?? ''}_${k.olayTuru ?? ''}`
+    if (!gruplar.has(anahtar)) gruplar.set(anahtar, [])
+    gruplar.get(anahtar).push(k)
+  })
+
+  const silinecekler = []
+  gruplar.forEach((grup) => {
+    if (grup.length > 1) {
+      // İlkini bırak, gerisini sil.
+      silinecekler.push(...grup.slice(1))
+    }
+  })
+
+  await Promise.all(silinecekler.map((k) => deleteDoc(doc(db, 'gunlukKayitlari', k.id))))
+  return silinecekler.length
+}
+
 // tur verilmezse kullanıcının TÜM günlüğü (film+dizi+kitap+gezi karışık,
 // Letterboxd Diary'deki gibi) — Günlük sayfası ve Yılın Özeti bunu kullanıyor.
 export async function gunlukKayitlariniGetir(uid, { tur } = {}) {

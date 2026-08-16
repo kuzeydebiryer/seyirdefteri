@@ -27,7 +27,7 @@ import Avatar from '../components/Avatar.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YilOzeti from '../components/YilOzeti.jsx'
 import GunlukListesi from '../components/GunlukListesi.jsx'
-import { gunlukYilininKayitlariniGetir, gunlukIlkYiliGetir } from '../utils/gunluk.js'
+import { gunlukYilininKayitlariniGetir, gunlukIlkYiliGetir, mukerrerGunlukKayitlariniTemizle } from '../utils/gunluk.js'
 
 const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
@@ -140,6 +140,23 @@ export default function Profil() {
       gunlukOnbellek.current[`${uid}_${gunlukYil}`] = kayitlar
       setGunlukKayitlari(kayitlar)
     })
+  }
+
+  const [temizleniyor, setTemizleniyor] = useState(false)
+  async function mukerrerleriTemizleTiklandi() {
+    setTemizleniyor(true)
+    try {
+      const silinenSayisi = await mukerrerGunlukKayitlariniTemizle(uid)
+      if (silinenSayisi === 0) {
+        window.alert('Mükerrer kayıt bulunamadı, günlüğün zaten temiz.')
+      } else {
+        window.alert(`${silinenSayisi} mükerrer kayıt silindi.`)
+        gunlukOnbellek.current = {}
+        gunlukYenidenYukle()
+      }
+    } finally {
+      setTemizleniyor(false)
+    }
   }
 
   const { raflar, yenidenYukle: raflariYenile } = useRaflar(uid)
@@ -642,6 +659,15 @@ export default function Profil() {
 
       {sekme === 'gunluk' && (
         <>
+          {benimProfilimMi && (
+            <button
+              onClick={mukerrerleriTemizleTiklandi}
+              disabled={temizleniyor}
+              className="mb-3 text-[11px] text-kraft hover:text-deniz hover:underline disabled:opacity-40"
+            >
+              {temizleniyor ? 'Kontrol ediliyor...' : '🧹 Mükerrer Kayıtları Temizle'}
+            </button>
+          )}
           {gunlukYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
           {!gunlukYukleniyor && (
             <GunlukListesi kayitlar={gunlukKayitlari} kendiProfiliMi={benimProfilimMi} onDegisti={gunlukYenidenYukle} />

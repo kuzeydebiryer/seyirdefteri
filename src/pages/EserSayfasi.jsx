@@ -283,6 +283,7 @@ export default function EserSayfasi({ tur }) {
   const [bolumTaslak, setBolumTaslak] = useState(0)
   const [baslangicDuzenleAcik, setBaslangicDuzenleAcik] = useState(false)
   const [baslangicTaslak, setBaslangicTaslak] = useState('')
+  const [gunlukEkleniyor, setGunlukEkleniyor] = useState(false)
   const [gunlukTarihi, setGunlukTarihi] = useState(new Date().toISOString().slice(0, 10))
   const [gunlukTekrar, setGunlukTekrar] = useState(false)
   const [favoriIsleniyor, setFavoriIsleniyor] = useState(false)
@@ -706,6 +707,31 @@ export default function EserSayfasi({ tur }) {
       setIzlenecekKaydi((onceki) => ({ ...onceki, mevcutSezon: sezonTaslak, mevcutBolum: bolumTaslak }))
     } finally {
       setIzlenecekIsleniyor(false)
+    }
+  }
+
+  // Bu esere, günlüğe "başlama" kaydı düşürme özelliği kurulmadan ÖNCE
+  // başlanmış olabilir (izlenecekKaydi zaten var ama karşılığında hiç günlük
+  // kaydı yok) — bu durumda geriye dönük, elle bir "başlama" kaydı eklemenin
+  // yolu. Bilinen (düzenlenmiş olabilecek) başlangıç tarihini kullanıyor.
+  async function gunlugeGeriyeDonukEkle() {
+    if (!kullanici || !detay || !izlenecekKaydi) return
+    setGunlukEkleniyor(true)
+    try {
+      const ms = izlenecekKaydi.baslangicTarihi?.toMillis?.()
+      const tarihISO = ms ? new Date(ms).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)
+      await gunlukKaydiEkle(kullanici, {
+        tur,
+        disId: id,
+        baslik: detay.baslik,
+        posterUrl: detay.posterUrl,
+        yil: detay.yil || '',
+        izlemeTarihiISO: tarihISO,
+        olayTuru: 'baslama',
+      })
+      window.alert('Günlüğe eklendi.')
+    } finally {
+      setGunlukEkleniyor(false)
     }
   }
 
@@ -1315,6 +1341,16 @@ export default function EserSayfasi({ tur }) {
                   </button>
                 )}
               </div>
+
+              {kullanici && (
+                <button
+                  onClick={gunlugeGeriyeDonukEkle}
+                  disabled={gunlukEkleniyor}
+                  className="mt-1 text-[10px] text-kraft hover:text-deniz hover:underline disabled:opacity-40"
+                >
+                  {gunlukEkleniyor ? 'Ekleniyor...' : '📔 Bu Okumayı/İzlemeyi Günlüğe Ekle'}
+                </button>
+              )}
 
               {baslangicDuzenleAcik && (
                 <form onSubmit={baslangicTarihiniKaydet} className="mt-1.5 mb-2 flex items-center gap-2">
