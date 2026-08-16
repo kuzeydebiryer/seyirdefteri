@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { nobelEdebiyatYazarlariniGetir, wikipediaFotoGetir } from '../utils/nobelYazarlar.js'
 
 const SAYFA_BOYUTU = 10
 
@@ -14,32 +15,18 @@ export default function NobelYazarlari() {
   const [sayfa, setSayfa] = useState(0)
   const [fotoOnbellek, setFotoOnbellek] = useState({})
 
-  // Nobel'in resmi ücretsiz API'si — isim/yıl için güvenilir tek kaynak.
-  // Fotoğraf döndürmüyor, o yüzden görsel için ayrıca Wikipedia'nın özet
-  // API'sini kullanıyoruz (aşağıda, sadece o an görünen sayfa için).
   useEffect(() => {
     let iptal = false
-    async function getir() {
-      try {
-        const res = await fetch('https://api.nobelprize.org/2.1/laureates?nobelPrizeCategory=lit&limit=200&sort=desc')
-        if (!res.ok) throw new Error('Nobel API yanıt vermedi')
-        const data = await res.json()
-        const liste = (data.laureates || [])
-          .map((l) => {
-            const odul = (l.nobelPrizes || []).find((p) => p.category?.en === 'Literature') || l.nobelPrizes?.[0]
-            const isim = l.knownName?.en || [l.givenName?.en, l.familyName?.en].filter(Boolean).join(' ')
-            return { isim, yil: odul?.awardYear ? Number(odul.awardYear) : null }
-          })
-          .filter((l) => l.isim && l.yil)
-          .sort((a, b) => b.yil - a.yil)
+    nobelEdebiyatYazarlariniGetir()
+      .then((liste) => {
         if (!iptal) setLaureatlar(liste)
-      } catch (e) {
+      })
+      .catch((e) => {
         if (!iptal) setHata('Nobel listesi yüklenemedi: ' + e.message)
-      } finally {
+      })
+      .finally(() => {
         if (!iptal) setYukleniyor(false)
-      }
-    }
-    getir()
+      })
     return () => {
       iptal = true
     }
@@ -57,15 +44,8 @@ export default function NobelYazarlari() {
     gosterilenler.forEach(async (l) => {
       const anahtar = isimAnahtari(l.isim)
       if (fotoOnbellek[anahtar] !== undefined) return
-      try {
-        const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(l.isim.replace(/ /g, '_'))}`)
-        if (!res.ok) throw new Error('yok')
-        const data = await res.json()
-        const foto = data.thumbnail?.source || null
-        if (!iptal) setFotoOnbellek((onceki) => ({ ...onceki, [anahtar]: foto }))
-      } catch {
-        if (!iptal) setFotoOnbellek((onceki) => ({ ...onceki, [anahtar]: null }))
-      }
+      const foto = await wikipediaFotoGetir(l.isim)
+      if (!iptal) setFotoOnbellek((onceki) => ({ ...onceki, [anahtar]: foto }))
     })
     return () => {
       iptal = true

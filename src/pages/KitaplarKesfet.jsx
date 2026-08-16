@@ -13,6 +13,7 @@ import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import HaberBolumu from '../components/HaberBolumu.jsx'
 import ListelerBolumu from '../components/ListelerBolumu.jsx'
 import KitapArama from '../components/KitapArama.jsx'
+import NobelBanner from '../components/NobelBanner.jsx'
 import GununKitabi from '../components/GununKitabi.jsx'
 import MeydanOkuma from '../components/MeydanOkuma.jsx'
 
@@ -196,15 +197,7 @@ export default function KitaplarKesfet() {
 
       <SuankiKitapWidget />
 
-      <Link
-        to="/nobel-yazarlari"
-        className="mb-4 flex items-center justify-between rounded-sm bg-gise/15 px-4 py-3 ring-1 ring-gise/40 hover:bg-gise/25"
-      >
-        <span className="flex items-center gap-2 text-sm text-murekkep">
-          <span className="text-xl">🏅</span> Nobel Ödüllü Yazarlar — 1901'den bugüne tüm kazananlar
-        </span>
-        <span className="text-xs text-gise">Keşfet →</span>
-      </Link>
+      <NobelBanner />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <GununKitabi />
