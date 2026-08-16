@@ -29,6 +29,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { aksansizKucultulmus } from './metinNormallestir.js'
 
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
@@ -192,6 +193,7 @@ export async function kitapGetir(id) {
 
   await setDoc(ref, {
     ...birlesik,
+    yazarNormalize: aksansizKucultulmus(birlesik.yazar),
     dogrulanmis: false,
     olusturulmaTarihi: serverTimestamp(),
     sonGuncellemeTarihi: serverTimestamp(),
@@ -218,6 +220,7 @@ export async function kitapAramaSonucundanKaydet(item) {
 
   await setDoc(ref, {
     ...birlesik,
+    yazarNormalize: aksansizKucultulmus(birlesik.yazar),
     dogrulanmis: false,
     olusturulmaTarihi: serverTimestamp(),
     sonGuncellemeTarihi: serverTimestamp(),
@@ -254,6 +257,13 @@ export async function kitapGuncelle(id, yeniAlanlar, kullanici) {
   }
 
   if (degisenAlanlar.length === 0) return { id, ...eskiVeri }
+
+  // "yazar" değiştiyse, aksan-duyarsız eşleştirme alanını da güncel tut
+  // (bkz. metinNormallestir.js) — aksi halde canliKataloktaYazarinKitaplariniGetir
+  // eski yazarın normalize alanına takılı kalır.
+  if ('yazar' in temizlenmis) {
+    temizlenmis.yazarNormalize = aksansizKucultulmus(temizlenmis.yazar)
+  }
 
   await setDoc(
     ref,
@@ -370,6 +380,7 @@ export async function kitapElleEkle({ baslik, yazar, yayinevi, yil, ozet, turler
   const veri = {
     baslik,
     yazar: yazar || '',
+    yazarNormalize: aksansizKucultulmus(yazar || ''),
     yayinevi: yayinevi || '',
     yil: yil || '',
     ozet: ozet || '',
@@ -399,9 +410,22 @@ export async function kitapElleEkle({ baslik, yazar, yayinevi, yil, ozet, turler
 // sayfasındaki adla BİREBİR aynı yazılmışsa bulunur (yazar sayfası zaten
 // formu bu adla önceden dolduruyor, bkz. KitapyurdundanKitapEkle.jsx).
 export async function canliKataloktaYazarinKitaplariniGetir(yazarAdi) {
-  const q = query(collection(db, 'kitaplar'), where('yazar', '==', yazarAdi))
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  // Hem eski (sadece "yazar" alanı, aksana duyarlı) hem yeni ("yazarNormalize"
+  // alanı da yazılan) kayıtları kapsasın diye iki sorgu birden atılıyor —
+  // bkz. utils/metinNormallestir.js'teki not (aynı Nobel/Türkçe Kitap Veri
+  // Tabanı yazım farkı burada da geçerli).
+  const [tamEslesme, normSnap] = await Promise.all([
+    getDocs(query(collection(db, 'kitaplar'), where('yazar', '==', yazarAdi))),
+    getDocs(query(collection(db, 'kitaplar'), where('yazarNormalize', '==', aksansizKucultulmus(yazarAdi)))),
+  ])
+  const gorulenler = new Set()
+  const sonuclar = []
+  ;[...tamEslesme.docs, ...normSnap.docs].forEach((d) => {
+    if (gorulenler.has(d.id)) return
+    gorulenler.add(d.id)
+    sonuclar.push({ id: d.id, ...d.data() })
+  })
+  return sonuclar
 }
 
 // "Kitap Ara" da aynı sebeple sadece statik veri setini tarıyor — canlı

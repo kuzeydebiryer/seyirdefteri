@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { aksansizKucultulmus } from './metinNormallestir.js'
 
 // Türkçe Kitap Veri Tabanı — Google Books'ta Türkçe baskıların sık sık
 // bulunamaması sorununu çözmek için, Kitapyurdu'ndan derlenmiş 67.000+ kitaplık
@@ -279,10 +280,10 @@ export async function kitapFiltrele({ metin, kategori, yayinevi, yilBaslangic, y
 // baskılar farklı yazılmışsa kaçırılabilir, bu bilinen bir sınırlama.
 export async function yazarinKitaplariniGetir(yazarAdi) {
   const veri = await veriyiYukle()
-  const q = yazarAdi.trim().toLocaleLowerCase('tr-TR')
+  const q = aksansizKucultulmus(yazarAdi)
   const sonuclar = []
   for (let i = 0; i < veri.length; i++) {
-    if (veri[i][1].toLocaleLowerCase('tr-TR') === q) {
+    if (aksansizKucultulmus(veri[i][1]) === q) {
       sonuclar.push(satiriNesneyeGevir(veri[i], i))
     }
   }
