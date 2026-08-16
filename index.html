@@ -8,6 +8,17 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#1F2421" />
     <meta name="description" content="Kültür ve sanat günlüğü — film, dizi, kitap, sanat ve topluluk." />
+    <!-- Genel (site geneli) paylaşım önizlemesi — WhatsApp/Facebook/Twitter gibi
+         uygulamalar bir link paylaşılınca bu etiketlere bakıyor. Film/dizi/kitap/
+         günce sayfaları için middleware.js bunun YERİNE o eserin kendi görseliyle
+         özel bir önizleme döndürüyor (bkz. o dosyadaki not) — bu etiketler sadece
+         middleware'in kapsamadığı sayfalar (Anasayfa, Profil, Topluluklar vb.)
+         için yedek. -->
+    <meta property="og:title" content="Seyirdefteri" />
+    <meta property="og:description" content="Kültür ve sanat günlüğü — film, dizi, kitap, sanat ve topluluk." />
+    <meta property="og:image" content="https://seyirdefteri.com/icons/icon-512.png" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
     <!-- iOS'ta "Ana Ekrana Ekle" ile açılan PWA'nın adres çubuğu olmadan,
          gerçek bir uygulama gibi açılması için (bkz. PWA temelleri) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
