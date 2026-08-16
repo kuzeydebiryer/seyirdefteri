@@ -164,9 +164,21 @@ exports.kitapBilgisiCek = onRequest({ cors: true }, async (req, res) => {
     return
   }
   try {
-    const yanit = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SeyirdefteriBot/1.0)' } })
+    // "SeyirdefteriBot" gibi açık bir bot kimliği birçok sitenin WAF'ı
+    // tarafından otomatik reddediliyor (403) — gerçek bir tarayıcıya
+    // benzeyen bir istek göndermek gerekiyor.
+    const yanit = await fetch(url, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        Referer: 'https://www.google.com/',
+      },
+    })
     if (!yanit.ok) {
-      res.status(502).json({ hata: `Sayfa açılamadı (${yanit.status}).` })
+      const ekAciklama = yanit.status === 403 ? ' Kitapyurdu bu isteği bot koruması yüzünden reddetmiş olabilir.' : ''
+      res.status(502).json({ hata: `Sayfa açılamadı (${yanit.status}).${ekAciklama}` })
       return
     }
     const html = await yanit.text()
