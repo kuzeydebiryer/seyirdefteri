@@ -19,7 +19,6 @@ import {
 import { eserPuanla, eserPuanindaGunlukVarIsaretle } from '../utils/eserPuani.js'
 import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { tavsiyePosterleriniSenkronizeEt } from '../utils/tavsiye.js'
-import { kitapyurdundanBilgiCek } from '../utils/kapakCek.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
@@ -101,9 +100,6 @@ export default function EserSayfasi({ tur }) {
 
   // Faz 2: kitap bilgisi düzenleme (dahili katalog düzeltmesi)
   const [duzenleModuAcik, setDuzenleModuAcik] = useState(false)
-  const [kitapyurduLinki, setKitapyurduLinki] = useState('')
-  const [kapakCekiliyor, setKapakCekiliyor] = useState(false)
-  const [kapakCekHatasi, setKapakCekHatasi] = useState('')
   const [duzenleTaslak, setDuzenleTaslak] = useState(null)
   const [duzenleKaydediliyor, setDuzenleKaydediliyor] = useState(false)
 
@@ -534,35 +530,6 @@ export default function EserSayfasi({ tur }) {
     setDuzenleModuAcik(true)
   }
 
-  async function kapakCekTiklandi() {
-    setKapakCekiliyor(true)
-    setKapakCekHatasi('')
-    try {
-      const bilgi = await kitapyurdundanBilgiCek(kitapyurduLinki.trim())
-      // Sadece Kitapyurdu'nun döndürdüğü (boş olmayan) alanları forma
-      // yansıtıyoruz — zaten elle doldurduğun bir alanı boş bir sonuçla
-      // ezmemek için.
-      setDuzenleTaslak((t) => ({
-        ...t,
-        ...(bilgi.baslik ? { baslik: bilgi.baslik } : {}),
-        ...(bilgi.yazar ? { yazar: bilgi.yazar } : {}),
-        ...(bilgi.yayinevi ? { yayinevi: bilgi.yayinevi } : {}),
-        ...(bilgi.sayfaSayisi ? { sayfaSayisi: bilgi.sayfaSayisi } : {}),
-        ...(bilgi.ozet ? { ozet: bilgi.ozet } : {}),
-        ...(bilgi.kapakUrl ? { posterUrl: bilgi.kapakUrl } : {}),
-      }))
-      const eksikAlanlar = ['baslik', 'yazar', 'yayinevi', 'sayfaSayisi', 'ozet', 'kapakUrl'].filter((a) => !bilgi[a])
-      if (eksikAlanlar.length > 0) {
-        setKapakCekHatasi(`Şu alanlar sayfada bulunamadı, elle doldurman gerekebilir: ${eksikAlanlar.join(', ')}`)
-      }
-      setKitapyurduLinki('')
-    } catch (e) {
-      setKapakCekHatasi(e.message)
-    } finally {
-      setKapakCekiliyor(false)
-    }
-  }
-
   async function duzenlemeyiKaydet(e) {
     e.preventDefault()
     if (!kullanici || !duzenleTaslak) return
@@ -932,23 +899,9 @@ export default function EserSayfasi({ tur }) {
                   onChange={(e) => setDuzenleTaslak((t) => ({ ...t, posterUrl: e.target.value }))}
                   className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
                 />
-                <div className="mt-1.5 flex items-center gap-2">
-                  <input
-                    value={kitapyurduLinki}
-                    onChange={(e) => setKitapyurduLinki(e.target.value)}
-                    placeholder="Kitapyurdu ürün linkini yapıştır (başlık/yazar/kapak/vb. otomatik dolar)..."
-                    className="flex-1 rounded-sm bg-kagit px-2 py-1 text-[11px] text-murekkep ring-1 ring-cizgi"
-                  />
-                  <button
-                    type="button"
-                    onClick={kapakCekTiklandi}
-                    disabled={!kitapyurduLinki.trim() || kapakCekiliyor}
-                    className="shrink-0 rounded-sm bg-deniz px-2 py-1 text-[11px] text-kagit disabled:opacity-40"
-                  >
-                    {kapakCekiliyor ? 'Çekiliyor...' : 'Bilgileri Çek'}
-                  </button>
-                </div>
-                {kapakCekHatasi && <p className="mt-1 text-[11px] text-muhur">{kapakCekHatasi}</p>}
+                <p className="mt-1 text-[10px] text-kraft">
+                  Kitapyurdu/D&R/İdefix gibi bir siteden kapağa sağ tık → "Görsel adresini kopyala" ile buraya yapıştır.
+                </p>
               </div>
               <div>
                 <label className="text-[11px] text-kraft">Özet</label>

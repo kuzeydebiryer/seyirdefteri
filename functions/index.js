@@ -2,7 +2,6 @@ const { initializeApp } = require('firebase-admin/app')
 const { getFirestore, FieldValue } = require('firebase-admin/firestore')
 const { getMessaging } = require('firebase-admin/messaging')
 const { onDocumentCreated } = require('firebase-functions/v2/firestore')
-const { onRequest } = require('firebase-functions/v2/https')
 const { setGlobalOptions } = require('firebase-functions/v2')
 
 initializeApp()
@@ -142,93 +141,3 @@ exports.yeniGonderiBildirimi = onDocumentCreated('gonderiler/{gonderiId}', async
   })
 })
 
-// Bir Kitapyurdu ürün linkinden kitap bilgilerini otomatik çeker. Tarayıcıdan
-// doğrudan Kitapyurdu'na istek atmak CORS yüzünden engellenir — bu fonksiyon
-// sunucu tarafında (CORS kısıtlaması olmadan) o sayfayı çekip veriyi ayıklıyor,
-// istemciye sadece sonucu döndürüyor. Kötüye kullanımı (rastgele siteleri
-// kazımak için "açık bir proxy" haline gelmesini) önlemek için sadece
-// kitapyurdu.com linklerine izin veriyoruz.
-//
-// İki kaynaktan okuyoruz, öncelik sırasıyla:
-// 1) schema.org/Book JSON-LD (<script type="application/ld+json">) — VARSA
-//    en güvenilir kaynak, çoğu alanı (yazar/yayınevi/ISBN/sayfa sayısı dahil)
-//    tek seferde, yapılandırılmış şekilde verir.
-// 2) OpenGraph meta etiketleri (og:title/og:description/og:image) — JSON-LD
-//    yoksa ya da eksikse yedek. Sadece başlık/özet/kapak verebiliyor,
-//    yazar/ISBN/sayfa sayısı OpenGraph'ta genelde yok.
-// Bulunamayan bir alan sessizce boş dönüyor — olmayan veriyi uydurmuyoruz.
-exports.kitapBilgisiCek = onRequest({ cors: true }, async (req, res) => {
-  const url = req.query.url
-  if (typeof url !== 'string' || !url.startsWith('https://www.kitapyurdu.com/')) {
-    res.status(400).json({ hata: 'Sadece kitapyurdu.com ürün linkleri desteklenir.' })
-    return
-  }
-  try {
-    // "SeyirdefteriBot" gibi açık bir bot kimliği birçok sitenin WAF'ı
-    // tarafından otomatik reddediliyor (403) — gerçek bir tarayıcıya
-    // benzeyen bir istek göndermek gerekiyor.
-    const yanit = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-        Referer: 'https://www.google.com/',
-      },
-    })
-    if (!yanit.ok) {
-      const ekAciklama = yanit.status === 403 ? ' Kitapyurdu bu isteği bot koruması yüzünden reddetmiş olabilir.' : ''
-      res.status(502).json({ hata: `Sayfa açılamadı (${yanit.status}).${ekAciklama}` })
-      return
-    }
-    const html = await yanit.text()
-
-    const metaOku = (ozellik) => {
-      const m = html.match(new RegExp(`<meta[^>]+property=["']${ozellik}["'][^>]+content=["']([^"']+)["']`, 'i'))
-      return m ? m[1].trim() : ''
-    }
-
-    // schema.org/Book JSON-LD bloklarını tara — birden fazla <script> etiketi
-    // olabilir (menü/breadcrumb için ayrı JSON-LD'ler de olabilir), Book/Product
-    // tipinde olanı arıyoruz.
-    let kitapJsonLd = null
-    const scriptEslesmeleri = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
-    for (const m of scriptEslesmeleri) {
-      try {
-        const veri = JSON.parse(m[1])
-        const adaylar = Array.isArray(veri) ? veri : [veri]
-        const bulunan = adaylar.find((v) => v['@type'] === 'Book' || v['@type'] === 'Product')
-        if (bulunan) {
-          kitapJsonLd = bulunan
-          break
-        }
-      } catch {
-        // bu blok geçerli JSON değil, bir sonrakine geç
-      }
-    }
-
-    const yazarAdiCikar = (author) => {
-      if (!author) return ''
-      if (Array.isArray(author)) return author.map((a) => a.name || a).join(', ')
-      return author.name || author || ''
-    }
-
-    const sonuc = {
-      baslik: kitapJsonLd?.name || metaOku('og:title') || '',
-      yazar: yazarAdiCikar(kitapJsonLd?.author) || '',
-      yayinevi: kitapJsonLd?.publisher?.name || kitapJsonLd?.publisher || '',
-      isbn: kitapJsonLd?.isbn || '',
-      sayfaSayisi: kitapJsonLd?.numberOfPages || '',
-      ozet: kitapJsonLd?.description || metaOku('og:description') || '',
-      kapakUrl: kitapJsonLd?.image?.url || kitapJsonLd?.image || metaOku('og:image') || '',
-    }
-
-    if (!sonuc.baslik && !sonuc.kapakUrl) {
-      res.status(404).json({ hata: 'Sayfadan hiçbir bilgi ayıklanamadı.' })
-      return
-    }
-    res.json(sonuc)
-  } catch (e) {
-    res.status(500).json({ hata: e.message })
-  }
-})
