@@ -16,6 +16,18 @@ service cloud.firestore {
       );
     }
 
+    // Uygulama içi bildirim merkezi — SADECE Cloud Functions (Admin SDK, bu
+    // kurallara hiç tabi değil) yazabilir, bu yüzden "create" istemciden
+    // tamamen kapalı (sahte bildirim oluşturmayı engellemek için). Sahibi
+    // sadece "okunduMu" alanını değiştirebilir veya kendi bildirimini silebilir.
+    match /bildirimler/{bildirimId} {
+      allow read: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+      allow create: if false;
+      allow update: if request.auth != null && resource.data.kullaniciId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okunduMu']);
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
     // Günlük Kayıtları (Diary) — bir eseri gerçekte ne zaman izlediğin/okuduğun
     // OLAYI, "eserPuanlarim"daki güncel puandan bağımsız (bkz. utils/gunluk.js
     // başındaki not). Sadece sahibi yazabilir/silebilir/güncelleyebilir;

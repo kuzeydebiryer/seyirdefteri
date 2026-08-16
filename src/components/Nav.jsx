@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useTema } from '../context/TemaContext.jsx'
 import { bildirimDurumu, bildirimleriEtkinlestir, bildirimleriKapat } from '../utils/bildirim.js'
+import BildirimZili from './BildirimZili.jsx'
 import OscarHeykelIkon from './ikonlar/OscarHeykelIkon.jsx'
 import Avatar from './Avatar.jsx'
 import Logo from './Logo.jsx'
@@ -89,14 +90,15 @@ export default function Nav() {
                   {profil?.kullaniciAdi || 'Profil'}
                 </span>
               </NavLink>
+              <BildirimZili />
               {bildirimDestekli && bildirimIzni !== 'denied' && (
                 <button
                   onClick={bildirimDegistir}
                   disabled={bildirimIsleniyor}
                   className="text-kraft hover:text-murekkep disabled:opacity-40"
-                  title={bildirimIzni === 'granted' ? 'Bildirimleri kapat' : 'Bildirimleri aç'}
+                  title={bildirimIzni === 'granted' ? 'Push bildirimlerini kapat' : 'Push bildirimlerini aç'}
                 >
-                  {bildirimIzni === 'granted' ? '🔔' : '🔕'}
+                  {bildirimIzni === 'granted' ? '📳' : '🔕'}
                 </button>
               )}
               <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
@@ -108,6 +110,9 @@ export default function Nav() {
             </nav>
 
             {/* Mobilde hamburger düğmesi */}
+            <div className="sm:hidden flex h-9 w-9 items-center justify-center">
+              <BildirimZili />
+            </div>
             <button
               onClick={temaDegistir}
               className="sm:hidden flex h-9 w-9 items-center justify-center rounded-sm text-murekkep"
@@ -200,8 +205,8 @@ export default function Nav() {
                 disabled={bildirimIsleniyor}
                 className="flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left text-kraft disabled:opacity-40"
               >
-                <span className="w-5 text-center">{bildirimIzni === 'granted' ? '🔔' : '🔕'}</span>
-                {bildirimIzni === 'granted' ? 'Bildirimleri Kapat' : 'Bildirimleri Aç'}
+                <span className="w-5 text-center">{bildirimIzni === 'granted' ? '📳' : '🔕'}</span>
+                {bildirimIzni === 'granted' ? 'Push Bildirimlerini Kapat' : 'Push Bildirimlerini Aç'}
               </button>
             )}
 

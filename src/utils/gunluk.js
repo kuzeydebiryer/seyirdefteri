@@ -17,6 +17,7 @@ export async function gunlukKaydiEkle(
 ) {
   await addDoc(collection(db, 'gunlukKayitlari'), {
     kullaniciId: kullanici.uid,
+    kullaniciAdi: kullanici.displayName || 'İsimsiz',
     tur, // 'sinema' | 'dizi' | 'kitap' | 'gezi' | 'etkinlik'
     disId,
     baslik,

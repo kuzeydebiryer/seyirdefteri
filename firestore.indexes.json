@@ -423,6 +423,20 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "bildirimler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "kullaniciId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "olusturmaTarihi",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
