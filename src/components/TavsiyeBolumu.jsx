@@ -106,14 +106,14 @@ export default function TavsiyeBolumu({
         <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
         <div className="flex items-center gap-3">
           {tumunuGorLink && (
-            <Link to={tumunuGorLink} className="text-[11px] text-kraft hover:text-deniz hover:underline">
+            <Link to={tumunuGorLink} className="shrink-0 rounded-full bg-gise px-3 py-1 font-govde text-xs text-kagit">
               Tümünü Gör →
             </Link>
           )}
           {kullanici && (
             <button
               onClick={() => setFormuAcik((a) => !a)}
-              className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+              className={`rounded-full px-3 py-1 font-govde text-xs ${formuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
             >
               {formuAcik ? 'Vazgeç' : ekleButonuMetni}
             </button>

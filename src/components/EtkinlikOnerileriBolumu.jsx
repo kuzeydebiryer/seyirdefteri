@@ -196,7 +196,7 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
         {uyeMi && (
           <button
             onClick={() => setFormuAcik((a) => !a)}
-            className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+            className={`rounded-full px-3 py-1 font-govde text-xs ${formuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
           >
             {formuAcik ? 'Vazgeç' : '+ Öner'}
           </button>
