@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore'
+import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // "eserPuanlarim" (bkz. eserPuani.js) bir eserin GÜNCEL/tekil puanını tutuyor
@@ -31,6 +31,7 @@ export async function gunlukKaydiEkle(
     // 'baslama' | 'bitirme' | undefined (undefined = normal puanlama/günce —
     // geriye dönük uyumluluk için, eski kayıtlarda bu alan hiç yok).
     olayTuru: olayTuru || null,
+    begenenler: [],
     eklemeTarihi: serverTimestamp(),
   })
 }
@@ -120,4 +121,43 @@ export async function gunlukIlkYiliGetir(uid) {
   const tarih = snap.docs[0].data().izlemeTarihi
   const d = typeof tarih?.toDate === 'function' ? tarih.toDate() : new Date(tarih)
   return isNaN(d.getTime()) ? null : d.getFullYear()
+}
+
+// Bir günlük kaydını beğenme/beğeniyi geri alma — mevcut gönderi beğeni
+// sistemiyle (bkz. utils/begeni.js) aynı desen, sadece hedef koleksiyon farklı.
+export async function gunlukBegenDegistir(kayitId, uid, suAnBegeniyorMu) {
+  await updateDoc(doc(db, 'gunlukKayitlari', kayitId), {
+    begenenler: suAnBegeniyorMu ? arrayRemove(uid) : arrayUnion(uid),
+  })
+}
+
+// Takip ettiklerinin en son günlük kayıtları — Letterboxd'daki "Friends"
+// akışı / "New from friends" grid'i için. Firestore'un "in" operatörü en
+// fazla 30 değer kabul ettiğinden (bkz. useGonderiler.js'teki aynı desen),
+// büyük takip listelerinde sorgu 30'luk gruplara bölünüp birleştiriliyor —
+// küçük bir toplulukta pratikte hep tek istek olacak.
+// Sıralama İZLEME TARİHİNE değil EKLEME TARİHİNE göre — geçmişe dönük
+// (backdated) bir kayıt eklendiğinde akışın en üstüne zıplamaması için;
+// "en son ne oldu" sorusu her zaman gerçek ekleme anını göstermeli.
+export async function takipEdilenlerinGunlukKayitlariniGetir(uidListesi, limitSayisi = 15) {
+  if (!uidListesi || uidListesi.length === 0) return []
+  const gruplar = []
+  for (let i = 0; i < uidListesi.length; i += 30) {
+    gruplar.push(uidListesi.slice(i, i + 30))
+  }
+  const sonuclar = await Promise.all(
+    gruplar.map((grup) =>
+      getDocs(
+        query(
+          collection(db, 'gunlukKayitlari'),
+          where('kullaniciId', 'in', grup),
+          orderBy('eklemeTarihi', 'desc'),
+          limit(limitSayisi)
+        )
+      )
+    )
+  )
+  const hepsi = sonuclar.flatMap((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+  hepsi.sort((a, b) => (b.eklemeTarihi?.toMillis?.() || 0) - (a.eklemeTarihi?.toMillis?.() || 0))
+  return hepsi.slice(0, limitSayisi)
 }

@@ -5,7 +5,10 @@ import { useGonderiler } from '../hooks/useGonderiler.js'
 import { takipEdilenUidleriGetir } from '../hooks/useTakip.js'
 import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
 import { alintiBegenDegistir, sonAlintilariGetir } from '../utils/alinti.js'
+import { takipEdilenlerinGunlukKayitlariniGetir } from '../utils/gunluk.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
+import TakipGunlukKarti from '../components/TakipGunlukKarti.jsx'
+import YeniGunlukGridi from '../components/YeniGunlukGridi.jsx'
 import HabercKarti from '../components/HabercKarti.jsx'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
@@ -136,6 +139,26 @@ export default function Anasayfa() {
     sonHabercileriGetir(10).then(setHaberciler)
   }, [])
 
+  // Takip ettiklerinin günlük (izledi/okudu/puanladı) aktivitesi — Letterboxd
+  // tarzı "Friends" akışının hafif katmanı. Sadece "Takip" sekmesinde,
+  // gönderi/duyurularla aynı akışa karışır. Sabit sayıda çekiliyor (sayfalama
+  // yok), günce akışındaki "Daha Fazla Göster" bunu kapsamıyor — bilinçli bir
+  // MVP sınırı, ihtiyaç olursa genişletilir.
+  const [takipGunlukKayitlari, setTakipGunlukKayitlari] = useState([])
+  useEffect(() => {
+    if (sekme !== 'takip' || !takipHazirMi || takipFiltresi.length === 0) {
+      setTakipGunlukKayitlari([])
+      return
+    }
+    let iptal = false
+    takipEdilenlerinGunlukKayitlariniGetir(takipFiltresi, 15).then((liste) => {
+      if (!iptal) setTakipGunlukKayitlari(liste)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [sekme, takipHazirMi, takipFiltresi.join(',')])
+
   async function habercKatilimDegistir(haberci) {
     if (!kullanici) return
     const katiliyorMu = haberci.katilacaklar.includes(kullanici.uid)
@@ -162,10 +185,19 @@ export default function Anasayfa() {
   // bir tür filtresi aktifken sadece "Tümü" veya "Etkinlik" seçiliyse akışa
   // karışıyor — aksi halde ör. "Kitap" filtresinde alakasız bir duyuru çıkardı.
   const habercilerGosterilsinMi = turFiltre === '' || turFiltre === 'etkinlik'
-  const akisOgeleri = [...gonderiler.map((g) => ({ ...g, _tur: 'gonderi' })), ...(habercilerGosterilsinMi ? habercler : [])]
+  const gunlukGosterilsinMi = !alintiFiltresiAktifMi && (!efektifTur || efektifTur === 'sinema' || efektifTur === 'kitap' || efektifTur === 'dizi')
+  const filtrelenmisGunluk = gunlukGosterilsinMi
+    ? takipGunlukKayitlari.filter((k) => !efektifTur || k.tur === efektifTur)
+    : []
+  const akisOgeleri = [
+    ...gonderiler.map((g) => ({ ...g, _tur: 'gonderi' })),
+    ...(habercilerGosterilsinMi ? habercler : []),
+    ...filtrelenmisGunluk.map((k) => ({ ...k, _tur: 'gunluk' })),
+  ]
   akisOgeleri.sort((a, b) => {
-    const aZaman = (a._tur === 'haberci' ? a.eklemeTarihi : a.tarih)?.toMillis?.() || 0
-    const bZaman = (b._tur === 'haberci' ? b.eklemeTarihi : b.tarih)?.toMillis?.() || 0
+    const zamanAlaniniAl = (o) => (o._tur === 'haberci' ? o.eklemeTarihi : o._tur === 'gunluk' ? o.eklemeTarihi : o.tarih)
+    const aZaman = zamanAlaniniAl(a)?.toMillis?.() || 0
+    const bZaman = zamanAlaniniAl(b)?.toMillis?.() || 0
     return bZaman - aZaman
   })
 
@@ -225,6 +257,8 @@ export default function Anasayfa() {
 
       <KitapDunyasiWidget />
 
+      {sekme === 'takip' && <YeniGunlukGridi kayitlar={takipGunlukKayitlari} />}
+
       <div className="mb-4 flex gap-4 text-sm font-govde">
         <button
           onClick={() => setSekme('takip')}
@@ -272,13 +306,13 @@ export default function Anasayfa() {
         </>
       ) : (
         <>
-          {!gercektenYukleniyor && gonderiler.length === 0 && sekme === 'takip' && (
+          {!gercektenYukleniyor && akisOgeleri.length === 0 && sekme === 'takip' && (
             <p className="text-sm text-kraft">
               Henüz kimseyi takip etmiyorsun. <button onClick={() => setSekme('herkes')} className="text-muhur">Herkes</button> sekmesinden
               keşfedip takip edebilirsin.
             </p>
           )}
-          {!gercektenYukleniyor && gonderiler.length === 0 && sekme === 'herkes' && (
+          {!gercektenYukleniyor && akisOgeleri.length === 0 && sekme === 'herkes' && (
             <p className="text-sm text-kraft">
               Henüz hiç günce yok. İlk paylaşımı sen yap: <Link to="/gonderi-ekle" className="text-muhur">Günce Ekle</Link>
             </p>
@@ -290,6 +324,8 @@ export default function Anasayfa() {
                 <div key={oge.id}>
                   {oge._tur === 'haberci' ? (
                     <HabercKarti haberci={oge} kullanici={kullanici} onKatilimDegistir={habercKatilimDegistir} onSil={habercSilTiklandi} />
+                  ) : oge._tur === 'gunluk' ? (
+                    <TakipGunlukKarti kayit={oge} />
                   ) : (
                     <GonderiKarti gonderi={oge} />
                   )}

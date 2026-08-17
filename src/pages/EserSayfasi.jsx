@@ -32,6 +32,7 @@ import { filmOscarBilgisiGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
 import { kitaptanFilmOner, filmdenKitapOner, filmTriviaGetir, paraFormatla } from '../utils/wikidata.js'
+import { eserYorumlariGetir, eserYorumEkle, yorumSil } from '../utils/yorum.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 import EserKarti from '../components/EserKarti.jsx'
 
@@ -141,6 +142,13 @@ export default function EserSayfasi({ tur }) {
   // (dış puanlar, sağlayıcılar) gibi sayfa yüklenirken sessizce denenir,
   // veri yoksa hiçbir şey göstermez.
   const [trivia, setTrivia] = useState(null)
+
+  // Yorumlar — günceden farklı: puanlama/kayıt gerektirmeyen, serbest metinli
+  // bir tartışma alanı. Sayfa yüklenirken sessizce çekilir.
+  const [yorumlar, setYorumlar] = useState([])
+  const [yorumlarYukleniyor, setYorumlarYukleniyor] = useState(true)
+  const [yeniYorum, setYeniYorum] = useState('')
+  const [yorumGonderiliyor, setYorumGonderiliyor] = useState(false)
   const [triviaAcik, setTriviaAcik] = useState(false)
 
   const ilgiliHedefTur = tur === 'kitap' ? ilgiliKategori : 'kitap'
@@ -348,6 +356,40 @@ export default function EserSayfasi({ tur }) {
       iptal = true
     }
   }, [tur, id])
+
+  useEffect(() => {
+    let iptal = false
+    const disIdTipli = tur === 'kitap' ? id : Number(id)
+    setYorumlarYukleniyor(true)
+    eserYorumlariGetir(tur, disIdTipli).then((liste) => {
+      if (iptal) return
+      setYorumlar(liste)
+      setYorumlarYukleniyor(false)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [tur, id])
+
+  async function yorumGonder(e) {
+    e.preventDefault()
+    if (!yeniYorum.trim() || !kullanici) return
+    setYorumGonderiliyor(true)
+    try {
+      const disIdTipli = tur === 'kitap' ? id : Number(id)
+      const yeniId = await eserYorumEkle(tur, disIdTipli, kullanici, profil?.adSoyad, yeniYorum)
+      setYorumlar((onceki) => [...onceki, { id: yeniId, yazarId: kullanici.uid, yazarAdi: profil?.adSoyad || kullanici.displayName, metin: yeniYorum.trim() }])
+      setYeniYorum('')
+    } finally {
+      setYorumGonderiliyor(false)
+    }
+  }
+
+  async function yorumSilTiklandi(yorumId) {
+    if (!window.confirm('Bu yorumu silmek istediğine emin misin?')) return
+    await yorumSil(yorumId)
+    setYorumlar((onceki) => onceki.filter((y) => y.id !== yorumId))
+  }
 
 
   useEffect(() => {
@@ -2072,6 +2114,52 @@ export default function EserSayfasi({ tur }) {
           </li>
         ))}
       </ul>
+
+      <div className="defter-cizgi my-6" />
+
+      <h2 className="font-baslik text-lg text-murekkep mb-3">Yorumlar</h2>
+      {yorumlarYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
+      {!yorumlarYukleniyor && yorumlar.length === 0 && <p className="text-sm text-kraft">Henüz yorum yok — ilkini sen yaz.</p>}
+
+      <ul className="space-y-3 mb-4">
+        {yorumlar.map((y) => (
+          <li key={y.id} className="group flex items-start gap-2 text-sm">
+            <Avatar adSoyad={y.yazarAdi} avatarUrl={y.yazarAvatarUrl} boyut="h-6 w-6" />
+            <div className="min-w-0 flex-1">
+              <Link to={`/profil/${y.yazarId}`} className="font-medium text-murekkep hover:underline">
+                {y.yazarAdi}
+              </Link>{' '}
+              <span className="whitespace-pre-wrap text-murekkep/90">{y.metin}</span>
+            </div>
+            {kullanici?.uid === y.yazarId && (
+              <button
+                onClick={() => yorumSilTiklandi(y.id)}
+                className="shrink-0 text-xs text-kraft opacity-0 transition-opacity hover:text-muhur group-hover:opacity-100"
+              >
+                Sil
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <form onSubmit={yorumGonder} className="space-y-2">
+        <textarea
+          value={yeniYorum}
+          onChange={(e) => setYeniYorum(e.target.value)}
+          placeholder={kullanici ? 'Bir yorum yaz — kısa bir cümle de olur, uzun bir düşünce de...' : 'Yorum yapmak için giriş yap'}
+          disabled={!kullanici}
+          rows={3}
+          className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={!kullanici || yorumGonderiliyor || !yeniYorum.trim()}
+          className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+        >
+          {yorumGonderiliyor ? 'Gönderiliyor...' : 'Yorum Yap'}
+        </button>
+      </form>
     </div>
   )
 }
