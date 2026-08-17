@@ -170,13 +170,17 @@ export async function kisiEtkilesimleriGetir(tmdbKisiId) {
 
 // --- Strateji 3: Otomatik İlginç Bilgiler (Trivia) ----------------------
 // Film/dizi sayfasında küçük bir "İlginç Bilgiler" kutusu için: çekim
-// yerleri, ait olduğu sanat/sinema akımı, ve hikayenin geçtiği (kurgusal
-// olabilir) mekan. TMDB ID üzerinden (P4947) tekil eşleşme aranıyor, bu da
-// sorguyu hızlı ve ucuz tutuyor. GROUP_CONCAT kullanıldığından ?xLabel
-// otomatik etiketleme servisi yerine elle rdfs:label + FILTER(LANG()) —
-// Wikidata'da agregasyonlu sorgularda otomatik etiket servisi güvenilir
-// çalışmıyor, bu yüzden bilinen bir çözüm.
-// Dönüş: { cekimYerleri: string[], akimlar: string[], anlatiYerleri: string[] } | null
+// yerleri, ait olduğu sanat/sinema akımı, ana tema, ödüller, bütçe ve
+// hasılat. TMDB ID üzerinden (P4947) tekil eşleşme aranıyor, bu da sorguyu
+// hızlı ve ucuz tutuyor. GROUP_CONCAT kullanıldığından ?xLabel otomatik
+// etiketleme servisi yerine elle rdfs:label + FILTER(LANG()) — Wikidata'da
+// agregasyonlu sorgularda otomatik etiket servisi güvenilir çalışmıyor, bu
+// yüzden bilinen bir çözüm.
+//
+// Not (bütçe/hasılat): Wikidata bu alanları (P2130/P2142) çoğunlukla ABD
+// doları olarak kaydediyor ama bu garanti değil — basitlik için sabit "$"
+// ile gösteriyoruz. Nadir bir filmde farklı para birimiyle girilmiş olabilir.
+// Dönüş: { cekimYerleri, akimlar, anlatiYerleri, temalar, odulller, butce, hasilat } | null
 export async function filmTriviaGetir(tmdbId) {
   if (!tmdbId) return null
   const sorgu = `
@@ -184,6 +188,10 @@ export async function filmTriviaGetir(tmdbId) {
       (GROUP_CONCAT(DISTINCT ?cekimYeriLabel; separator="|") AS ?cekimYerleri)
       (GROUP_CONCAT(DISTINCT ?akimLabel; separator="|") AS ?akimlar)
       (GROUP_CONCAT(DISTINCT ?anlatiYeriLabel; separator="|") AS ?anlatiYerleri)
+      (GROUP_CONCAT(DISTINCT ?temaLabel; separator="|") AS ?temalar)
+      (GROUP_CONCAT(DISTINCT ?odulLabel; separator="|") AS ?odulller)
+      (SAMPLE(?butceMiktar) AS ?butce)
+      (SAMPLE(?hasilatMiktar) AS ?hasilat)
     WHERE {
       ?film wdt:P4947 "${tmdbId}".
       OPTIONAL {
@@ -201,6 +209,18 @@ export async function filmTriviaGetir(tmdbId) {
         ?anlatiYeri rdfs:label ?anlatiYeriLabel.
         FILTER(LANG(?anlatiYeriLabel) IN ("tr", "en"))
       }
+      OPTIONAL {
+        ?film wdt:P921 ?tema.
+        ?tema rdfs:label ?temaLabel.
+        FILTER(LANG(?temaLabel) IN ("tr", "en"))
+      }
+      OPTIONAL {
+        ?film wdt:P166 ?odul.
+        ?odul rdfs:label ?odulLabel.
+        FILTER(LANG(?odulLabel) IN ("tr", "en"))
+      }
+      OPTIONAL { ?film wdt:P2130 ?butceMiktar. }
+      OPTIONAL { ?film wdt:P2142 ?hasilatMiktar. }
     }
     GROUP BY ?film
   `
@@ -217,8 +237,41 @@ export async function filmTriviaGetir(tmdbId) {
 
   const cekimYerleri = ayir(satir.cekimYerleri?.value)
   const akimlar = ayir(satir.akimlar?.value)
-  const anlatiYerleri = ayir(satir.anlatiYerleri?.value)
+  const temalar = ayir(satir.temalar?.value)
+  const odulller = ayir(satir.odulller?.value)
 
-  if (cekimYerleri.length === 0 && akimlar.length === 0 && anlatiYerleri.length === 0) return null
-  return { cekimYerleri, akimlar, anlatiYerleri }
+  // Hikayenin geçtiği yer, çekim yerleriyle (kısmen de olsa) çakışıyorsa
+  // ayrıca göstermenin anlamı yok — "New York'ta çekildi, hikaye New
+  // York'ta geçiyor" tekrar bilgi verir. Sadece gerçekten farklıysa (mesela
+  // "Vancouver'da çekildi ama hikaye New York'ta geçiyor" gibi) trivia
+  // değeri taşır.
+  const anlatiYerleriHam = ayir(satir.anlatiYerleri?.value)
+  const anlatiYerleri = anlatiYerleriHam.filter(
+    (yer) => !cekimYerleri.some((cy) => cy.toLowerCase().includes(yer.toLowerCase()) || yer.toLowerCase().includes(cy.toLowerCase()))
+  )
+
+  const butce = satir.butce?.value ? Number(satir.butce.value) : null
+  const hasilat = satir.hasilat?.value ? Number(satir.hasilat.value) : null
+
+  if (
+    cekimYerleri.length === 0 &&
+    akimlar.length === 0 &&
+    anlatiYerleri.length === 0 &&
+    temalar.length === 0 &&
+    odulller.length === 0 &&
+    !butce &&
+    !hasilat
+  )
+    return null
+
+  return { cekimYerleri, akimlar, anlatiYerleri, temalar, odulller, butce, hasilat }
+}
+
+// $20.000.000 -> "$20 milyon" gibi okunaklı bir kısa gösterim.
+export function paraFormatla(miktar) {
+  if (!miktar) return ''
+  if (miktar >= 1_000_000_000) return `$${(miktar / 1_000_000_000).toFixed(1).replace(/\.0$/, '')} milyar`
+  if (miktar >= 1_000_000) return `$${(miktar / 1_000_000).toFixed(1).replace(/\.0$/, '')} milyon`
+  if (miktar >= 1_000) return `$${(miktar / 1_000).toFixed(0)} bin`
+  return `$${miktar}`
 }

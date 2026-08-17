@@ -31,7 +31,7 @@ import { ogeEkle as listeyeOgeEkle, esereAitListeleriGetir } from '../utils/kisi
 import { filmOscarBilgisiGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
-import { kitaptanFilmOner, filmdenKitapOner, filmTriviaGetir } from '../utils/wikidata.js'
+import { kitaptanFilmOner, filmdenKitapOner, filmTriviaGetir, paraFormatla } from '../utils/wikidata.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 import EserKarti from '../components/EserKarti.jsx'
 
@@ -406,7 +406,8 @@ export default function EserSayfasi({ tur }) {
         if (tur === 'sinema' || tur === 'dizi') {
           if (!TMDB_API_KEY) throw new Error('TMDB API anahtarı tanımlı değil.')
           const uc = tur === 'sinema' ? 'movie' : 'tv'
-          const url = `https://api.themoviedb.org/3/${uc}/${id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits,videos,similar,images,external_ids&include_image_language=null,tr,en`
+          const sertifikaAlanAdi = tur === 'sinema' ? 'release_dates' : 'content_ratings'
+          const url = `https://api.themoviedb.org/3/${uc}/${id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits,videos,similar,images,external_ids,${sertifikaAlanAdi}&include_image_language=null,tr,en`
           const res = await fetch(url)
           const data = await res.json()
           if (!res.ok) throw new Error(data.status_message || `HTTP ${res.status}`)
@@ -416,6 +417,54 @@ export default function EserSayfasi({ tur }) {
             tur === 'sinema'
               ? (data.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => ({ id: k.id, name: k.name }))
               : (data.created_by || []).map((k) => ({ id: k.id, name: k.name }))
+          const bestekarlar = [
+            ...new Map(
+              (data.credits?.crew || [])
+                .filter((k) => k.job === 'Original Music Composer')
+                .map((k) => [k.id, { id: k.id, name: k.name }])
+            ).values(),
+          ]
+
+          // Yaş sınırı (TR) — film ve dizi için TMDB'nin farklı veri
+          // şekillerini (release_dates vs content_ratings) tek bir alana indirger.
+          let sertifika = ''
+          if (tur === 'sinema') {
+            const trKayit = (data.release_dates?.results || []).find((r) => r.iso_3166_1 === 'TR')
+            sertifika = trKayit?.release_dates?.find((rd) => rd.certification)?.certification || ''
+          } else {
+            const trKayit = (data.content_ratings?.results || []).find((r) => r.iso_3166_1 === 'TR')
+            sertifika = trKayit?.rating || ''
+          }
+
+          // Koleksiyon/Seri — sadece filmde var, TMDB ana yanıtta zaten
+          // geliyor, ekstra istek gerekmiyor. Serideki diğer filmleri
+          // göstermek için TEK bir ek istek (koleksiyon varsa) — TMDB kendi
+          // API'si olduğundan Wikidata'daki gibi bir rate limit kaygımız yok.
+          let koleksiyon =
+            tur === 'sinema' && data.belongs_to_collection
+              ? {
+                  id: data.belongs_to_collection.id,
+                  ad: data.belongs_to_collection.name,
+                  filmler: [],
+                }
+              : null
+          if (koleksiyon) {
+            try {
+              const kolRes = await fetch(
+                `https://api.themoviedb.org/3/collection/${koleksiyon.id}?api_key=${TMDB_API_KEY}&language=tr-TR`
+              )
+              const kolData = await kolRes.json()
+              if (kolRes.ok) {
+                koleksiyon.filmler = (kolData.parts || [])
+                  .filter((f) => f.id !== Number(id))
+                  .sort((a, b) => (a.release_date || '').localeCompare(b.release_date || ''))
+                  .map((f) => ({ id: f.id, baslik: f.title, yil: f.release_date?.slice(0, 4) || '', posterUrl: f.poster_path ? `${TMDB_POSTER}${f.poster_path}` : '' }))
+              }
+            } catch {
+              // sessizce geç — koleksiyon rozeti zaten gösterilecek, sadece film listesi eksik kalır
+            }
+          }
+
           const oyuncular = (data.credits?.cast || [])
             .slice(0, 10)
             .map((k) => ({ id: k.id, name: k.name, karakter: k.character, fotoUrl: k.profile_path ? `https://image.tmdb.org/t/p/w185${k.profile_path}` : '' }))
@@ -448,7 +497,11 @@ export default function EserSayfasi({ tur }) {
                 ? (data.seasons || []).filter((s) => s.season_number > 0).sort((a, b) => a.season_number - b.season_number)
                 : null,
             yonetmenler,
+            bestekarlar,
             oyuncular,
+            tagline: data.tagline || '',
+            sertifika,
+            koleksiyon,
             dbPuan: data.vote_average ? data.vote_average.toFixed(1) : null,
             imdbId: data.external_ids?.imdb_id || null,
             fragmanId: fragman?.key || null,
@@ -916,6 +969,7 @@ export default function EserSayfasi({ tur }) {
           <h1 className="font-baslik text-3xl text-murekkep">
             {detay.baslik} {detay.yil && <span className="text-kraft text-xl">({detay.yil})</span>}
           </h1>
+          {detay.tagline && <p className="mt-0.5 text-sm italic text-kraft">"{detay.tagline}"</p>}
           {detay.yazar && (
             <p className="text-sm mt-1">
               <Link to={`/yazar/${encodeURIComponent(detay.yazar)}`} className="text-kraft hover:underline hover:text-deniz">
@@ -942,6 +996,11 @@ export default function EserSayfasi({ tur }) {
               detay.turler && <span>{detay.turler}</span>
             )}
             {detay.sureDk && <span>⏱ {detay.sureDk} dk</span>}
+            {detay.sertifika && (
+              <span className="rounded-sm bg-kagitKoyu px-1.5 py-0.5 font-medium text-murekkep ring-1 ring-cizgi">
+                {detay.sertifika}
+              </span>
+            )}
             {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
             {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
             {detay.sayfaSayisi && <span>📄 {detay.sayfaSayisi} sayfa</span>}
@@ -999,6 +1058,29 @@ export default function EserSayfasi({ tur }) {
           )}
 
           <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
+          {tur === 'sinema' && <KisiListesi kisiler={detay.bestekarlar} etiket="Müzik" />}
+
+          {detay.koleksiyon && (
+            <div className="mt-2 rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
+              <p className="text-xs text-murekkep">🎬 {detay.koleksiyon.ad} serisinin parçası</p>
+              {detay.koleksiyon.filmler.length > 0 && (
+                <div className="mt-1.5 flex gap-2 overflow-x-auto pb-1">
+                  {detay.koleksiyon.filmler.map((f) => (
+                    <Link key={f.id} to={`/film/${f.id}`} className="shrink-0 text-center" style={{ width: 64 }}>
+                      {f.posterUrl ? (
+                        <img src={f.posterUrl} alt={f.baslik} className="h-24 w-16 rounded-sm object-cover ring-1 ring-cizgi" />
+                      ) : (
+                        <div className="flex h-24 w-16 items-center justify-center rounded-sm bg-kagit text-[9px] text-kraft ring-1 ring-cizgi">
+                          {f.baslik}
+                        </div>
+                      )}
+                      <p className="mt-0.5 truncate text-[10px] text-kraft">{f.yil}</p>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {tur === 'kitap' && kullanici && !duzenleModuAcik && (
             <button onClick={duzenlemeyiAc} className="mt-2 text-[11px] text-kraft hover:text-deniz hover:underline">
@@ -1489,14 +1571,31 @@ export default function EserSayfasi({ tur }) {
                     ))}
                   </p>
                 )}
+                {trivia.anlatiYerleri.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Hikayenin geçtiği yer:</span> {trivia.anlatiYerleri.join(', ')}
+                  </p>
+                )}
+                {trivia.temalar.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Tema:</span> {trivia.temalar.join(', ')}
+                  </p>
+                )}
                 {trivia.akimlar.length > 0 && (
                   <p>
                     <span className="text-murekkep">Akım:</span> {trivia.akimlar.join(', ')}
                   </p>
                 )}
-                {trivia.anlatiYerleri.length > 0 && (
+                {(trivia.butce || trivia.hasilat) && (
                   <p>
-                    <span className="text-murekkep">Hikayenin geçtiği yer:</span> {trivia.anlatiYerleri.join(', ')}
+                    <span className="text-murekkep">Bütçe / Hasılat:</span>{' '}
+                    {trivia.butce ? paraFormatla(trivia.butce) : '?'} / {trivia.hasilat ? paraFormatla(trivia.hasilat) : '?'}
+                  </p>
+                )}
+                {trivia.odulller.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Ödüller:</span> {trivia.odulller.slice(0, 6).join(', ')}
+                    {trivia.odulller.length > 6 && ` +${trivia.odulller.length - 6} daha`}
                   </p>
                 )}
               </div>
