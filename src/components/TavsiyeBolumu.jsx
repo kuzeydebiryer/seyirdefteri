@@ -108,7 +108,15 @@ export default function TavsiyeBolumu({
     <div className="mb-10">
       {sade ? (
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
+          {tumunuGorLink ? (
+            <h2 className="font-baslik text-lg text-murekkep">
+              <Link to={tumunuGorLink} className="hover:text-deniz">
+                {baslik}
+              </Link>
+            </h2>
+          ) : (
+            <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
+          )}
           {tumunuGorLink && (
             <Link to={tumunuGorLink} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
               Tümünü Gör ›
