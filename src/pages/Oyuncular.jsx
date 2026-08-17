@@ -113,12 +113,12 @@ export default function Oyuncular() {
 
       {/* Yönetmenler — üyelerin elle eklediği küratörlü liste */}
       <div className="mb-10">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-baslik text-lg text-murekkep">Yönetmenler</h2>
           {kullanici && (
             <button
               onClick={() => setYonetmenFormuAcik((a) => !a)}
-              className={`rounded-full px-3 py-1 font-govde text-xs ${yonetmenFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${yonetmenFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
             >
               {yonetmenFormuAcik ? 'Vazgeç' : '+ Yönetmen Ekle'}
             </button>

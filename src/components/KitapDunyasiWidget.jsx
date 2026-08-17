@@ -53,7 +53,7 @@ export default function KitapDunyasiWidget() {
     <div className="mb-6">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-baslik text-lg text-murekkep">📖 Kitap Dünyası</h2>
-        <Link to="/kitaplar" className="shrink-0 rounded-full bg-gise px-3 py-1 font-govde text-xs text-kagit">
+        <Link to="/kitaplar" className="shrink-0 whitespace-nowrap rounded-full bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi">
           Tümünü Gör →
         </Link>
       </div>

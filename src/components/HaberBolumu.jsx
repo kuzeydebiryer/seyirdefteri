@@ -196,12 +196,12 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
 
   return (
     <div className="mb-10">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-baslik text-lg text-murekkep">Haberler</h2>
         {kullanici && (
           <button
             onClick={() => setFormuAcik((a) => !a)}
-            className={`rounded-full px-3 py-1 font-govde text-xs ${formuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
+            className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${formuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
           >
             {formuAcik ? 'Vazgeç' : '+ Haber Ekle'}
           </button>

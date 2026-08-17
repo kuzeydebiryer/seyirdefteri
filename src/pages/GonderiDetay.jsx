@@ -380,14 +380,14 @@ export default function GonderiDetay() {
       {(gonderi.tur === 'sinema' || gonderi.tur === 'dizi' || gonderi.tur === 'kitap') && (
         <>
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="font-baslik text-lg text-murekkep">
                 Bu {gonderi.tur === 'kitap' ? 'kitap' : gonderi.tur === 'dizi' ? 'dizi' : 'film'} hakkında konuşalım
               </h2>
               {kullanici && (
                 <button
                   onClick={() => setEtkinlikFormuAcik((a) => !a)}
-                  className={`rounded-full px-3 py-1 font-govde text-xs ${etkinlikFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
+                  className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${etkinlikFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
                 >
                   {etkinlikFormuAcik ? 'Vazgeç' : '+ Etkinlik Oluştur'}
                 </button>

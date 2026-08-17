@@ -501,12 +501,12 @@ export default function TopluluklarDetay() {
 
       {/* Gelecek Etkinlikler */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h2 className="font-baslik text-lg text-murekkep">Gelecek Etkinlikler</h2>
           {uyeMi && (
             <button
               onClick={() => setEtkinlikFormuAcik((a) => !a)}
-              className={`rounded-full px-3 py-1 font-govde text-xs ${etkinlikFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${etkinlikFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
             >
               {etkinlikFormuAcik ? 'Vazgeç' : '+ Etkinlik Ekle'}
             </button>
@@ -726,12 +726,12 @@ export default function TopluluklarDetay() {
 
       {/* Topluluk Listeleri */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h2 className="font-baslik text-lg text-murekkep">Topluluk Listeleri</h2>
           {uyeMi && (
             <button
               onClick={() => setListeFormuAcik((a) => !a)}
-              className={`rounded-full px-3 py-1 font-govde text-xs ${listeFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${listeFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
             >
               {listeFormuAcik ? 'Vazgeç' : '+ Liste Oluştur'}
             </button>
