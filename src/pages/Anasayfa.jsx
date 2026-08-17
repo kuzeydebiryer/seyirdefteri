@@ -188,7 +188,7 @@ export default function Anasayfa() {
         yenidenYukle={filmTavsiyeleriYenile}
         yatay
         baslik="🎬 Film Tavsiyeleri"
-        tumunuGorLink="/filmler"
+        tumunuGorLink="/film-tavsiyeleri"
       />
 
       <TavsiyeBolumu
@@ -198,7 +198,7 @@ export default function Anasayfa() {
         yenidenYukle={yeniGelenFilmleriYenile}
         yatay
         baslik="🆕 Yeni Gelen Filmler"
-        tumunuGorLink="/filmler"
+        tumunuGorLink="/yeni-gelen-filmler"
         ekleButonuMetni="+ Film Ekle"
       />
 
@@ -208,7 +208,7 @@ export default function Anasayfa() {
         yenidenYukle={kitapTavsiyeleriYenile}
         yatay
         baslik="📖 Kitap Tavsiyeleri"
-        tumunuGorLink="/kitaplar"
+        tumunuGorLink="/kitap-tavsiyeleri"
       />
 
       <div className="flex items-center justify-between mb-4">

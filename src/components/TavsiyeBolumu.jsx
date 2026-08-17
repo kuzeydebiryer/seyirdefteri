@@ -240,15 +240,11 @@ export default function TavsiyeBolumu({
                   <Link to={esereLink(t.disId)} className="block">
                     <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                       {t.posterUrl && <img src={t.posterUrl} alt={t.baslik} className="h-full w-full object-cover" />}
-                      {t.not && (
-                        <div className="absolute inset-x-0 bottom-0 max-h-full overflow-hidden bg-murekkep/85 p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                          <p className="line-clamp-4 text-[10px] leading-tight text-kagit">{t.not}</p>
-                        </div>
-                      )}
                     </div>
                     <p className="mt-1 truncate text-xs text-murekkep">{t.baslik}</p>
                     {t.alt && <p className="truncate text-[11px] text-kraft">{t.alt}</p>}
                     <p className="truncate text-[11px] text-kraft">{t.ekleyenAdi} tavsiye etti</p>
+                    {t.not && <p className="mt-0.5 line-clamp-2 text-[11px] italic text-kraft">"{t.not}"</p>}
                   </Link>
                   {kullanici?.uid === t.ekleyenId && (
                     <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">

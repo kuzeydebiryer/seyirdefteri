@@ -33,6 +33,7 @@ import NobelYazarlari from './pages/NobelYazarlari.jsx'
 import YayineviSayfasi from './pages/YayineviSayfasi.jsx'
 import KitapKategoriSayfasi from './pages/KitapKategoriSayfasi.jsx'
 import RafDetay from './pages/RafDetay.jsx'
+import TavsiyelerSayfasi from './pages/TavsiyelerSayfasi.jsx'
 
 // Sayfalar birleştirildi (bkz. KisiSayfasi.jsx) — eski /yonetmen/:id linkleri
 // (yer imleri, dışarıdan gelen linkler) kırılmasın diye /kisi/:id'ye yönlendiriyoruz.
@@ -78,6 +79,30 @@ export default function App() {
           <Route path="/yayinevi/:ad" element={<OzelRota><YayineviSayfasi /></OzelRota>} />
           <Route path="/kitap-kategori/:kategori" element={<OzelRota><KitapKategoriSayfasi /></OzelRota>} />
           <Route path="/raf/:id" element={<OzelRota><RafDetay /></OzelRota>} />
+          <Route
+            path="/film-tavsiyeleri"
+            element={
+              <OzelRota>
+                <TavsiyelerSayfasi tur="sinema" baslik="🎬 Film Tavsiyeleri" />
+              </OzelRota>
+            }
+          />
+          <Route
+            path="/yeni-gelen-filmler"
+            element={
+              <OzelRota>
+                <TavsiyelerSayfasi tur="sinema" koleksiyon="yeniGelenFilmler" baslik="🆕 Yeni Gelen Filmler" ekleButonuMetni="+ Film Ekle" />
+              </OzelRota>
+            }
+          />
+          <Route
+            path="/kitap-tavsiyeleri"
+            element={
+              <OzelRota>
+                <TavsiyelerSayfasi tur="kitap" baslik="📖 Kitap Tavsiyeleri" />
+              </OzelRota>
+            }
+          />
           <Route path="/film/:id" element={<OzelRota><EserSayfasi tur="sinema" /></OzelRota>} />
           <Route path="/dizi/:id" element={<OzelRota><EserSayfasi tur="dizi" /></OzelRota>} />
           <Route path="/kitap/:id" element={<OzelRota><EserSayfasi tur="kitap" /></OzelRota>} />
