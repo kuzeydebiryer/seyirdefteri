@@ -187,6 +187,7 @@ export default function Anasayfa() {
         tavsiyeler={filmTavsiyeleri}
         yenidenYukle={filmTavsiyeleriYenile}
         yatay
+        sade
         baslik="🎬 Film Tavsiyeleri"
         tumunuGorLink="/film-tavsiyeleri"
       />
@@ -197,6 +198,7 @@ export default function Anasayfa() {
         tavsiyeler={yeniGelenFilmler}
         yenidenYukle={yeniGelenFilmleriYenile}
         yatay
+        sade
         baslik="🆕 Yeni Gelen Filmler"
         tumunuGorLink="/yeni-gelen-filmler"
         ekleButonuMetni="+ Film Ekle"
@@ -207,6 +209,7 @@ export default function Anasayfa() {
         tavsiyeler={kitapTavsiyeleri}
         yenidenYukle={kitapTavsiyeleriYenile}
         yatay
+        sade
         baslik="📖 Kitap Tavsiyeleri"
         tumunuGorLink="/kitap-tavsiyeleri"
       />

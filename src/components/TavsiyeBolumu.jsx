@@ -16,6 +16,10 @@ export default function TavsiyeBolumu({
   yatay = false,
   tumunuGorLink = null,
   ekleButonuMetni = '+ Tavsiye Ekle',
+  // Anasayfadaki yatay şeritler için: Letterboxd tarzı sade başlık — sadece
+  // başlık + ince bir "Tümünü Gör" oku, renkli buton/ekleme formu yok.
+  // Ekleme işlevi artık kendi bağımsız sayfasında (bkz. TavsiyelerSayfasi.jsx).
+  sade = false,
 }) {
   const { kullanici } = useAuth()
   const [formuAcik, setFormuAcik] = useState(false)
@@ -102,27 +106,38 @@ export default function TavsiyeBolumu({
 
   return (
     <div className="mb-10">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
-        <div className="flex shrink-0 items-center gap-2">
+      {sade ? (
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
           {tumunuGorLink && (
-            <Link
-              to={tumunuGorLink}
-              className="shrink-0 whitespace-nowrap rounded-full bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
-            >
-              Tümünü Gör →
+            <Link to={tumunuGorLink} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
+              Tümünü Gör ›
             </Link>
           )}
-          {kullanici && (
-            <button
-              onClick={() => setFormuAcik((a) => !a)}
-              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${formuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
-            >
-              {formuAcik ? 'Vazgeç' : ekleButonuMetni}
-            </button>
-          )}
         </div>
-      </div>
+      ) : (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
+          <div className="flex shrink-0 items-center gap-2">
+            {tumunuGorLink && (
+              <Link
+                to={tumunuGorLink}
+                className="shrink-0 whitespace-nowrap rounded-full bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+              >
+                Tümünü Gör →
+              </Link>
+            )}
+            {kullanici && (
+              <button
+                onClick={() => setFormuAcik((a) => !a)}
+                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${formuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
+              >
+                {formuAcik ? 'Vazgeç' : ekleButonuMetni}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {formuAcik && (
         <div className="mb-4 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
