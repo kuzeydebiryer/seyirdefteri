@@ -54,7 +54,12 @@ export async function gunlukKaydiSil(kayitId) {
 // olanlarda (bayrak ilk seferde hiç işaretlenmediği için güvenlik kontrolü
 // işe yaramamış, aynı esere aynı tarihle İKİNCİ bir günlük kaydı düşmüş)
 // oluşan mükerrer kayıtları temizler. Aynı eser + aynı gün + aynı puana
-// sahip birden fazla kayıt varsa, birini bırakıp geri kalanını siler.
+// sahip birden fazla kayıt varsa, EN SON eklenmiş olanı (kullanıcının puanını
+// değiştire değiştire son karar kıldığı değer) bırakıp geri kalanını siler.
+// NOT: Anahtara puan DAHİL EDİLMİYOR — aynı esere aynı gün birden fazla
+// FARKLI puanla kayıt düşmesi de (puanGonder'daki "yıldıza her tıklamada
+// yeni kayıt" hatasının kalıntısı, artık düzeltildi ama geçmiş veride var
+// olabilir) mükerrer sayılmalı, sadece aynı puanlı tam kopyalar değil.
 export async function mukerrerGunlukKayitlariniTemizle(uid) {
   const q = query(collection(db, 'gunlukKayitlari'), where('kullaniciId', '==', uid))
   const snap = await getDocs(q)
@@ -64,7 +69,7 @@ export async function mukerrerGunlukKayitlariniTemizle(uid) {
   hepsi.forEach((k) => {
     const tarih = typeof k.izlemeTarihi?.toDate === 'function' ? k.izlemeTarihi.toDate() : new Date(k.izlemeTarihi)
     const gun = isNaN(tarih.getTime()) ? 'bilinmeyen' : tarih.toISOString().slice(0, 10)
-    const anahtar = `${k.tur}_${k.disId}_${gun}_${k.puan ?? ''}_${k.olayTuru ?? ''}`
+    const anahtar = `${k.tur}_${k.disId}_${gun}_${k.olayTuru ?? ''}`
     if (!gruplar.has(anahtar)) gruplar.set(anahtar, [])
     gruplar.get(anahtar).push(k)
   })
@@ -72,8 +77,10 @@ export async function mukerrerGunlukKayitlariniTemizle(uid) {
   const silinecekler = []
   gruplar.forEach((grup) => {
     if (grup.length > 1) {
-      // İlkini bırak, gerisini sil.
-      silinecekler.push(...grup.slice(1))
+      // En yeni eklenen (eklemeTarihi'ne göre) en sonda kalsın diye sırala,
+      // onu tut, gerisini sil.
+      grup.sort((a, b) => (a.eklemeTarihi?.toMillis?.() || 0) - (b.eklemeTarihi?.toMillis?.() || 0))
+      silinecekler.push(...grup.slice(0, -1))
     }
   })
 
@@ -121,6 +128,30 @@ export async function gunlukIlkYiliGetir(uid) {
   const tarih = snap.docs[0].data().izlemeTarihi
   const d = typeof tarih?.toDate === 'function' ? tarih.toDate() : new Date(tarih)
   return isNaN(d.getTime()) ? null : d.getFullYear()
+}
+
+// Aynı esere, aynı güne düşülmüş bir kayıt zaten var mı? — puanGonder'ın her
+// yıldız tıklamasında (kullanıcı fikrini değiştirip ★★★→★★★★ gibi puanını
+// ayarladığında) yeni bir günlük kaydı EKLEMEK yerine mevcut olanı
+// GÜNCELLEMESİ için. Sadece eşitlik filtreleri kullanıyoruz (kullaniciId +
+// tur + disId) — bileşik indeks gerektirmesin diye gün eşleşmesini
+// istemci tarafında yapıyoruz.
+export async function gunlukKaydiAyniGunGetir(uid, tur, disId, izlemeTarihiISO) {
+  const q = query(
+    collection(db, 'gunlukKayitlari'),
+    where('kullaniciId', '==', uid),
+    where('tur', '==', tur),
+    where('disId', '==', disId)
+  )
+  const snap = await getDocs(q)
+  const hedefGun = izlemeTarihiISO.slice(0, 10)
+  for (const d of snap.docs) {
+    const veri = d.data()
+    const tarih = typeof veri.izlemeTarihi?.toDate === 'function' ? veri.izlemeTarihi.toDate() : new Date(veri.izlemeTarihi)
+    if (isNaN(tarih.getTime())) continue
+    if (tarih.toISOString().slice(0, 10) === hedefGun) return { id: d.id, ...veri }
+  }
+  return null
 }
 
 // Bir günlük kaydını beğenme/beğeniyi geri alma — mevcut gönderi beğeni

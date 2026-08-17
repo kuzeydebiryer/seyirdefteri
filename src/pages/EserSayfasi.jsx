@@ -17,7 +17,7 @@ import {
   izlenecekPosterleriniSenkronizeEt,
 } from '../utils/izlenecek.js'
 import { eserPuanla, eserPuanindaGunlukVarIsaretle } from '../utils/eserPuani.js'
-import { gunlukKaydiEkle } from '../utils/gunluk.js'
+import { gunlukKaydiEkle, gunlukKaydiGuncelle, gunlukKaydiAyniGunGetir } from '../utils/gunluk.js'
 import { tavsiyePosterleriniSenkronizeEt } from '../utils/tavsiye.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
@@ -977,16 +977,26 @@ export default function EserSayfasi({ tur }) {
       // günlük kaydı da düşüyoruz (bkz. utils/gunluk.js) — Yılın Özeti ve
       // Günlük sekmesi buradan besleniyor, "ne zaman puanladım" değil
       // "ne zaman izledim/okudum" sorusuna cevap versin diye.
-      await gunlukKaydiEkle(kullanici, {
-        tur,
-        disId: id,
-        baslik: detay.baslik,
-        posterUrl: detay.posterUrl,
-        yil: detay.yil || '',
-        izlemeTarihiISO: gunlukTarihi,
-        puan,
-        tekrarMi: gunlukTekrar,
-      })
+      //
+      // Aynı esere aynı gün için ZATEN bir kayıt varsa (kullanıcı fikrini
+      // değiştirip puanını ★★★→★★★★ gibi ayarladıysa) YENİ bir kayıt EKLEMEK
+      // yerine var olanı GÜNCELLİYORUZ — aksi halde her yıldız tıklaması
+      // günlüğe ayrı bir satır düşürüp aynı filmi onlarca kez tekrarlıyordu.
+      const mevcutKayit = await gunlukKaydiAyniGunGetir(kullanici.uid, tur, id, gunlukTarihi)
+      if (mevcutKayit) {
+        await gunlukKaydiGuncelle(mevcutKayit.id, { puan, tekrarMi: gunlukTekrar })
+      } else {
+        await gunlukKaydiEkle(kullanici, {
+          tur,
+          disId: id,
+          baslik: detay.baslik,
+          posterUrl: detay.posterUrl,
+          yil: detay.yil || '',
+          izlemeTarihiISO: gunlukTarihi,
+          puan,
+          tekrarMi: gunlukTekrar,
+        })
+      }
       await eserPuanindaGunlukVarIsaretle(tur, id, kullanici.uid)
       puanlariYenidenYukle()
     } finally {
