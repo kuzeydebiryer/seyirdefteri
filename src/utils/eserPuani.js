@@ -15,7 +15,8 @@ export async function eserPuanla(tur, disId, puan, kullanici, { baslik, alt, pos
   // bu esere daha önce puan verdiyse eski puanı öğrenmemiz gerekiyor (fark kadar
   // güncellemek için) — aksi hâlde her yeniden puanlamada sayaç yanlışlıkla artardı.
   const oncekiSnap = await getDoc(ref)
-  const eskiPuan = oncekiSnap.exists() ? oncekiSnap.data().puan : null
+  const oncekiVeri = oncekiSnap.exists() ? oncekiSnap.data() : null
+  const eskiPuan = oncekiVeri?.puan ?? null
 
   await setDoc(
     ref,
@@ -35,6 +36,12 @@ export async function eserPuanla(tur, disId, puan, kullanici, { baslik, alt, pos
   )
 
   await eserIstatistikGuncelle(tur, disIdNormal, { baslik, alt, posterUrl, yil }, puan, eskiPuan)
+
+  // Zaten bu dokümanı okuduk (yukarıda) — çağıran taraf "günlük kaydı var mı"
+  // gibi bir kontrol için ayrıca eserPuaniGetir çağırmasın diye (Letterboxd
+  // içe aktarımı gibi toplu işlemlerde bu, satır başına bir okumayı tamamen
+  // ortadan kaldırıyor) o veriyi burada geri veriyoruz.
+  return { oncekiVeri }
 }
 
 // Bu esere ait "eserPuanlari" kaydını, aynı ID'yi yeniden hesaplamadan

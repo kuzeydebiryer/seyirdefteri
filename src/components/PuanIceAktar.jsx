@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Papa from 'papaparse'
 import { useAuth } from '../context/AuthContext.jsx'
-import { eserPuanla, eserPuaniGetir, eserPuanindaGunlukVarIsaretle } from '../utils/eserPuani.js'
+import { eserPuanla, eserPuanindaGunlukVarIsaretle } from '../utils/eserPuani.js'
 import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { filmSatirlariniAyikla, tmdbdeAra, esZamanliIsle, TMDB_POSTER } from '../utils/letterboxdCsv.js'
 import { turIsimleriGetir } from '../data/tmdbTurler.js'
@@ -91,16 +91,17 @@ export default function PuanIceAktar({ onTamamlandi }) {
           // bu sayede içe aktarmayı güvenle TEKRAR çalıştırabilirsin (ör.
           // bu düzeltmeden önce yapılmış, günlük kaydı olmayan eski bir
           // içe aktarmayı düzeltmek için), mükerrer günlük satırı oluşmadan.
-          const mevcutKayit = await eserPuaniGetir('sinema', s.eslesme.tmdbId, kullanici.uid)
-          const gunlukZatenVar = mevcutKayit?.gunlukVar === true
-
-          await eserPuanla('sinema', s.eslesme.tmdbId, Number(s.puan), kullanici, {
+          // "gunlukVar" bilgisini artık eserPuanla'nın döndürdüğü veriden
+          // alıyoruz — aynı dokümanı ayrıca eserPuaniGetir ile okumaya gerek
+          // yok, satır başına bir okumayı tamamen ortadan kaldırıyor.
+          const { oncekiVeri } = await eserPuanla('sinema', s.eslesme.tmdbId, Number(s.puan), kullanici, {
             baslik: s.eslesme.baslik,
             alt: s.eslesme.yil,
             posterUrl: s.eslesme.posterUrl,
             yil: s.eslesme.yil,
             turler: s.eslesme.turler,
           })
+          const gunlukZatenVar = oncekiVeri?.gunlukVar === true
           // Aggregate puanın yanında GERÇEK izleme tarihiyle bir günlük kaydı da
           // düşüyoruz — CSV'de tarih yoksa (bazı export'larda olmayabilir)
           // günlük kaydı hiç oluşturulmuyor (Yılın Özeti'nde "bugün izlendi"
