@@ -141,6 +141,7 @@ export default function EserSayfasi({ tur }) {
   // (dış puanlar, sağlayıcılar) gibi sayfa yüklenirken sessizce denenir,
   // veri yoksa hiçbir şey göstermez.
   const [trivia, setTrivia] = useState(null)
+  const [triviaAcik, setTriviaAcik] = useState(false)
 
   const ilgiliHedefTur = tur === 'kitap' ? ilgiliKategori : 'kitap'
 
@@ -417,6 +418,16 @@ export default function EserSayfasi({ tur }) {
             tur === 'sinema'
               ? (data.credits?.crew || []).filter((k) => k.job === 'Director').map((k) => ({ id: k.id, name: k.name }))
               : (data.created_by || []).map((k) => ({ id: k.id, name: k.name }))
+          // Senaristler — TMDB'de "Screenplay" en yaygın ve doğru etiket;
+          // bazı filmlerde sadece "Writer" işaretlenmiş oluyor, o durumda ona düşüyoruz.
+          const senaristKaynagi = (data.credits?.crew || []).filter((k) => k.job === 'Screenplay')
+          const senaristler = [
+            ...new Map(
+              (senaristKaynagi.length > 0 ? senaristKaynagi : (data.credits?.crew || []).filter((k) => k.job === 'Writer')).map(
+                (k) => [k.id, { id: k.id, name: k.name }]
+              )
+            ).values(),
+          ]
           const bestekarlar = [
             ...new Map(
               (data.credits?.crew || [])
@@ -497,6 +508,7 @@ export default function EserSayfasi({ tur }) {
                 ? (data.seasons || []).filter((s) => s.season_number > 0).sort((a, b) => a.season_number - b.season_number)
                 : null,
             yonetmenler,
+            senaristler,
             bestekarlar,
             oyuncular,
             tagline: data.tagline || '',
@@ -1058,29 +1070,8 @@ export default function EserSayfasi({ tur }) {
           )}
 
           <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
+          {tur === 'sinema' && <KisiListesi kisiler={detay.senaristler} etiket="Senarist" />}
           {tur === 'sinema' && <KisiListesi kisiler={detay.bestekarlar} etiket="Müzik" />}
-
-          {detay.koleksiyon && (
-            <div className="mt-2 rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
-              <p className="text-xs text-murekkep">🎬 {detay.koleksiyon.ad} serisinin parçası</p>
-              {detay.koleksiyon.filmler.length > 0 && (
-                <div className="mt-1.5 flex gap-2 overflow-x-auto pb-1">
-                  {detay.koleksiyon.filmler.map((f) => (
-                    <Link key={f.id} to={`/film/${f.id}`} className="shrink-0 text-center" style={{ width: 64 }}>
-                      {f.posterUrl ? (
-                        <img src={f.posterUrl} alt={f.baslik} className="h-24 w-16 rounded-sm object-cover ring-1 ring-cizgi" />
-                      ) : (
-                        <div className="flex h-24 w-16 items-center justify-center rounded-sm bg-kagit text-[9px] text-kraft ring-1 ring-cizgi">
-                          {f.baslik}
-                        </div>
-                      )}
-                      <p className="mt-0.5 truncate text-[10px] text-kraft">{f.yil}</p>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {tur === 'kitap' && kullanici && !duzenleModuAcik && (
             <button onClick={duzenlemeyiAc} className="mt-2 text-[11px] text-kraft hover:text-deniz hover:underline">
@@ -1452,6 +1443,13 @@ export default function EserSayfasi({ tur }) {
                 )}
               </div>
 
+              {trivia && (
+                <button onClick={() => setTriviaAcik((a) => !a)} className="flex flex-col items-center gap-1">
+                  <span className="text-2xl text-cizgi">🔍</span>
+                  <span className="text-[10px] uppercase tracking-wide text-kraft">İlginç Bilgiler</span>
+                </button>
+              )}
+
               {(tur === 'kitap' || tur === 'dizi') && !izlenecekKaydi && (
                 <button
                   onClick={dogrudanOkumayaBasla}
@@ -1470,6 +1468,59 @@ export default function EserSayfasi({ tur }) {
                   {tur === 'kitap' ? 'Okumaya Başla' : 'İzlemeye Başla'}
                 </button>
               )}
+            </div>
+          )}
+
+          {triviaAcik && trivia && (
+            <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="mb-2 text-xs uppercase tracking-widest text-gise">🔍 İlginç Bilgiler</p>
+              <div className="space-y-1.5 text-xs text-kraft">
+                {trivia.cekimYerleri.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Çekildiği yerler:</span>{' '}
+                    {trivia.cekimYerleri.map((yer, i) => (
+                      <span key={yer}>
+                        {i > 0 && ', '}
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(yer)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-deniz hover:underline"
+                        >
+                          {yer}
+                        </a>
+                      </span>
+                    ))}
+                  </p>
+                )}
+                {trivia.anlatiYerleri.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Hikayenin geçtiği yer:</span> {trivia.anlatiYerleri.join(', ')}
+                  </p>
+                )}
+                {trivia.temalar.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Tema:</span> {trivia.temalar.join(', ')}
+                  </p>
+                )}
+                {trivia.akimlar.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Akım:</span> {trivia.akimlar.join(', ')}
+                  </p>
+                )}
+                {(trivia.butce || trivia.hasilat) && (
+                  <p>
+                    <span className="text-murekkep">Bütçe / Hasılat:</span>{' '}
+                    {trivia.butce ? paraFormatla(trivia.butce) : '?'} / {trivia.hasilat ? paraFormatla(trivia.hasilat) : '?'}
+                  </p>
+                )}
+                {trivia.odulller.length > 0 && (
+                  <p>
+                    <span className="text-murekkep">Ödüller:</span> {trivia.odulller.slice(0, 6).join(', ')}
+                    {trivia.odulller.length > 6 && ` +${trivia.odulller.length - 6} daha`}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -1545,59 +1596,6 @@ export default function EserSayfasi({ tur }) {
                     </ul>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {trivia && (
-            <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-              <p className="mb-2 text-xs uppercase tracking-widest text-gise">🔍 İlginç Bilgiler</p>
-              <div className="space-y-1.5 text-xs text-kraft">
-                {trivia.cekimYerleri.length > 0 && (
-                  <p>
-                    <span className="text-murekkep">Çekildiği yerler:</span>{' '}
-                    {trivia.cekimYerleri.map((yer, i) => (
-                      <span key={yer}>
-                        {i > 0 && ', '}
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(yer)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-deniz hover:underline"
-                        >
-                          {yer}
-                        </a>
-                      </span>
-                    ))}
-                  </p>
-                )}
-                {trivia.anlatiYerleri.length > 0 && (
-                  <p>
-                    <span className="text-murekkep">Hikayenin geçtiği yer:</span> {trivia.anlatiYerleri.join(', ')}
-                  </p>
-                )}
-                {trivia.temalar.length > 0 && (
-                  <p>
-                    <span className="text-murekkep">Tema:</span> {trivia.temalar.join(', ')}
-                  </p>
-                )}
-                {trivia.akimlar.length > 0 && (
-                  <p>
-                    <span className="text-murekkep">Akım:</span> {trivia.akimlar.join(', ')}
-                  </p>
-                )}
-                {(trivia.butce || trivia.hasilat) && (
-                  <p>
-                    <span className="text-murekkep">Bütçe / Hasılat:</span>{' '}
-                    {trivia.butce ? paraFormatla(trivia.butce) : '?'} / {trivia.hasilat ? paraFormatla(trivia.hasilat) : '?'}
-                  </p>
-                )}
-                {trivia.odulller.length > 0 && (
-                  <p>
-                    <span className="text-murekkep">Ödüller:</span> {trivia.odulller.slice(0, 6).join(', ')}
-                    {trivia.odulller.length > 6 && ` +${trivia.odulller.length - 6} daha`}
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -1836,6 +1834,28 @@ export default function EserSayfasi({ tur }) {
             )}{' '}
             tarafından sağlanmaktadır. Bölgeye ve zamana göre değişebilir.
           </p>
+        </div>
+      )}
+
+      {detay.koleksiyon && (
+        <div className="mt-6 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+          <p className="text-sm text-murekkep">🎬 {detay.koleksiyon.ad} serisinin parçası</p>
+          {detay.koleksiyon.filmler.length > 0 && (
+            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+              {detay.koleksiyon.filmler.map((f) => (
+                <Link key={f.id} to={`/film/${f.id}`} className="shrink-0 text-center" style={{ width: 64 }}>
+                  {f.posterUrl ? (
+                    <img src={f.posterUrl} alt={f.baslik} className="h-24 w-16 rounded-sm object-cover ring-1 ring-cizgi" />
+                  ) : (
+                    <div className="flex h-24 w-16 items-center justify-center rounded-sm bg-kagit text-[9px] text-kraft ring-1 ring-cizgi">
+                      {f.baslik}
+                    </div>
+                  )}
+                  <p className="mt-0.5 truncate text-[10px] text-kraft">{f.yil}</p>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
