@@ -1232,224 +1232,6 @@ export default function EserSayfasi({ tur }) {
                 )}
               </div>
 
-              {oscarSezonlari.length > 0 && (
-                <Link to="/oscar" className="flex flex-col items-center gap-1">
-                  <OscarHeykelIkon boyut={24} className="text-gise" />
-                  <span className="text-[10px] uppercase tracking-wide text-kraft">
-                    {oscarSezonlari.reduce((n, s) => n + s.kategoriler.length, 0)} dal · {oscarSezonlari.map((s) => s.yil).join(', ')}
-                  </span>
-                </Link>
-              )}
-
-              <div className="relative flex flex-col items-center gap-1">
-                <button onClick={() => setIlgiliEkleAcik((a) => !a)} className="flex flex-col items-center gap-1">
-                  <span className="text-2xl text-cizgi">{tur === 'kitap' ? '🎬' : '📚'}</span>
-                  <span className="text-[10px] uppercase tracking-wide text-kraft">
-                    {tur === 'kitap' ? 'İlgili Film' : 'İlgili Kitap'}
-                  </span>
-                </button>
-                {ilgiliEkleAcik && (
-                  <div className="absolute left-0 top-full z-10 mt-1 w-72 space-y-2 rounded-sm bg-kagit p-3 shadow-lg ring-1 ring-cizgi">
-                    {tur === 'kitap' && (
-                      <div className="flex gap-1">
-                        {[
-                          { id: 'sinema', etiket: 'Film' },
-                          { id: 'dizi', etiket: 'Dizi' },
-                        ].map((k) => (
-                          <button
-                            key={k.id}
-                            type="button"
-                            onClick={() => {
-                              setIlgiliKategori(k.id)
-                              setIlgiliSonuclar([])
-                            }}
-                            className={`rounded-sm px-2 py-1 font-govde text-[11px] ${
-                              ilgiliKategori === k.id ? 'bg-murekkep text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
-                            }`}
-                          >
-                            {k.etiket}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <form onSubmit={ilgiliAra} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={ilgiliArama}
-                        onChange={(e) => setIlgiliArama(e.target.value)}
-                        placeholder={tur === 'kitap' ? 'Film/dizi ara...' : 'Kitap ara...'}
-                        className="flex-1 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
-                      />
-                      <button type="submit" className="rounded-sm bg-deniz px-2 py-1 font-govde text-xs text-kagit">
-                        {ilgiliAramaYukleniyor ? '...' : 'Ara'}
-                      </button>
-                    </form>
-
-                    {kullanici && !ilgiliElleAcik && (
-                      <div className="rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
-                        <button
-                          type="button"
-                          onClick={wikidataOnerileriniGetir}
-                          disabled={wikidataYukleniyor}
-                          className="text-[11px] text-deniz hover:underline disabled:opacity-40"
-                        >
-                          {wikidataYukleniyor ? 'Wikidata sorgulanıyor...' : "🔗 Wikidata'dan Öner"}
-                        </button>
-                        {wikidataDenendi && !wikidataYukleniyor && wikidataOneriler.length === 0 && (
-                          <p className="mt-1 text-[10px] text-kraft">Wikidata'da bir bağlantı bulunamadı.</p>
-                        )}
-                        {wikidataOneriler.length > 0 && (
-                          <ul className="mt-1.5 space-y-1">
-                            {wikidataOneriler.map((oneri) => (
-                              <li key={oneri.wikidataQid} className="flex items-center justify-between gap-2">
-                                <span className="min-w-0 flex-1 truncate text-xs text-murekkep">
-                                  {oneri.baslik}
-                                  {tur === 'kitap' && oneri.yil ? ` (${oneri.yil})` : ''}
-                                  {tur !== 'kitap' && oneri.yazar ? ` — ${oneri.yazar}` : ''}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => wikidataOneriEkle(oneri)}
-                                  disabled={wikidataEkleniyor === oneri.wikidataQid}
-                                  className="shrink-0 rounded-sm bg-deniz px-2 py-0.5 font-govde text-[10px] text-kagit disabled:opacity-40"
-                                >
-                                  {wikidataEkleniyor === oneri.wikidataQid ? '...' : '+ Ekle'}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    )}
-
-                    {ilgiliElleAcik ? (
-                      <form onSubmit={ilgiliElleKaydet} className="space-y-2 rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
-                        <p className="text-[11px] uppercase tracking-widest text-gise">Kitabı Elle Ekle</p>
-                        <input
-                          value={ilgiliElleForm.baslik}
-                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, baslik: e.target.value }))}
-                          placeholder="Başlık *"
-                          required
-                          className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
-                        />
-                        <input
-                          value={ilgiliElleForm.yazar}
-                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yazar: e.target.value }))}
-                          placeholder="Yazar"
-                          className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
-                        />
-                        <div className="flex gap-2">
-                          <input
-                            value={ilgiliElleForm.yayinevi}
-                            onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yayinevi: e.target.value }))}
-                            placeholder="Yayınevi"
-                            className="flex-1 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
-                          />
-                          <input
-                            value={ilgiliElleForm.yil}
-                            onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yil: e.target.value }))}
-                            placeholder="Yıl"
-                            className="w-16 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
-                          />
-                        </div>
-                        <input
-                          value={ilgiliElleForm.posterUrl}
-                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, posterUrl: e.target.value }))}
-                          placeholder="Kapak görseli URL'i (opsiyonel)"
-                          className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            type="submit"
-                            disabled={ilgiliElleKaydediliyor || !ilgiliElleForm.baslik.trim()}
-                            className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
-                          >
-                            {ilgiliElleKaydediliyor ? 'Ekleniyor...' : 'Kaydet'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIlgiliElleAcik(false)}
-                            className="rounded-sm bg-kagit px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi"
-                          >
-                            Vazgeç
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <>
-                        {ilgiliSonuclar.length > 0 && (
-                          <ul className="max-h-56 space-y-1 overflow-y-auto">
-                            {ilgiliSonuclar.slice(0, 10).map((item) => {
-                              const kitapTrMi = ilgiliHedefTur === 'kitap' && item.kaynak === 'tr'
-                              const v = ilgiliHedefTur === 'kitap' ? (kitapTrMi ? item.ham : item.ham?.volumeInfo || {}) : item
-                              const ad = ilgiliHedefTur === 'kitap' ? (kitapTrMi ? v.baslik : v.title) : ilgiliHedefTur === 'sinema' ? v.title : v.name
-                              const kapak =
-                                ilgiliHedefTur === 'kitap'
-                                  ? kitapTrMi
-                                    ? ''
-                                    : (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
-                                  : v.poster_path
-                                    ? `${TMDB_POSTER}${v.poster_path}`
-                                    : ''
-                              const altSatir =
-                                ilgiliHedefTur === 'kitap'
-                                  ? kitapTrMi
-                                    ? [v.yazar, v.yayinevi, v.yil].filter(Boolean).join(' · ')
-                                    : [(v.authors || []).join(', '), v.publisher, v.publishedDate?.slice(0, 4)].filter(Boolean).join(' · ') +
-                                      ' · Google Books'
-                                  : (ilgiliHedefTur === 'sinema' ? v.release_date : v.first_air_date)?.slice(0, 4) || ''
-                              return (
-                                <li key={item.id}>
-                                  <button
-                                    type="button"
-                                    onClick={() => ilgiliSec(item)}
-                                    disabled={ilgiliEkleniyor === item.id}
-                                    className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left hover:bg-kagitKoyu disabled:opacity-40"
-                                  >
-                                    {kapak ? (
-                                      <img src={kapak} alt="" className="h-9 w-6 shrink-0 rounded-sm object-cover" />
-                                    ) : (
-                                      ilgiliHedefTur === 'kitap' && (
-                                        <div className="flex h-9 w-6 shrink-0 items-center justify-center rounded-sm bg-kagitKoyu text-[9px]">
-                                          📖
-                                        </div>
-                                      )
-                                    )}
-                                    <div className="min-w-0 flex-1">
-                                      <p className="truncate text-xs text-murekkep">{ilgiliEkleniyor === item.id ? 'Ekleniyor...' : ad}</p>
-                                      {altSatir && <p className="truncate text-[10px] text-kraft">{altSatir}</p>}
-                                    </div>
-                                  </button>
-                                </li>
-                              )
-                            })}
-                          </ul>
-                        )}
-                        {ilgiliHedefTur === 'kitap' && kullanici && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIlgiliElleForm({ baslik: ilgiliArama, yazar: '', yayinevi: '', yil: '', posterUrl: '' })
-                              setIlgiliElleAcik(true)
-                            }}
-                            className="text-[11px] text-kraft hover:text-deniz hover:underline"
-                          >
-                            Aradığını bulamadın mı? Elle ekle →
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {trivia && (
-                <button onClick={() => setTriviaAcik((a) => !a)} className="flex flex-col items-center gap-1">
-                  <span className="text-2xl text-cizgi">🔍</span>
-                  <span className="text-[10px] uppercase tracking-wide text-kraft">İlginç Bilgiler</span>
-                </button>
-              )}
-
               {(tur === 'kitap' || tur === 'dizi') && !izlenecekKaydi && (
                 <button
                   onClick={dogrudanOkumayaBasla}
@@ -1471,10 +1253,18 @@ export default function EserSayfasi({ tur }) {
             </div>
           )}
 
-          {triviaAcik && trivia && (
+          {trivia && (
             <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-              <p className="mb-2 text-xs uppercase tracking-widest text-gise">🔍 İlginç Bilgiler</p>
-              <div className="space-y-1.5 text-xs text-kraft">
+              <button
+                type="button"
+                onClick={() => setTriviaAcik((a) => !a)}
+                className="flex w-full items-center justify-between text-xs uppercase tracking-widest text-gise"
+              >
+                <span>🔍 İlginç Bilgiler</span>
+                <span className="text-kraft">{triviaAcik ? '▲' : '▼'}</span>
+              </button>
+              {triviaAcik && (
+              <div className="mt-2 space-y-1.5 text-xs text-kraft">
                 {trivia.cekimYerleri.length > 0 && (
                   <p>
                     <span className="text-murekkep">Çekildiği yerler:</span>{' '}
@@ -1521,6 +1311,7 @@ export default function EserSayfasi({ tur }) {
                   </p>
                 )}
               </div>
+              )}
             </div>
           )}
 
@@ -1539,10 +1330,217 @@ export default function EserSayfasi({ tur }) {
             </div>
           )}
 
-          {ilgiliEserler.length > 0 && (
+          {(ilgiliEserler.length > 0 || kullanici) && (
             <div className="mt-3">
-              <p className="mb-1 text-xs text-kraft">{tur === 'kitap' ? '🎬 İlgili Film/Diziler' : '📚 İlgili Kitaplar'}</p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-kraft">{tur === 'kitap' ? '🎬 İlgili Film/Diziler' : '📚 İlgili Kitaplar'}</p>
+                {kullanici && (
+                  <button
+                    type="button"
+                    onClick={() => setIlgiliEkleAcik((a) => !a)}
+                    className="text-[11px] text-deniz hover:underline"
+                  >
+                    {ilgiliEkleAcik ? 'Kapat' : '+ Ekle'}
+                  </button>
+                )}
+              </div>
+
+              {ilgiliEkleAcik && (
+                <div className="mt-2 w-full space-y-2 rounded-sm bg-kagit p-3 shadow-lg ring-1 ring-cizgi">
+                  {tur === 'kitap' && (
+                    <div className="flex gap-1">
+                      {[
+                        { id: 'sinema', etiket: 'Film' },
+                        { id: 'dizi', etiket: 'Dizi' },
+                      ].map((k) => (
+                        <button
+                          key={k.id}
+                          type="button"
+                          onClick={() => {
+                            setIlgiliKategori(k.id)
+                            setIlgiliSonuclar([])
+                          }}
+                          className={`rounded-sm px-2 py-1 font-govde text-[11px] ${
+                            ilgiliKategori === k.id ? 'bg-murekkep text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                          }`}
+                        >
+                          {k.etiket}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <form onSubmit={ilgiliAra} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={ilgiliArama}
+                      onChange={(e) => setIlgiliArama(e.target.value)}
+                      placeholder={tur === 'kitap' ? 'Film/dizi ara...' : 'Kitap ara...'}
+                      className="flex-1 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                    />
+                    <button type="submit" className="rounded-sm bg-deniz px-2 py-1 font-govde text-xs text-kagit">
+                      {ilgiliAramaYukleniyor ? '...' : 'Ara'}
+                    </button>
+                  </form>
+
+                  {kullanici && !ilgiliElleAcik && (
+                    <div className="rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
+                      <button
+                        type="button"
+                        onClick={wikidataOnerileriniGetir}
+                        disabled={wikidataYukleniyor}
+                        className="text-[11px] text-deniz hover:underline disabled:opacity-40"
+                      >
+                        {wikidataYukleniyor ? 'Wikidata sorgulanıyor...' : "🔗 Wikidata'dan Öner"}
+                      </button>
+                      {wikidataDenendi && !wikidataYukleniyor && wikidataOneriler.length === 0 && (
+                        <p className="mt-1 text-[10px] text-kraft">Wikidata'da bir bağlantı bulunamadı.</p>
+                      )}
+                      {wikidataOneriler.length > 0 && (
+                        <ul className="mt-1.5 space-y-1">
+                          {wikidataOneriler.map((oneri) => (
+                            <li key={oneri.wikidataQid} className="flex items-center justify-between gap-2">
+                              <span className="min-w-0 flex-1 truncate text-xs text-murekkep">
+                                {oneri.baslik}
+                                {tur === 'kitap' && oneri.yil ? ` (${oneri.yil})` : ''}
+                                {tur !== 'kitap' && oneri.yazar ? ` — ${oneri.yazar}` : ''}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => wikidataOneriEkle(oneri)}
+                                disabled={wikidataEkleniyor === oneri.wikidataQid}
+                                className="shrink-0 rounded-sm bg-deniz px-2 py-0.5 font-govde text-[10px] text-kagit disabled:opacity-40"
+                              >
+                                {wikidataEkleniyor === oneri.wikidataQid ? '...' : '+ Ekle'}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {ilgiliElleAcik ? (
+                    <form onSubmit={ilgiliElleKaydet} className="space-y-2 rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
+                      <p className="text-[11px] uppercase tracking-widest text-gise">Kitabı Elle Ekle</p>
+                      <input
+                        value={ilgiliElleForm.baslik}
+                        onChange={(e) => setIlgiliElleForm((f) => ({ ...f, baslik: e.target.value }))}
+                        placeholder="Başlık *"
+                        required
+                        className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+                      <input
+                        value={ilgiliElleForm.yazar}
+                        onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yazar: e.target.value }))}
+                        placeholder="Yazar"
+                        className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+                      <div className="flex gap-2">
+                        <input
+                          value={ilgiliElleForm.yayinevi}
+                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yayinevi: e.target.value }))}
+                          placeholder="Yayınevi"
+                          className="flex-1 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                        />
+                        <input
+                          value={ilgiliElleForm.yil}
+                          onChange={(e) => setIlgiliElleForm((f) => ({ ...f, yil: e.target.value }))}
+                          placeholder="Yıl"
+                          className="w-16 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                        />
+                      </div>
+                      <input
+                        value={ilgiliElleForm.posterUrl}
+                        onChange={(e) => setIlgiliElleForm((f) => ({ ...f, posterUrl: e.target.value }))}
+                        placeholder="Kapak görseli URL'i (opsiyonel)"
+                        className="w-full rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          disabled={ilgiliElleKaydediliyor || !ilgiliElleForm.baslik.trim()}
+                          className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                        >
+                          {ilgiliElleKaydediliyor ? 'Ekleniyor...' : 'Kaydet'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIlgiliElleAcik(false)}
+                          className="rounded-sm bg-kagit px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi"
+                        >
+                          Vazgeç
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      {ilgiliSonuclar.length > 0 && (
+                        <ul className="max-h-56 space-y-1 overflow-y-auto">
+                          {ilgiliSonuclar.slice(0, 10).map((item) => {
+                            const kitapTrMi = ilgiliHedefTur === 'kitap' && item.kaynak === 'tr'
+                            const v = ilgiliHedefTur === 'kitap' ? (kitapTrMi ? item.ham : item.ham?.volumeInfo || {}) : item
+                            const ad = ilgiliHedefTur === 'kitap' ? (kitapTrMi ? v.baslik : v.title) : ilgiliHedefTur === 'sinema' ? v.title : v.name
+                            const kapak =
+                              ilgiliHedefTur === 'kitap'
+                                ? kitapTrMi
+                                  ? ''
+                                  : (v.imageLinks?.thumbnail || v.imageLinks?.smallThumbnail || '').replace('http://', 'https://')
+                                : v.poster_path
+                                  ? `${TMDB_POSTER}${v.poster_path}`
+                                  : ''
+                            const altSatir =
+                              ilgiliHedefTur === 'kitap'
+                                ? kitapTrMi
+                                  ? [v.yazar, v.yayinevi, v.yil].filter(Boolean).join(' · ')
+                                  : [(v.authors || []).join(', '), v.publisher, v.publishedDate?.slice(0, 4)].filter(Boolean).join(' · ') +
+                                    ' · Google Books'
+                                : (ilgiliHedefTur === 'sinema' ? v.release_date : v.first_air_date)?.slice(0, 4) || ''
+                            return (
+                              <li key={item.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => ilgiliSec(item)}
+                                  disabled={ilgiliEkleniyor === item.id}
+                                  className="flex w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left hover:bg-kagitKoyu disabled:opacity-40"
+                                >
+                                  {kapak ? (
+                                    <img src={kapak} alt="" className="h-9 w-6 shrink-0 rounded-sm object-cover" />
+                                  ) : (
+                                    ilgiliHedefTur === 'kitap' && (
+                                      <div className="flex h-9 w-6 shrink-0 items-center justify-center rounded-sm bg-kagitKoyu text-[9px]">
+                                        📖
+                                      </div>
+                                    )
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-xs text-murekkep">{ilgiliEkleniyor === item.id ? 'Ekleniyor...' : ad}</p>
+                                    {altSatir && <p className="truncate text-[10px] text-kraft">{altSatir}</p>}
+                                  </div>
+                                </button>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                      {ilgiliHedefTur === 'kitap' && kullanici && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIlgiliElleForm({ baslik: ilgiliArama, yazar: '', yayinevi: '', yil: '', posterUrl: '' })
+                            setIlgiliElleAcik(true)
+                          }}
+                          className="text-[11px] text-kraft hover:text-deniz hover:underline"
+                        >
+                          Aradığını bulamadın mı? Elle ekle →
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {ilgiliEserler.length > 0 && (
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
                 {ilgiliEserler.map((ilgili) => {
                   const esereGit =
                     ilgili.digerTur === 'kitap' ? `/kitap/${ilgili.digerDisId}` : `/${ilgili.digerTur === 'dizi' ? 'dizi' : 'film'}/${ilgili.digerDisId}`
@@ -1568,13 +1566,14 @@ export default function EserSayfasi({ tur }) {
                   )
                 })}
               </div>
+              )}
             </div>
           )}
 
           {oscarSezonlari.length > 0 && (
             <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
               <p className="mb-2 flex items-center gap-1 text-xs uppercase tracking-widest text-gise">
-                <OscarHeykelIkon boyut={14} /> Oscar Adaylıkları
+                <OscarHeykelIkon boyut={14} /> Oscar Adaylıkları · {oscarSezonlari.reduce((n, s) => n + s.kategoriler.length, 0)} dal
               </p>
               <div className="space-y-2">
                 {oscarSezonlari.map((s) => (
