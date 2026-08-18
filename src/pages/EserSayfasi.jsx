@@ -39,6 +39,7 @@ import EserKarti from '../components/EserKarti.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
+const TMDB_BACKDROP = 'https://image.tmdb.org/t/p/w1280'
 const OMDB_API_KEY = import.meta.env.VITE_OMDB_API_KEY
 const TMDB_SAGLAYICI_LOGO = 'https://image.tmdb.org/t/p/w92'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
@@ -1039,7 +1040,7 @@ export default function EserSayfasi({ tur }) {
       {(tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0 && !heroResimHatasi && (
         <div className="relative mb-4 overflow-hidden rounded-sm ring-1 ring-cizgi">
           <img
-            src={detay.gorseller[0]}
+            src={`${TMDB_BACKDROP}${detay.gorseller[0].file_path}`}
             alt=""
             onError={() => setHeroResimHatasi(true)}
             className="aspect-[16/9] w-full object-cover"
