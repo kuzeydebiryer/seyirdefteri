@@ -22,6 +22,7 @@ import { tavsiyePosterleriniSenkronizeEt } from '../utils/tavsiye.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
+import FilmMuzigiWidget from '../components/FilmMuzigiWidget.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import { kitapGetir, kitapGuncelle, kitapElleEkle, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
 import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
@@ -1909,6 +1910,8 @@ export default function EserSayfasi({ tur }) {
           )}
         </div>
       )}
+
+      {tur === 'sinema' && <FilmMuzigiWidget tmdbId={id} filmAdi={detay.baslik} yil={detay.yil} />}
 
       {detay.oyuncular?.length > 0 && (
         <div className="mt-6">

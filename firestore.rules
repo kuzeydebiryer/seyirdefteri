@@ -56,6 +56,14 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null;
     }
+
+    // Film Müziği önbelleği — SADECE Cloud Function (Admin SDK, kurallara
+    // tabi değil) yazabilir, istemciden "create/update" tamamen kapalı,
+    // sahte veri girilmesini engellemek için.
+    match /filmMuzikleri/{tmdbId} {
+      allow read: if true;
+      allow write: if false;
+    }
     match /kisiIstatistikleri/{istatistikId} {
       allow read: if true;
       allow write: if request.auth != null;

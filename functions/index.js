@@ -2,6 +2,8 @@ const { initializeApp } = require('firebase-admin/app')
 const { getFirestore, FieldValue } = require('firebase-admin/firestore')
 const { getMessaging } = require('firebase-admin/messaging')
 const { onDocumentCreated } = require('firebase-functions/v2/firestore')
+const { onCall, HttpsError } = require('firebase-functions/v2/https')
+const { defineSecret } = require('firebase-functions/params')
 const { setGlobalOptions } = require('firebase-functions/v2')
 
 initializeApp()
@@ -140,4 +142,69 @@ exports.yeniGonderiBildirimi = onDocumentCreated('gonderiler/{gonderiId}', async
     url: `/gonderi/${event.params.gonderiId}`,
   })
 })
+
+// --- Film Müziği (Spotify) ---------------------------------------------
+// Spotify'ın Client Credentials akışı bir "client secret" gerektiriyor —
+// bu SADECE sunucu tarafında (burada) tutulmalı, tarayıcı koduna asla
+// gömülmemeli (Spotify'ın geliştirici şartları da bunu yasaklıyor). Bu
+// yüzden istemci doğrudan Spotify'a değil, bu fonksiyona istek atıyor.
+//
+// Sonuç Firestore'a önbelleklenir (filmMuzikleri/{tmdbId}) — aynı film için
+// ikinci bir ziyaret Spotify'a hiç gitmez, sadece Firestore'dan okur (ve bu
+// da zaten fonksiyonun İÇİNDE olduğu için istemci tarafında ekstra bir
+// okuma maliyeti oluşturmaz).
+const SPOTIFY_CLIENT_ID = defineSecret('SPOTIFY_CLIENT_ID')
+const SPOTIFY_CLIENT_SECRET = defineSecret('SPOTIFY_CLIENT_SECRET')
+
+let spotifyTokenOnbellek = { token: null, sonaErmeMs: 0 }
+
+async function spotifyTokenGetir(clientId, clientSecret) {
+  if (spotifyTokenOnbellek.token && Date.now() < spotifyTokenOnbellek.sonaErmeMs) {
+    return spotifyTokenOnbellek.token
+  }
+  const yetki = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${yetki}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials',
+  })
+  if (!res.ok) throw new HttpsError('unavailable', 'Spotify token alınamadı')
+  const veri = await res.json()
+  // Süresi dolmadan biraz önce (60sn pay) yenilenmiş sayalım.
+  spotifyTokenOnbellek = { token: veri.access_token, sonaErmeMs: Date.now() + (veri.expires_in - 60) * 1000 }
+  return veri.access_token
+}
+
+exports.filmMuzigiGetir = onCall({ secrets: [SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET] }, async (request) => {
+  const { tmdbId, filmAdi, yil } = request.data || {}
+  if (!tmdbId || !filmAdi) throw new HttpsError('invalid-argument', 'tmdbId ve filmAdi gerekli')
+
+  const cacheRef = db.collection('filmMuzikleri').doc(String(tmdbId))
+  const cacheSnap = await cacheRef.get()
+  if (cacheSnap.exists) return cacheSnap.data()
+
+  try {
+    const token = await spotifyTokenGetir(SPOTIFY_CLIENT_ID.value(), SPOTIFY_CLIENT_SECRET.value())
+    const sorgu = yil ? `album:"${filmAdi}" year:${yil}` : `album:"${filmAdi}"`
+    const ararUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(sorgu)}&type=album&limit=1`
+    const ararRes = await fetch(ararUrl, { headers: { Authorization: `Bearer ${token}` } })
+    if (!ararRes.ok) throw new HttpsError('unavailable', 'Spotify araması başarısız')
+    const ararVeri = await ararRes.json()
+    const albumId = ararVeri.albums?.items?.[0]?.id || null
+
+    const sonuc = { spotifyAlbumId: albumId, guncellemeTarihi: FieldValue.serverTimestamp() }
+    await cacheRef.set(sonuc)
+    return { spotifyAlbumId: albumId }
+  } catch (err) {
+    // Spotify'da bu film için soundtrack bulunamaması NORMAL bir durum
+    // (özellikle küçük/bağımsız yapımlarda) — hatayı da "bulunamadı" olarak
+    // önbellekliyoruz ki her ziyarette tekrar tekrar aranmasın.
+    await cacheRef.set({ spotifyAlbumId: null, guncellemeTarihi: FieldValue.serverTimestamp() })
+    return { spotifyAlbumId: null }
+  }
+})
+
 

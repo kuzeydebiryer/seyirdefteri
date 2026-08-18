@@ -34,6 +34,15 @@ import YayineviSayfasi from './pages/YayineviSayfasi.jsx'
 import KitapKategoriSayfasi from './pages/KitapKategoriSayfasi.jsx'
 import RafDetay from './pages/RafDetay.jsx'
 import TavsiyelerSayfasi from './pages/TavsiyelerSayfasi.jsx'
+import Oyunlar from './pages/Oyunlar.jsx'
+import Sinemadle from './pages/oyunlar/Sinemadle.jsx'
+import SloganTahmin from './pages/oyunlar/SloganTahmin.jsx'
+import SahneTahmin from './pages/oyunlar/SahneTahmin.jsx'
+import OyuncuTahmin from './pages/oyunlar/OyuncuTahmin.jsx'
+import PosterTahmin from './pages/oyunlar/PosterTahmin.jsx'
+import FilmKoprusu from './pages/oyunlar/FilmKoprusu.jsx'
+import AlintiTahmin from './pages/oyunlar/AlintiTahmin.jsx'
+import MuzikTahmin from './pages/oyunlar/MuzikTahmin.jsx'
 
 // Sayfalar birleştirildi (bkz. KisiSayfasi.jsx) — eski /yonetmen/:id linkleri
 // (yer imleri, dışarıdan gelen linkler) kırılmasın diye /kisi/:id'ye yönlendiriyoruz.
@@ -103,6 +112,15 @@ export default function App() {
               </OzelRota>
             }
           />
+          <Route path="/oyunlar" element={<OzelRota><Oyunlar /></OzelRota>} />
+          <Route path="/oyunlar/sinemadle" element={<OzelRota><Sinemadle /></OzelRota>} />
+          <Route path="/oyunlar/slogan" element={<OzelRota><SloganTahmin /></OzelRota>} />
+          <Route path="/oyunlar/sahne" element={<OzelRota><SahneTahmin /></OzelRota>} />
+          <Route path="/oyunlar/oyuncu" element={<OzelRota><OyuncuTahmin /></OzelRota>} />
+          <Route path="/oyunlar/poster" element={<OzelRota><PosterTahmin /></OzelRota>} />
+          <Route path="/oyunlar/kopru" element={<OzelRota><FilmKoprusu /></OzelRota>} />
+          <Route path="/oyunlar/alinti" element={<OzelRota><AlintiTahmin /></OzelRota>} />
+          <Route path="/oyunlar/muzik" element={<OzelRota><MuzikTahmin /></OzelRota>} />
           <Route path="/film/:id" element={<OzelRota><EserSayfasi tur="sinema" /></OzelRota>} />
           <Route path="/dizi/:id" element={<OzelRota><EserSayfasi tur="dizi" /></OzelRota>} />
           <Route path="/kitap/:id" element={<OzelRota><EserSayfasi tur="kitap" /></OzelRota>} />

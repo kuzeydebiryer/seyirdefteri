@@ -21,6 +21,7 @@ const LINKLER = [
   { yol: '/yazilar', etiket: 'Yazı', ikon: '📝' },
   { yol: '/gezi', etiket: 'Gezi', ikon: '✈️' },
   { yol: '/etkinlik-dunyasi', etiket: 'Etkinlik', ikon: '🎟️' },
+  { yol: '/oyunlar', etiket: 'Oyunlar', ikon: '🎲' },
 ]
 const TOPLULUK_LINKLERI = [{ yol: '/topluluklar', etiket: 'Topluluk', ikon: '👥' }]
 

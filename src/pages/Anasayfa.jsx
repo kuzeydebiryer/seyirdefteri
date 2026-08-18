@@ -140,24 +140,25 @@ export default function Anasayfa() {
   }, [])
 
   // Takip ettiklerinin günlük (izledi/okudu/puanladı) aktivitesi — Letterboxd
-  // tarzı "Friends" akışının hafif katmanı. Sadece "Takip" sekmesinde,
-  // gönderi/duyurularla aynı akışa karışır. Sabit sayıda çekiliyor (sayfalama
-  // yok), günce akışındaki "Daha Fazla Göster" bunu kapsamıyor — bilinçli bir
-  // MVP sınırı, ihtiyaç olursa genişletilir.
+  // tarzı "Friends" akışının hafif katmanı. KENDİ aktivitenizi DAHİL ETMİYOR
+  // — "takip ettiklerinden yeni" mantıksal olarak sizi kapsamamalı, bu yüzden
+  // bilerek takipFiltresi (self dahil) değil, saf takipEdilenler kullanılıyor.
+  // Sekmeden bağımsız her zaman çekiliyor — sadece "Takip Ettiklerinden Yeni"
+  // widget'ı için değil, "Takip" akışına karışan kartlar için de gerekiyor.
   const [takipGunlukKayitlari, setTakipGunlukKayitlari] = useState([])
   useEffect(() => {
-    if (sekme !== 'takip' || !takipHazirMi || takipFiltresi.length === 0) {
+    if (!takipHazirMi || takipEdilenler.length === 0) {
       setTakipGunlukKayitlari([])
       return
     }
     let iptal = false
-    takipEdilenlerinGunlukKayitlariniGetir(takipFiltresi, 15).then((liste) => {
+    takipEdilenlerinGunlukKayitlariniGetir(takipEdilenler, 15).then((liste) => {
       if (!iptal) setTakipGunlukKayitlari(liste)
     })
     return () => {
       iptal = true
     }
-  }, [sekme, takipHazirMi, takipFiltresi.join(',')])
+  }, [takipHazirMi, takipEdilenler?.join(',')])
 
   async function habercKatilimDegistir(haberci) {
     if (!kullanici) return
@@ -214,6 +215,8 @@ export default function Anasayfa() {
 
       <TopluluklarBildirimSeridi />
 
+      <YeniGunlukGridi kayitlar={takipGunlukKayitlari} />
+
       <TavsiyeBolumu
         tur="sinema"
         tavsiyeler={filmTavsiyeleri}
@@ -256,8 +259,6 @@ export default function Anasayfa() {
       <GunlukKesif />
 
       <KitapDunyasiWidget />
-
-      {sekme === 'takip' && <YeniGunlukGridi kayitlar={takipGunlukKayitlari} />}
 
       <div className="mb-4 flex gap-4 text-sm font-govde">
         <button
