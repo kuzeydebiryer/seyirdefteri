@@ -4,13 +4,16 @@
 
 :root {
   /* Aydınlık (varsayılan) palet — R G B, virgülsüz (Tailwind'in
-     rgb(var(--x) / <alpha-value>) opaklık numarasıyla çalışması için) */
-  --kagit: 245 239 225;
-  --kagitKoyu: 237 228 206;
+     rgb(var(--x) / <alpha-value>) opaklık numarasıyla çalışması için).
+     Karanlık moddakiyle (.dark) AYNI sıcak amber/kahve ton ailesi — sadece
+     çok daha açık. Önceki hali fazla soluk/genel bir krem gibi duruyordu,
+     şimdi biraz daha doygun, "eskitilmiş kağıt" hissi veriyor. */
+  --kagit: 240 230 208;
+  --kagitKoyu: 227 212 179;
   --murekkep: 31 36 33;
   --muhur: 179 58 58;
-  --kraft: 140 131 104;
-  --cizgi: 216 203 170;
+  --kraft: 128 114 82;
+  --cizgi: 199 180 141;
   --deniz: 74 110 107;
   --gise: 166 118 63;
 }
