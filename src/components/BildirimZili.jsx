@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useBildirimler } from '../context/BildirimContext.jsx'
+import BildirimZiliIkon from './ikonlar/BildirimZiliIkon.jsx'
 
 function zamanGoster(tarih) {
   const ms = tarih?.toMillis?.()
@@ -36,7 +37,7 @@ export default function BildirimZili() {
   return (
     <div className="relative">
       <button onClick={ac} className="relative text-kraft hover:text-murekkep" title="Bildirimler">
-        <span className="text-lg">🔔</span>
+        <span className="text-lg"><BildirimZiliIkon boyut={20} className="inline-block" /></span>
         {okunmamisSayisi > 0 && (
           <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-muhur px-1 text-[9px] font-medium text-kagit">
             {okunmamisSayisi > 9 ? '9+' : okunmamisSayisi}

@@ -51,3 +51,15 @@ body {
 .yildiz {
   color: rgb(var(--muhur));
 }
+
+/* Yatay kaydırılabilir şeritlerde (film/kitap carousel'leri, "Tümünü Gör"
+   ile zaten kendi sayfasına yönlendirildikleri için) tarayıcının çirkin
+   görünen kaydırma çubuğunu gizliyoruz — kaydırma işlevi (dokunma/tekerlek/
+   sürükleme) aynen çalışmaya devam ediyor, sadece görünür şerit kayboluyor. */
+.overflow-x-auto {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* eski Edge/IE */
+}
+.overflow-x-auto::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, yeni Edge */
+}

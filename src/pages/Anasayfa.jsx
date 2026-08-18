@@ -14,7 +14,6 @@ import AlintiKarti from '../components/AlintiKarti.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import BegenilenMuziklerBolumu from '../components/BegenilenMuziklerBolumu.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
-import OneCikanlarSeridi from '../components/OneCikanlarSeridi.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
 import GunlukKesif from '../components/GunlukKesif.jsx'
 import Logo from '../components/Logo.jsx'
@@ -208,11 +207,9 @@ export default function Anasayfa() {
       <div className="mb-6 flex items-center gap-2">
         <Logo sadeceIkon boyut={22} />
         <p className="font-baslik text-sm text-murekkep">
-          Seyirdefteri <span className="font-govde italic text-kraft">— Kültür hayatının ortak günlüğü.</span>
+          Seyirdefteri <span className="font-govde italic text-kraft">— Kültür ve sanat hayatının ortak günlüğü.</span>
         </p>
       </div>
-
-      <OneCikanlarSeridi />
 
       <TopluluklarBildirimSeridi />
 
