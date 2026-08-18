@@ -2,7 +2,7 @@
   "name": "functions",
   "description": "Seyirdefteri push bildirim gönderme mantığı",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "type": "commonjs",
