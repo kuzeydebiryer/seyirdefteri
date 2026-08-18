@@ -535,6 +535,11 @@ export default function EserSayfasi({ tur }) {
 
           setDetay({
             baslik: tur === 'sinema' ? data.title : data.name,
+            // Orijinal (yerelleştirilmemiş) başlık — Spotify'da soundtrack
+            // albümleri neredeyse hep orijinal başlıkla kayıtlı, Türkçe
+            // başlıkla arama alakasız sonuçlar getirebiliyor (bkz.
+            // FilmMuzigiWidget).
+            orijinalBaslik: tur === 'sinema' ? data.original_title : data.original_name,
             yil: (tur === 'sinema' ? data.release_date : data.first_air_date)?.slice(0, 4),
             posterUrl: data.poster_path ? `${TMDB_POSTER}${data.poster_path}` : '',
             ozet: data.overview,
@@ -1911,7 +1916,9 @@ export default function EserSayfasi({ tur }) {
         </div>
       )}
 
-      {tur === 'sinema' && <FilmMuzigiWidget tmdbId={id} filmAdi={detay.baslik} yil={detay.yil} />}
+      {tur === 'sinema' && (
+        <FilmMuzigiWidget tmdbId={id} filmAdi={detay.orijinalBaslik || detay.baslik} yil={detay.yil} />
+      )}
 
       {detay.oyuncular?.length > 0 && (
         <div className="mt-6">

@@ -35,7 +35,7 @@ async function sorulariUret() {
   for (let i = 0; i < detaylar.length && eslesenler.length < SORU_SAYISI; i++) {
     const d = detaylar[i]
     if (!d) continue
-    const onizleme = await itunesOnizlemeAra(d.title)
+    const onizleme = await itunesOnizlemeAra(d.original_title || d.title)
     if (onizleme) eslesenler.push({ film: d, onizleme })
   }
 

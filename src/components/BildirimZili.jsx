@@ -48,7 +48,7 @@ export default function BildirimZili() {
         <>
           {/* Panel dışına tıklayınca kapatmak için görünmez bir kaplama */}
           <div className="fixed inset-0 z-40" onClick={() => setAcik(false)} />
-          <div className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[85vw] rounded-sm bg-kagit shadow-lg ring-1 ring-cizgi">
+          <div className="fixed inset-x-3 top-16 z-50 max-h-[70vh] overflow-hidden rounded-sm bg-kagit shadow-lg ring-1 ring-cizgi sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 sm:max-w-[85vw]">
             <div className="flex items-center justify-between border-b border-cizgi px-3 py-2">
               <p className="font-baslik text-sm text-murekkep">Bildirimler</p>
               {okunmamisSayisi > 0 && (
