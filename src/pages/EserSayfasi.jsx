@@ -71,14 +71,14 @@ function toplamIzlenenBolum(sezonlar, mevcutSezon, mevcutBolum) {
   return toplam
 }
 
-function KisiListesi({ kisiler, etiket }) {
+function KisiListesi({ kisiler, etiket, acikRenk = false }) {
   if (!kisiler || kisiler.length === 0) return null
   return (
-    <p className="mt-1 text-xs text-murekkep">
-      <span className="text-kraft">{etiket}: </span>
+    <p className={`mt-1 text-xs ${acikRenk ? 'text-white/90' : 'text-murekkep'}`}>
+      <span className={acikRenk ? 'text-white/70' : 'text-kraft'}>{etiket}: </span>
       {kisiler.map((k, i) => (
         <span key={k.id}>
-          <Link to={`/kisi/${k.id}`} className="hover:underline hover:text-deniz">
+          <Link to={`/kisi/${k.id}`} className={acikRenk ? 'hover:underline' : 'hover:underline hover:text-deniz'}>
             {k.name}
           </Link>
           {i < kisiler.length - 1 && ', '}
@@ -121,6 +121,7 @@ export default function EserSayfasi({ tur }) {
     setHeroResimHatasi(false)
   }, [tur, id])
   const fragmanRef = useRef(null)
+  const yorumlarRef = useRef(null)
   function heroFragmanTiklandi() {
     setFragmanAcik(true)
     setTimeout(() => fragmanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
@@ -1052,7 +1053,7 @@ export default function EserSayfasi({ tur }) {
             onError={() => setHeroResimHatasi(true)}
             className="aspect-[16/9] w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-kagit via-kagit/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-4 p-4">
             {detay.posterUrl && (
               <button
@@ -1063,20 +1064,20 @@ export default function EserSayfasi({ tur }) {
                 <img
                   src={detay.posterUrl}
                   alt={detay.baslik}
-                  className="h-24 w-16 rounded-sm object-cover shadow-lg ring-1 ring-cizgi sm:h-32 sm:w-20"
+                  className="h-24 w-16 rounded-sm object-cover shadow-lg ring-1 ring-white/30 sm:h-32 sm:w-20"
                 />
               </button>
             )}
             <div className="min-w-0 flex-1 pb-1">
-              <h1 className="font-baslik text-lg text-murekkep drop-shadow-sm sm:text-2xl">
-                {detay.baslik} {detay.yil && <span className="text-kraft text-sm sm:text-lg">({detay.yil})</span>}
+              <h1 className="font-baslik text-lg text-white drop-shadow-md sm:text-2xl">
+                {detay.baslik} {detay.yil && <span className="text-white/70 text-sm sm:text-lg">({detay.yil})</span>}
               </h1>
-              <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
-              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-kraft">
+              <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} acikRenk />
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/80">
                 {detay.turListesi?.length > 0 &&
                   detay.turListesi.map((t, i) => (
                     <span key={t.id}>
-                      <Link to={`/tur/${tur}/${t.id}?ad=${encodeURIComponent(t.ad)}`} className="hover:text-deniz hover:underline">
+                      <Link to={`/tur/${tur}/${t.id}?ad=${encodeURIComponent(t.ad)}`} className="hover:underline">
                         {t.ad}
                       </Link>
                       {i < detay.turListesi.length - 1 && ','}
@@ -1084,7 +1085,7 @@ export default function EserSayfasi({ tur }) {
                   ))}
                 {detay.sureDk && <span>⏱ {detay.sureDk} dk</span>}
                 {detay.sertifika && (
-                  <span className="rounded-sm bg-kagitKoyu px-1.5 py-0.5 font-medium text-murekkep ring-1 ring-cizgi">{detay.sertifika}</span>
+                  <span className="rounded-sm bg-black/40 px-1.5 py-0.5 font-medium text-white ring-1 ring-white/30">{detay.sertifika}</span>
                 )}
                 {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
                 {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
@@ -1386,6 +1387,14 @@ export default function EserSayfasi({ tur }) {
                 )}
               </div>
 
+              <button
+                onClick={() => yorumlarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="flex flex-col items-center gap-1"
+              >
+                <span className="text-2xl text-cizgi">📝</span>
+                <span className="text-[10px] uppercase tracking-wide text-kraft">Yorum</span>
+              </button>
+
               {(tur === 'kitap' || tur === 'dizi') && !izlenecekKaydi && (
                 <button
                   onClick={dogrudanOkumayaBasla}
@@ -1404,6 +1413,43 @@ export default function EserSayfasi({ tur }) {
                   {tur === 'kitap' ? 'Okumaya Başla' : 'İzlemeye Başla'}
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Tek yıldız satırı: giriş yapmışsan kendi (tıklanabilir) puanın, yanında
+              topluluk ortalaması sadece metin olarak — iki ayrı yıldız satırı yerine.
+              İlginç Bilgiler'in üstüne taşındı, sayfanın çok aşağısında kalmasın diye. */}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {kullanici ? (
+              <>
+                <YildizSecici deger={kullanicininPuani} onSec={puanGonder} boyut="text-3xl" />
+                {puanKaydediliyor && <span className="text-xs text-kraft">kaydediliyor...</span>}
+              </>
+            ) : (
+              <YildizSecici deger={ortalamaPuan} disabled boyut="text-3xl" />
+            )}
+            <span className="text-xs text-kraft">
+              {ortalamaPuan != null
+                ? `Topluluk: ${ortalamaPuan.toFixed(1)} (${puanSayisi} kişi)`
+                : kullanici
+                  ? 'Henüz kimse puanlamadı'
+                  : 'Puan vermek için giriş yap'}
+            </span>
+          </div>
+          {kullanici && (tur === 'sinema' || tur === 'dizi' || tur === 'kitap') && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-kraft">
+              <span>{tur === 'kitap' ? 'Ne zaman okudun?' : 'Ne zaman izledin?'}</span>
+              <input
+                type="date"
+                value={gunlukTarihi}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setGunlukTarihi(e.target.value)}
+                className="rounded-sm bg-kagit px-2 py-0.5 text-xs text-murekkep ring-1 ring-cizgi"
+              />
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={gunlukTekrar} onChange={(e) => setGunlukTekrar(e.target.checked)} />
+                🔄 Yeniden {tur === 'kitap' ? 'okuma' : 'izleme'}
+              </label>
             </div>
           )}
 
@@ -1914,41 +1960,6 @@ export default function EserSayfasi({ tur }) {
             </div>
           )}
 
-          {/* Tek yıldız satırı: giriş yapmışsan kendi (tıklanabilir) puanın, yanında
-              topluluk ortalaması sadece metin olarak — iki ayrı yıldız satırı yerine */}
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            {kullanici ? (
-              <>
-                <YildizSecici deger={kullanicininPuani} onSec={puanGonder} boyut="text-lg" />
-                {puanKaydediliyor && <span className="text-xs text-kraft">kaydediliyor...</span>}
-              </>
-            ) : (
-              <YildizSecici deger={ortalamaPuan} disabled boyut="text-lg" />
-            )}
-            <span className="text-xs text-kraft">
-              {ortalamaPuan != null
-                ? `Topluluk: ${ortalamaPuan.toFixed(1)} (${puanSayisi} kişi)`
-                : kullanici
-                  ? 'Henüz kimse puanlamadı'
-                  : 'Puan vermek için giriş yap'}
-            </span>
-          </div>
-          {kullanici && (tur === 'sinema' || tur === 'dizi' || tur === 'kitap') && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-kraft">
-              <span>{tur === 'kitap' ? 'Ne zaman okudun?' : 'Ne zaman izledin?'}</span>
-              <input
-                type="date"
-                value={gunlukTarihi}
-                max={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => setGunlukTarihi(e.target.value)}
-                className="rounded-sm bg-kagit px-2 py-0.5 text-xs text-murekkep ring-1 ring-cizgi"
-              />
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={gunlukTekrar} onChange={(e) => setGunlukTekrar(e.target.checked)} />
-                🔄 Yeniden {tur === 'kitap' ? 'okuma' : 'izleme'}
-              </label>
-            </div>
-          )}
         </div>
       </div>
 
@@ -2239,7 +2250,7 @@ export default function EserSayfasi({ tur }) {
 
       <div className="defter-cizgi my-6" />
 
-      <h2 className="font-baslik text-lg text-murekkep mb-3">Yorumlar</h2>
+      <h2 className="font-baslik text-lg text-murekkep mb-3" ref={yorumlarRef}>Yorumlar</h2>
       {yorumlarYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {!yorumlarYukleniyor && yorumlar.length === 0 && <p className="text-sm text-kraft">Henüz yorum yok — ilkini sen yaz.</p>}
 
