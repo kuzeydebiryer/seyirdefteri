@@ -114,6 +114,10 @@ export default function EserSayfasi({ tur }) {
   const [alintiKaydediliyor, setAlintiKaydediliyor] = useState(false)
   const [alintilarTumunuGorAcik, setAlintilarTumunuGorAcik] = useState(false)
   const [fragmanAcik, setFragmanAcik] = useState(false)
+  const [heroResimHatasi, setHeroResimHatasi] = useState(false)
+  useEffect(() => {
+    setHeroResimHatasi(false)
+  }, [tur, id])
   const fragmanRef = useRef(null)
   function heroFragmanTiklandi() {
     setFragmanAcik(true)
@@ -1032,23 +1036,26 @@ export default function EserSayfasi({ tur }) {
 
   return (
     <div>
-      {(tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0 && (
+      {(tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0 && !heroResimHatasi && (
         <div className="relative mb-4 overflow-hidden rounded-sm ring-1 ring-cizgi">
-          <div className="relative aspect-[16/9] w-full">
-            <img src={detay.gorseller[0]} alt="" className="h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-kagit via-kagit/55 to-transparent" />
-          </div>
-          <div className="relative -mt-16 flex items-end gap-4 p-4 sm:-mt-20">
+          <img
+            src={detay.gorseller[0]}
+            alt=""
+            onError={() => setHeroResimHatasi(true)}
+            className="aspect-[16/9] w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-kagit via-kagit/60 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 flex items-end gap-4 p-4">
             {detay.posterUrl && (
               <img
                 src={detay.posterUrl}
                 alt={detay.baslik}
-                className="h-28 w-20 shrink-0 rounded-sm object-cover shadow-lg ring-1 ring-cizgi sm:h-36 sm:w-24"
+                className="h-24 w-16 shrink-0 rounded-sm object-cover shadow-lg ring-1 ring-cizgi sm:h-32 sm:w-20"
               />
             )}
             <div className="min-w-0 flex-1 pb-1">
-              <h1 className="font-baslik text-xl text-murekkep drop-shadow-sm sm:text-2xl">
-                {detay.baslik} {detay.yil && <span className="text-kraft text-base sm:text-lg">({detay.yil})</span>}
+              <h1 className="font-baslik text-lg text-murekkep drop-shadow-sm sm:text-2xl">
+                {detay.baslik} {detay.yil && <span className="text-kraft text-sm sm:text-lg">({detay.yil})</span>}
               </h1>
               {detay.fragmanId && (
                 <button
@@ -1064,7 +1071,7 @@ export default function EserSayfasi({ tur }) {
       )}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
-        {!((tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0) && detay.posterUrl && (
+        {!((tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0 && !heroResimHatasi) && detay.posterUrl && (
           <img
             src={detay.posterUrl}
             alt={detay.baslik}
@@ -1072,7 +1079,7 @@ export default function EserSayfasi({ tur }) {
           />
         )}
         <div className="min-w-0 flex-1">
-          {!((tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0) && (
+          {!((tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0 && !heroResimHatasi) && (
             <h1 className="font-baslik text-3xl text-murekkep">
               {detay.baslik} {detay.yil && <span className="text-kraft text-xl">({detay.yil})</span>}
             </h1>
