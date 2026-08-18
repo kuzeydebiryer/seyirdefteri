@@ -19,6 +19,7 @@ import PuanIceAktar from '../components/PuanIceAktar.jsx'
 import { kahinOlduguSezonlariGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { kullaniciKoleksiyonuGetir, eseriKoleksiyondanCikar } from '../utils/sanatKoleksiyonu.js'
+import { begenilenMuzikleriGetir, muzikBegeniKaldir } from '../utils/filmMuzigiBegeni.js'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
@@ -64,9 +65,11 @@ export default function Profil() {
   const [hedefProfil, setHedefProfil] = useState(benimProfilimMi ? kendiProfilim : null)
   const [kahinSezonlari, setKahinSezonlari] = useState([])
   const [sanatKoleksiyonu, setSanatKoleksiyonu] = useState([])
+  const [begenilenMuzikler, setBegenilenMuzikler] = useState([])
 
   useEffect(() => {
     kullaniciKoleksiyonuGetir(uid).then(setSanatKoleksiyonu)
+    begenilenMuzikleriGetir(uid).then(setBegenilenMuzikler)
   }, [uid])
   const { gonderiler, hata: gonderilerHatasi } = useGonderiler({ yazarId: uid, sayfaBoyutu: 500 })
   const { takipEdiyorMu, setTakipEdiyorMu, takipciSayisi, takipEdilenSayisi } = useTakip(uid, kullanici?.uid)
@@ -299,6 +302,7 @@ export default function Profil() {
     { id: 'raflarim', etiket: '📚 Raflarım' },
     { id: 'yorumlarim', etiket: '💬 Yorumlarım' },
     { id: 'sanatKoleksiyonum', etiket: '🖼️ Sanat Koleksiyonlarım' },
+    { id: 'filmMuzikleri', etiket: '🎵 Film Müzikleri' },
   ]
 
   async function rafOlusturTiklandi(e) {
@@ -1222,6 +1226,37 @@ export default function Profil() {
                       if (!window.confirm('Bu eseri koleksiyonundan çıkarmak istediğine emin misin?')) return
                       await eseriKoleksiyondanCikar(uid, eser.eserId)
                       setSanatKoleksiyonu((liste) => liste.filter((e) => e.id !== eser.id))
+                    }}
+                    className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft opacity-0 ring-1 ring-cizgi transition-opacity hover:text-muhur group-hover:opacity-100"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {sekme === 'filmMuzikleri' && (
+        <div>
+          {begenilenMuzikler.length === 0 && <p className="text-sm text-kraft">Henüz beğenilen bir film müziği yok.</p>}
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {begenilenMuzikler.map((m) => (
+              <div key={m.id} className="group relative">
+                <Link to={`/film/${m.tmdbId}`} className="block">
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                    {m.posterUrl && <img src={m.posterUrl} alt={m.filmBaslik} loading="lazy" className="h-full w-full object-cover" />}
+                    <span className="absolute bottom-1 left-1 text-sm">🎵</span>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-murekkep">{m.filmBaslik}</p>
+                  {m.filmYil && <p className="truncate text-[11px] text-kraft">{m.filmYil}</p>}
+                </Link>
+                {benimProfilimMi && (
+                  <button
+                    onClick={async () => {
+                      await muzikBegeniKaldir(uid, m.tmdbId)
+                      setBegenilenMuzikler((liste) => liste.filter((x) => x.id !== m.id))
                     }}
                     className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft opacity-0 ring-1 ring-cizgi transition-opacity hover:text-muhur group-hover:opacity-100"
                   >

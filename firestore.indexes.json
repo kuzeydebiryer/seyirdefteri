@@ -465,6 +465,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "begenilenMuzikler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "kullaniciId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "eklemeTarihi",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

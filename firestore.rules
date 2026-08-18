@@ -64,6 +64,21 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+
+    // Film müziği beğenileri — kullanıcı kendi beğenisini ekleyip
+    // kaldırabilir, herkes okuyabilir (profil sekmesi + anasayfa widget'ı).
+    match /begenilenMuzikler/{begeniId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Müzik Tahmin oyununun iTunes önizleme önbelleği — herkes okuyup
+    // yazabilir (sahte/zararlı veri riski yok, sadece bir önizleme URL'i).
+    match /muzikOyunuOnizlemeleri/{tmdbId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
     match /kisiIstatistikleri/{istatistikId} {
       allow read: if true;
       allow write: if request.auth != null;

@@ -63,6 +63,7 @@ export default function Sinemadle() {
   if (!hedef) return <p className="text-sm text-kraft">Bugün için yeterli veri yok — biraz daha topluluk aktivitesi gerekiyor.</p>
 
   const yonetmen = hedef.credits?.crew?.find((k) => k.job === 'Director')?.name
+  const basOyuncu = hedef.credits?.cast?.[0]?.name
 
   return (
     <div className="max-w-lg">
@@ -78,7 +79,7 @@ export default function Sinemadle() {
         </p>
         {ipucuSeviyesi >= 2 && (
           <p>
-            <span className="text-kraft">İpucu 2 — Yıl:</span> <span className="text-murekkep">{hedef.release_date?.slice(0, 4) || '?'}</span>
+            <span className="text-kraft">İpucu 2 — Oyuncu:</span> <span className="text-murekkep">{basOyuncu || '?'}</span>
           </p>
         )}
         {ipucuSeviyesi >= 3 && (

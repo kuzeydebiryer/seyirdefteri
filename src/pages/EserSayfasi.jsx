@@ -1917,7 +1917,13 @@ export default function EserSayfasi({ tur }) {
       )}
 
       {tur === 'sinema' && (
-        <FilmMuzigiWidget tmdbId={id} filmAdi={detay.orijinalBaslik || detay.baslik} yil={detay.yil} />
+        <FilmMuzigiWidget
+          tmdbId={id}
+          filmAdi={detay.orijinalBaslik || detay.baslik}
+          yil={detay.yil}
+          posterUrl={detay.posterUrl}
+          bestekarAdi={detay.bestekarlar?.[0]?.name}
+        />
       )}
 
       {detay.oyuncular?.length > 0 && (

@@ -178,32 +178,94 @@ async function spotifyTokenGetir(clientId, clientSecret) {
   return veri.access_token
 }
 
+// Türkçe karakterleri sadeleştirip küçük harfe çeviren gevşek karşılaştırma
+// — "Éric Serra" ile "eric serra" gibi ufak yazım farklarını tolere etsin.
+// utils/metinNormallestir.js'teki aksansizKucultulmus ile AYNI mantık
+// (Nobel yazar eşleştirmede de bu sıra önemliydi): önce NFD ile aksanları
+// ayır ve sil, SONRA Türkçe yerel kurallarına göre küçült — sıra tersse
+// "İ"/"I" gibi harfler yanlış eşleşir (Node.js'in de Türkçe locale desteği
+// var, aynı fonksiyon burada sunucu tarafında yeniden yazıldı çünkü
+// frontend'deki ES module dosyasını CommonJS fonksiyonlara import edemiyoruz).
+function sadelestir(metin) {
+  return (metin || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('tr-TR')
+    .trim()
+}
+
 exports.filmMuzigiGetir = onCall({ secrets: [SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET] }, async (request) => {
-  const { tmdbId, filmAdi, yil } = request.data || {}
+  const { tmdbId, filmAdi, yil, bestekarAdi, zorlaYenile } = request.data || {}
   if (!tmdbId || !filmAdi) throw new HttpsError('invalid-argument', 'tmdbId ve filmAdi gerekli')
 
   const cacheRef = db.collection('filmMuzikleri').doc(String(tmdbId))
-  const cacheSnap = await cacheRef.get()
-  if (cacheSnap.exists) return cacheSnap.data()
+  if (!zorlaYenile) {
+    const cacheSnap = await cacheRef.get()
+    if (cacheSnap.exists) return cacheSnap.data()
+  }
 
   try {
     const token = await spotifyTokenGetir(SPOTIFY_CLIENT_ID.value(), SPOTIFY_CLIENT_SECRET.value())
     const sorgu = yil ? `album:"${filmAdi}" year:${yil}` : `album:"${filmAdi}"`
-    const ararUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(sorgu)}&type=album&limit=1`
+    // Tek sonuç yerine birkaçını çekip, varsa bestekar adıyla eşleşeni
+    // seçiyoruz — "Sil Baştan" sorununu (alakasız bir Türkçe şarkının
+    // yanlışlıkla eşleşmesi) bu doğrulama önlüyor.
+    const ararUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(sorgu)}&type=album&limit=5`
     const ararRes = await fetch(ararUrl, { headers: { Authorization: `Bearer ${token}` } })
     if (!ararRes.ok) throw new HttpsError('unavailable', 'Spotify araması başarısız')
     const ararVeri = await ararRes.json()
-    const albumId = ararVeri.albums?.items?.[0]?.id || null
+    const sonuclar = ararVeri.albums?.items || []
 
-    const sonuc = { spotifyAlbumId: albumId, guncellemeTarihi: FieldValue.serverTimestamp() }
+    let secilenAlbum = null
+    let guvenSeviyesi = 'yuksek' // 'yuksek' (bestekar eşleşti) | 'orta' (yıl yakınlığı) | 'dusuk' (bestekarsız ilk sonuç)
+    if (bestekarAdi) {
+      const bestekarSade = sadelestir(bestekarAdi)
+      secilenAlbum = sonuclar.find((a) => (a.artists || []).some((s) => sadelestir(s.name).includes(bestekarSade) || bestekarSade.includes(sadelestir(s.name))))
+
+      // Bestekar hiçbir sonuçla eşleşmedi — bu genelde "various artists"
+      // tarzı derleme soundtrack'lerde olur (tek bir bestekara bağlı değil).
+      // İkinci bir sinyal olarak, filmin çıkış yılına EN YAKIN albümü kabul
+      // ediyoruz (±1 yıl içindeyse) — kör kabul etmekten daha güvenli, ama
+      // bestekar eşleşmesi kadar kesin değil, o yüzden ayrı bir güven
+      // seviyesiyle işaretliyoruz.
+      if (!secilenAlbum && yil) {
+        let enYakin = null
+        let enKucukFark = Infinity
+        for (const a of sonuclar) {
+          const albumYili = parseInt((a.release_date || '').slice(0, 4), 10)
+          if (!albumYili) continue
+          const fark = Math.abs(albumYili - Number(yil))
+          if (fark <= 1 && fark < enKucukFark) {
+            enKucukFark = fark
+            enYakin = a
+          }
+        }
+        if (enYakin) {
+          secilenAlbum = enYakin
+          guvenSeviyesi = 'orta'
+        }
+      }
+    } else {
+      secilenAlbum = sonuclar[0] || null
+      guvenSeviyesi = 'dusuk'
+    }
+
+    const albumId = secilenAlbum?.id || null
+    const sonuc = {
+      spotifyAlbumId: albumId,
+      guvenSeviyesi: albumId ? guvenSeviyesi : null,
+      eslesenSanatci: secilenAlbum?.artists?.[0]?.name || null,
+      guncellemeTarihi: FieldValue.serverTimestamp(),
+    }
     await cacheRef.set(sonuc)
-    return { spotifyAlbumId: albumId }
+    return sonuc
   } catch (err) {
     // Spotify'da bu film için soundtrack bulunamaması NORMAL bir durum
     // (özellikle küçük/bağımsız yapımlarda) — hatayı da "bulunamadı" olarak
     // önbellekliyoruz ki her ziyarette tekrar tekrar aranmasın.
-    await cacheRef.set({ spotifyAlbumId: null, guncellemeTarihi: FieldValue.serverTimestamp() })
-    return { spotifyAlbumId: null }
+    const sonuc = { spotifyAlbumId: null, guncellemeTarihi: FieldValue.serverTimestamp() }
+    await cacheRef.set(sonuc)
+    return sonuc
   }
 })
 

@@ -12,6 +12,7 @@ import YeniGunlukGridi from '../components/YeniGunlukGridi.jsx'
 import HabercKarti from '../components/HabercKarti.jsx'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
+import BegenilenMuziklerBolumu from '../components/BegenilenMuziklerBolumu.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import OneCikanlarSeridi from '../components/OneCikanlarSeridi.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
@@ -238,6 +239,8 @@ export default function Anasayfa() {
         tumunuGorLink="/yeni-gelen-filmler"
         ekleButonuMetni="+ Film Ekle"
       />
+
+      <BegenilenMuziklerBolumu />
 
       <TavsiyeBolumu
         tur="kitap"

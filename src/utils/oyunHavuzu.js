@@ -1,4 +1,4 @@
-import { collection, getDocs, limit as fbLimit, orderBy, query, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, limit as fbLimit, orderBy, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -56,4 +56,29 @@ export function tekillestir(dizi, anahtarFn) {
     gorulen.add(k)
     return true
   })
+}
+
+// Müzik Tahmin oyunu için iTunes önizleme sonuçlarını önbellekler —
+// aksi halde her oturumda aynı ~50'lik havuzu baştan taramak hem yavaş hem
+// de (bulunan/bulunmayan hep aynı çıktığından) seçenekleri neredeyse hiç
+// değiştirmiyordu. Önbellek "bulunamadı" sonucunu da saklar (null) ki aynı
+// filmi tekrar tekrar aramayalım — zamanla havuz büyür, oturumlar hızlanır.
+export async function oyunMuzikOnizlemesiGetir(tmdbId, filmAdi) {
+  const ref = doc(db, 'muzikOyunuOnizlemeleri', String(tmdbId))
+  const mevcut = await getDoc(ref)
+  if (mevcut.exists()) return mevcut.data().onizlemeUrl
+
+  let onizlemeUrl = null
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(filmAdi + ' soundtrack')}&media=music&entity=song&limit=5`)
+    if (res.ok) {
+      const veri = await res.json()
+      onizlemeUrl = (veri.results || []).find((r) => r.previewUrl)?.previewUrl || null
+    }
+  } catch {
+    // sessizce null kalır, önbelleğe "bulunamadı" olarak yazılır
+  }
+
+  await setDoc(ref, { onizlemeUrl, guncellemeTarihi: serverTimestamp() })
+  return onizlemeUrl
 }
