@@ -116,6 +116,7 @@ export default function EserSayfasi({ tur }) {
   const [alintilarTumunuGorAcik, setAlintilarTumunuGorAcik] = useState(false)
   const [fragmanAcik, setFragmanAcik] = useState(false)
   const [heroResimHatasi, setHeroResimHatasi] = useState(false)
+  const [posterBuyukAcik, setPosterBuyukAcik] = useState(false)
   useEffect(() => {
     setHeroResimHatasi(false)
   }, [tur, id])
@@ -1027,6 +1028,12 @@ export default function EserSayfasi({ tur }) {
   if (hata) return <p className="text-sm text-muhur">Bilgi alınamadı: {hata}</p>
   if (!detay) return <p className="text-sm text-kraft">Bulunamadı.</p>
 
+  // Hero (backdrop + poster + yönetmen/tür/süre bilgisi) sadece film/dizide
+  // ve TMDB'den arka plan görseli çekilebildiyse gösteriliyor — kitaplarda
+  // backdrop kavramı yok. Aşağıdaki normal başlık/yönetmen/tür satırları bu
+  // durumda tekrar etmesin diye hep bu tek değişkene bakılıyor.
+  const heroAktifMi = (tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0 && !heroResimHatasi
+
   const izlemeSecenekleri = saglayicilar
     ? [
         { etiket: 'Abonelik', liste: saglayicilar.flatrate },
@@ -1037,7 +1044,7 @@ export default function EserSayfasi({ tur }) {
 
   return (
     <div>
-      {(tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0 && !heroResimHatasi && (
+      {heroAktifMi && (
         <div className="relative mb-4 overflow-hidden rounded-sm ring-1 ring-cizgi">
           <img
             src={`${TMDB_BACKDROP}${detay.gorseller[0].file_path}`}
@@ -1048,16 +1055,40 @@ export default function EserSayfasi({ tur }) {
           <div className="absolute inset-0 bg-gradient-to-t from-kagit via-kagit/60 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-4 p-4">
             {detay.posterUrl && (
-              <img
-                src={detay.posterUrl}
-                alt={detay.baslik}
-                className="h-24 w-16 shrink-0 rounded-sm object-cover shadow-lg ring-1 ring-cizgi sm:h-32 sm:w-20"
-              />
+              <button
+                onClick={() => setPosterBuyukAcik(true)}
+                className="shrink-0 cursor-zoom-in"
+                title="Afişi büyüt"
+              >
+                <img
+                  src={detay.posterUrl}
+                  alt={detay.baslik}
+                  className="h-24 w-16 rounded-sm object-cover shadow-lg ring-1 ring-cizgi sm:h-32 sm:w-20"
+                />
+              </button>
             )}
             <div className="min-w-0 flex-1 pb-1">
               <h1 className="font-baslik text-lg text-murekkep drop-shadow-sm sm:text-2xl">
                 {detay.baslik} {detay.yil && <span className="text-kraft text-sm sm:text-lg">({detay.yil})</span>}
               </h1>
+              <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-kraft">
+                {detay.turListesi?.length > 0 &&
+                  detay.turListesi.map((t, i) => (
+                    <span key={t.id}>
+                      <Link to={`/tur/${tur}/${t.id}?ad=${encodeURIComponent(t.ad)}`} className="hover:text-deniz hover:underline">
+                        {t.ad}
+                      </Link>
+                      {i < detay.turListesi.length - 1 && ','}
+                    </span>
+                  ))}
+                {detay.sureDk && <span>⏱ {detay.sureDk} dk</span>}
+                {detay.sertifika && (
+                  <span className="rounded-sm bg-kagitKoyu px-1.5 py-0.5 font-medium text-murekkep ring-1 ring-cizgi">{detay.sertifika}</span>
+                )}
+                {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
+                {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
+              </div>
               {detay.fragmanId && (
                 <button
                   onClick={heroFragmanTiklandi}
@@ -1071,16 +1102,31 @@ export default function EserSayfasi({ tur }) {
         </div>
       )}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
-        {!((tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0 && !heroResimHatasi) && detay.posterUrl && (
+      {posterBuyukAcik && (
+        <div
+          onClick={() => setPosterBuyukAcik(false)}
+          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-murekkep/90 p-6"
+        >
           <img
-            src={detay.posterUrl}
+            src={detay.posterUrl?.replace('/w500', '/w780')}
             alt={detay.baslik}
-            className="h-56 w-40 shrink-0 self-center rounded-sm object-cover ring-1 ring-cizgi sm:self-start"
+            className="max-h-full max-w-full rounded-sm object-contain shadow-2xl"
           />
+        </div>
+      )}
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
+        {!heroAktifMi && detay.posterUrl && (
+          <button onClick={() => setPosterBuyukAcik(true)} className="self-center sm:self-start">
+            <img
+              src={detay.posterUrl}
+              alt={detay.baslik}
+              className="h-56 w-40 shrink-0 cursor-zoom-in rounded-sm object-cover ring-1 ring-cizgi"
+            />
+          </button>
         )}
         <div className="min-w-0 flex-1">
-          {!((tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0 && !heroResimHatasi) && (
+          {!heroAktifMi && (
             <h1 className="font-baslik text-3xl text-murekkep">
               {detay.baslik} {detay.yil && <span className="text-kraft text-xl">({detay.yil})</span>}
             </h1>
@@ -1095,30 +1141,34 @@ export default function EserSayfasi({ tur }) {
           )}
 
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-kraft">
-            {detay.turListesi?.length > 0 ? (
-              detay.turListesi.map((t, i) => (
-                <span key={t.id}>
-                  <Link to={`/tur/${tur}/${t.id}?ad=${encodeURIComponent(t.ad)}`} className="hover:text-deniz hover:underline">
-                    {t.ad}
+            {!heroAktifMi && (
+              <>
+                {detay.turListesi?.length > 0 ? (
+                  detay.turListesi.map((t, i) => (
+                    <span key={t.id}>
+                      <Link to={`/tur/${tur}/${t.id}?ad=${encodeURIComponent(t.ad)}`} className="hover:text-deniz hover:underline">
+                        {t.ad}
+                      </Link>
+                      {i < detay.turListesi.length - 1 && ','}
+                    </span>
+                  ))
+                ) : detay.turler && tur === 'kitap' ? (
+                  <Link to={`/kitap-kategori/${encodeURIComponent(detay.turler)}`} className="hover:text-deniz hover:underline">
+                    {detay.turler}
                   </Link>
-                  {i < detay.turListesi.length - 1 && ','}
-                </span>
-              ))
-            ) : detay.turler && tur === 'kitap' ? (
-              <Link to={`/kitap-kategori/${encodeURIComponent(detay.turler)}`} className="hover:text-deniz hover:underline">
-                {detay.turler}
-              </Link>
-            ) : (
-              detay.turler && <span>{detay.turler}</span>
+                ) : (
+                  detay.turler && <span>{detay.turler}</span>
+                )}
+                {detay.sureDk && <span>⏱ {detay.sureDk} dk</span>}
+                {detay.sertifika && (
+                  <span className="rounded-sm bg-kagitKoyu px-1.5 py-0.5 font-medium text-murekkep ring-1 ring-cizgi">
+                    {detay.sertifika}
+                  </span>
+                )}
+                {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
+                {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
+              </>
             )}
-            {detay.sureDk && <span>⏱ {detay.sureDk} dk</span>}
-            {detay.sertifika && (
-              <span className="rounded-sm bg-kagitKoyu px-1.5 py-0.5 font-medium text-murekkep ring-1 ring-cizgi">
-                {detay.sertifika}
-              </span>
-            )}
-            {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
-            {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
             {detay.sayfaSayisi && <span>📄 {detay.sayfaSayisi} sayfa</span>}
             {detay.yayinevi &&
               (tur === 'kitap' ? (
@@ -1173,7 +1223,7 @@ export default function EserSayfasi({ tur }) {
             </div>
           )}
 
-          <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
+          <KisiListesi kisiler={heroAktifMi ? null : detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
           {tur === 'sinema' && <KisiListesi kisiler={detay.senaristler} etiket="Senarist" />}
           {tur === 'sinema' && <KisiListesi kisiler={detay.bestekarlar} etiket="Müzik" />}
 
