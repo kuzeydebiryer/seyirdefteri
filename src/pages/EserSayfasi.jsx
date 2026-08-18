@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useEserGonderileri, useKitapIncelemeleri } from '../hooks/useEser.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -114,6 +114,11 @@ export default function EserSayfasi({ tur }) {
   const [alintiKaydediliyor, setAlintiKaydediliyor] = useState(false)
   const [alintilarTumunuGorAcik, setAlintilarTumunuGorAcik] = useState(false)
   const [fragmanAcik, setFragmanAcik] = useState(false)
+  const fragmanRef = useRef(null)
+  function heroFragmanTiklandi() {
+    setFragmanAcik(true)
+    setTimeout(() => fragmanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
   const [listeMenusuAcik, setListeMenusuAcik] = useState(false)
   const [listeyeEkleniyor, setListeyeEkleniyor] = useState(null)
   const { listeler: kendiListelerim } = useKisiselListeler(kullanici?.uid)
@@ -1027,8 +1032,39 @@ export default function EserSayfasi({ tur }) {
 
   return (
     <div>
+      {(tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0 && (
+        <div className="relative mb-4 overflow-hidden rounded-sm ring-1 ring-cizgi">
+          <div className="relative aspect-[16/9] w-full">
+            <img src={detay.gorseller[0]} alt="" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-kagit via-kagit/55 to-transparent" />
+          </div>
+          <div className="relative -mt-16 flex items-end gap-4 p-4 sm:-mt-20">
+            {detay.posterUrl && (
+              <img
+                src={detay.posterUrl}
+                alt={detay.baslik}
+                className="h-28 w-20 shrink-0 rounded-sm object-cover shadow-lg ring-1 ring-cizgi sm:h-36 sm:w-24"
+              />
+            )}
+            <div className="min-w-0 flex-1 pb-1">
+              <h1 className="font-baslik text-xl text-murekkep drop-shadow-sm sm:text-2xl">
+                {detay.baslik} {detay.yil && <span className="text-kraft text-base sm:text-lg">({detay.yil})</span>}
+              </h1>
+              {detay.fragmanId && (
+                <button
+                  onClick={heroFragmanTiklandi}
+                  className="mt-2 flex items-center gap-1.5 rounded-full bg-gise px-3 py-1.5 font-govde text-xs text-kagit"
+                >
+                  ▶ Fragman
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
-        {detay.posterUrl && (
+        {!((tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0) && detay.posterUrl && (
           <img
             src={detay.posterUrl}
             alt={detay.baslik}
@@ -1036,9 +1072,11 @@ export default function EserSayfasi({ tur }) {
           />
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="font-baslik text-3xl text-murekkep">
-            {detay.baslik} {detay.yil && <span className="text-kraft text-xl">({detay.yil})</span>}
-          </h1>
+          {!((tur === 'sinema' || tur === 'dizi') && detay.gorseller?.length > 0) && (
+            <h1 className="font-baslik text-3xl text-murekkep">
+              {detay.baslik} {detay.yil && <span className="text-kraft text-xl">({detay.yil})</span>}
+            </h1>
+          )}
           {detay.tagline && <p className="mt-0.5 text-sm italic text-kraft">"{detay.tagline}"</p>}
           {detay.yazar && (
             <p className="text-sm mt-1">
@@ -1950,7 +1988,7 @@ export default function EserSayfasi({ tur }) {
       )}
 
       {detay.fragmanId && (
-        <div className="mt-6">
+        <div className="mt-6" ref={fragmanRef}>
           {fragmanAcik ? (
             <>
               <h2 className="font-baslik text-lg text-murekkep mb-2">Fragman</h2>
