@@ -5,6 +5,8 @@ import Anasayfa from './pages/Anasayfa.jsx'
 import Akis from './pages/Akis.jsx'
 import GirisYap from './pages/GirisYap.jsx'
 import KayitOl from './pages/KayitOl.jsx'
+import UyelikBasvuru from './pages/UyelikBasvuru.jsx'
+import Basvurular from './pages/Basvurular.jsx'
 import GonderiEkle from './pages/GonderiEkle.jsx'
 import GonderiDetay from './pages/GonderiDetay.jsx'
 import Profil from './pages/Profil.jsx'
@@ -62,6 +64,8 @@ export default function App() {
           <Route path="/akis" element={<OzelRota><Akis /></OzelRota>} />
           <Route path="/giris" element={<GirisYap />} />
           <Route path="/kayit" element={<KayitOl />} />
+          <Route path="/uyelik-basvuru" element={<UyelikBasvuru />} />
+          <Route path="/basvurular" element={<OzelRota><Basvurular /></OzelRota>} />
           <Route path="/gonderi-ekle" element={<OzelRota><GonderiEkle /></OzelRota>} />
           <Route path="/gonderi/:id" element={<OzelRota><GonderiDetay /></OzelRota>} />
           <Route path="/profil/:uid" element={<OzelRota><Profil /></OzelRota>} />

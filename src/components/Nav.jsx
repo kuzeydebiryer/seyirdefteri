@@ -172,6 +172,15 @@ export default function Nav() {
               <span className="font-medium">{profil?.kullaniciAdi || 'Profil'}</span>
             </NavLink>
 
+            <NavLink
+              to="/basvurular"
+              onClick={() => setMenuAcik(false)}
+              className={({ isActive }) => `flex items-center gap-3 rounded-sm px-2 py-2 ${isActive ? 'text-muhur' : 'text-kraft'}`}
+            >
+              <span className="w-5 text-center">📨</span>
+              Üyelik Başvuruları
+            </NavLink>
+
             <div className="defter-cizgi my-1" />
 
             {LINKLER.map((l) => (

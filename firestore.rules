@@ -147,6 +147,16 @@ service cloud.firestore {
       allow update: if request.auth != null;
     }
 
+    // Üyelik başvuruları: kimlik doğrulaması olmayan biri de başvurabilir
+    // (henüz üye değil), ama listeyi sadece giriş yapmış üyeler görebilir
+    // (spam/kişisel bilgi herkese açık olmasın diye). Onay/red durumu
+    // güncellemesi de giriş yapmış herhangi bir üyeye açık — ayrı bir
+    // "yönetici" rolü yok, akran onayı (peer-invite) mantığıyla çalışıyor.
+    match /uyelikBasvurulari/{basvuruId} {
+      allow create: if true;
+      allow read, update: if request.auth != null;
+    }
+
     // Gönderiler (günceler): herkes okuyabilir, sadece kendi adına oluşturup silebilir.
     // "update" beğeni sayacı gibi ortak alanlar için serbest bırakıldı (Faz 1).
     match /gonderiler/{gonderiId} {

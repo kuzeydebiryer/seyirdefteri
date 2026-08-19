@@ -31,7 +31,10 @@ export default function KayitOl() {
   return (
     <div className="mx-auto max-w-sm">
       <h1 className="font-baslik text-2xl text-murekkep mb-1">Seyirdefteri'ne Katıl</h1>
-      <p className="text-sm text-kraft mb-6">Sadece davet koduyla üye olunabilir.</p>
+      <p className="text-sm text-kraft mb-6">
+        Film, dizi, kitap ve sanatla ilgili günlüğünü tuttuğun, küçük ve kapalı bir topluluk. Sadece davet koduyla üye olunabilir —
+        kodun yoksa <Link to="/uyelik-basvuru" className="text-muhur">başvurabilirsin</Link>.
+      </p>
 
       <form onSubmit={gonder} className="space-y-4">
         <div>

@@ -26,7 +26,10 @@ export default function GirisYap() {
 
   return (
     <div className="mx-auto max-w-sm">
-      <h1 className="font-baslik text-2xl text-murekkep mb-6">Giriş Yap</h1>
+      <h1 className="font-baslik text-2xl text-murekkep mb-1">Giriş Yap</h1>
+      <p className="text-sm text-kraft mb-6">
+        Seyirdefteri — film, dizi, kitap ve sanatla ilgili günlüğünü tuttuğun, küçük ve kapalı bir topluluğun ortak defteri.
+      </p>
       <form onSubmit={gonder} className="space-y-4">
         <div>
           <label className="block text-xs uppercase tracking-widest text-kraft mb-1">E-posta</label>
@@ -58,7 +61,8 @@ export default function GirisYap() {
         </button>
       </form>
       <p className="mt-4 text-center text-xs text-kraft">
-        Hesabın yok mu? <Link to="/kayit" className="text-muhur">Davet koduyla katıl</Link>
+        Hesabın yok mu? <Link to="/kayit" className="text-muhur">Davet koduyla katıl</Link> · davet kodun yok mu?{' '}
+        <Link to="/uyelik-basvuru" className="text-muhur">Başvur</Link>
       </p>
     </div>
   )
