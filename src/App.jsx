@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import Nav from './components/Nav.jsx'
 import OzelRota from './components/OzelRota.jsx'
 import Anasayfa from './pages/Anasayfa.jsx'
+import Akis from './pages/Akis.jsx'
 import GirisYap from './pages/GirisYap.jsx'
 import KayitOl from './pages/KayitOl.jsx'
 import GonderiEkle from './pages/GonderiEkle.jsx'
@@ -58,6 +59,7 @@ export default function App() {
       <main className="mx-auto max-w-3xl px-4 py-8">
         <Routes>
           <Route path="/" element={<OzelRota><Anasayfa /></OzelRota>} />
+          <Route path="/akis" element={<OzelRota><Akis /></OzelRota>} />
           <Route path="/giris" element={<GirisYap />} />
           <Route path="/kayit" element={<KayitOl />} />
           <Route path="/gonderi-ekle" element={<OzelRota><GonderiEkle /></OzelRota>} />

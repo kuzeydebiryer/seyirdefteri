@@ -9,10 +9,11 @@ import OscarHeykelIkon from './ikonlar/OscarHeykelIkon.jsx'
 import Avatar from './Avatar.jsx'
 import Logo from './Logo.jsx'
 
-// Akış ve Ekle kaldırıldı — Anasayfa'nın kendisi zaten akış ve "Günce Ekle" butonunu
-// içeriyor. Kişiler profile, Etkinlikler Topluluklar sayfasına taşındı. Yönetmenler
-// artık Oyuncular sayfasının içinde (ayrı menü maddesi değil).
+// Kişiler profile, Etkinlikler Topluluklar sayfasına taşındı. Yönetmenler
+// artık Oyuncular sayfasının içinde (ayrı menü maddesi değil). Akış, anasayfa
+// artık sade bir vitrin olduğu için kendi bağımsız sayfasına taşındı.
 const LINKLER = [
+  { yol: '/akis', etiket: 'Akış', ikon: '🗒️' },
   { yol: '/filmler', etiket: 'Film', ikon: '🎬' },
   { yol: '/diziler', etiket: 'Dizi', ikon: '📺' },
   { yol: '/oyuncular', etiket: 'Oyuncu', ikon: '🎭' },

@@ -162,6 +162,35 @@ export async function gunlukBegenDegistir(kayitId, uid, suAnBegeniyorMu) {
   })
 }
 
+// Bir günlük kaydının hedef sayfasını (tur'a göre) doğru şekilde çözer.
+// gunlukKayitlari SADECE eser (film/dizi/kitap) puanlamalarını değil, gezi ve
+// etkinlik güncelerini de tutuyor (bkz. GonderiEkle.jsx) — bunların disId'si
+// bir TMDB/Google Books ID'si DEĞİL, gönderinin kendi Firestore ID'si, o
+// yüzden /film veya /kitap'a değil /gonderi'ye gitmeleri gerekiyor. Bu ayrımı
+// atlayan bir bağlantı, TMDB'de "resource not found" hatasına düşüyordu.
+export function gunlukKaydiLinki(kayit) {
+  if (kayit.tur === 'gezi' || kayit.tur === 'etkinlik') return `/gonderi/${kayit.disId}`
+  if (kayit.tur === 'dizi') return `/dizi/${kayit.disId}`
+  if (kayit.tur === 'kitap') return `/kitap/${kayit.disId}`
+  return `/film/${kayit.disId}`
+}
+
+// Aynı ayrım için, günlük kaydının kartlarda/gridlerde kullanılacak eylem
+// metni ve poster yoksa gösterilecek yer tutucu ikonu.
+export function gunlukKaydiEylemMetni(kayit) {
+  if (kayit.tur === 'gezi') return 'bir gezi paylaştı'
+  if (kayit.tur === 'etkinlik') return 'bir etkinlik paylaştı'
+  if (kayit.olayTuru === 'baslama') return kayit.tur === 'kitap' ? 'okumaya başladı' : 'izlemeye başladı'
+  return kayit.tur === 'kitap' ? 'okudu' : 'izledi'
+}
+
+export function gunlukKaydiYerTutucuIkon(kayit) {
+  if (kayit.tur === 'gezi') return '🧳'
+  if (kayit.tur === 'etkinlik') return '🎟️'
+  if (kayit.tur === 'kitap') return '📖'
+  return '🎬'
+}
+
 // Takip ettiklerinin en son günlük kayıtları — Letterboxd'daki "Friends"
 // akışı / "New from friends" grid'i için. Firestore'un "in" operatörü en
 // fazla 30 değer kabul ettiğinden (bkz. useGonderiler.js'teki aynı desen),

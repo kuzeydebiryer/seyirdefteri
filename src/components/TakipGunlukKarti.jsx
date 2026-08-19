@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { gunlukBegenDegistir } from '../utils/gunluk.js'
+import { gunlukBegenDegistir, gunlukKaydiLinki, gunlukKaydiEylemMetni, gunlukKaydiYerTutucuIkon } from '../utils/gunluk.js'
 import YildizPuan from './YildizPuan.jsx'
 import Avatar from './Avatar.jsx'
 
@@ -12,8 +12,6 @@ function tarihGoster(deger) {
   return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-const ESER_LINKI = (tur, disId) => (tur === 'dizi' ? `/dizi/${disId}` : tur === 'kitap' ? `/kitap/${disId}` : `/film/${disId}`)
-
 // "X, Y'yi izledi/okudu ★★★½ — [not varsa]" — Letterboxd'daki Friends akışının
 // hafif (yazı yazmadan sadece puanlama/işaretleme) versiyonu. GonderiKarti'yla
 // aynı görsel dile sadık kalıyor ama daha az yer kaplıyor, çünkü bu bilinçli
@@ -23,7 +21,6 @@ export default function TakipGunlukKarti({ kayit }) {
   const navigate = useNavigate()
   const [begenenler, setBegenenler] = useState(kayit.begenenler || [])
   const benBegendimMi = kullanici && begenenler.includes(kullanici.uid)
-  const eylemMetni = kayit.olayTuru === 'baslama' ? (kayit.tur === 'kitap' ? 'okumaya başladı' : 'izlemeye başladı') : kayit.tur === 'kitap' ? 'okudu' : 'izledi'
 
   async function begenTiklandi(e) {
     e.stopPropagation()
@@ -35,7 +32,7 @@ export default function TakipGunlukKarti({ kayit }) {
 
   return (
     <article
-      onClick={() => navigate(ESER_LINKI(kayit.tur, kayit.disId))}
+      onClick={() => navigate(gunlukKaydiLinki(kayit))}
       className="gonderi-karti relative flex cursor-pointer gap-4 overflow-hidden p-4 pl-5 transition hover:ring-1 hover:ring-cizgi"
     >
       <div className="absolute inset-y-0 left-0 w-1.5 bg-cizgi" />
@@ -44,7 +41,7 @@ export default function TakipGunlukKarti({ kayit }) {
         {kayit.posterUrl ? (
           <img src={kayit.posterUrl} alt={kayit.baslik} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">{kayit.tur === 'kitap' ? '📖' : '🎬'}</div>
+          <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">{gunlukKaydiYerTutucuIkon(kayit)}</div>
         )}
       </div>
 
@@ -56,7 +53,7 @@ export default function TakipGunlukKarti({ kayit }) {
           <Link to={`/profil/${kayit.kullaniciId}`} onClick={(e) => e.stopPropagation()} className="font-medium text-murekkep hover:underline">
             {kayit.kullaniciAdi}
           </Link>
-          <span>{eylemMetni}</span>
+          <span>{gunlukKaydiEylemMetni(kayit)}</span>
           <span>·</span>
           <span>{tarihGoster(kayit.izlemeTarihi)}</span>
         </div>

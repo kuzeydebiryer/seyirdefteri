@@ -1,57 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { useGonderiler } from '../hooks/useGonderiler.js'
 import { takipEdilenUidleriGetir } from '../hooks/useTakip.js'
 import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
-import { alintiBegenDegistir, sonAlintilariGetir } from '../utils/alinti.js'
 import { takipEdilenlerinGunlukKayitlariniGetir } from '../utils/gunluk.js'
-import GonderiKarti from '../components/GonderiKarti.jsx'
-import TakipGunlukKarti from '../components/TakipGunlukKarti.jsx'
 import YeniGunlukGridi from '../components/YeniGunlukGridi.jsx'
-import HabercKarti from '../components/HabercKarti.jsx'
-import AlintiKarti from '../components/AlintiKarti.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import BegenilenMuziklerBolumu from '../components/BegenilenMuziklerBolumu.jsx'
-import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
-import GunlukKesif from '../components/GunlukKesif.jsx'
 import Logo from '../components/Logo.jsx'
-import { sonHabercileriGetir, katilimDegistir, habercSil } from '../utils/etkinlikHabercisi.js'
 
-const ALINTI_FILTRE_ID = 'alinti'
-const SANAT_FILTRE_ID = 'sanat'
-
-// Gerçek gönderi türleri (GonderiEkle.jsx'teki KATEGORILER ile birebir aynı)
-// + Alıntı ve Sanat için özel eşlemeler. "Sanat" ayrı bir üst-tür değil —
-// Yazı altında "Sanat Eleştirisi" alt türü, bu yüzden tur+altTur birlikte
-// filtreleniyor. "Alıntı" ise hiç gönderi değil, ayrı bir koleksiyon —
-// seçilince gönderi sorgusu tamamen devre dışı kalıp alıntılar çekiliyor.
-const TUR_FILTRELERI = [
-  { id: '', etiket: 'Tümü' },
-  { id: 'sinema', etiket: '🎬 Film' },
-  { id: 'dizi', etiket: '📺 Dizi' },
-  { id: 'kitap', etiket: '📖 Kitap' },
-  { id: ALINTI_FILTRE_ID, etiket: '💬 Alıntı' },
-  { id: SANAT_FILTRE_ID, etiket: '🖼️ Sanat' },
-  { id: 'yazi', etiket: '✍️ Yazı' },
-  { id: 'gezi', etiket: '🧳 Gezi' },
-  { id: 'etkinlik', etiket: '🎟️ Etkinlik' },
-]
-
-// turFiltre değerini gerçek Firestore alan(lar)ına çevirir.
-function turAltTurEsle(turFiltre) {
-  if (turFiltre === SANAT_FILTRE_ID) return { tur: 'yazi', altTur: 'sanat-elestirisi' }
-  if (turFiltre === '' || turFiltre === ALINTI_FILTRE_ID) return { tur: undefined, altTur: undefined }
-  return { tur: turFiltre, altTur: undefined }
-}
-
+// Anasayfa artık sade bir keşif/vitrin sayfası — eskiden burada büyük bir
+// yer kaplayan "Takip Ettiklerim / Herkes" akışı kendi bağımsız sayfasına
+// (bkz. pages/Akis.jsx) taşındı, buradan sadece "Tümünü Gör" ile gidiliyor.
 export default function Anasayfa() {
   const { kullanici } = useAuth()
-  const [sekme, setSekme] = useState('takip') // 'takip' | 'herkes'
-  const [turFiltre, setTurFiltre] = useState('') // '' = tümü
   const [takipEdilenler, setTakipEdilenler] = useState(null) // null = henüz yüklenmedi
-  const [takipListesiYukleniyor, setTakipListesiYukleniyor] = useState(true)
 
   // Anasayfadaki 3 yatay şerit: Film Tavsiyeleri, Yeni Gelen Filmler, Kitap
   // Tavsiyeleri. Film/Dizi/Kitap sayfalarındaki mevcut (grid görünümlü)
@@ -65,86 +28,19 @@ export default function Anasayfa() {
   useEffect(() => {
     if (!kullanici) return
     let iptal = false
-    setTakipListesiYukleniyor(true)
     takipEdilenUidleriGetir(kullanici.uid).then((uidler) => {
-      if (iptal) return
-      setTakipEdilenler(uidler)
-      if (uidler.length === 0) setSekme('herkes') // kimseyi takip etmiyorsa direkt genel akışı göster
-      setTakipListesiYukleniyor(false)
+      if (!iptal) setTakipEdilenler(uidler)
     })
     return () => {
       iptal = true
     }
   }, [kullanici])
 
-  // Takip listesi henüz yüklenmeden "takip" sorgusunu boş listeyle tetiklememek için
-  // (aksi halde bir an için "kimseyi takip etmiyorsun" mesajı yanlışlıkla görünüyordu)
   const takipHazirMi = takipEdilenler !== null
-  const takipFiltresi = takipHazirMi ? [...takipEdilenler, kullanici.uid] : []
-  const sorguAktifMi = sekme === 'herkes' || takipHazirMi
 
-  // "Alıntı" filtresi bir gönderi türü değil — seçiliyken gönderi sorgusu
-  // tamamen devre dışı bırakılıp aşağıdaki ayrı efektle alıntılar çekiliyor.
-  const alintiFiltresiAktifMi = turFiltre === ALINTI_FILTRE_ID
-  const { tur: efektifTur, altTur: efektifAltTur } = turAltTurEsle(turFiltre)
-
-  const { gonderiler, yukleniyor, hata, dahaFazlaVarMi, dahaFazlaYukle } = useGonderiler(
-    alintiFiltresiAktifMi
-      ? { yazarIdListesi: [] } // ağ isteği yapmadan boş sonuç döner — alıntılar ayrı bir kaynaktan geliyor
-      : !sorguAktifMi
-      ? undefined
-      : sekme === 'takip'
-      ? { yazarIdListesi: takipFiltresi, tur: efektifTur, altTur: efektifAltTur }
-      : { tur: efektifTur, altTur: efektifAltTur }
-  )
-
-  const [alintiListesi, setAlintiListesi] = useState([])
-  const [alintiYukleniyor, setAlintiYukleniyor] = useState(false)
-
-  useEffect(() => {
-    if (!alintiFiltresiAktifMi) return
-    let iptal = false
-    setAlintiYukleniyor(true)
-    sonAlintilariGetir(30).then((liste) => {
-      if (iptal) return
-      setAlintiListesi(liste)
-      setAlintiYukleniyor(false)
-    })
-    return () => {
-      iptal = true
-    }
-  }, [alintiFiltresiAktifMi])
-
-  async function alintiBegenTiklandi(alinti) {
-    if (!kullanici) return
-    const begeniyorMu = (alinti.begenenler || []).includes(kullanici.uid)
-    setAlintiListesi((liste) =>
-      liste.map((a) =>
-        a.id === alinti.id
-          ? { ...a, begenenler: begeniyorMu ? a.begenenler.filter((u) => u !== kullanici.uid) : [...(a.begenenler || []), kullanici.uid] }
-          : a
-      )
-    )
-    await alintiBegenDegistir(alinti.id, kullanici.uid, begeniyorMu)
-  }
-
-  const gercektenYukleniyor = alintiFiltresiAktifMi
-    ? alintiYukleniyor
-    : !sorguAktifMi || (sekme === 'takip' && takipListesiYukleniyor) || yukleniyor
-
-  // Etkinlik Habercisi'nde paylaşılan duyurular da akışta günce gibi (ama ayrı
-  // bir kart tasarımıyla) beliriyor — sabit bir bölüm değil, tarihe göre karışık.
-  const [habercler, setHaberciler] = useState([])
-  useEffect(() => {
-    sonHabercileriGetir(10).then(setHaberciler)
-  }, [])
-
-  // Takip ettiklerinin günlük (izledi/okudu/puanladı) aktivitesi — Letterboxd
-  // tarzı "Friends" akışının hafif katmanı. KENDİ aktivitenizi DAHİL ETMİYOR
-  // — "takip ettiklerinden yeni" mantıksal olarak sizi kapsamamalı, bu yüzden
-  // bilerek takipFiltresi (self dahil) değil, saf takipEdilenler kullanılıyor.
-  // Sekmeden bağımsız her zaman çekiliyor — sadece "Takip Ettiklerinden Yeni"
-  // widget'ı için değil, "Takip" akışına karışan kartlar için de gerekiyor.
+  // Takip ettiklerinin günlük (izledi/okudu/puanladı) aktivitesi — sadece
+  // "Takip Ettiklerinden Yeni" şeridi için burada tutuluyor, akışın kendisi
+  // artık Akis.jsx'te ayrıca (kendi verisiyle) çekiliyor.
   const [takipGunlukKayitlari, setTakipGunlukKayitlari] = useState([])
   useEffect(() => {
     if (!takipHazirMi || takipEdilenler.length === 0) {
@@ -160,48 +56,6 @@ export default function Anasayfa() {
     }
   }, [takipHazirMi, takipEdilenler?.join(',')])
 
-  async function habercKatilimDegistir(haberci) {
-    if (!kullanici) return
-    const katiliyorMu = haberci.katilacaklar.includes(kullanici.uid)
-    setHaberciler((liste) =>
-      liste.map((h) =>
-        h.id === haberci.id
-          ? { ...h, katilacaklar: katiliyorMu ? h.katilacaklar.filter((u) => u !== kullanici.uid) : [...h.katilacaklar, kullanici.uid] }
-          : h
-      )
-    )
-    await katilimDegistir(haberci.id, kullanici.uid, katiliyorMu)
-  }
-
-  async function habercSilTiklandi(habercId) {
-    if (!window.confirm('Bu duyuruyu silmek istediğine emin misin?')) return
-    await habercSil(habercId)
-    setHaberciler((liste) => liste.filter((h) => h.id !== habercId))
-  }
-
-  // Günceler + duyurular, tarihe göre karışık (duyurular "Takip Ettiklerim"
-  // sekmesinde de görünür — bu bilerek böyle, çünkü bir duyuru kimin
-  // paylaştığından bağımsız olarak topluluğa faydalı bir bilgi).
-  // Duyurular (Etkinlik Habercisi) her zaman "etkinlik" temalı olduğu için,
-  // bir tür filtresi aktifken sadece "Tümü" veya "Etkinlik" seçiliyse akışa
-  // karışıyor — aksi halde ör. "Kitap" filtresinde alakasız bir duyuru çıkardı.
-  const habercilerGosterilsinMi = turFiltre === '' || turFiltre === 'etkinlik'
-  const gunlukGosterilsinMi = !alintiFiltresiAktifMi && (!efektifTur || efektifTur === 'sinema' || efektifTur === 'kitap' || efektifTur === 'dizi')
-  const filtrelenmisGunluk = gunlukGosterilsinMi
-    ? takipGunlukKayitlari.filter((k) => !efektifTur || k.tur === efektifTur)
-    : []
-  const akisOgeleri = [
-    ...gonderiler.map((g) => ({ ...g, _tur: 'gonderi' })),
-    ...(habercilerGosterilsinMi ? habercler : []),
-    ...filtrelenmisGunluk.map((k) => ({ ...k, _tur: 'gunluk' })),
-  ]
-  akisOgeleri.sort((a, b) => {
-    const zamanAlaniniAl = (o) => (o._tur === 'haberci' ? o.eklemeTarihi : o._tur === 'gunluk' ? o.eklemeTarihi : o.tarih)
-    const aZaman = zamanAlaniniAl(a)?.toMillis?.() || 0
-    const bZaman = zamanAlaniniAl(b)?.toMillis?.() || 0
-    return bZaman - aZaman
-  })
-
   return (
     <div>
       <div className="mb-6 flex items-center gap-2">
@@ -213,7 +67,7 @@ export default function Anasayfa() {
 
       <TopluluklarBildirimSeridi />
 
-      <YeniGunlukGridi kayitlar={takipGunlukKayitlari} />
+      <YeniGunlukGridi kayitlar={takipGunlukKayitlari} tumunuGorLink="/akis" />
 
       <TavsiyeBolumu
         tur="sinema"
@@ -248,104 +102,6 @@ export default function Anasayfa() {
         baslik="Kitap Tavsiyeleri"
         tumunuGorLink="/kitap-tavsiyeleri"
       />
-
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="font-baslik text-2xl text-murekkep">Akış</h1>
-        <Link to="/gonderi-ekle" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-sm text-kagit">
-          + Günce Ekle
-        </Link>
-      </div>
-
-      <GunlukKesif />
-
-      <KitapDunyasiWidget />
-
-      <div className="mb-4 flex gap-4 text-sm font-govde">
-        <button
-          onClick={() => setSekme('takip')}
-          className={sekme === 'takip' ? 'text-muhur font-medium' : 'text-kraft hover:text-murekkep'}
-        >
-          Takip Ettiklerim
-        </button>
-        <button
-          onClick={() => setSekme('herkes')}
-          className={sekme === 'herkes' ? 'text-muhur font-medium' : 'text-kraft hover:text-murekkep'}
-        >
-          Herkes
-        </button>
-      </div>
-
-      <div className="mb-6 flex flex-wrap gap-2">
-        {TUR_FILTRELERI.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setTurFiltre(f.id)}
-            className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
-              turFiltre === f.id ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagit text-kraft ring-cizgi hover:text-murekkep'
-            }`}
-          >
-            {f.etiket}
-          </button>
-        ))}
-      </div>
-
-      {gercektenYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
-      {hata && <p className="text-sm text-muhur">Bir hata oldu: {hata}</p>}
-
-      {alintiFiltresiAktifMi ? (
-        <>
-          {!gercektenYukleniyor && alintiListesi.length === 0 && (
-            <p className="text-sm text-kraft">Henüz hiç alıntı paylaşılmamış.</p>
-          )}
-          {!gercektenYukleniyor && alintiListesi.length > 0 && (
-            <ul className="space-y-3">
-              {alintiListesi.map((a) => (
-                <AlintiKarti key={a.id} alinti={a} kullanici={kullanici} onBegenTiklandi={alintiBegenTiklandi} />
-              ))}
-            </ul>
-          )}
-        </>
-      ) : (
-        <>
-          {!gercektenYukleniyor && akisOgeleri.length === 0 && sekme === 'takip' && (
-            <p className="text-sm text-kraft">
-              Henüz kimseyi takip etmiyorsun. <button onClick={() => setSekme('herkes')} className="text-muhur">Herkes</button> sekmesinden
-              keşfedip takip edebilirsin.
-            </p>
-          )}
-          {!gercektenYukleniyor && akisOgeleri.length === 0 && sekme === 'herkes' && (
-            <p className="text-sm text-kraft">
-              Henüz hiç günce yok. İlk paylaşımı sen yap: <Link to="/gonderi-ekle" className="text-muhur">Günce Ekle</Link>
-            </p>
-          )}
-
-          {!gercektenYukleniyor && (
-            <div className="space-y-4">
-              {akisOgeleri.map((oge, i) => (
-                <div key={oge.id}>
-                  {oge._tur === 'haberci' ? (
-                    <HabercKarti haberci={oge} kullanici={kullanici} onKatilimDegistir={habercKatilimDegistir} onSil={habercSilTiklandi} />
-                  ) : oge._tur === 'gunluk' ? (
-                    <TakipGunlukKarti kayit={oge} />
-                  ) : (
-                    <GonderiKarti gonderi={oge} />
-                  )}
-                  {i < akisOgeleri.length - 1 && <div className="defter-cizgi mt-4" />}
-                </div>
-              ))}
-            </div>
-          )}
-          {!gercektenYukleniyor && dahaFazlaVarMi && (
-            <button
-              onClick={dahaFazlaYukle}
-              disabled={yukleniyor}
-              className="mt-6 rounded-sm bg-kagitKoyu px-4 py-2 font-govde text-sm text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:opacity-40"
-            >
-              {yukleniyor ? 'Yükleniyor...' : 'Daha Fazla Göster'}
-            </button>
-          )}
-        </>
-      )}
     </div>
   )
 }
