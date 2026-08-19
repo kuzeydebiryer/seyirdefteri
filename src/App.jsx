@@ -7,6 +7,7 @@ import GirisYap from './pages/GirisYap.jsx'
 import KayitOl from './pages/KayitOl.jsx'
 import UyelikBasvuru from './pages/UyelikBasvuru.jsx'
 import DusunceArsivi from './pages/DusunceArsivi.jsx'
+import DusunceHavuzuYonetim from './pages/DusunceHavuzuYonetim.jsx'
 import Basvurular from './pages/Basvurular.jsx'
 import GonderiEkle from './pages/GonderiEkle.jsx'
 import GonderiDetay from './pages/GonderiDetay.jsx'
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="/kayit" element={<KayitOl />} />
           <Route path="/uyelik-basvuru" element={<UyelikBasvuru />} />
           <Route path="/dusunce-arsivi" element={<OzelRota><DusunceArsivi /></OzelRota>} />
+          <Route path="/dusunce-havuzu-yonetim" element={<OzelRota><DusunceHavuzuYonetim /></OzelRota>} />
           <Route path="/basvurular" element={<OzelRota><Basvurular /></OzelRota>} />
           <Route path="/gonderi-ekle" element={<OzelRota><GonderiEkle /></OzelRota>} />
           <Route path="/gonderi/:id" element={<OzelRota><GonderiDetay /></OzelRota>} />

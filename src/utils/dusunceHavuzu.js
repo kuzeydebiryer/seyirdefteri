@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // Başlangıç havuzu — ~200 konu. 500'e tamamlamak gerçek bir içerik üretim
@@ -357,6 +357,36 @@ export async function konuOner(konu, kullanici) {
   })
 }
 
+// Bir dalganın (kaynak etiketi) daha önce eklenip eklenmediğini kontrol
+// eder — widget'taki "+ ... dalgasını ekle" butonunun, dalga zaten
+// eklendiyse kalıcı olarak kaybolması için.
+export async function dalgaVarMi(dalgaEtiketi) {
+  const snap = await getDocs(query(collection(db, 'dusunceHavuzu'), where('kaynak', '==', dalgaEtiketi), limit(1)))
+  return !snap.empty
+}
+
+// Havuzdaki toplam konu sayısı — tüm dokümanları okumadan (ucuz bir sayım
+// sorgusu), widget'ta "toplam X konu" göstermek için.
+export async function havuzBuyuklugu() {
+  const sonuc = await getCountFromServer(collection(db, 'dusunceHavuzu'))
+  return sonuc.data().count
+}
+
+// YÖNETİM — sadece kendi hesabında "yonetici: true" alanı olan kişiler
+// (Firestore güvenlik kuralı da bunu zorunlu kılıyor) tüm havuzu görüp
+// uygunsuz/hatalı bir konuyu silebiliyor. Ayrı bir "yönetici rolü" sistemi
+// icat etmek yerine, sadece bu özel/hassas işlem için minimal bir bayrak.
+export async function tumHavuzuGetir() {
+  const snap = await getDocs(collection(db, 'dusunceHavuzu'))
+  const liste = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  liste.sort((a, b) => (b.eklemeTarihi?.toMillis?.() || 0) - (a.eklemeTarihi?.toMillis?.() || 0))
+  return liste
+}
+
+export async function konuSil(konuId) {
+  await deleteDoc(doc(db, 'dusunceHavuzu', konuId))
+}
+
 let onbellekliHavuz = null
 async function havuzuGetir() {
   if (onbellekliHavuz) return onbellekliHavuz
@@ -375,7 +405,7 @@ async function havuzuGetir() {
 // görüp katılacak zamanı olmasını, bir konunun gerçek bir yanıt kümesi
 // biriktirmesini sağlıyor. Tek bir sayıyı değiştirerek (3, 5, 7...)
 // ayarlanabilir.
-const PERIYOT_GUN = 7
+const PERIYOT_GUN = 3
 
 function donemBaslangicTarihi(bugunISO) {
   // Sabit bir epoch'tan (2026-01-01) itibaren kaç PERIYOT_GUN'luk dilim

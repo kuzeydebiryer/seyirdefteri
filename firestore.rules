@@ -166,6 +166,11 @@ service cloud.firestore {
     match /dusunceHavuzu/{konuId} {
       allow read: if true;
       allow create: if request.auth != null;
+      // Sadece kendi kullanıcı dokümanında "yonetici: true" alanı olanlar
+      // uygunsuz/hatalı bir konuyu silebilir — genel bir yönetici rolü
+      // sistemi değil, sadece bu tek hassas işlem için.
+      allow delete: if request.auth != null &&
+        get(/databases/$(database)/documents/kullanicilar/$(request.auth.uid)).data.yonetici == true;
     }
 
     // Bir dönemin (gununKonulari) hangi konuya denk geldiğinin kalıcı
