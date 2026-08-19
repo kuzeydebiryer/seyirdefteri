@@ -11,6 +11,8 @@ import BegenilenMuziklerBolumu from '../components/BegenilenMuziklerBolumu.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
 import GunlukKesif from '../components/GunlukKesif.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
+import EtkinlikHabercisiOnizleme from '../components/EtkinlikHabercisiOnizleme.jsx'
+import EtkinlikOneCikanlar from '../components/EtkinlikOneCikanlar.jsx'
 import Logo from '../components/Logo.jsx'
 
 // Anasayfa artık sitenin temel mantığını (günlük tutma) en üstte, doğrudan
@@ -117,6 +119,13 @@ export default function Anasayfa() {
       <GunlukKesif />
 
       <KitapDunyasiWidget />
+
+      <EtkinlikHabercisiOnizleme />
+
+      <div className="mb-3">
+        <h2 className="font-baslik text-lg text-murekkep">⭐ Öne Çıkan Etkinlikler</h2>
+      </div>
+      <EtkinlikOneCikanlar />
     </div>
   )
 }
