@@ -22,6 +22,10 @@ import { tavsiyePosterleriniSenkronizeEt } from '../utils/tavsiye.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
+import FavoriIkonu from '../components/ikonlar/FavoriIkonu.jsx'
+import IzleyecegimIkonu from '../components/ikonlar/IzleyecegimIkonu.jsx'
+import ListeIkonu from '../components/ikonlar/ListeIkonu.jsx'
+import YorumIkonu from '../components/ikonlar/YorumIkonu.jsx'
 import FilmMuzigiWidget from '../components/FilmMuzigiWidget.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import { kitapGetir, kitapGuncelle, kitapElleEkle, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
@@ -1328,7 +1332,7 @@ export default function EserSayfasi({ tur }) {
                 disabled={favoriIsleniyor}
                 className="flex flex-col items-center gap-1 disabled:opacity-40"
               >
-                <span className={`text-2xl ${favoriMi_ ? 'text-muhur' : 'text-cizgi'}`}>{favoriMi_ ? '♥' : '♡'}</span>
+                <span className={favoriMi_ ? 'text-muhur' : 'text-cizgi'}><FavoriIkonu doluMu={favoriMi_} boyut={26} /></span>
                 <span className="text-[10px] uppercase tracking-wide text-kraft">Favori</span>
               </button>
 
@@ -1338,7 +1342,7 @@ export default function EserSayfasi({ tur }) {
                   disabled={izlenecekIsleniyor}
                   className="flex flex-col items-center gap-1 disabled:opacity-40"
                 >
-                  <span className="text-2xl text-cizgi">🕐</span>
+                  <span className="text-cizgi"><IzleyecegimIkonu boyut={26} /></span>
                   <span className="text-[10px] uppercase tracking-wide text-kraft">
                     {tur === 'kitap' ? 'Okuyacaklarım' : 'İzleyeceğim'}
                   </span>
@@ -1359,7 +1363,7 @@ export default function EserSayfasi({ tur }) {
 
               <div className="relative flex flex-col items-center gap-1">
                 <button onClick={() => setListeMenusuAcik((a) => !a)} disabled={false} className="flex flex-col items-center gap-1">
-                  <span className="text-2xl text-cizgi">📋</span>
+                  <span className="text-cizgi"><ListeIkonu boyut={26} /></span>
                   <span className="text-[10px] uppercase tracking-wide text-kraft">Liste</span>
                 </button>
                 {listeMenusuAcik && (
@@ -1391,7 +1395,7 @@ export default function EserSayfasi({ tur }) {
                 onClick={() => yorumlarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                 className="flex flex-col items-center gap-1"
               >
-                <span className="text-2xl text-cizgi">📝</span>
+                <span className="text-cizgi"><YorumIkonu boyut={26} /></span>
                 <span className="text-[10px] uppercase tracking-wide text-kraft">Yorum</span>
               </button>
 

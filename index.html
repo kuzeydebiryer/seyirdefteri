@@ -32,7 +32,7 @@
       // burada, senkron olarak ekliyoruz. TemaContext.jsx ile aynı mantık.
       (function () {
         var kayitli = localStorage.getItem('tema')
-        var koyuMu = kayitli === 'koyu' || (kayitli !== 'acik' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        var koyuMu = kayitli === 'acik' ? false : true
         if (koyuMu) document.documentElement.classList.add('dark')
       })()
     </script>

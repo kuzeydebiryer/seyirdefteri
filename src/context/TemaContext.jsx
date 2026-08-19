@@ -9,8 +9,9 @@ export function useTema() {
 function baslangicTemasi() {
   const kayitli = localStorage.getItem('tema')
   if (kayitli === 'koyu' || kayitli === 'acik') return kayitli
-  // Kayıtlı tercih yoksa işletim sistemi/tarayıcı tercihine bak
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'koyu' : 'acik'
+  // Kayıtlı tercih yoksa sitenin varsayılanı karanlık mod — işletim
+  // sistemi tercihine bakılmıyor, "ana açılış karanlık olsun" isteği.
+  return 'koyu'
 }
 
 // index.html'deki satır içi script sayfa boyanmadan ÖNCE aynı mantıkla

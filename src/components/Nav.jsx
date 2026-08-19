@@ -105,7 +105,7 @@ export default function Nav() {
                 </button>
               )}
               <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
-                <TiyatroMaskeleriIkon tema={tema} boyut={20} />
+                <TiyatroMaskeleriIkon tema={tema} boyut={28} />
               </button>
               <button onClick={cikis} className="text-kraft hover:text-murekkep">
                 Çıkış
@@ -121,7 +121,7 @@ export default function Nav() {
               className="sm:hidden flex h-9 w-9 items-center justify-center rounded-sm text-murekkep"
               aria-label={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}
             >
-              <TiyatroMaskeleriIkon tema={tema} boyut={20} />
+              <TiyatroMaskeleriIkon tema={tema} boyut={28} />
             </button>
             <button
               onClick={() => setMenuAcik((a) => !a)}
@@ -134,7 +134,7 @@ export default function Nav() {
         ) : (
           <nav className="ml-auto flex items-center gap-4 font-govde text-sm">
             <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
-              <TiyatroMaskeleriIkon tema={tema} boyut={20} />
+              <TiyatroMaskeleriIkon tema={tema} boyut={28} />
             </button>
             <NavLink to="/giris" className="text-kraft hover:text-murekkep">
               Giriş
@@ -223,7 +223,7 @@ export default function Nav() {
             )}
 
             <button onClick={temaDegistir} className="flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left text-kraft">
-              <span className="w-5 text-center"><TiyatroMaskeleriIkon tema={tema} boyut={18} className="inline-block" /></span>
+              <span className="w-7 text-center"><TiyatroMaskeleriIkon tema={tema} boyut={24} className="inline-block" /></span>
               {tema === 'koyu' ? 'Aydınlık Mod' : 'Karanlık Mod'}
             </button>
 
