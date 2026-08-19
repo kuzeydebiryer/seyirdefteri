@@ -65,7 +65,7 @@ export default function Anasayfa() {
 
       {kullanici && (
         <div className="mb-10 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-          <GonderiEkle />
+          <GonderiEkle kompaktMod />
         </div>
       )}
 

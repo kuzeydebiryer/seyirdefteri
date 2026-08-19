@@ -45,7 +45,13 @@ const PUANSIZ_YAZI_ALT_TURLERI = ['deneme', 'kisi-yazisi', 'liste-yazisi', 'soyl
 // Bir kategori TMDB/Google Books araması kullanıyor mu?
 const API_KATEGORILERI = ['sinema', 'dizi', 'kitap']
 
-export default function GonderiEkle() {
+// kompaktMod: anasayfaya gömüldüğünde (bkz. Anasayfa.jsx) devasa bir form
+// alanı kaplamasın diye — kategori/arama kısmı hep açık kalır, detaylı form
+// (Başlık/Özet/Puan/Paylaş...) SADECE bir eser seçilince (film/dizi/kitap/
+// eser-bağlantılı yazı) ya da arama adımı olmayan türlerde (Gezi/Etkinlik/
+// eser bağlamayan yazı alt türleri) kategori seçilir seçilmez açılır.
+// /gonderi-ekle sayfasında (kompaktMod=false) davranış hiç değişmiyor.
+export default function GonderiEkle({ kompaktMod = false } = {}) {
   const { kullanici, profil } = useAuth()
   const navigate = useNavigate()
   const [aramaParametreleri] = useSearchParams()
@@ -124,6 +130,12 @@ export default function GonderiEkle() {
               : null
       : null
   const aramaGosterilsinMi = apiliKategori || yaziAramaHedefi
+
+  // kompaktMod'da: arama adımı gerektiren türlerde (film/dizi/kitap/eser
+  // bağlantılı yazı) bir sonuç seçilene kadar detaylı form gizli kalıyor.
+  // Arama adımı olmayan türlerde (Gezi/Etkinlik, eser bağlamayan yazı alt
+  // türleri) zaten seçilecek bir "sonuç" olmadığından form hemen açılıyor.
+  const kompaktFormAcikMi = !kompaktMod || !aramaGosterilsinMi || !!ilgiliBaslik
 
   function kategoriDegistir(yeni) {
     setKategori(yeni)
@@ -765,10 +777,11 @@ export default function GonderiEkle() {
             </>
           )}
 
-          <div className="defter-cizgi mb-6" />
+          {kompaktFormAcikMi && <div className="defter-cizgi mb-6" />}
         </>
       )}
 
+      {kompaktFormAcikMi && (
       <form onSubmit={paylas} className="space-y-4">
         {kategori !== 'yazi' && (
           <div className="flex gap-4">
@@ -1176,6 +1189,7 @@ export default function GonderiEkle() {
           {kaydediliyor ? 'Paylaşılıyor...' : 'Paylaş'}
         </button>
       </form>
+      )}
     </div>
   )
 }
