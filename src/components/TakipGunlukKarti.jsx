@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { gunlukBegenDegistir, gunlukKaydiLinki, gunlukKaydiEylemMetni, gunlukKaydiYerTutucuIkon } from '../utils/gunluk.js'
 import { yorumBegenDegistir } from '../utils/yorum.js'
 import { begeniDegistir } from '../utils/begeni.js'
+import DusunceSemboluIkon from './ikonlar/DusunceSemboluIkon.jsx'
 import YildizPuan from './YildizPuan.jsx'
 import Avatar from './Avatar.jsx'
 
@@ -52,6 +53,10 @@ export default function TakipGunlukKarti({ kayit }) {
       <div className="h-28 w-20 shrink-0 overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
         {kayit.posterUrl ? (
           <img src={kayit.posterUrl} alt={kayit.baslik} className="h-full w-full object-cover" />
+        ) : kayit.altTur === 'bilinc-akisi' ? (
+          <div className="flex h-full w-full items-center justify-center bg-kagit text-gise opacity-70">
+            <DusunceSemboluIkon boyut={44} />
+          </div>
         ) : (
           <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">{gunlukKaydiYerTutucuIkon(kayit)}</div>
         )}

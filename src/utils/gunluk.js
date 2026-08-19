@@ -229,9 +229,17 @@ export async function takipEdilenlerinGonderileriniGetir(uidListesi, limitSayisi
     .map((g) => ({
       id: g.id,
       tur: g.tur,
+      altTur: g.altTur || null,
       disId: g.tmdbId || g.googleBooksId || null,
       baslik: g.baslik,
-      posterUrl: g.posterUrl,
+      // "Film İncelemesi" gibi Yazı alt türlerinde film/kitap posteri asıl
+      // posterUrl alanına değil ilgiliPosterUrl'e yazılıyor (bkz.
+      // GonderiEkle.jsx — bu alanlar sadece doğrudan sinema/dizi/kitap
+      // kategorisinde dolduruluyor, yazı+eser bağlantısında ayrı bir alan
+      // kullanılıyor). Bunu atlamak, gerçek bir film incelemesinin
+      // "Yeni Günceler"de kapak yerine kalem ikonuyla düşmesine sebep
+      // oluyordu.
+      posterUrl: g.posterUrl || g.ilgiliPosterUrl || '',
       kullaniciId: g.yazarId,
       kullaniciAdi: g.yazarAdi,
       kullaniciAvatarUrl: g.yazarAvatarUrl,

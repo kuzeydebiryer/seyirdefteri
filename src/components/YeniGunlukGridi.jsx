@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import YildizPuan from './YildizPuan.jsx'
+import DusunceSemboluIkon from './ikonlar/DusunceSemboluIkon.jsx'
 import { gunlukKaydiLinki, gunlukKaydiYerTutucuIkon } from '../utils/gunluk.js'
 
 // Letterboxd'daki "New from friends" grid'inin karşılığı — takip ettiklerinin
@@ -25,6 +26,10 @@ export default function YeniGunlukGridi({ kayitlar, tumunuGorLink, baslik = 'Yen
             <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
               {k.posterUrl ? (
                 <img src={k.posterUrl} alt={k.baslik} className="h-full w-full object-cover" />
+              ) : k.altTur === 'bilinc-akisi' ? (
+                <div className="flex h-full w-full items-center justify-center bg-kagit text-gise opacity-70">
+                  <DusunceSemboluIkon boyut={40} />
+                </div>
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">{gunlukKaydiYerTutucuIkon(k)}</div>
               )}
