@@ -178,6 +178,8 @@ export function gunlukKaydiLinki(kayit) {
 // Aynı ayrım için, günlük kaydının kartlarda/gridlerde kullanılacak eylem
 // metni ve poster yoksa gösterilecek yer tutucu ikonu.
 export function gunlukKaydiEylemMetni(kayit) {
+  if (kayit._aktiviteTuru === 'yanit') return 'bir yoruma yanıt verdi'
+  if (kayit._aktiviteTuru === 'yorum') return 'yorum yaptı'
   if (kayit.tur === 'gezi') return 'bir gezi paylaştı'
   if (kayit.tur === 'etkinlik') return 'bir etkinlik paylaştı'
   if (kayit.olayTuru === 'baslama') return kayit.tur === 'kitap' ? 'okumaya başladı' : 'izlemeye başladı'

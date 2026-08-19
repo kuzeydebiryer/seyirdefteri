@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { gunlukBegenDegistir, gunlukKaydiLinki, gunlukKaydiEylemMetni, gunlukKaydiYerTutucuIkon } from '../utils/gunluk.js'
+import { yorumBegenDegistir } from '../utils/yorum.js'
 import YildizPuan from './YildizPuan.jsx'
 import Avatar from './Avatar.jsx'
 
@@ -27,7 +28,14 @@ export default function TakipGunlukKarti({ kayit }) {
     if (!kullanici) return
     const yeni = benBegendimMi ? begenenler.filter((u) => u !== kullanici.uid) : [...begenenler, kullanici.uid]
     setBegenenler(yeni)
-    await gunlukBegenDegistir(kayit.id, kullanici.uid, benBegendimMi)
+    // Kart bir yorum aktivitesiyse "yorumlar" koleksiyonuna, gerçek bir
+    // günlük (puanlama) kaydıysa "gunlukKayitlari"na yazılıyor — kayit.id
+    // ikisinde de farklı bir koleksiyona ait olduğundan bu ayrım şart.
+    if (kayit._aktiviteTuru === 'yorum' || kayit._aktiviteTuru === 'yanit') {
+      await yorumBegenDegistir(kayit.id, kullanici.uid, benBegendimMi)
+    } else {
+      await gunlukBegenDegistir(kayit.id, kullanici.uid, benBegendimMi)
+    }
   }
 
   return (

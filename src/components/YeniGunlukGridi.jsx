@@ -34,7 +34,15 @@ export default function YeniGunlukGridi({ kayitlar, tumunuGorLink, baslik = 'Yen
               <YildizPuan puan={k.puan} boyut="text-[10px]" onluGoster={false} />
             ) : (
               <span className="text-[10px] text-kraft">
-                {k.tur === 'gezi' ? 'gezi' : k.tur === 'etkinlik' ? 'etkinlik' : k.olayTuru === 'baslama' ? 'başladı' : ''}
+                {k._aktiviteTuru === 'yorum' || k._aktiviteTuru === 'yanit'
+                  ? '💬 yorum'
+                  : k.tur === 'gezi'
+                    ? 'gezi'
+                    : k.tur === 'etkinlik'
+                      ? 'etkinlik'
+                      : k.olayTuru === 'baslama'
+                        ? 'başladı'
+                        : ''}
               </span>
             )}
             {k.not && <span className="ml-1 text-[10px] text-kraft">📝</span>}

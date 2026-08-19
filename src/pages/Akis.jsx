@@ -5,6 +5,7 @@ import { useGonderiler } from '../hooks/useGonderiler.js'
 import { takipEdilenUidleriGetir } from '../hooks/useTakip.js'
 import { alintiBegenDegistir, sonAlintilariGetir } from '../utils/alinti.js'
 import { takipEdilenlerinGunlukKayitlariniGetir } from '../utils/gunluk.js'
+import { takipEdilenlerinYorumlariniGetir } from '../utils/yorum.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import TakipGunlukKarti from '../components/TakipGunlukKarti.jsx'
 import HabercKarti from '../components/HabercKarti.jsx'
@@ -135,8 +136,14 @@ export default function Akis() {
       return
     }
     let iptal = false
-    takipEdilenlerinGunlukKayitlariniGetir(takipEdilenler, 15).then((liste) => {
-      if (!iptal) setTakipGunlukKayitlari(liste)
+    Promise.all([
+      takipEdilenlerinGunlukKayitlariniGetir(takipEdilenler, 15),
+      takipEdilenlerinYorumlariniGetir(takipEdilenler, 15),
+    ]).then(([gunlukler, yorumlar]) => {
+      if (iptal) return
+      const birlesik = [...gunlukler, ...yorumlar]
+      birlesik.sort((a, b) => (b.eklemeTarihi?.toMillis?.() || 0) - (a.eklemeTarihi?.toMillis?.() || 0))
+      setTakipGunlukKayitlari(birlesik.slice(0, 15))
     })
     return () => {
       iptal = true

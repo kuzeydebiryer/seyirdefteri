@@ -47,3 +47,41 @@ export async function yorumBegenDegistir(yorumId, uid, suAnBegeniyorMu) {
     begenenler: suAnBegeniyorMu ? arrayRemove(uid) : arrayUnion(uid),
   })
 }
+
+// Takip ettiklerinin en son yorumları — "Yeni Günceler" akışına, günlük
+// (puanlama) kayıtlarıyla AYNI KART tasarımıyla karışsın diye, doğrudan bir
+// günlük-kaydı-benzeri objeye dönüştürülerek dönüyor. "tur"/"disId" bilerek
+// yorumun kendi ID'si değil, yorumun YAPILDIĞI eserin tür/ID'si — bu sayede
+// mevcut gunlukKaydiLinki() fonksiyonu hiç değişmeden doğru sayfaya
+// (film/dizi/kitap) yönlendiriyor. "not" alanına yorum metni konuyor, aynı
+// kartın "günce metni" gösterme alanı yeniden kullanılmış oluyor.
+export async function takipEdilenlerinYorumlariniGetir(uidListesi, limitSayisi = 15) {
+  if (!uidListesi || uidListesi.length === 0) return []
+  const gruplar = []
+  for (let i = 0; i < uidListesi.length; i += 30) {
+    gruplar.push(uidListesi.slice(i, i + 30))
+  }
+  const sonuclar = await Promise.all(
+    gruplar.map((grup) => getDocs(query(collection(db, 'yorumlar'), where('yazarId', 'in', grup))))
+  )
+  const hepsi = sonuclar
+    .flatMap((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    .filter((y) => y.eserTur && y.eserDisId) // sadece eser (film/dizi/kitap) yorumları — günce yorumları bu akışa ait değil
+    .map((y) => ({
+      id: y.id,
+      tur: y.eserTur,
+      disId: y.eserDisId,
+      baslik: y.eserBaslik,
+      posterUrl: y.eserPosterUrl,
+      kullaniciId: y.yazarId,
+      kullaniciAdi: y.yazarAdi,
+      izlemeTarihi: y.tarih,
+      eklemeTarihi: y.tarih,
+      begenenler: y.begenenler || [],
+      not: y.metin,
+      puan: null,
+      _aktiviteTuru: y.ustYorumId ? 'yanit' : 'yorum',
+    }))
+  hepsi.sort((a, b) => (b.eklemeTarihi?.toMillis?.() || 0) - (a.eklemeTarihi?.toMillis?.() || 0))
+  return hepsi.slice(0, limitSayisi)
+}
