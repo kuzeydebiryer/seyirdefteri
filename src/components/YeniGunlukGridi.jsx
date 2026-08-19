@@ -6,13 +6,13 @@ import { gunlukKaydiLinki, gunlukKaydiYerTutucuIkon } from '../utils/gunluk.js'
 // en son günlük kayıtlarından bir poster şeridi. TakipGunlukKarti'nden farkı:
 // bu tam bir akış öğesi değil, hızlı bir "kim ne izliyor" taraması —
 // dokunulunca doğrudan hedefe gidiyor, kartın kendisine değil.
-export default function YeniGunlukGridi({ kayitlar, tumunuGorLink }) {
+export default function YeniGunlukGridi({ kayitlar, tumunuGorLink, baslik = 'Yeni Günceler' }) {
   if (!kayitlar || kayitlar.length === 0) return null
 
   return (
     <div className="mb-10">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-baslik text-lg text-murekkep">Takip Ettiklerinden Yeni</h2>
+        <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
         {tumunuGorLink && (
           <Link to={tumunuGorLink} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
             Tümünü Gör ›

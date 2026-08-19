@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { takipEdilenUidleriGetir } from '../hooks/useTakip.js'
 import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
 import { takipEdilenlerinGunlukKayitlariniGetir } from '../utils/gunluk.js'
+import GonderiEkle from './GonderiEkle.jsx'
 import YeniGunlukGridi from '../components/YeniGunlukGridi.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import BegenilenMuziklerBolumu from '../components/BegenilenMuziklerBolumu.jsx'
@@ -11,18 +12,16 @@ import GunlukKesif from '../components/GunlukKesif.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import Logo from '../components/Logo.jsx'
 
-// Anasayfa artık sade bir keşif/vitrin sayfası — eskiden burada büyük bir
-// yer kaplayan "Takip Ettiklerim / Herkes" akışı kendi bağımsız sayfasına
-// (bkz. pages/Akis.jsx) taşındı, buradan sadece "Tümünü Gör" ile gidiliyor.
+// Anasayfa artık sitenin temel mantığını (günlük tutma) en üstte, doğrudan
+// karşılıyor — "Günce Ekle" formu /gonderi-ekle sayfasından AYNEN (kod
+// tekrarı olmadan, doğrudan bileşen olarak) buraya gömülü. Kategori
+// seçilince (Film/Dizi/Kitap/Yazı/Gezi/Etkinlik) tam formu burada açılıyor,
+// başka bir sayfaya gitmeye gerek yok. Sıralama bilinçli: önce "ekle" (temel
+// eylem), sonra "keşfet" (tavsiyeler, günceler, vitrin widget'ları).
 export default function Anasayfa() {
   const { kullanici } = useAuth()
   const [takipEdilenler, setTakipEdilenler] = useState(null) // null = henüz yüklenmedi
 
-  // Anasayfadaki 3 yatay şerit: Film Tavsiyeleri, Yeni Gelen Filmler, Kitap
-  // Tavsiyeleri. Film/Dizi/Kitap sayfalarındaki mevcut (grid görünümlü)
-  // widget'lara dokunmuyoruz — aynı veriyi burada yatay (letterboxd tarzı)
-  // gösteriyoruz. "Yeni Gelen Filmler" ayrı bir koleksiyon (yeniGelenFilmler),
-  // kişisel tavsiyelerle karışmasın diye.
   const { tavsiyeler: filmTavsiyeleri, yenidenYukle: filmTavsiyeleriYenile } = useTavsiyeler('sinema')
   const { tavsiyeler: yeniGelenFilmler, yenidenYukle: yeniGelenFilmleriYenile } = useTavsiyeler('sinema', 'yeniGelenFilmler')
   const { tavsiyeler: kitapTavsiyeleri, yenidenYukle: kitapTavsiyeleriYenile } = useTavsiyeler('kitap')
@@ -40,9 +39,6 @@ export default function Anasayfa() {
 
   const takipHazirMi = takipEdilenler !== null
 
-  // Takip ettiklerinin günlük (izledi/okudu/puanladı) aktivitesi — sadece
-  // "Takip Ettiklerinden Yeni" şeridi için burada tutuluyor, akışın kendisi
-  // artık Akis.jsx'te ayrıca (kendi verisiyle) çekiliyor.
   const [takipGunlukKayitlari, setTakipGunlukKayitlari] = useState([])
   useEffect(() => {
     if (!takipHazirMi || takipEdilenler.length === 0) {
@@ -67,11 +63,13 @@ export default function Anasayfa() {
         </p>
       </div>
 
+      {kullanici && (
+        <div className="mb-10 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+          <GonderiEkle />
+        </div>
+      )}
+
       <TopluluklarBildirimSeridi />
-
-      <GunlukKesif />
-
-      <KitapDunyasiWidget />
 
       <YeniGunlukGridi kayitlar={takipGunlukKayitlari} tumunuGorLink="/akis" />
 
@@ -83,6 +81,16 @@ export default function Anasayfa() {
         sade
         baslik="Film Tavsiyeleri"
         tumunuGorLink="/film-tavsiyeleri"
+      />
+
+      <TavsiyeBolumu
+        tur="kitap"
+        tavsiyeler={kitapTavsiyeleri}
+        yenidenYukle={kitapTavsiyeleriYenile}
+        yatay
+        sade
+        baslik="Kitap Tavsiyeleri"
+        tumunuGorLink="/kitap-tavsiyeleri"
       />
 
       <TavsiyeBolumu
@@ -99,15 +107,9 @@ export default function Anasayfa() {
 
       <BegenilenMuziklerBolumu />
 
-      <TavsiyeBolumu
-        tur="kitap"
-        tavsiyeler={kitapTavsiyeleri}
-        yenidenYukle={kitapTavsiyeleriYenile}
-        yatay
-        sade
-        baslik="Kitap Tavsiyeleri"
-        tumunuGorLink="/kitap-tavsiyeleri"
-      />
+      <GunlukKesif />
+
+      <KitapDunyasiWidget />
     </div>
   )
 }

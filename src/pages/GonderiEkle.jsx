@@ -637,7 +637,7 @@ export default function GonderiEkle() {
             key={k.id}
             type="button"
             onClick={() => kategoriDegistir(k.id)}
-            className={`rounded-sm px-3 py-1.5 font-govde text-sm transition ${
+            className={`rounded-full px-3 py-1.5 font-govde text-sm transition ${
               kategori === k.id
                 ? 'bg-murekkep text-kagit font-medium ring-2 ring-murekkep'
                 : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:ring-murekkep/50'
