@@ -1,5 +1,6 @@
 import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { takipEdilenlerinYorumlariniGetir } from './yorum.js'
 
 // "eserPuanlarim" (bkz. eserPuani.js) bir eserin GÜNCEL/tekil puanını tutuyor
 // — "ne zaman puanladım" değil "şu an ne puan veriyorum" sorusuna cevap.
@@ -168,7 +169,13 @@ export async function gunlukBegenDegistir(kayitId, uid, suAnBegeniyorMu) {
 // bir TMDB/Google Books ID'si DEĞİL, gönderinin kendi Firestore ID'si, o
 // yüzden /film veya /kitap'a değil /gonderi'ye gitmeleri gerekiyor. Bu ayrımı
 // atlayan bir bağlantı, TMDB'de "resource not found" hatasına düşüyordu.
+//
+// _aktiviteTuru === 'gonderi' olan öğeler (tam inceleme/günce metni içeren
+// gerçek gönderiler, bkz. takipEdilenlerinGonderileriniGetir) HER ZAMAN
+// kendi gönderi sayfasına gider — tur ne olursa olsun (film incelemesi bile
+// olsa /film'e değil /gonderi'ye, çünkü asıl içerik (yazının kendisi) orada).
 export function gunlukKaydiLinki(kayit) {
+  if (kayit._aktiviteTuru === 'gonderi') return `/gonderi/${kayit.id}`
   if (kayit.tur === 'gezi' || kayit.tur === 'etkinlik') return `/gonderi/${kayit.disId}`
   if (kayit.tur === 'dizi') return `/dizi/${kayit.disId}`
   if (kayit.tur === 'kitap') return `/kitap/${kayit.disId}`
@@ -178,6 +185,12 @@ export function gunlukKaydiLinki(kayit) {
 // Aynı ayrım için, günlük kaydının kartlarda/gridlerde kullanılacak eylem
 // metni ve poster yoksa gösterilecek yer tutucu ikonu.
 export function gunlukKaydiEylemMetni(kayit) {
+  if (kayit._aktiviteTuru === 'gonderi') {
+    if (kayit.tur === 'yazi') return 'yeni bir yazı paylaştı'
+    if (kayit.tur === 'gezi') return 'bir gezi paylaştı'
+    if (kayit.tur === 'etkinlik') return 'bir etkinlik paylaştı'
+    return 'hakkında yazdı' // sinema/dizi/kitap — tam inceleme
+  }
   if (kayit._aktiviteTuru === 'yanit') return 'bir yoruma yanıt verdi'
   if (kayit._aktiviteTuru === 'yorum') return 'yorum yaptı'
   if (kayit.tur === 'gezi') return 'bir gezi paylaştı'
@@ -187,10 +200,70 @@ export function gunlukKaydiEylemMetni(kayit) {
 }
 
 export function gunlukKaydiYerTutucuIkon(kayit) {
+  if (kayit.tur === 'yazi') return '✍️'
   if (kayit.tur === 'gezi') return '🧳'
   if (kayit.tur === 'etkinlik') return '🎟️'
   if (kayit.tur === 'kitap') return '📖'
   return '🎬'
+}
+
+// Takip ettiklerinin gerçek günceleri/incelemeleri (gonderiler koleksiyonu)
+// — "Yeni Günceler" widget'ının eskiden EKSİK OLAN kısmı buydu (sadece
+// puanlama+yorum çekiliyordu, tam inceleme yazıları hiç dahil değildi).
+// Aynı normalize edilmiş şekle (gunlukKayitlari/yorumlar ile ortak) çeviriyor
+// ki paylaşılan yardımcılar (gunlukKaydiLinki vb.) ve TakipGunlukKarti hiç
+// değişiklik gerektirmeden bunu da gösterebilsin.
+export async function takipEdilenlerinGonderileriniGetir(uidListesi, limitSayisi = 15) {
+  if (!uidListesi || uidListesi.length === 0) return []
+  const gruplar = []
+  for (let i = 0; i < uidListesi.length; i += 30) {
+    gruplar.push(uidListesi.slice(i, i + 30))
+  }
+  const sonuclar = await Promise.all(
+    gruplar.map((grup) =>
+      getDocs(query(collection(db, 'gonderiler'), where('yazarId', 'in', grup), orderBy('tarih', 'desc'), limit(limitSayisi)))
+    )
+  )
+  const hepsi = sonuclar
+    .flatMap((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    .map((g) => ({
+      id: g.id,
+      tur: g.tur,
+      disId: g.tmdbId || g.googleBooksId || null,
+      baslik: g.baslik,
+      posterUrl: g.posterUrl,
+      kullaniciId: g.yazarId,
+      kullaniciAdi: g.yazarAdi,
+      kullaniciAvatarUrl: g.yazarAvatarUrl,
+      izlemeTarihi: g.tarih,
+      eklemeTarihi: g.tarih,
+      begenenler: g.begenenler || [],
+      not: g.gunce,
+      puan: g.kullaniciPuani ?? null,
+      _aktiviteTuru: 'gonderi',
+    }))
+  hepsi.sort((a, b) => (b.eklemeTarihi?.toMillis?.() || 0) - (a.eklemeTarihi?.toMillis?.() || 0))
+  return hepsi.slice(0, limitSayisi)
+}
+
+// KÖKTEN ÇÖZÜM: "Yeni Günceler" (Anasayfa) ve Akış'ın günlük katmanı farklı
+// yerlerde birbirinden bağımsız birleştirme mantığı taşıdığından, biri
+// güncellenirken diğeri unutulabiliyordu (tam da bu yüzden inceleme yazıları
+// bir süre widget'ta hiç görünmedi). Bu TEK fonksiyon üç kaynağı da
+// (puanlama + yorum + tam gönderi) birleştirip sıralıyor — Anasayfa.jsx
+// SADECE bunu çağırıyor. Akis.jsx bilerek bunu kullanmıyor (kendi gönderi
+// akışını AYRI ve sayfalanabilir şekilde zaten çekiyor; bu fonksiyonu da
+// kullanırsa gönderiler ÇİFT görünür) — o yüzden Akis.jsx sadece puanlama+
+// yorum kısmını (gunlukKayitlari + yorumlar) ayrı ayrı çekmeye devam ediyor.
+export async function takipAktiviteleriGetir(uidListesi, limitSayisi = 15) {
+  const [gunlukler, yorumlar, gonderiler] = await Promise.all([
+    takipEdilenlerinGunlukKayitlariniGetir(uidListesi, limitSayisi),
+    takipEdilenlerinYorumlariniGetir(uidListesi, limitSayisi),
+    takipEdilenlerinGonderileriniGetir(uidListesi, limitSayisi),
+  ])
+  const birlesik = [...gunlukler, ...yorumlar, ...gonderiler]
+  birlesik.sort((a, b) => (b.eklemeTarihi?.toMillis?.() || 0) - (a.eklemeTarihi?.toMillis?.() || 0))
+  return birlesik.slice(0, limitSayisi)
 }
 
 // Takip ettiklerinin en son günlük kayıtları — Letterboxd'daki "Friends"

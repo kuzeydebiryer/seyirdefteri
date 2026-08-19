@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { gunlukBegenDegistir, gunlukKaydiLinki, gunlukKaydiEylemMetni, gunlukKaydiYerTutucuIkon } from '../utils/gunluk.js'
 import { yorumBegenDegistir } from '../utils/yorum.js'
+import { begeniDegistir } from '../utils/begeni.js'
 import YildizPuan from './YildizPuan.jsx'
 import Avatar from './Avatar.jsx'
 
@@ -28,11 +29,14 @@ export default function TakipGunlukKarti({ kayit }) {
     if (!kullanici) return
     const yeni = benBegendimMi ? begenenler.filter((u) => u !== kullanici.uid) : [...begenenler, kullanici.uid]
     setBegenenler(yeni)
-    // Kart bir yorum aktivitesiyse "yorumlar" koleksiyonuna, gerçek bir
-    // günlük (puanlama) kaydıysa "gunlukKayitlari"na yazılıyor — kayit.id
-    // ikisinde de farklı bir koleksiyona ait olduğundan bu ayrım şart.
+    // Kart bir yorum aktivitesiyse "yorumlar", tam bir gönderi
+    // (inceleme/günce) ise "gonderiler", gerçek bir günlük (puanlama)
+    // kaydıysa "gunlukKayitlari" koleksiyonuna yazılıyor — kayit.id
+    // üçünde de farklı bir koleksiyona ait olduğundan bu ayrım şart.
     if (kayit._aktiviteTuru === 'yorum' || kayit._aktiviteTuru === 'yanit') {
       await yorumBegenDegistir(kayit.id, kullanici.uid, benBegendimMi)
+    } else if (kayit._aktiviteTuru === 'gonderi') {
+      await begeniDegistir(kayit.id, kullanici.uid, benBegendimMi)
     } else {
       await gunlukBegenDegistir(kayit.id, kullanici.uid, benBegendimMi)
     }

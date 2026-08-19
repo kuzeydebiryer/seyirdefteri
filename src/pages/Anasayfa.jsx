@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { takipEdilenUidleriGetir } from '../hooks/useTakip.js'
 import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
-import { takipEdilenlerinGunlukKayitlariniGetir } from '../utils/gunluk.js'
-import { takipEdilenlerinYorumlariniGetir } from '../utils/yorum.js'
+import { takipAktiviteleriGetir } from '../utils/gunluk.js'
 import GonderiEkle from './GonderiEkle.jsx'
 import YeniGunlukGridi from '../components/YeniGunlukGridi.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
@@ -50,14 +49,12 @@ export default function Anasayfa() {
       return
     }
     let iptal = false
-    Promise.all([
-      takipEdilenlerinGunlukKayitlariniGetir(takipEdilenler, 15),
-      takipEdilenlerinYorumlariniGetir(takipEdilenler, 15),
-    ]).then(([gunlukler, yorumlar]) => {
-      if (iptal) return
-      const birlesik = [...gunlukler, ...yorumlar]
-      birlesik.sort((a, b) => (b.eklemeTarihi?.toMillis?.() || 0) - (a.eklemeTarihi?.toMillis?.() || 0))
-      setTakipGunlukKayitlari(birlesik.slice(0, 15))
+    // Tek paylaşılan fonksiyon (bkz. utils/gunluk.js) — puanlama + yorum +
+    // TAM GÖNDERİ (inceleme/günce) hepsi burada birleşiyor. Bu üçünü ayrı
+    // ayrı çekip burada tekrar birleştirmiyoruz artık, çünkü tam da bu
+    // tekrar riski yüzünden gönderiler bir süre widget'ta hiç görünmemişti.
+    takipAktiviteleriGetir(takipEdilenler, 15).then((liste) => {
+      if (!iptal) setTakipGunlukKayitlari(liste)
     })
     return () => {
       iptal = true
