@@ -9,8 +9,6 @@ import GonderiKarti from '../components/GonderiKarti.jsx'
 import TakipGunlukKarti from '../components/TakipGunlukKarti.jsx'
 import HabercKarti from '../components/HabercKarti.jsx'
 import AlintiKarti from '../components/AlintiKarti.jsx'
-import GunlukKesif from '../components/GunlukKesif.jsx'
-import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import { sonHabercileriGetir, katilimDegistir, habercSil } from '../utils/etkinlikHabercisi.js'
 
 const ALINTI_FILTRE_ID = 'alinti'
@@ -192,10 +190,6 @@ export default function Akis() {
           + Günce Ekle
         </Link>
       </div>
-
-      <GunlukKesif />
-
-      <KitapDunyasiWidget />
 
       <div className="mb-4 flex gap-4 text-sm font-govde">
         <button

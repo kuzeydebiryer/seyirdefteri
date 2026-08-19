@@ -7,6 +7,8 @@ import YeniGunlukGridi from '../components/YeniGunlukGridi.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import BegenilenMuziklerBolumu from '../components/BegenilenMuziklerBolumu.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
+import GunlukKesif from '../components/GunlukKesif.jsx'
+import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import Logo from '../components/Logo.jsx'
 
 // Anasayfa artık sade bir keşif/vitrin sayfası — eskiden burada büyük bir
@@ -66,6 +68,10 @@ export default function Anasayfa() {
       </div>
 
       <TopluluklarBildirimSeridi />
+
+      <GunlukKesif />
+
+      <KitapDunyasiWidget />
 
       <YeniGunlukGridi kayitlar={takipGunlukKayitlari} tumunuGorLink="/akis" />
 
