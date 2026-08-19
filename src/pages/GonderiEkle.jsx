@@ -58,6 +58,10 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
 
   const [kategori, setKategori] = useState('sinema')
   const [yaziAltTur, setYaziAltTur] = useState('deneme')
+  // Serbest Düşünce Havuzu'ndaki "bugünün konusu"na yaz linkinden gelindiyse
+  // (?konu=...) o konu metnini taşıyor — sadece gönderiye damgalanır,
+  // "gununYazilariniGetir" bu alana göre filtreler.
+  const [bilincAkisiKonusu, setBilincAkisiKonusu] = useState('')
 
   const [arama, setArama] = useState('')
   const [sonuclar, setSonuclar] = useState([])
@@ -135,7 +139,13 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
   // bağlantılı yazı) bir sonuç seçilene kadar detaylı form gizli kalıyor.
   // Arama adımı olmayan türlerde (Gezi/Etkinlik, eser bağlamayan yazı alt
   // türleri) zaten seçilecek bir "sonuç" olmadığından form hemen açılıyor.
-  const kompaktFormAcikMi = !kompaktMod || !aramaGosterilsinMi || !!ilgiliBaslik
+  //
+  // NOT: "seçildi mi" sinyali için seciliId kullanılıyor — ilgiliBaslik
+  // SADECE yazı içindeki eser-bağlama alt akışında dolduruluyor, doğrudan
+  // film/dizi/kitap günce akışında (kategori !== 'yazi') hiç set edilmiyor.
+  // Onu kullanmak, Film/Dizi/Kitap sekmelerinde seçim yapılsa bile formun
+  // hiç açılmamasına sebep oluyordu.
+  const kompaktFormAcikMi = !kompaktMod || !aramaGosterilsinMi || !!seciliId
 
   function kategoriDegistir(yeni) {
     setKategori(yeni)
@@ -277,6 +287,7 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
     const urlTur = aramaParametreleri.get('tur')
     const urlDisId = aramaParametreleri.get('disId')
     const urlAltTur = aramaParametreleri.get('altTur')
+    const urlKonu = aramaParametreleri.get('konu')
     if (urlTur && urlDisId) {
       setKategori(urlTur)
       disIdIleGetir(urlTur, urlDisId)
@@ -285,6 +296,10 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
       // sadece ?tur=gezi ile gelindiğinde de o kategoriye geçilsin.
       kategoriDegistir(urlTur)
       if (urlTur === 'yazi' && urlAltTur) setYaziAltTur(urlAltTur)
+    }
+    if (urlKonu) {
+      setBaslik(urlKonu)
+      setBilincAkisiKonusu(urlKonu)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -580,6 +595,7 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
         ilgiliDisId: kategori === 'yazi' && yaziAltTur === 'kitap-incelemesi' ? ilgiliDisId : null,
         ilgiliKaynakUrl: kategori === 'yazi' && yaziAltTur === 'sanat-elestirisi' ? ilgiliKaynakUrl : '',
         kullaniciPuani: kategori === 'yazi' && PUANSIZ_YAZI_ALT_TURLERI.includes(yaziAltTur) ? null : kullaniciPuani,
+        bilincAkisiKonusu: kategori === 'yazi' && yaziAltTur === 'bilinc-akisi' ? bilincAkisiKonusu || null : null,
         gunce,
         spoiler,
         tarih: serverTimestamp(),

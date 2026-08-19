@@ -159,6 +159,23 @@ service cloud.firestore {
 
     // Gönderiler (günceler): herkes okuyabilir, sadece kendi adına oluşturup silebilir.
     // "update" beğeni sayacı gibi ortak alanlar için serbest bırakıldı (Faz 1).
+    // Serbest Düşünce Havuzu — Bilinç Akışı'nın günlük ortak tartışma
+    // konusu kaynağı. Herkes okuyabilir, giriş yapmış herkes yeni konu
+    // önerebilir (topluluğun havuzu büyütmesi için) — düzenleme/silme yok,
+    // bir kez eklenen konu kalıcı.
+    match /dusunceHavuzu/{konuId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+    }
+
+    // Bir dönemin (gununKonulari) hangi konuya denk geldiğinin kalıcı
+    // kaydı — arşivin güvenilirliği bu koleksiyonun asla değişmemesine
+    // bağlı, o yüzden sadece "create" var, update/delete yok.
+    match /gununKonulari/{tarih} {
+      allow read: if true;
+      allow create: if request.auth != null;
+    }
+
     match /gonderiler/{gonderiId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;
