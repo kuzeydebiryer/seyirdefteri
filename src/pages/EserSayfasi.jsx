@@ -37,7 +37,7 @@ import { filmOscarBilgisiGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
 import { kitaptanFilmOner, filmdenKitapOner, filmTriviaGetir, paraFormatla } from '../utils/wikidata.js'
-import { eserYorumlariGetir, eserYorumEkle, yorumSil } from '../utils/yorum.js'
+import { eserYorumlariGetir, eserYorumEkle, yorumSil, yorumBegenDegistir } from '../utils/yorum.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 import EserKarti from '../components/EserKarti.jsx'
 
@@ -166,6 +166,9 @@ export default function EserSayfasi({ tur }) {
   const [yorumlarYukleniyor, setYorumlarYukleniyor] = useState(true)
   const [yeniYorum, setYeniYorum] = useState('')
   const [yorumGonderiliyor, setYorumGonderiliyor] = useState(false)
+  const [yanitVerilenYorumId, setYanitVerilenYorumId] = useState(null)
+  const [yaniMetni, setYaniMetni] = useState('')
+  const [yanitGonderiliyor, setYanitGonderiliyor] = useState(false)
   const [triviaAcik, setTriviaAcik] = useState(false)
 
   const ilgiliHedefTur = tur === 'kitap' ? ilgiliKategori : 'kitap'
@@ -394,18 +397,58 @@ export default function EserSayfasi({ tur }) {
     setYorumGonderiliyor(true)
     try {
       const disIdTipli = tur === 'kitap' ? id : Number(id)
-      const yeniId = await eserYorumEkle(tur, disIdTipli, kullanici, profil?.adSoyad, yeniYorum)
-      setYorumlar((onceki) => [...onceki, { id: yeniId, yazarId: kullanici.uid, yazarAdi: profil?.adSoyad || kullanici.displayName, metin: yeniYorum.trim() }])
+      const yeniId = await eserYorumEkle(tur, disIdTipli, kullanici, profil?.adSoyad, yeniYorum, {
+        eserBaslik: detay?.baslik,
+        eserPosterUrl: detay?.posterUrl,
+      })
+      setYorumlar((onceki) => [
+        ...onceki,
+        { id: yeniId, yazarId: kullanici.uid, yazarAdi: profil?.adSoyad || kullanici.displayName, metin: yeniYorum.trim(), begenenler: [] },
+      ])
       setYeniYorum('')
     } finally {
       setYorumGonderiliyor(false)
     }
   }
 
+  async function yanitGonder(ustYorumId) {
+    if (!yaniMetni.trim() || !kullanici) return
+    setYanitGonderiliyor(true)
+    try {
+      const disIdTipli = tur === 'kitap' ? id : Number(id)
+      const yeniId = await eserYorumEkle(tur, disIdTipli, kullanici, profil?.adSoyad, yaniMetni, {
+        eserBaslik: detay?.baslik,
+        eserPosterUrl: detay?.posterUrl,
+        ustYorumId,
+      })
+      setYorumlar((onceki) => [
+        ...onceki,
+        { id: yeniId, yazarId: kullanici.uid, yazarAdi: profil?.adSoyad || kullanici.displayName, metin: yaniMetni.trim(), ustYorumId, begenenler: [] },
+      ])
+      setYaniMetni('')
+      setYanitVerilenYorumId(null)
+    } finally {
+      setYanitGonderiliyor(false)
+    }
+  }
+
+  async function yorumBegenTiklandi(yorum) {
+    if (!kullanici) return
+    const begeniyorMu = (yorum.begenenler || []).includes(kullanici.uid)
+    setYorumlar((liste) =>
+      liste.map((y) =>
+        y.id === yorum.id
+          ? { ...y, begenenler: begeniyorMu ? y.begenenler.filter((u) => u !== kullanici.uid) : [...(y.begenenler || []), kullanici.uid] }
+          : y
+      )
+    )
+    await yorumBegenDegistir(yorum.id, kullanici.uid, begeniyorMu)
+  }
+
   async function yorumSilTiklandi(yorumId) {
     if (!window.confirm('Bu yorumu silmek istediğine emin misin?')) return
     await yorumSil(yorumId)
-    setYorumlar((onceki) => onceki.filter((y) => y.id !== yorumId))
+    setYorumlar((onceki) => onceki.filter((y) => y.id !== yorumId && y.ustYorumId !== yorumId))
   }
 
 
@@ -2258,26 +2301,118 @@ export default function EserSayfasi({ tur }) {
       {yorumlarYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {!yorumlarYukleniyor && yorumlar.length === 0 && <p className="text-sm text-kraft">Henüz yorum yok — ilkini sen yaz.</p>}
 
-      <ul className="space-y-3 mb-4">
-        {yorumlar.map((y) => (
-          <li key={y.id} className="group flex items-start gap-2 text-sm">
-            <Avatar adSoyad={y.yazarAdi} avatarUrl={y.yazarAvatarUrl} boyut="h-6 w-6" />
-            <div className="min-w-0 flex-1">
-              <Link to={`/profil/${y.yazarId}`} className="font-medium text-murekkep hover:underline">
-                {y.yazarAdi}
-              </Link>{' '}
-              <span className="whitespace-pre-wrap text-murekkep/90">{y.metin}</span>
-            </div>
-            {kullanici?.uid === y.yazarId && (
-              <button
-                onClick={() => yorumSilTiklandi(y.id)}
-                className="shrink-0 text-xs text-kraft opacity-0 transition-opacity hover:text-muhur group-hover:opacity-100"
-              >
-                Sil
-              </button>
-            )}
-          </li>
-        ))}
+      <ul className="space-y-4 mb-4">
+        {yorumlar
+          .filter((y) => !y.ustYorumId)
+          .map((y) => {
+            const yanitlar = yorumlar.filter((r) => r.ustYorumId === y.id)
+            const benBegendimMi = kullanici && (y.begenenler || []).includes(kullanici.uid)
+            return (
+              <li key={y.id}>
+                <div className="group flex items-start gap-2 text-sm">
+                  <Avatar adSoyad={y.yazarAdi} avatarUrl={y.yazarAvatarUrl} boyut="h-6 w-6" />
+                  <div className="min-w-0 flex-1">
+                    <Link to={`/profil/${y.yazarId}`} className="font-medium text-murekkep hover:underline">
+                      {y.yazarAdi}
+                    </Link>{' '}
+                    <span className="whitespace-pre-wrap text-murekkep/90">{y.metin}</span>
+                    <div className="mt-1 flex items-center gap-3 text-xs text-kraft">
+                      <button
+                        onClick={() => yorumBegenTiklandi(y)}
+                        disabled={!kullanici}
+                        className={`transition ${benBegendimMi ? 'text-muhur font-medium' : 'hover:text-murekkep'}`}
+                      >
+                        {benBegendimMi ? '♥' : '♡'} {y.begenenler?.length > 0 && y.begenenler.length}
+                      </button>
+                      {kullanici && (
+                        <button
+                          onClick={() => {
+                            setYanitVerilenYorumId(yanitVerilenYorumId === y.id ? null : y.id)
+                            setYaniMetni('')
+                          }}
+                          className="hover:text-murekkep"
+                        >
+                          Yanıtla
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {kullanici?.uid === y.yazarId && (
+                    <button
+                      onClick={() => yorumSilTiklandi(y.id)}
+                      className="shrink-0 text-xs text-kraft opacity-0 transition-opacity hover:text-muhur group-hover:opacity-100"
+                    >
+                      Sil
+                    </button>
+                  )}
+                </div>
+
+                {yanitlar.length > 0 && (
+                  <ul className="ml-8 mt-2 space-y-2 border-l-2 border-cizgi pl-3">
+                    {yanitlar.map((r) => {
+                      const rBenBegendimMi = kullanici && (r.begenenler || []).includes(kullanici.uid)
+                      return (
+                        <li key={r.id} className="group flex items-start gap-2 text-sm">
+                          <Avatar adSoyad={r.yazarAdi} avatarUrl={r.yazarAvatarUrl} boyut="h-5 w-5" />
+                          <div className="min-w-0 flex-1">
+                            <Link to={`/profil/${r.yazarId}`} className="font-medium text-murekkep hover:underline">
+                              {r.yazarAdi}
+                            </Link>{' '}
+                            <span className="whitespace-pre-wrap text-murekkep/90">{r.metin}</span>
+                            <div className="mt-1">
+                              <button
+                                onClick={() => yorumBegenTiklandi(r)}
+                                disabled={!kullanici}
+                                className={`text-xs transition ${rBenBegendimMi ? 'text-muhur font-medium' : 'text-kraft hover:text-murekkep'}`}
+                              >
+                                {rBenBegendimMi ? '♥' : '♡'} {r.begenenler?.length > 0 && r.begenenler.length}
+                              </button>
+                            </div>
+                          </div>
+                          {kullanici?.uid === r.yazarId && (
+                            <button
+                              onClick={() => yorumSilTiklandi(r.id)}
+                              className="shrink-0 text-xs text-kraft opacity-0 transition-opacity hover:text-muhur group-hover:opacity-100"
+                            >
+                              Sil
+                            </button>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+
+                {yanitVerilenYorumId === y.id && (
+                  <div className="ml-8 mt-2 space-y-1.5 border-l-2 border-cizgi pl-3">
+                    <textarea
+                      value={yaniMetni}
+                      onChange={(e) => setYaniMetni(e.target.value)}
+                      placeholder={`${y.yazarAdi} kullanıcısına yanıt yaz...`}
+                      rows={2}
+                      autoFocus
+                      className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => yanitGonder(y.id)}
+                        disabled={yanitGonderiliyor || !yaniMetni.trim()}
+                        className="rounded-sm bg-muhur px-3 py-1 font-govde text-xs text-kagit disabled:opacity-40"
+                      >
+                        {yanitGonderiliyor ? 'Gönderiliyor...' : 'Yanıtla'}
+                      </button>
+                      <button
+                        onClick={() => setYanitVerilenYorumId(null)}
+                        className="rounded-sm bg-kagit px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+                      >
+                        Vazgeç
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            )
+          })}
       </ul>
 
       <form onSubmit={yorumGonder} className="space-y-2">

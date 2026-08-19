@@ -19,6 +19,7 @@ import PuanIceAktar from '../components/PuanIceAktar.jsx'
 import { kahinOlduguSezonlariGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { kullaniciKoleksiyonuGetir, eseriKoleksiyondanCikar } from '../utils/sanatKoleksiyonu.js'
+import Listelerim from './Listelerim.jsx'
 import { begenilenMuzikleriGetir, muzikBegeniKaldir } from '../utils/filmMuzigiBegeni.js'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
@@ -301,6 +302,7 @@ export default function Profil() {
     { id: 'favoriler', etiket: '♥ Favoriler' },
     { id: 'raflarim', etiket: '📚 Raflarım' },
     { id: 'yorumlarim', etiket: '💬 Yorumlarım' },
+    { id: 'listelerim', etiket: '📋 Listelerim' },
     { id: 'sanatKoleksiyonum', etiket: '🖼️ Sanat Koleksiyonlarım' },
     { id: 'filmMuzikleri', etiket: '🎵 Film Müzikleri' },
   ]
@@ -347,16 +349,15 @@ export default function Profil() {
                 {duzenlemeAcik ? 'Vazgeç' : 'Profili Düzenle'}
               </button>
             )}
-            <Link to="/kullanicilar" className="text-xs text-deniz hover:underline">
-              Kişileri Keşfet →
-            </Link>
-            {benimProfilimMi && (
-              <Link to="/listelerim" className="text-xs text-deniz hover:underline">
-                📋 Listelerim →
-              </Link>
-            )}
           </div>
           <p className="text-sm text-kraft">@{hedefProfil.kullaniciAdi}</p>
+
+          <Link
+            to="/kullanicilar"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gise px-3 py-1.5 font-govde text-xs text-kagit hover:opacity-90"
+          >
+            👥 Kişileri Keşfet →
+          </Link>
 
           {kahinSezonlari.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -581,7 +582,7 @@ export default function Profil() {
 
       {/* Sekmeler */}
       <div className="mb-6 flex flex-wrap gap-2">
-        {SEKMELER.map((s) => (
+        {SEKMELER.filter((s) => s.id !== 'listelerim' || benimProfilimMi).map((s) => (
           <button
             key={s.id}
             onClick={() => setSekme(s.id)}
@@ -1192,15 +1193,32 @@ export default function Profil() {
         <div>
           {yorumlarim.length === 0 && <p className="text-sm text-kraft">Henüz kimseye yorum yapılmamış.</p>}
           <ul className="space-y-3">
-            {yorumlarim.map((y) => (
-              <li key={y.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-                <Link to={`/gonderi/${y.gonderiId}`} className="text-xs text-deniz hover:underline">
-                  {y.gonderiBasligi || 'Günce'}
-                </Link>
-                <p className="mt-1 text-sm text-murekkep">{y.metin}</p>
-              </li>
-            ))}
+            {yorumlarim.map((y) => {
+              const esereMi = !y.gonderiId
+              const link = esereMi
+                ? y.eserTur === 'kitap'
+                  ? `/kitap/${y.eserDisId}`
+                  : y.eserTur === 'dizi'
+                    ? `/dizi/${y.eserDisId}`
+                    : `/film/${y.eserDisId}`
+                : `/gonderi/${y.gonderiId}`
+              const baslik = esereMi ? y.eserBaslik || (y.eserTur === 'kitap' ? 'Kitap' : y.eserTur === 'dizi' ? 'Dizi' : 'Film') : y.gonderiBasligi || 'Günce'
+              return (
+                <li key={y.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+                  <Link to={link} className="text-xs text-deniz hover:underline">
+                    {baslik}
+                  </Link>
+                  <p className="mt-1 text-sm text-murekkep">{y.metin}</p>
+                </li>
+              )
+            })}
           </ul>
+        </div>
+      )}
+
+      {sekme === 'listelerim' && benimProfilimMi && (
+        <div>
+          <Listelerim />
         </div>
       )}
 
