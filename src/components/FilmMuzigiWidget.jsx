@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -20,11 +20,26 @@ export default function FilmMuzigiWidget({ tmdbId, filmAdi, yil, posterUrl, best
   const [begenildi, setBegenildi] = useState(false)
   const [begeniIsleniyor, setBegeniIsleniyor] = useState(false)
 
+  // Bileşen "Benzer Filmler" gibi bağlantılarla aynı kalıp sadece tmdbId'nin
+  // değiştiği durumlarda YENİDEN MOUNT OLMUYOR — önceki filmin isteği geç
+  // dönerse, yeni filmin doğru sonucunun üzerine yazabiliyordu (yarış
+  // durumu). "iptalRef" ile, bir istek başladığında bir öncekini geçersiz
+  // sayıp yanıtını görmezden geliyoruz — sitenin diğer veri çekme
+  // efektlerindeki standart "iptal" desenin bu bileşene özel bir versiyonu
+  // (burada normal useEffect cleanup yerine, yeniden arama butonunun da aynı
+  // korumaya ihtiyacı olduğundan paylaşılan bir fonksiyon içinde tutuluyor).
+  const guncelIstekRef = useRef(0)
+
   function ara(zorlaYenile = false) {
+    const buIstekNo = ++guncelIstekRef.current
     setSonuc(undefined)
     filmMuzigiGetirCallable({ tmdbId, filmAdi, yil, bestekarAdi, zorlaYenile })
-      .then((res) => setSonuc(res.data))
-      .catch(() => setSonuc({ spotifyAlbumId: null }))
+      .then((res) => {
+        if (buIstekNo === guncelIstekRef.current) setSonuc(res.data)
+      })
+      .catch(() => {
+        if (buIstekNo === guncelIstekRef.current) setSonuc({ spotifyAlbumId: null })
+      })
   }
 
   useEffect(() => {
@@ -36,7 +51,13 @@ export default function FilmMuzigiWidget({ tmdbId, filmAdi, yil, posterUrl, best
       setBegenildi(false)
       return
     }
-    muzikBegeniliMi(kullanici.uid, tmdbId).then(setBegenildi)
+    let iptal = false
+    muzikBegeniliMi(kullanici.uid, tmdbId).then((deger) => {
+      if (!iptal) setBegenildi(deger)
+    })
+    return () => {
+      iptal = true
+    }
   }, [kullanici, tmdbId, sonuc?.spotifyAlbumId])
 
   async function yenidenAraTiklandi() {
