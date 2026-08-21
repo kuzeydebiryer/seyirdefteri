@@ -26,7 +26,7 @@ function esereLink(tur, disId) {
 // kaydın OLUŞTURULMA anını taşıyor. Bu yüzden: bir esere zaten bir
 // gunlukKaydı varsa, o esere ait gönderi/puan bu hesaplamaya ikinci kez
 // dahil edilmiyor (çift saymamak için).
-export default function YilOzeti({ yil, yukleniyor, gonderiler, eserPuanlarim, gunlukKayitlari = [] }) {
+export default function YilOzeti({ yil, yukleniyor, gonderiler, eserPuanlarim, gunlukKayitlari = [], onTuruSec }) {
   const eserAnahtari = (tur, disId) => `${tur}_${disId}`
   const gunlukKapsananlar = new Set(gunlukKayitlari.map((g) => eserAnahtari(g.tur, g.disId)))
 
@@ -108,22 +108,38 @@ export default function YilOzeti({ yil, yukleniyor, gonderiler, eserPuanlarim, g
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi">
+            <button
+              onClick={() => onTuruSec?.('sinema')}
+              disabled={!onTuruSec || filmSayisi === 0}
+              className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi transition enabled:hover:ring-deniz/50 disabled:cursor-default"
+            >
               <p className="font-baslik text-3xl text-murekkep">{filmSayisi}</p>
               <p className="text-xs text-kraft">🎬 Film</p>
-            </div>
-            <div className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi">
+            </button>
+            <button
+              onClick={() => onTuruSec?.('dizi')}
+              disabled={!onTuruSec || diziSayisi === 0}
+              className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi transition enabled:hover:ring-deniz/50 disabled:cursor-default"
+            >
               <p className="font-baslik text-3xl text-murekkep">{diziSayisi}</p>
               <p className="text-xs text-kraft">📺 Dizi</p>
-            </div>
-            <div className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi">
+            </button>
+            <button
+              onClick={() => onTuruSec?.('kitap')}
+              disabled={!onTuruSec || kitapSayisi === 0}
+              className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi transition enabled:hover:ring-deniz/50 disabled:cursor-default"
+            >
               <p className="font-baslik text-3xl text-murekkep">{kitapSayisi}</p>
               <p className="text-xs text-kraft">📖 Kitap</p>
-            </div>
-            <div className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi">
+            </button>
+            <button
+              onClick={() => onTuruSec?.('diger')}
+              disabled={!onTuruSec || yaziSayisi + geziEtkinlikSayisi === 0}
+              className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi transition enabled:hover:ring-deniz/50 disabled:cursor-default"
+            >
               <p className="font-baslik text-3xl text-murekkep">{yaziSayisi + geziEtkinlikSayisi}</p>
               <p className="text-xs text-kraft">✍️ Yazı/Gezi/Etkinlik</p>
-            </div>
+            </button>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-4 text-sm text-murekkep">

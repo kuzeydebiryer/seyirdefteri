@@ -104,6 +104,7 @@ export default function Profil() {
   // paylaşıyor. Yıl sekmelerini göstermek için de tüm geçmişi değil,
   // sadece en eski kaydın yılını (tek, ucuz bir sorgu) öğreniyoruz.
   const [gunlukYil, setGunlukYil] = useState(new Date().getFullYear())
+  const [gunlukTurFiltresi, setGunlukTurFiltresi] = useState('')
   const [gunlukIlkYil, setGunlukIlkYil] = useState(null)
   const [gunlukKayitlari, setGunlukKayitlari] = useState([])
   const [gunlukYukleniyor, setGunlukYukleniyor] = useState(true)
@@ -638,7 +639,17 @@ export default function Profil() {
       )}
 
       {sekme === 'yilozeti' && (
-        <YilOzeti yil={gunlukYil} yukleniyor={gunlukYukleniyor} gonderiler={gonderiler} eserPuanlarim={eserPuanlarim} gunlukKayitlari={gunlukKayitlari} />
+        <YilOzeti
+          yil={gunlukYil}
+          yukleniyor={gunlukYukleniyor}
+          gonderiler={gonderiler}
+          eserPuanlarim={eserPuanlarim}
+          gunlukKayitlari={gunlukKayitlari}
+          onTuruSec={(tur) => {
+            setGunlukTurFiltresi(tur)
+            setSekme('gunluk')
+          }}
+        />
       )}
 
       {sekme === 'gunluk' && (
@@ -652,9 +663,38 @@ export default function Profil() {
               {temizleniyor ? 'Kontrol ediliyor...' : '🧹 Mükerrer Kayıtları Temizle (geçici)'}
             </button>
           )}
+          <div className="mb-4 flex flex-wrap gap-2">
+            {[
+              { id: '', etiket: 'Tümü' },
+              { id: 'sinema', etiket: '🎬 Film' },
+              { id: 'dizi', etiket: '📺 Dizi' },
+              { id: 'kitap', etiket: '📖 Kitap' },
+              { id: 'diger', etiket: '🧳 Gezi/Etkinlik' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setGunlukTurFiltresi(f.id)}
+                className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
+                  gunlukTurFiltresi === f.id ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagitKoyu text-kraft ring-cizgi hover:text-murekkep'
+                }`}
+              >
+                {f.etiket}
+              </button>
+            ))}
+          </div>
           {gunlukYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
           {!gunlukYukleniyor && (
-            <GunlukListesi kayitlar={gunlukKayitlari} kendiProfiliMi={benimProfilimMi} onDegisti={gunlukYenidenYukle} />
+            <GunlukListesi
+              kayitlar={
+                gunlukTurFiltresi === ''
+                  ? gunlukKayitlari
+                  : gunlukTurFiltresi === 'diger'
+                    ? gunlukKayitlari.filter((k) => k.tur === 'gezi' || k.tur === 'etkinlik')
+                    : gunlukKayitlari.filter((k) => k.tur === gunlukTurFiltresi)
+              }
+              kendiProfiliMi={benimProfilimMi}
+              onDegisti={gunlukYenidenYukle}
+            />
           )}
         </>
       )}
