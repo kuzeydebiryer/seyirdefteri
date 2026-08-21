@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { buYilOlaylariHesapla } from '../utils/yilOzeti.js'
 
 const AY_ADLARI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
 
@@ -14,63 +15,12 @@ function esereLink(tur, disId) {
   return `/film/${disId}`
 }
 
-// Profilde zaten var olan üç veri kaynağından SEÇİLİ YILA ait özet hesaplar.
-// Yıl seçimi artık burada değil, Profil.jsx'te (Günlük sekmesiyle paylaşılan
-// tek bir seçim) — bu bileşen sadece kendisine verilen "yil"a ait
-// gunlukKayitlari'nı (zaten o yılla sınırlı çekiliyor) ve gonderiler/
-// eserPuanlarim'i (tüm zamanlar, burada yıla göre filtreleniyor) işliyor.
-//
-// ÖNEMLİ — tarih kaynağı önceliği: "gunlukKayitlari" (bkz. utils/gunluk.js)
-// birincil kaynak, çünkü orada tutulan "izlemeTarihi" kullanıcının kendi
-// belirttiği GERÇEK tarih. "gonderiler" ve "eserPuanlarim" ise sadece o
-// kaydın OLUŞTURULMA anını taşıyor. Bu yüzden: bir esere zaten bir
-// gunlukKaydı varsa, o esere ait gönderi/puan bu hesaplamaya ikinci kez
-// dahil edilmiyor (çift saymamak için).
+// Hesaplama artık utils/yilOzeti.js'te — Günlük sekmesiyle (Profil.jsx)
+// AYNI fonksiyonu paylaşıyor, iki yerde ayrı ayrı (ve birbirinden sapan)
+// hesaplama olmasın diye (bkz. o dosyadaki uzun açıklama — bu, gösterilen
+// rakamlarla Günlük listesinin tutarsız görünmesinin kök sebebiydi).
 export default function YilOzeti({ yil, yukleniyor, gonderiler, eserPuanlarim, gunlukKayitlari = [], onTuruSec }) {
-  const eserAnahtari = (tur, disId) => `${tur}_${disId}`
-  const gunlukKapsananlar = new Set(gunlukKayitlari.map((g) => eserAnahtari(g.tur, g.disId)))
-
-  const gunlukOlaylari = gunlukKayitlari.map((g) => ({
-    tur: g.tur,
-    disId: g.disId,
-    baslik: g.baslik,
-    posterUrl: g.posterUrl,
-    tarih: g.izlemeTarihi,
-    puan: g.puan,
-    kaynak: 'gunluk',
-  }))
-
-  const buYilGonderiler = gonderiler.filter((g) => tariheDevir(g.tarih)?.getFullYear() === yil)
-  const gonderiOlaylari = buYilGonderiler
-    .filter((g) => g.posterUrl || g.tur === 'gezi' || g.tur === 'etkinlik')
-    .map((g) => ({
-      tur: g.tur,
-      disId: g.tur === 'gezi' || g.tur === 'etkinlik' ? g.id : g.tmdbId || g.googleBooksId,
-      baslik: g.baslik,
-      posterUrl: g.posterUrl,
-      tarih: g.tarih,
-      puan: g.kullaniciPuani,
-      kaynak: 'gonderi',
-      gonderiId: g.id,
-    }))
-    .filter((g) => !gunlukKapsananlar.has(eserAnahtari(g.tur, g.disId)))
-
-  const buYilPuanlar = eserPuanlarim.filter((e) => tariheDevir(e.tarih)?.getFullYear() === yil)
-  const puanOlaylari = buYilPuanlar
-    // "gunlukVar" — bu esere zaten (belki BAŞKA bir yılda, çünkü içe aktarma
-    // anının kendisi ayrı bir tarih) doğru tarihli bir günlük kaydı düşülmüş
-    // mü. Sadece SEÇİLİ YILın günlük kayıtlarına bakmak yetmiyordu — bir film
-    // 2021'de izlenmiş ama içe aktarma 2026'da yapılmışsa, "eserPuanlari.tarih"
-    // (=içe aktarma anı, 2026) o filmi yanlışlıkla 2026'ya da düşürüyordu.
-    // "gunlukVar" bayrağı, o esere HERHANGİ bir yılda zaten doğru bir günlük
-    // kaydı düşüldüğünü global olarak biliyor, tüm geçmişi çekmeye gerek
-    // kalmadan (bkz. utils/eserPuani.js).
-    .filter((e) => e.gunlukVar !== true)
-    .filter((e) => !gunlukKapsananlar.has(eserAnahtari(e.tur, e.disId)))
-    .filter((e) => !gonderiOlaylari.some((g) => g.tur === e.tur && g.disId === e.disId))
-    .map((e) => ({ tur: e.tur, disId: e.disId, baslik: e.baslik, posterUrl: e.posterUrl, tarih: e.tarih, puan: e.puan, kaynak: 'puan' }))
-
-  const buYilOlaylar = [...gunlukOlaylari, ...gonderiOlaylari, ...puanOlaylari]
+  const buYilOlaylar = buYilOlaylariHesapla(yil, gonderiler, eserPuanlarim, gunlukKayitlari)
 
   // Aynı esere ait birden fazla olay olabilir (başladım + bitirdim + puanladım
   // hepsi ayrı birer günlük kaydı) — "kaç film/dizi/kitap" sayısı OLAY değil,
@@ -136,6 +86,7 @@ export default function YilOzeti({ yil, yukleniyor, gonderiler, eserPuanlarim, g
               onClick={() => onTuruSec?.('diger')}
               disabled={!onTuruSec || yaziSayisi + geziEtkinlikSayisi === 0}
               className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi transition enabled:hover:ring-deniz/50 disabled:cursor-default"
+              title="Yazılarını görmek için Yazı & Gezi sekmesine gider"
             >
               <p className="font-baslik text-3xl text-murekkep">{yaziSayisi + geziEtkinlikSayisi}</p>
               <p className="text-xs text-kraft">✍️ Yazı/Gezi/Etkinlik</p>

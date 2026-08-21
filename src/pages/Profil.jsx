@@ -30,6 +30,7 @@ import YildizPuan from '../components/YildizPuan.jsx'
 import YilOzeti from '../components/YilOzeti.jsx'
 import GunlukListesi from '../components/GunlukListesi.jsx'
 import { gunlukYilininKayitlariniGetir, gunlukIlkYiliGetir, mukerrerGunlukKayitlariniTemizle } from '../utils/gunluk.js'
+import { buYilOlaylariHesapla } from '../utils/yilOzeti.js'
 
 const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
@@ -646,6 +647,14 @@ export default function Profil() {
           eserPuanlarim={eserPuanlarim}
           gunlukKayitlari={gunlukKayitlari}
           onTuruSec={(tur) => {
+            // "Yazı" (deneme/inceleme vb.) hiç gunlukKayitlari'na düşmüyor,
+            // Günlük'te gösterilecek bir karşılığı yok — o yüzden Yazı/Gezi/
+            // Etkinlik rakamı Günlük yerine doğrudan Yazı & Gezi sekmesine
+            // gidiyor (gerçek içeriğin yaşadığı yer).
+            if (tur === 'diger') {
+              setSekme('yazigezi')
+              return
+            }
             setGunlukTurFiltresi(tur)
             setSekme('gunluk')
           }}
@@ -683,19 +692,29 @@ export default function Profil() {
             ))}
           </div>
           {gunlukYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
-          {!gunlukYukleniyor && (
-            <GunlukListesi
-              kayitlar={
+          {!gunlukYukleniyor &&
+            (() => {
+              // KÖKTEN ÇÖZÜM: Günlük listesi artık Yılın Özeti'yle AYNI
+              // hesaplamadan (buYilOlaylariHesapla) besleniyor — eskiden bu
+              // liste sadece gerçek gunlukKayitlari'nı gösterirken, Yılın
+              // Özeti ayrıca gonderiler/eserPuanlari'ndan da (henüz bir
+              // günlük satırı oluşturmamış) "hayalet" olaylar sayıyordu.
+              // Rakamlar artık listeyle her zaman birebir örtüşüyor.
+              const tumOlaylar = buYilOlaylariHesapla(gunlukYil, gonderiler, eserPuanlarim, gunlukKayitlari)
+              const filtrelenmis =
                 gunlukTurFiltresi === ''
-                  ? gunlukKayitlari
+                  ? tumOlaylar
                   : gunlukTurFiltresi === 'diger'
-                    ? gunlukKayitlari.filter((k) => k.tur === 'gezi' || k.tur === 'etkinlik')
-                    : gunlukKayitlari.filter((k) => k.tur === gunlukTurFiltresi)
-              }
-              kendiProfiliMi={benimProfilimMi}
-              onDegisti={gunlukYenidenYukle}
-            />
-          )}
+                    ? tumOlaylar.filter((k) => k.tur === 'gezi' || k.tur === 'etkinlik')
+                    : tumOlaylar.filter((k) => k.tur === gunlukTurFiltresi)
+              return (
+                <GunlukListesi
+                  kayitlar={filtrelenmis}
+                  kendiProfiliMi={benimProfilimMi}
+                  onDegisti={gunlukYenidenYukle}
+                />
+              )
+            })()}
         </>
       )}
 
