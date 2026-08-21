@@ -34,6 +34,31 @@ export function AuthSaglayici({ children }) {
     return kaldir
   }, [])
 
+  // "Bugün aktif olanlar" için son görülme damgası — her eylemde değil,
+  // 15 dakikada bir güncelleniyor (throttle). Maliyet önemsiz: küçük bir
+  // topluluk için günde birkaç yüz yazma, ücretsiz Firestore kotasının
+  // (günlük 20.000 yazma) kırıntısı bile değil.
+  useEffect(() => {
+    if (!kullanici) return
+    const SON_GORULME_ARALIGI_MS = 15 * 60 * 1000
+    const localAnahtar = `sonGorulmeGuncelleme_${kullanici.uid}`
+
+    function guncellemeGerekiyorMu() {
+      const sonGuncelleme = Number(localStorage.getItem(localAnahtar) || 0)
+      return Date.now() - sonGuncelleme > SON_GORULME_ARALIGI_MS
+    }
+
+    function sonGorulmeyiGuncelle() {
+      if (!guncellemeGerekiyorMu()) return
+      localStorage.setItem(localAnahtar, String(Date.now()))
+      updateDoc(doc(db, 'kullanicilar', kullanici.uid), { sonGorulme: serverTimestamp() }).catch(() => {})
+    }
+
+    sonGorulmeyiGuncelle() // sayfa açılışında bir kez
+    const zamanlayici = setInterval(sonGorulmeyiGuncelle, SON_GORULME_ARALIGI_MS)
+    return () => clearInterval(zamanlayici)
+  }, [kullanici])
+
   async function girisYap(eposta, sifre) {
     await signInWithEmailAndPassword(auth, eposta, sifre)
   }
