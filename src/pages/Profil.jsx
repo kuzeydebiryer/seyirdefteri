@@ -20,6 +20,7 @@ import { kahinOlduguSezonlariGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { kullaniciKoleksiyonuGetir, eseriKoleksiyondanCikar } from '../utils/sanatKoleksiyonu.js'
 import Listelerim from './Listelerim.jsx'
+import TemaAvatarIkon, { TEMA_AVATARLARI, temaAvatarUrlMi } from '../components/ikonlar/TemaAvatarIkon.jsx'
 import { begenilenMuzikleriGetir, muzikBegeniKaldir } from '../utils/filmMuzigiBegeni.js'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
@@ -432,11 +433,30 @@ export default function Profil() {
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Avatar Görsel URL</label>
                 <input
                   type="text"
-                  value={avatarTaslak}
+                  value={temaAvatarUrlMi(avatarTaslak) ? '' : avatarTaslak}
                   onChange={(e) => setAvatarTaslak(e.target.value)}
                   placeholder="https://..."
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
+                <p className="mt-2 mb-1 text-xs text-kraft">...veya sinema/dizi/tiyatro/sanat temalı bir avatar seç:</p>
+                <div className="flex flex-wrap gap-2">
+                  {TEMA_AVATARLARI.map((t) => {
+                    const seciliMi = avatarTaslak === `tema:${t.id}`
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setAvatarTaslak(`tema:${t.id}`)}
+                        title={t.ad}
+                        className={`flex h-11 w-11 items-center justify-center rounded-full text-kagit ${t.renk} ${
+                          seciliMi ? 'ring-2 ring-offset-2 ring-offset-kagitKoyu ring-murekkep' : 'ring-1 ring-cizgi'
+                        }`}
+                      >
+                        <TemaAvatarIkon id={t.id} boyut={22} />
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Bio</label>
