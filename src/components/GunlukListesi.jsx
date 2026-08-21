@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import YildizPuan from './YildizPuan.jsx'
-import { gunlukKaydiSil } from '../utils/gunluk.js'
+import { gunlukKaydiSil, gunlukKaydiGuncelle } from '../utils/gunluk.js'
 
 const AY_ADLARI = ['OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK']
 
@@ -26,6 +27,10 @@ const OLAY_ROZETI = { baslama: '▶ Başladı', bitirme: '✓ Bitirdi' }
 // kartlarının aksine, burası ham/kronolojik liste — Letterboxd'un Diary
 // ekranıyla aynı fikir.
 export default function GunlukListesi({ kayitlar, kendiProfiliMi, onDegisti }) {
+  const [duzenlenenId, setDuzenlenenId] = useState(null)
+  const [yeniTarih, setYeniTarih] = useState('')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
+
   if (kayitlar.length === 0) {
     return (
       <p className="text-sm text-kraft">
@@ -54,6 +59,23 @@ export default function GunlukListesi({ kayitlar, kendiProfiliMi, onDegisti }) {
     onDegisti?.()
   }
 
+  function duzenlemeyiAc(kayit) {
+    setDuzenlenenId(kayit.id)
+    setYeniTarih(kayit._tarih.toISOString().slice(0, 10))
+  }
+
+  async function tarihKaydet(kayitId) {
+    if (!yeniTarih) return
+    setKaydediliyor(true)
+    try {
+      await gunlukKaydiGuncelle(kayitId, { izlemeTarihiISO: yeniTarih })
+      setDuzenlenenId(null)
+      onDegisti?.()
+    } finally {
+      setKaydediliyor(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {gruplar.map((grup) => (
@@ -62,9 +84,39 @@ export default function GunlukListesi({ kayitlar, kendiProfiliMi, onDegisti }) {
           <div className="space-y-2">
             {grup.kayitlar.map((k) => (
               <div key={k.id} className="flex items-center gap-3 rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-kagit text-sm text-kraft ring-1 ring-cizgi">
-                  {k._tarih.getDate()}
-                </div>
+                {kendiProfiliMi && duzenlenenId === k.id ? (
+                  <div className="flex shrink-0 flex-col items-center gap-1">
+                    <input
+                      type="date"
+                      value={yeniTarih}
+                      onChange={(e) => setYeniTarih(e.target.value)}
+                      max={new Date().toISOString().slice(0, 10)}
+                      className="w-28 rounded-sm bg-kagit px-1 py-0.5 text-[11px] text-murekkep ring-1 ring-cizgi"
+                    />
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => tarihKaydet(k.id)}
+                        disabled={kaydediliyor}
+                        className="rounded-sm bg-muhur px-1.5 py-0.5 text-[10px] text-kagit disabled:opacity-40"
+                      >
+                        Kaydet
+                      </button>
+                      <button onClick={() => setDuzenlenenId(null)} className="rounded-sm bg-kagit px-1.5 py-0.5 text-[10px] text-kraft ring-1 ring-cizgi">
+                        Vazgeç
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => kendiProfiliMi && duzenlemeyiAc(k)}
+                    title={kendiProfiliMi ? 'Tarihi düzenle — bu tarih yanlışsa (örn. eski bir eseri bugün puanladıysan) buradan düzelt' : undefined}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-kagit text-sm text-kraft ring-1 ring-cizgi ${
+                      kendiProfiliMi ? 'hover:ring-deniz/50' : ''
+                    }`}
+                  >
+                    {k._tarih.getDate()}
+                  </button>
+                )}
                 {k.posterUrl && (
                   <img src={k.posterUrl} alt={k.baslik} className="h-14 w-10 shrink-0 rounded-sm object-cover ring-1 ring-cizgi" />
                 )}

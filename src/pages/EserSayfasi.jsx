@@ -1497,6 +1497,9 @@ export default function EserSayfasi({ tur }) {
                 <input type="checkbox" checked={gunlukTekrar} onChange={(e) => setGunlukTekrar(e.target.checked)} />
                 🔄 Yeniden {tur === 'kitap' ? 'okuma' : 'izleme'}
               </label>
+              {gunlukTarihi === new Date().toISOString().slice(0, 10) && (
+                <span className="text-[10px] text-kraft opacity-70">— eskiden {tur === 'kitap' ? 'okuduysan' : 'izlediysen'} tarihi değiştir</span>
+              )}
             </div>
           )}
 
