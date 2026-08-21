@@ -17,7 +17,7 @@ import {
   izlenecekPosterleriniSenkronizeEt,
 } from '../utils/izlenecek.js'
 import { eserPuanla, eserPuanindaGunlukVarIsaretle } from '../utils/eserPuani.js'
-import { gunlukKaydiEkle, gunlukKaydiGuncelle, gunlukKaydiAyniGunGetir } from '../utils/gunluk.js'
+import { gunlukKaydiEkle, gunlukKaydiGuncelle, gunlukKaydiAyniGunGetir, kullanicininSonKaydiGetir } from '../utils/gunluk.js'
 import { tavsiyePosterleriniSenkronizeEt } from '../utils/tavsiye.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YildizSecici from '../components/YildizSecici.jsx'
@@ -496,6 +496,40 @@ export default function EserSayfasi({ tur }) {
   const [gunlukEkleniyor, setGunlukEkleniyor] = useState(false)
   const [gunlukTarihi, setGunlukTarihi] = useState(new Date().toISOString().slice(0, 10))
   const [gunlukTekrar, setGunlukTekrar] = useState(false)
+  const [mevcutGunlukKaydi, setMevcutGunlukKaydi] = useState(null)
+  const [tarihKaydediliyor, setTarihKaydediliyor] = useState(false)
+  const [tarihKaydedildi, setTarihKaydedildi] = useState(false)
+
+  // Sayfa açılırken tarih kutusu sessizce "bugün"e sıfırlanıp kullanıcıyı
+  // yanıltıyordu (kayıtlı gerçek tarihi hiç göstermiyordu) — artık varsa
+  // GERÇEK kayıtlı tarih burada yükleniyor.
+  useEffect(() => {
+    if (!kullanici || !id) return
+    let iptal = false
+    kullanicininSonKaydiGetir(kullanici.uid, tur, tur === 'kitap' ? id : Number(id)).then((kayit) => {
+      if (iptal || !kayit) return
+      const tarih = typeof kayit.izlemeTarihi?.toDate === 'function' ? kayit.izlemeTarihi.toDate() : new Date(kayit.izlemeTarihi)
+      if (!isNaN(tarih.getTime())) setGunlukTarihi(tarih.toISOString().slice(0, 10))
+      setMevcutGunlukKaydi(kayit)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [kullanici, tur, id])
+
+  // Sadece tarihi (yıldıza tekrar tıklamadan) düzeltmek için — eskiden bunun
+  // hiçbir kaydetme yolu yoktu, kutu değişse de sayfa yenilenince kaybolurdu.
+  async function tarihiKaydet() {
+    if (!mevcutGunlukKaydi) return
+    setTarihKaydediliyor(true)
+    try {
+      await gunlukKaydiGuncelle(mevcutGunlukKaydi.id, { izlemeTarihiISO: gunlukTarihi })
+      setTarihKaydedildi(true)
+      setTimeout(() => setTarihKaydedildi(false), 2000)
+    } finally {
+      setTarihKaydediliyor(false)
+    }
+  }
   const [favoriIsleniyor, setFavoriIsleniyor] = useState(false)
   const [izlenecekIsleniyor, setIzlenecekIsleniyor] = useState(false)
 
@@ -1064,6 +1098,10 @@ export default function EserSayfasi({ tur }) {
       }
       await eserPuanindaGunlukVarIsaretle(tur, id, kullanici.uid)
       puanlariYenidenYukle()
+      // "Kaydet" butonunun ilk puanlamadan hemen sonra (sayfa yenilenmeden)
+      // görünmesi için — mevcutGunlukKaydi state'i az önce oluşturduğumuz/
+      // güncellediğimiz kayıtla senkron olsun.
+      kullanicininSonKaydiGetir(kullanici.uid, tur, tur === 'kitap' ? id : Number(id)).then(setMevcutGunlukKaydi)
     } finally {
       setPuanKaydediliyor(false)
     }
@@ -1493,6 +1531,15 @@ export default function EserSayfasi({ tur }) {
                 onChange={(e) => setGunlukTarihi(e.target.value)}
                 className="rounded-sm bg-kagit px-2 py-0.5 text-xs text-murekkep ring-1 ring-cizgi"
               />
+              {mevcutGunlukKaydi && (
+                <button
+                  onClick={tarihiKaydet}
+                  disabled={tarihKaydediliyor}
+                  className="rounded-sm bg-deniz px-2 py-0.5 text-xs text-kagit disabled:opacity-40"
+                >
+                  {tarihKaydediliyor ? 'Kaydediliyor...' : tarihKaydedildi ? '✓ Kaydedildi' : 'Kaydet'}
+                </button>
+              )}
               <label className="flex items-center gap-1">
                 <input type="checkbox" checked={gunlukTekrar} onChange={(e) => setGunlukTekrar(e.target.checked)} />
                 🔄 Yeniden {tur === 'kitap' ? 'okuma' : 'izleme'}

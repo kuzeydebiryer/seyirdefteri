@@ -155,6 +155,31 @@ export async function gunlukKaydiAyniGunGetir(uid, tur, disId, izlemeTarihiISO) 
   return null
 }
 
+// Kullanıcının bu esere ait EN SON günlük kaydını (tarihten bağımsız) getirir
+// — eser sayfası açılırken "Ne zaman izledin?" kutusunu boş/bugün yerine
+// GERÇEKTEN KAYITLI tarihle doldurabilmek için. Bu olmadan kutu her sayfa
+// açılışında sessizce "bugün"e sıfırlanıyor, kullanıcı tarihi değiştirse
+// bile (yıldıza yeniden tıklamadan) hiçbir yere kaydedilmiyor gibi
+// görünüyordu — asıl sorun buydu.
+export async function kullanicininSonKaydiGetir(uid, tur, disId) {
+  if (!uid) return null
+  const q = query(
+    collection(db, 'gunlukKayitlari'),
+    where('kullaniciId', '==', uid),
+    where('tur', '==', tur),
+    where('disId', '==', disId)
+  )
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  const kayitlar = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  kayitlar.sort((a, b) => {
+    const ta = typeof a.izlemeTarihi?.toDate === 'function' ? a.izlemeTarihi.toDate() : new Date(a.izlemeTarihi)
+    const tb = typeof b.izlemeTarihi?.toDate === 'function' ? b.izlemeTarihi.toDate() : new Date(b.izlemeTarihi)
+    return tb - ta
+  })
+  return kayitlar[0]
+}
+
 // Bir günlük kaydını beğenme/beğeniyi geri alma — mevcut gönderi beğeni
 // sistemiyle (bkz. utils/begeni.js) aynı desen, sadece hedef koleksiyon farklı.
 export async function gunlukBegenDegistir(kayitId, uid, suAnBegeniyorMu) {
