@@ -6,7 +6,6 @@ import { takipAktiviteleriGetir } from '../utils/gunluk.js'
 import GonderiEkle from './GonderiEkle.jsx'
 import YeniGunlukGridi from '../components/YeniGunlukGridi.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
-import BegenilenMuziklerBolumu from '../components/BegenilenMuziklerBolumu.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
 import GunlukKesif from '../components/GunlukKesif.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
@@ -94,16 +93,6 @@ export default function Anasayfa() {
       />
 
       <TavsiyeBolumu
-        tur="kitap"
-        tavsiyeler={kitapTavsiyeleri}
-        yenidenYukle={kitapTavsiyeleriYenile}
-        yatay
-        sade
-        baslik="Kitap Tavsiyeleri"
-        tumunuGorLink="/kitap-tavsiyeleri"
-      />
-
-      <TavsiyeBolumu
         tur="sinema"
         koleksiyon="yeniGelenFilmler"
         tavsiyeler={yeniGelenFilmler}
@@ -115,13 +104,21 @@ export default function Anasayfa() {
         ekleButonuMetni="+ Film Ekle"
       />
 
-      <BegenilenMuziklerBolumu />
+      <TavsiyeBolumu
+        tur="kitap"
+        tavsiyeler={kitapTavsiyeleri}
+        yenidenYukle={kitapTavsiyeleriYenile}
+        yatay
+        sade
+        baslik="Kitap Tavsiyeleri"
+        tumunuGorLink="/kitap-tavsiyeleri"
+      />
 
       <SonAlintilarBolumu limitSayisi={3} />
 
-      <GunlukKesif />
-
       <KitapDunyasiWidget />
+
+      <GunlukKesif />
 
       <EtkinlikHabercisiOnizleme />
 

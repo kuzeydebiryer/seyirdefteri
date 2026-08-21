@@ -7,6 +7,7 @@ import HaberBolumu from '../components/HaberBolumu.jsx'
 import ListelerBolumu from '../components/ListelerBolumu.jsx'
 import FilmDiziArama from '../components/FilmDiziArama.jsx'
 import EserKarti from '../components/EserKarti.jsx'
+import BegenilenMuziklerBolumu from '../components/BegenilenMuziklerBolumu.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -77,6 +78,7 @@ export default function Filmler() {
       <FilmDiziArama tur="sinema" />
 
       <TavsiyeBolumu tur="sinema" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
+      <BegenilenMuziklerBolumu />
       <HaberBolumu kategori="sinema" haberler={haberler} yenidenYukle={haberleriYenile} />
       <ListelerBolumu tur="sinema" />
 
