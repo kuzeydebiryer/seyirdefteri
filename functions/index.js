@@ -3,6 +3,7 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore')
 const { getMessaging } = require('firebase-admin/messaging')
 const { onDocumentCreated } = require('firebase-functions/v2/firestore')
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
+const { onSchedule } = require('firebase-functions/v2/scheduler')
 const { defineSecret } = require('firebase-functions/params')
 const { setGlobalOptions } = require('firebase-functions/v2')
 
@@ -269,4 +270,38 @@ exports.filmMuzigiGetir = onCall({ secrets: [SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_S
   }
 })
 
+// --- Kulüp Etkinlik Hatırlatması ---------------------------------------
+// Her gün Türkiye saatiyle 09:00'da çalışır, YARIN gerçekleşecek
+// (gelecekEtkinlikler'deki) tüm etkinlikleri bulup katılımcı olarak
+// işaretlenmiş kişilere bir hatırlatma bildirimi yollar. Etkinlik sayısı
+// küçük bir topluluk için zaten çok az olduğundan (günde birkaç doküman
+// okuması), tüm koleksiyonu çekip JS tarafında filtrelemek — özel bir
+// composite index gerektiren bir sorgu kurmaktan daha basit ve güvenilir.
+exports.etkinlikHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Europe/Istanbul' }, async () => {
+  const yarinBaslangic = new Date()
+  yarinBaslangic.setDate(yarinBaslangic.getDate() + 1)
+  yarinBaslangic.setHours(0, 0, 0, 0)
+  const yarinBitis = new Date(yarinBaslangic)
+  yarinBitis.setHours(23, 59, 59, 999)
+
+  const snap = await db.collection('gelecekEtkinlikler').get()
+  const yarinkiEtkinlikler = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((e) => {
+      if (!e.tarih) return false
+      const t = new Date(e.tarih)
+      return t >= yarinBaslangic && t <= yarinBitis
+    })
+
+  for (const etkinlik of yarinkiEtkinlikler) {
+    const aliciUidler = etkinlik.katilacaklar || []
+    if (aliciUidler.length === 0) continue
+    await bildirimleriYazVeGonder(aliciUidler, {
+      tur: 'etkinlik_hatirlatma',
+      baslik: `⏰ Yarın: ${etkinlik.baslik}`,
+      govde: etkinlik.topluluklAd ? `${etkinlik.topluluklAd} buluşması yarın` : 'Katılacağın bir etkinlik yarın',
+      url: etkinlik.topluluklId ? `/topluluk/${etkinlik.topluluklId}` : '/etkinlikler',
+    })
+  }
+})
 

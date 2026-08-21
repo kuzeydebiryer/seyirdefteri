@@ -479,6 +479,42 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "izlenecekler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "disId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "kullaniciId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gunlukKayitlari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "disId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "kullaniciId",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

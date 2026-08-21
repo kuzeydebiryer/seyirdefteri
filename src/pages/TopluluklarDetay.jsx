@@ -75,6 +75,7 @@ export default function TopluluklarDetay() {
   const [dTur, setDTur] = useState('Sinema')
   const [dKapakUrl, setDKapakUrl] = useState('')
   const [dGizli, setDGizli] = useState(false)
+  const [dKurallar, setDKurallar] = useState('')
   const [dKaydediliyor, setDKaydediliyor] = useState(false)
 
   const [tekrarTur, setTekrarTur] = useState('yok')
@@ -123,6 +124,7 @@ export default function TopluluklarDetay() {
         setDTur(veri.tur)
         setDKapakUrl(veri.kapakUrl || '')
         setDGizli(!!veri.gizli)
+        setDKurallar(veri.kurallar || '')
       }
 
       const uyelerSnap = await getDocs(collection(db, 'topluluklar', id, 'uyeler'))
@@ -236,8 +238,8 @@ export default function TopluluklarDetay() {
     e.preventDefault()
     setDKaydediliyor(true)
     try {
-      await updateDoc(doc(db, 'topluluklar', id), { ad: dAd.trim(), aciklama: dAciklama, tur: dTur, kapakUrl: dKapakUrl, gizli: dGizli })
-      setTopluluk((onceki) => ({ ...onceki, ad: dAd.trim(), aciklama: dAciklama, tur: dTur, kapakUrl: dKapakUrl, gizli: dGizli }))
+      await updateDoc(doc(db, 'topluluklar', id), { ad: dAd.trim(), aciklama: dAciklama, tur: dTur, kapakUrl: dKapakUrl, gizli: dGizli, kurallar: dKurallar })
+      setTopluluk((onceki) => ({ ...onceki, ad: dAd.trim(), aciklama: dAciklama, tur: dTur, kapakUrl: dKapakUrl, gizli: dGizli, kurallar: dKurallar }))
       setDuzenlemeAcik(false)
     } finally {
       setDKaydediliyor(false)
@@ -373,6 +375,12 @@ export default function TopluluklarDetay() {
             {topluluk.kurucuAdi} tarafından kuruldu · {topluluk.uyeSayisi || 0} üye
           </p>
           {topluluk.aciklama && <p className="mt-2 text-sm text-murekkep">{topluluk.aciklama}</p>}
+          {topluluk.kurallar && (
+            <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="mb-1 text-[11px] uppercase tracking-widest text-gise">📌 Kulüp Künyesi</p>
+              <p className="whitespace-pre-wrap text-xs text-murekkep">{topluluk.kurallar}</p>
+            </div>
+          )}
           {yoneticiMiyim && (
             <button onClick={() => setDuzenlemeAcik((a) => !a)} className="mt-2 text-xs text-kraft hover:text-murekkep">
               {duzenlemeAcik ? 'Vazgeç' : 'Topluluğu Düzenle'}
@@ -419,6 +427,18 @@ export default function TopluluklarDetay() {
                   value={dKapakUrl}
                   onChange={(e) => setDKapakUrl(e.target.value)}
                   placeholder="https://..."
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">
+                  Kulüp Künyesi (toplantı sıklığı, kurallar vb. — opsiyonel)
+                </label>
+                <textarea
+                  value={dKurallar}
+                  onChange={(e) => setDKurallar(e.target.value)}
+                  rows={3}
+                  placeholder="Örn: Her ayın ilk Cumartesi'si toplanıyoruz. Spoiler vermeden tartışalım."
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
               </div>

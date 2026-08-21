@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { katilacagimDegistir, kaynakEkle, gelecekEtkinlikGuncelle } from '../utils/gelecekEtkinlik.js'
 import { useKaynaklar } from '../hooks/useKaynaklar.js'
+import { kulupIlerlemeGetir } from '../utils/kulupIstatistik.js'
 import Avatar from './Avatar.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -28,6 +29,7 @@ function tarihSaatGoster(iso) {
 export default function GelecekEtkinlikKarti({ etkinlik }) {
   const { kullanici } = useAuth()
   const [katilacaklar, setKatilacaklar] = useState(etkinlik.katilacaklar || [])
+  const [kulupIlerleme, setKulupIlerleme] = useState(null)
   const [kaynaklarAcik, setKaynaklarAcik] = useState(false)
   const [kaynakFormuAcik, setKaynakFormuAcik] = useState(false)
   const [kaynakTur, setKaynakTur] = useState('yazi')
@@ -73,6 +75,26 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
   // okuma maliyeti sabit kalsın diye.
   const GOSTERILECEK_AVATAR_SAYISI = 6
   const [katilimciProfilleri, setKatilimciProfilleri] = useState([])
+
+  // Kulüp içi ilerleme/ortalama — sadece bu etkinliğin topluluğuna üye
+  // kişiler arasında, o eser için "kaç kişi başladı / kulübün ortalama
+  // puanı ne" (site geneli istatistiklerden bilerek ayrı).
+  useEffect(() => {
+    const eserTur = etkinlik.eserTur
+    const eserDisId = etkinlik.eserTmdbId ?? etkinlik.eserGoogleBooksId
+    if (!eserTur || !eserDisId || !etkinlik.topluluklId) return
+    let iptal = false
+    getDocs(collection(db, 'topluluklar', etkinlik.topluluklId, 'uyeler')).then((uyelerSnap) => {
+      if (iptal) return
+      const uyeUidleri = uyelerSnap.docs.map((d) => d.id)
+      kulupIlerlemeGetir(uyeUidleri, eserTur, eserDisId).then((sonuc) => {
+        if (!iptal) setKulupIlerleme(sonuc)
+      })
+    })
+    return () => {
+      iptal = true
+    }
+  }, [etkinlik.eserTur, etkinlik.eserTmdbId, etkinlik.eserGoogleBooksId, etkinlik.topluluklId])
 
   useEffect(() => {
     let iptal = false
@@ -285,6 +307,14 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
             {etkinlik.yonetmen && <p className="text-[11px] text-kraft">Yönetmen: {etkinlik.yonetmen}</p>}
             {etkinlik.oyuncular && <p className="text-[11px] text-kraft">Oyuncular: {etkinlik.oyuncular}</p>}
             {etkinlik.eserYazar && <p className="text-[11px] text-kraft">Yazar: {etkinlik.eserYazar}</p>}
+            {kulupIlerleme && (kulupIlerleme.baslayanSayisi > 0 || kulupIlerleme.ortalamaPuan != null) && (
+              <p className="text-[11px] text-deniz">
+                {kulupIlerleme.baslayanSayisi > 0 && `👥 ${kulupIlerleme.baslayanSayisi} kişi başladı`}
+                {kulupIlerleme.baslayanSayisi > 0 && kulupIlerleme.ortalamaPuan != null && ' · '}
+                {kulupIlerleme.ortalamaPuan != null &&
+                  `⭐ Kulüp ortalaması ${kulupIlerleme.ortalamaPuan.toFixed(1)} (${kulupIlerleme.puanlayanSayisi} puan)`}
+              </p>
+            )}
             <p className="text-xs text-kraft mt-0.5">{tarihSaatGoster(etkinlik.tarih)}</p>
             {etkinlik.aciklama && <p className="mt-1 text-xs text-murekkep/90">{etkinlik.aciklama}</p>}
             {katilacaklar.length > 0 ? (

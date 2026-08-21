@@ -127,6 +127,7 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
   const [eserSonuclari, setEserSonuclari] = useState([])
   const [seciliEser, setSeciliEser] = useState(null)
   const [not_, setNot_] = useState('')
+  const [sonTarih, setSonTarih] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   async function eserAra(e) {
@@ -176,9 +177,10 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
     if (!seciliEser || !kullanici) return
     setKaydediliyor(true)
     try {
-      await oneriEkle(topluluklId, { eser: seciliEser, not: not_, topluluk, kullanici })
+      await oneriEkle(topluluklId, { eser: seciliEser, not: not_, sonTarih: sonTarih || null, topluluk, kullanici })
       setSeciliEser(null)
       setNot_('')
+      setSonTarih('')
       setFormuAcik(false)
       yenidenYukle()
     } finally {
@@ -287,6 +289,17 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
             className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
           />
 
+          <div>
+            <label className="mb-1 block text-[11px] text-kraft">Oylama son tarihi (opsiyonel — geçince "kazanan" otomatik belirlenir)</label>
+            <input
+              type="date"
+              value={sonTarih}
+              onChange={(e) => setSonTarih(e.target.value)}
+              min={new Date().toISOString().slice(0, 10)}
+              className="rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={!seciliEser || kaydediliyor}
@@ -305,6 +318,25 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
         </p>
       )}
       {!yukleniyor && !hata && oneriler.length === 0 && <p className="text-sm text-kraft">Henüz bir öneri yok.</p>}
+
+      {!yukleniyor && (() => {
+        // Oylama süresi geçmiş öneriler arasından en çok beğenileni bul —
+        // öneri, dönüşene kadar hâlâ listede duruyor, sadece belirgin bir
+        // banner ile öne çıkıyor. Yönetici bunu tek tıkla gerçek etkinliğe
+        // çevirebiliyor (aynı OneriKarti'deki "Etkinlik Yap" formu).
+        const suan = new Date()
+        const suresiGecenler = oneriler.filter((o) => o.sonTarih && new Date(o.sonTarih) <= suan)
+        if (suresiGecenler.length === 0) return null
+        const kazanan = [...suresiGecenler].sort((a, b) => (b.begenenler?.length || 0) - (a.begenenler?.length || 0))[0]
+        return (
+          <div className="mb-4 rounded-sm bg-gise/15 p-3 ring-1 ring-gise">
+            <p className="text-xs font-medium text-murekkep">
+              🏆 Oylama süresi doldu — <strong>{kazanan.eserBaslik}</strong> {kazanan.begenenler?.length || 0} beğeniyle önde.
+              {yoneticiMiyim ? ' Aşağıdan "Etkinlik Yap" ile onaylayabilirsin.' : ' Yönetici onayı bekleniyor.'}
+            </p>
+          </div>
+        )
+      })()}
 
       <div className="space-y-3">
         {oneriler.map((o) => (

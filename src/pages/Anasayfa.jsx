@@ -8,6 +8,7 @@ import YeniGunlukGridi from '../components/YeniGunlukGridi.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
 import BugunAktifOlanlarBolumu from '../components/BugunAktifOlanlarBolumu.jsx'
+import KulupEtkinlikleriOnizleme from '../components/KulupEtkinlikleriOnizleme.jsx'
 import GunlukKesif from '../components/GunlukKesif.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import EtkinlikHabercisiOnizleme from '../components/EtkinlikHabercisiOnizleme.jsx'
@@ -82,6 +83,8 @@ export default function Anasayfa() {
       <TopluluklarBildirimSeridi />
 
       <BugunAktifOlanlarBolumu />
+
+      <KulupEtkinlikleriOnizleme />
 
       <YeniGunlukGridi kayitlar={takipGunlukKayitlari} tumunuGorLink="/akis" />
 
