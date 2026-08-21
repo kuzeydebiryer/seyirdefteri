@@ -33,7 +33,7 @@ export default function YilOzeti({ yil, yukleniyor, gonderiler, eserPuanlarim, g
   const filmSayisi = turSayisi('sinema')
   const diziSayisi = turSayisi('dizi')
   const kitapSayisi = turSayisi('kitap')
-  const yaziSayisi = buYilGonderiler.filter((g) => g.tur === 'yazi').length
+  const yaziSayisi = gonderiler.filter((g) => g.tur === 'yazi' && tariheDevir(g.tarih)?.getFullYear() === yil).length
   const geziEtkinlikSayisi = turSayisi('gezi') + turSayisi('etkinlik')
 
   const puanliOlaylar = buYilOlaylar.filter((o) => o.puan != null)
