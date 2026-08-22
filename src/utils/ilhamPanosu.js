@@ -3,7 +3,11 @@ import { db } from '../firebase.js'
 
 export const ILHAM_KATEGORILERI = ['Film', 'Dizi', 'Kitap', 'Oyuncu', 'Gezi', 'Etkinlik', 'Sanat']
 
-export async function ilhamEkle(kullanici, profil, { url, kategori, not: notMetni, iliskiliTur, iliskiliDisId, iliskiliBaslik, iliskiliPosterUrl }) {
+export async function ilhamEkle(
+  kullanici,
+  profil,
+  { url, kategori, not: notMetni, iliskiliTur, iliskiliDisId, iliskiliBaslik, iliskiliPosterUrl, iliskiliYil, iliskiliAlt }
+) {
   await addDoc(collection(db, 'ilhamPanosu'), {
     url,
     kategori: kategori || 'Film',
@@ -12,10 +16,24 @@ export async function ilhamEkle(kullanici, profil, { url, kategori, not: notMetn
     iliskiliDisId: iliskiliDisId ?? null,
     iliskiliBaslik: iliskiliBaslik || '',
     iliskiliPosterUrl: iliskiliPosterUrl || '',
+    iliskiliYil: iliskiliYil || '',
+    iliskiliAlt: iliskiliAlt || '',
     paylasanId: kullanici.uid,
     paylasanAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
     eklemeTarihi: serverTimestamp(),
   })
+}
+
+// iliskiliTur değerine göre eser/kişi sayfasının route'unu üretir — İlham
+// Panosu kartlarında "ilgili film/dizi/kitap/oyuncu" rozetini tıklanabilir
+// yapmak için tek yerden kullanılıyor.
+export function iliskiliLink(iliskiliTur, iliskiliDisId) {
+  if (!iliskiliTur || iliskiliDisId == null) return null
+  if (iliskiliTur === 'sinema') return `/film/${iliskiliDisId}`
+  if (iliskiliTur === 'dizi') return `/dizi/${iliskiliDisId}`
+  if (iliskiliTur === 'kitap') return `/kitap/${iliskiliDisId}`
+  if (iliskiliTur === 'kisi') return `/kisi/${iliskiliDisId}`
+  return null
 }
 
 // Belirli bir eser/kişi sayfasına (film/dizi/kitap/oyuncu) BAĞLANMIŞ

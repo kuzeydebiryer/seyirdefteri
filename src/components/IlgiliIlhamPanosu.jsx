@@ -6,7 +6,7 @@ import InstagramGomulusu from './InstagramGomulusu.jsx'
 // Film/Dizi/Kitap/Oyuncu sayfasına gömülü, o SAYFAYA ÖZEL İlham Panosu
 // bölümü — genel panodaki gibi arayıp eser seçmeye gerek yok, zaten o
 // eserin sayfasındasınız, sadece linki yapıştırıp eklemeniz yeterli.
-export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kategori }) {
+export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kategori, yil, altBaslik }) {
   const { kullanici, profil } = useAuth()
   const [ilhamlar, setIlhamlar] = useState(null)
   const [formAcik, setFormAcik] = useState(false)
@@ -46,6 +46,8 @@ export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kateg
         iliskiliDisId: disId,
         iliskiliBaslik: baslik,
         iliskiliPosterUrl: posterUrl,
+        iliskiliYil: yil,
+        iliskiliAlt: altBaslik,
       })
       setUrl('')
       setNot_('')
@@ -101,7 +103,7 @@ export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kateg
       <div className="grid gap-4 sm:grid-cols-2">
         {ilhamlar.map((i) => (
           <div key={i.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-            <InstagramGomulusu url={i.url} paylasanAdi={i.paylasanAdi} />
+            <InstagramGomulusu url={i.url} paylasanAdi={i.paylasanAdi} kompakt />
             {i.not && <p className="mt-2 text-sm text-murekkep">{i.not}</p>}
           </div>
         ))}

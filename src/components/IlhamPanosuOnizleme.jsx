@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ilhamlariGetir } from '../utils/ilhamPanosu.js'
 import InstagramGomulusu from './InstagramGomulusu.jsx'
+import IliskiliEserRozeti from './IliskiliEserRozeti.jsx'
 
 // Film/Dizi/Kitap/Gezi sayfalarında — o kategoriye özel en son 2 İlham
 // Panosu paylaşımının önizlemesi. Hiç paylaşım yoksa hiçbir şey göstermez
@@ -33,6 +34,7 @@ export default function IlhamPanosuOnizleme({ kategori }) {
       <div className="grid gap-4 sm:grid-cols-2">
         {ilhamlar.map((i) => (
           <div key={i.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+            <IliskiliEserRozeti ilham={i} />
             <InstagramGomulusu url={i.url} paylasanAdi={i.paylasanAdi} />
             {i.not && <p className="mt-2 text-sm text-murekkep">{i.not}</p>}
           </div>

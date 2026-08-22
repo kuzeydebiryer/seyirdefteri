@@ -2353,10 +2353,18 @@ export default function EserSayfasi({ tur }) {
           baslik={detay.baslik}
           posterUrl={detay.posterUrl}
           kategori={tur === 'dizi' ? 'Dizi' : 'Film'}
+          yil={detay.yil}
         />
       )}
       {tur === 'kitap' && (
-        <IlgiliIlhamPanosu tur={tur} disId={id} baslik={detay.baslik} posterUrl={detay.posterUrl} kategori="Kitap" />
+        <IlgiliIlhamPanosu
+          tur={tur}
+          disId={id}
+          baslik={detay.baslik}
+          posterUrl={detay.posterUrl}
+          kategori="Kitap"
+          altBaslik={detay.yazar}
+        />
       )}
 
       <div className="defter-cizgi my-6" />

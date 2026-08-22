@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ILHAM_KATEGORILERI, ilhamEkle, ilhamlariGetir, ilhamSil } from '../utils/ilhamPanosu.js'
 import InstagramGomulusu from '../components/InstagramGomulusu.jsx'
+import IliskiliEserRozeti from '../components/IliskiliEserRozeti.jsx'
 import Avatar from '../components/Avatar.jsx'
 
 const KATEGORI_IKONU = { Film: '🎬', Dizi: '📺', Kitap: '📖', Oyuncu: '🎭', Gezi: '🧳', Etkinlik: '🎟️', Sanat: '🎨' }
@@ -151,6 +152,7 @@ export default function IlhamPanosu() {
                 </button>
               )}
             </div>
+            <IliskiliEserRozeti ilham={i} />
             <InstagramGomulusu url={i.url} />
             {i.not && <p className="mt-2 text-sm text-murekkep">{i.not}</p>}
             <div className="mt-2 flex items-center gap-1.5">
