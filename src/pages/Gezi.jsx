@@ -13,12 +13,18 @@ export default function Gezi() {
 
       {!geziYukleniyor && <DunyaHaritasi geziler={geziler} />}
 
-      <div className="mb-6 flex justify-center">
+      <div className="mb-6 flex flex-wrap justify-center gap-2">
         <Link
           to="/gonderi-ekle?tur=gezi"
           className="rounded-sm bg-muhur px-4 py-2 font-govde text-sm text-kagit hover:opacity-90"
         >
           + Gezini Ekle
+        </Link>
+        <Link
+          to="/gezi-planlarim"
+          className="rounded-sm bg-deniz px-4 py-2 font-govde text-sm text-kagit hover:opacity-90"
+        >
+          🗺️ Gezi Planlarım
         </Link>
       </div>
 

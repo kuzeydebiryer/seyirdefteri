@@ -188,6 +188,14 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.paylasanId == request.auth.uid;
     }
 
+    // Gezi Planları — kişiye özel (MVP'de paylaşım yok, sahibi dışında kimse
+    // okuyamaz/yazamaz). ortakDuzenleyenler alanı v2'de bu kuralı genişletmek
+    // için hazır duruyor: sahipId || uid in ortakDuzenleyenler.
+    match /geziPlanlari/{planId} {
+      allow read, update, delete: if request.auth != null && resource.data.sahipId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.sahipId == request.auth.uid;
+    }
+
     match /gonderiler/{gonderiId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;
