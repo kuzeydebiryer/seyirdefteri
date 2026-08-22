@@ -69,5 +69,16 @@ export function buYilOlaylariHesapla(yil, gonderiler, eserPuanlarim, gunlukKayit
       kaynak: 'puan',
     }))
 
-  return [...gunlukOlaylari, ...gonderiOlaylari, ...puanOlaylari]
+  // KRİTİK: üç kaynak birleştirilince sıralama kaybolmuştu — Firestore'dan
+  // gunlukKayitlari zaten sıralı geliyordu ama gonderiOlaylari/puanOlaylari
+  // birleşince ay grupları (Ağustos→Temmuz→Ağustos→...) karışık çıkıyordu.
+  // Aylara göre gruplama mantığı (GunlukListesi.jsx) sıralı bir dizi
+  // BEKLEDİĞİ için bu sıralama şart.
+  const hepsi = [...gunlukOlaylari, ...gonderiOlaylari, ...puanOlaylari]
+  hepsi.sort((a, b) => {
+    const ta = tariheDevir(a.tarih)?.getTime() || 0
+    const tb = tariheDevir(b.tarih)?.getTime() || 0
+    return tb - ta
+  })
+  return hepsi
 }

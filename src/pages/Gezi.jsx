@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useGonderiler } from '../hooks/useGonderiler.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import DunyaHaritasi from '../components/DunyaHaritasi.jsx'
+import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
 
 export default function Gezi() {
   const { gonderiler: geziler, yukleniyor: geziYukleniyor, dahaFazlaVarMi, dahaFazlaYukle } = useGonderiler({ tur: 'gezi' })
@@ -42,6 +43,8 @@ export default function Gezi() {
           </button>
         )}
       </div>
+
+      <IlhamPanosuOnizleme kategori="Gezi" />
     </div>
   )
 }

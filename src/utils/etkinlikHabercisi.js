@@ -14,7 +14,7 @@
 import { arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-export async function habercEkle(kullanici, profil, { baslik, sehir, mekan, gorselUrl, tur, tarihler, biletSatisTarihi, satisLinki, bilgi }) {
+export async function habercEkle(kullanici, profil, { baslik, sehir, mekan, gorselUrl, tur, tarihler, biletSatisTarihi, satisLinki, bilgi, instagramUrl }) {
   const siraliTarihler = [...tarihler].filter(Boolean).sort()
   const ref = doc(collection(db, 'etkinlikHabercileri'))
   await setDoc(ref, {
@@ -29,6 +29,7 @@ export async function habercEkle(kullanici, profil, { baslik, sehir, mekan, gors
     biletSatisTarihi: biletSatisTarihi || null,
     satisLinki: satisLinki || '',
     bilgi: bilgi || '',
+    instagramUrl: instagramUrl || '',
     ekleyenId: kullanici.uid,
     ekleyenAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
     katilacaklar: [],

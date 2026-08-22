@@ -16,6 +16,7 @@ import KitapArama from '../components/KitapArama.jsx'
 import NobelBanner from '../components/NobelBanner.jsx'
 import GununKitabi from '../components/GununKitabi.jsx'
 import MeydanOkuma from '../components/MeydanOkuma.jsx'
+import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
 
 function SuankiKitapWidget() {
   const { kullanici } = useAuth()
@@ -207,6 +208,7 @@ export default function KitaplarKesfet() {
       <KitapArama />
 
       <SonAlintilarBolumu limitSayisi={5} />
+      <IlhamPanosuOnizleme kategori="Kitap" />
 
       <TavsiyeBolumu tur="kitap" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
       <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} />

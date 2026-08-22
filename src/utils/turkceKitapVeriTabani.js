@@ -114,7 +114,9 @@ export async function turkceKitaptanKaydet(kitap) {
 
   const veri = {
     baslik: kitap.baslik,
+    baslikNormalize: aksansizKucultulmus(kitap.baslik),
     yazar: kitap.yazar,
+    yazarNormalize: aksansizKucultulmus(kitap.yazar),
     yayinevi: kitap.yayinevi || '',
     isbn13: kitap.isbn || '',
     isbn10: '',

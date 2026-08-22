@@ -305,3 +305,21 @@ exports.etkinlikHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Eu
   }
 })
 
+// --- Instagram Gömme --------------------------------------------------
+// 15 Haziran 2026'dan beri Meta'nın oEmbed uç noktası TOKEN GEREKTİRMİYOR
+// (2020-2026 arası zorunluydu, kaldırıldı) — yine de tarayıcıdan doğrudan
+// çağırmıyoruz çünkü graph.facebook.com rastgele origin'lerden gelen
+// isteklere CORS izni vermiyor. Bu fonksiyon sadece bir vekil (proxy):
+// herkese açık bir Instagram gönderisinin gömme HTML'ini alıp döndürüyor,
+// hiçbir gizli anahtar/secret gerekmiyor.
+exports.instagramGom = onCall(async (request) => {
+  const { url } = request.data || {}
+  if (!url || !url.includes('instagram.com')) {
+    throw new HttpsError('invalid-argument', 'Geçerli bir Instagram gönderi linki gerekli')
+  }
+  const oembedUrl = `https://graph.facebook.com/v25.0/instagram_oembed?url=${encodeURIComponent(url)}&omitscript=false`
+  const res = await fetch(oembedUrl)
+  if (!res.ok) throw new HttpsError('unavailable', 'Bu gönderi bulunamadı — herkese açık ve doğru bir Instagram linki olduğundan emin ol')
+  const veri = await res.json()
+  return { html: veri.html, yazarAdi: veri.author_name || '' }
+})

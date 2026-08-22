@@ -5,7 +5,8 @@ import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useKisiselListeOgeleri } from '../hooks/useKisiselListeOgeleri.js'
 import { listeGetir, ogeEkle, ogeSil, listeSil } from '../utils/kisiselListe.js'
-import { kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
+import { kitapAramaSonucundanKaydet, kitapIcVeriTabanindaAra } from '../utils/kitapKatalog.js'
+import { turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { kisiselListedenTopluluğaKopyala } from '../utils/liste.js'
 import { useTopluluklar } from '../hooks/useTopluluklar.js'
 import LetterboxdIceAktar from '../components/LetterboxdIceAktar.jsx'
@@ -54,11 +55,20 @@ export default function KisiselListeDetay() {
         const data = await res.json()
         setSonuclar(data.results || [])
       } else {
+        // KÖKTEN ÇÖZÜM: eskiden burada sadece Google Books'a gidiliyordu,
+        // sitenin kendi 67 bin kayıtlı Türkçe veri seti ve canlı kataloğu
+        // hiç aranmıyordu — "veritabanımızda olan kitabı bulamıyorum"
+        // sorununun kaynağı tam da buydu.
         const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
         const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(arama)}&maxResults=10${anahtarParcasi}`
-        const res = await fetch(url)
-        const data = await res.json()
-        setSonuclar(data.items || [])
+        const [icSonuclar, googleSonuc] = await Promise.all([
+          kitapIcVeriTabanindaAra(arama, 10),
+          fetch(url)
+            .then((res) => res.json())
+            .then((data) => data.items || [])
+            .catch(() => []),
+        ])
+        setSonuclar([...icSonuclar.map((k) => ({ ...k, _kaynak: 'ic' })), ...googleSonuc])
       }
     } finally {
       setAramaYukleniyor(false)
@@ -88,8 +98,10 @@ export default function KisiselListeDetay() {
       } else {
         // Kitaplarda dahili kataloğa (Google Books + Open Library) yazıp zenginleştirilmiş
         // veriyi kullanıyoruz — Faz 1'de kurduğumuz aynı altyapı.
-        const kitap = await kitapAramaSonucundanKaydet(item)
-        oge = { tur: 'kitap', disId: item.id, baslik: kitap.baslik, alt: kitap.yazar, posterUrl: kitap.posterUrl }
+        // İç veritabanı sonucuysa (statik/canlı) zaten kayıtlı ya da tek
+        // adımda materyalize ediliyor; Google Books sonucuysa eskisi gibi.
+        const kitap = item._kaynak === 'ic' ? (item.id?.startsWith('tr_') ? await turkceKitaptanKaydet(item) : item) : await kitapAramaSonucundanKaydet(item)
+        oge = { tur: 'kitap', disId: kitap.id, baslik: kitap.baslik, alt: kitap.yazar, posterUrl: kitap.posterUrl }
       }
       await ogeEkle(liste, oge)
       setListe((onceki) => ({ ...onceki, ogeSayisi: (onceki.ogeSayisi || 0) + 1 }))
@@ -259,10 +271,19 @@ export default function KisiselListeDetay() {
               {sonuclar.length > 0 && (
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                   {sonuclar.slice(0, 12).map((item) => {
-                    const ad = kategori === 'sinema' ? item.title : kategori === 'dizi' ? item.name : item.volumeInfo?.title
+                    const ad =
+                      kategori === 'sinema'
+                        ? item.title
+                        : kategori === 'dizi'
+                          ? item.name
+                          : item._kaynak === 'ic'
+                            ? item.baslik
+                            : item.volumeInfo?.title
                     const url =
                       kategori === 'kitap'
-                        ? (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                        ? item._kaynak === 'ic'
+                          ? item.posterUrl || ''
+                          : (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
                         : item.poster_path
                           ? `${TMDB_POSTER}${item.poster_path}`
                           : ''

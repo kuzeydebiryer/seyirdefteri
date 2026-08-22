@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
+import IlgiliIlhamPanosu from '../components/IlgiliIlhamPanosu.jsx'
 import { kisiDegerlendir } from '../utils/kisiDegerlendirme.js'
 import { useKisiDegerlendirmeleri } from '../hooks/useKisiDegerlendirmeleri.js'
 import YildizPuan from '../components/YildizPuan.jsx'
@@ -594,6 +595,14 @@ export default function KisiSayfasi() {
         <h2 className="font-baslik text-lg text-murekkep mb-3">Oyunculuk Yaptıkları</h2>
         <IsGrid isler={oyunculukIsleri} />
       </div>
+
+      <IlgiliIlhamPanosu
+        tur="kisi"
+        disId={id}
+        baslik={kisi.name}
+        posterUrl={kisi.profile_path ? `${TMDB_PROFIL}${kisi.profile_path}` : ''}
+        kategori="Oyuncu"
+      />
     </div>
   )
 }

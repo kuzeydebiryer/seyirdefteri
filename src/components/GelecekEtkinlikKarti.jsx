@@ -6,9 +6,21 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { katilacagimDegistir, kaynakEkle, gelecekEtkinlikGuncelle } from '../utils/gelecekEtkinlik.js'
 import { useKaynaklar } from '../hooks/useKaynaklar.js'
 import { kulupIlerlemeGetir } from '../utils/kulupIstatistik.js'
+import InstagramGomulusu from './InstagramGomulusu.jsx'
 import Avatar from './Avatar.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
+
+// Oyuncu listesi kartı gereksiz uzatıyordu (mobilde 5+ isim birkaç satıra
+// taşabiliyordu) — artık yönetmenle birlikte TEK satırda, ilk 2 isim + kalan
+// sayı olarak özetleniyor. Film/kitap etkinlikleri artık birbirine yakın
+// bir yükseklikte kalıyor.
+function oyuncuOzeti(oyuncularStr) {
+  const isimler = (oyuncularStr || '').split(',').map((s) => s.trim()).filter(Boolean)
+  if (isimler.length === 0) return ''
+  if (isimler.length <= 2) return isimler.join(', ')
+  return `${isimler.slice(0, 2).join(', ')} +${isimler.length - 2}`
+}
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
@@ -304,9 +316,14 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
                 )}
               </p>
             )}
-            {etkinlik.yonetmen && <p className="text-[11px] text-kraft">Yönetmen: {etkinlik.yonetmen}</p>}
-            {etkinlik.oyuncular && <p className="text-[11px] text-kraft">Oyuncular: {etkinlik.oyuncular}</p>}
-            {etkinlik.eserYazar && <p className="text-[11px] text-kraft">Yazar: {etkinlik.eserYazar}</p>}
+            {(etkinlik.yonetmen || etkinlik.oyuncular) && (
+              <p className="truncate text-[11px] text-kraft">
+                {etkinlik.yonetmen}
+                {etkinlik.yonetmen && etkinlik.oyuncular && ' · '}
+                {oyuncuOzeti(etkinlik.oyuncular)}
+              </p>
+            )}
+            {etkinlik.eserYazar && <p className="truncate text-[11px] text-kraft">{etkinlik.eserYazar}</p>}
             {kulupIlerleme && (kulupIlerleme.baslayanSayisi > 0 || kulupIlerleme.ortalamaPuan != null) && (
               <p className="text-[11px] text-deniz">
                 {kulupIlerleme.baslayanSayisi > 0 && `👥 ${kulupIlerleme.baslayanSayisi} kişi başladı`}
@@ -317,6 +334,7 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
             )}
             <p className="text-xs text-kraft mt-0.5">{tarihSaatGoster(etkinlik.tarih)}</p>
             {etkinlik.aciklama && <p className="mt-1 text-xs text-murekkep/90">{etkinlik.aciklama}</p>}
+            {etkinlik.instagramUrl && <InstagramGomulusu url={etkinlik.instagramUrl} paylasanAdi={etkinlik.olusturanAdi} />}
             {katilacaklar.length > 0 ? (
               <div className="mt-1.5 flex items-center gap-1.5">
                 <div className="flex -space-x-2">

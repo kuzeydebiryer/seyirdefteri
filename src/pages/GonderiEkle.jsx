@@ -116,6 +116,7 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
   const [gunlukTarihi, setGunlukTarihi] = useState(new Date().toISOString().slice(0, 10))
   const [gunlukTekrar, setGunlukTekrar] = useState(false)
   const [gunce, setGunce] = useState('')
+  const [instagramUrl, setInstagramUrl] = useState('')
   const [spoiler, setSpoiler] = useState(false)
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const gunceRef = useRef(null)
@@ -596,6 +597,7 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
         ilgiliKaynakUrl: kategori === 'yazi' && yaziAltTur === 'sanat-elestirisi' ? ilgiliKaynakUrl : '',
         kullaniciPuani: kategori === 'yazi' && PUANSIZ_YAZI_ALT_TURLERI.includes(yaziAltTur) ? null : kullaniciPuani,
         bilincAkisiKonusu: kategori === 'yazi' && yaziAltTur === 'bilinc-akisi' ? bilincAkisiKonusu || null : null,
+        instagramUrl: kategori === 'yazi' ? instagramUrl.trim() || null : null,
         gunce,
         spoiler,
         tarih: serverTimestamp(),
@@ -1194,6 +1196,18 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
               <input type="checkbox" checked={spoiler} onChange={(e) => setSpoiler(e.target.checked)} />
               ⚠️ Bu yazıda spoiler var
             </label>
+          )}
+          {kategori === 'yazi' && (
+            <div className="mt-3">
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">📷 İlgili Instagram Gönderisi (opsiyonel)</label>
+              <input
+                type="text"
+                value={instagramUrl}
+                onChange={(e) => setInstagramUrl(e.target.value)}
+                placeholder="https://www.instagram.com/p/..."
+                className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
           )}
         </div>
 

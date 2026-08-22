@@ -27,6 +27,7 @@ import IzleyecegimIkonu from '../components/ikonlar/IzleyecegimIkonu.jsx'
 import ListeIkonu from '../components/ikonlar/ListeIkonu.jsx'
 import YorumIkonu from '../components/ikonlar/YorumIkonu.jsx'
 import FilmMuzigiWidget from '../components/FilmMuzigiWidget.jsx'
+import IlgiliIlhamPanosu from '../components/IlgiliIlhamPanosu.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import { kitapGetir, kitapGuncelle, kitapElleEkle, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
 import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
@@ -2344,6 +2345,19 @@ export default function EserSayfasi({ tur }) {
           </li>
         ))}
       </ul>
+
+      {tur !== 'kitap' && (
+        <IlgiliIlhamPanosu
+          tur={tur}
+          disId={id}
+          baslik={detay.baslik}
+          posterUrl={detay.posterUrl}
+          kategori={tur === 'dizi' ? 'Dizi' : 'Film'}
+        />
+      )}
+      {tur === 'kitap' && (
+        <IlgiliIlhamPanosu tur={tur} disId={id} baslik={detay.baslik} posterUrl={detay.posterUrl} kategori="Kitap" />
+      )}
 
       <div className="defter-cizgi my-6" />
 

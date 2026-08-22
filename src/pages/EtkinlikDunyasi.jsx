@@ -20,6 +20,7 @@ const BOS_FORM = {
   biletSatisTarihi: '',
   satisLinki: '',
   bilgi: '',
+  instagramUrl: '',
 }
 
 export default function EtkinlikDunyasi() {
@@ -227,6 +228,16 @@ export default function EtkinlikDunyasi() {
                 value={form.satisLinki}
                 onChange={(e) => setForm((f) => ({ ...f, satisLinki: e.target.value }))}
                 placeholder="https://..."
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">📷 İlgili Instagram Gönderisi (opsiyonel)</label>
+              <input
+                value={form.instagramUrl}
+                onChange={(e) => setForm((f) => ({ ...f, instagramUrl: e.target.value }))}
+                placeholder="https://www.instagram.com/p/..."
                 className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>

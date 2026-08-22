@@ -30,6 +30,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { aksansizKucultulmus } from './metinNormallestir.js'
+import { turkceKitapAra } from './turkceKitapVeriTabani.js'
 
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
@@ -193,6 +194,7 @@ export async function kitapGetir(id) {
 
   await setDoc(ref, {
     ...birlesik,
+    baslikNormalize: aksansizKucultulmus(birlesik.baslik),
     yazarNormalize: aksansizKucultulmus(birlesik.yazar),
     dogrulanmis: false,
     olusturulmaTarihi: serverTimestamp(),
@@ -220,6 +222,7 @@ export async function kitapAramaSonucundanKaydet(item) {
 
   await setDoc(ref, {
     ...birlesik,
+    baslikNormalize: aksansizKucultulmus(birlesik.baslik),
     yazarNormalize: aksansizKucultulmus(birlesik.yazar),
     dogrulanmis: false,
     olusturulmaTarihi: serverTimestamp(),
@@ -260,9 +263,12 @@ export async function kitapGuncelle(id, yeniAlanlar, kullanici) {
 
   // "yazar" değiştiyse, aksan-duyarsız eşleştirme alanını da güncel tut
   // (bkz. metinNormallestir.js) — aksi halde canliKataloktaYazarinKitaplariniGetir
-  // eski yazarın normalize alanına takılı kalır.
+  // eski yazarın normalize alanına takılı kalır. Aynısı "baslik" için de geçerli.
   if ('yazar' in temizlenmis) {
     temizlenmis.yazarNormalize = aksansizKucultulmus(temizlenmis.yazar)
+  }
+  if ('baslik' in temizlenmis) {
+    temizlenmis.baslikNormalize = aksansizKucultulmus(temizlenmis.baslik)
   }
 
   await setDoc(
@@ -379,6 +385,7 @@ export async function kitapElleEkle({ baslik, yazar, yayinevi, yil, ozet, turler
   const id = `el_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
   const veri = {
     baslik,
+    baslikNormalize: aksansizKucultulmus(baslik),
     yazar: yazar || '',
     yazarNormalize: aksansizKucultulmus(yazar || ''),
     yayinevi: yayinevi || '',
@@ -433,14 +440,54 @@ export async function canliKataloktaYazarinKitaplariniGetir(yazarAdi) {
 // desteklemediği için tam bir çözüm değil, ama en azından BAŞLIĞIN
 // BAŞLANGICINA göre eşleşen canlı kayıtları (elle eklenenler dahil) buluyor
 // — kullanıcı az önce eklediği kitabı adıyla aradığında artık karşısına çıkar.
+//
+// AKSAN/BÜYÜK-KÜÇÜK HARF DUYARSIZ: "baslikNormalize" alanına göre arıyor
+// (yazar aramasındaki "yazarNormalize" ile aynı mantık — bkz.
+// metinNormallestir.js). Bu alan sadece BUNDAN SONRA kaydedilen/düzenlenen
+// kitaplarda var, o yüzden ESKİ kayıtları KAÇIRMAMAK için eski ham "baslik"
+// alanına göre bir sorgu da PARALEL atılıp sonuçlar birleştiriliyor —
+// geriye dönük bir "veri taşıma" scripti çalıştırmaya gerek kalmadan.
 export async function canliKataloktaBaslikIleAra(metin, limitSayisi = 20) {
-  const q = query(
-    collection(db, 'kitaplar'),
-    orderBy('baslik'),
-    where('baslik', '>=', metin),
-    where('baslik', '<=', metin + '\uf8ff'),
-    limit(limitSayisi)
-  )
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  const normalizeMetin = aksansizKucultulmus(metin)
+  const [normalizeSonuc, hamSonuc] = await Promise.all([
+    getDocs(
+      query(
+        collection(db, 'kitaplar'),
+        orderBy('baslikNormalize'),
+        where('baslikNormalize', '>=', normalizeMetin),
+        where('baslikNormalize', '<=', normalizeMetin + '\uf8ff'),
+        limit(limitSayisi)
+      )
+    ),
+    getDocs(
+      query(collection(db, 'kitaplar'), orderBy('baslik'), where('baslik', '>=', metin), where('baslik', '<=', metin + '\uf8ff'), limit(limitSayisi))
+    ),
+  ])
+  const gorulenler = new Set()
+  const sonuclar = []
+  ;[...normalizeSonuc.docs, ...hamSonuc.docs].forEach((d) => {
+    if (gorulenler.has(d.id)) return
+    gorulenler.add(d.id)
+    sonuclar.push({ id: d.id, ...d.data() })
+  })
+  return sonuclar.slice(0, limitSayisi)
+}
+
+// KÖKTEN ÇÖZÜM: Sitede kitap arayan 6 farklı yer vardı, 3'ü (Kulüp Önerisi,
+// Kişisel/Topluluk Liste, Liste Detay) SADECE Google Books'a gidiyordu —
+// statik 67 bin kayıtlı Türkçe veri setine NE DE canlı (elle eklenen/
+// zenginleştirilen) kataloğa hiç bakmıyordu. "Veritabanımızda olan kitabı
+// bulamıyorum" sorununun kök sebebi buydu. Bu TEK fonksiyon ikisini de
+// birleştirip tekilleştiriyor — Google Books'u her arayan bileşen kendi
+// çağırmaya devam ediyor (limit/öncelik tercihleri farklı olabildiğinden),
+// ama artık hepsi AYNI iç veritabanı taramasını paylaşıyor.
+export async function kitapIcVeriTabanindaAra(sorgu, limitSayisi = 10) {
+  if (!sorgu?.trim()) return []
+  const [statik, canli] = await Promise.all([
+    turkceKitapAra(sorgu, limitSayisi),
+    canliKataloktaBaslikIleAra(sorgu.trim(), limitSayisi).catch(() => []),
+  ])
+  const isbnGorulenler = new Set(statik.map((k) => k.isbn).filter(Boolean))
+  const canliBenzersiz = canli.filter((k) => !k.isbn13 || !isbnGorulenler.has(k.isbn13))
+  return [...statik, ...canliBenzersiz]
 }

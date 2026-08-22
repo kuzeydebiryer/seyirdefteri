@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useEtkinlikOnerileri } from '../hooks/useEtkinlikOnerileri.js'
 import { oneriEkle, oneriSil, oneriBegenDegistir, oneriyiEtkinligeCevir } from '../utils/etkinlikOnerisi.js'
+import { kitapIcVeriTabanindaAra } from '../utils/kitapKatalog.js'
+import { turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -126,6 +128,7 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
   const [eserArama, setEserArama] = useState('')
   const [eserSonuclari, setEserSonuclari] = useState([])
   const [seciliEser, setSeciliEser] = useState(null)
+  const [instagramUrl, setInstagramUrl] = useState('')
   const [not_, setNot_] = useState('')
   const [sonTarih, setSonTarih] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
@@ -134,11 +137,20 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
     e.preventDefault()
     if (!eserArama.trim()) return
     if (eserKategori === 'kitap') {
+      // KÖKTEN ÇÖZÜM: eskiden burada sadece Google Books'a gidiliyordu —
+      // sitenin kendi 67 bin kayıtlı Türkçe veri seti ve canlı (elle
+      // eklenen/zenginleştirilen) kataloğu hiç aranmıyordu. "Veritabanımızda
+      // olan kitabı bulamıyorum" sorununun kaynağı buydu.
       const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
-      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(eserArama)}&maxResults=16${anahtarParcasi}`
-      const res = await fetch(url)
-      const data = await res.json()
-      setEserSonuclari(data.items || [])
+      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(eserArama)}&maxResults=10${anahtarParcasi}`
+      const [icSonuclar, googleSonuc] = await Promise.all([
+        kitapIcVeriTabanindaAra(eserArama, 10),
+        fetch(url)
+          .then((res) => res.json())
+          .then((data) => data.items || [])
+          .catch(() => []),
+      ])
+      setEserSonuclari([...icSonuclar.map((k) => ({ ...k, _kaynak: 'ic' })), ...googleSonuc])
       return
     }
     if (!TMDB_API_KEY) return
@@ -149,8 +161,25 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
     setEserSonuclari(data.results || [])
   }
 
-  function eserSec(item) {
+  async function eserSec(item) {
     if (eserKategori === 'kitap') {
+      if (item._kaynak === 'ic') {
+        // Statik veri setinden geliyorsa (henüz gerçek bir Firestore kaydı
+        // yok) burada bir tane oluşturuluyor; canlı katalogdan geliyorsa
+        // (zaten gerçek bir kayıt) doğrudan kullanılıyor.
+        const kayit = item.id?.startsWith('tr_') ? await turkceKitaptanKaydet(item) : item
+        setSeciliEser({
+          eserTur: 'kitap',
+          eserGoogleBooksId: kayit.id,
+          eserBaslik: kayit.baslik || '',
+          eserYazar: kayit.yazar || '',
+          eserYil: kayit.yil || '',
+          eserPosterUrl: kayit.posterUrl || '',
+        })
+        setEserSonuclari([])
+        setEserArama('')
+        return
+      }
       const v = item.volumeInfo || {}
       setSeciliEser({
         eserTur: 'kitap',
@@ -177,10 +206,17 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
     if (!seciliEser || !kullanici) return
     setKaydediliyor(true)
     try {
-      await oneriEkle(topluluklId, { eser: seciliEser, not: not_, sonTarih: sonTarih || null, topluluk, kullanici })
+      await oneriEkle(topluluklId, {
+        eser: { ...seciliEser, instagramUrl: instagramUrl.trim() || null },
+        not: not_,
+        sonTarih: sonTarih || null,
+        topluluk,
+        kullanici,
+      })
       setSeciliEser(null)
       setNot_('')
       setSonTarih('')
+      setInstagramUrl('')
       setFormuAcik(false)
       yenidenYukle()
     } finally {
@@ -265,7 +301,9 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
                   {eserSonuclari.slice(0, 16).map((item) => {
                     const posterUrl =
                       eserKategori === 'kitap'
-                        ? (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                        ? item._kaynak === 'ic'
+                          ? item.posterUrl || ''
+                          : (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
                         : item.poster_path && `${TMDB_POSTER}${item.poster_path}`
                     return (
                       <button key={item.id} type="button" onClick={() => eserSec(item)} className="text-left">
@@ -297,6 +335,17 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
               onChange={(e) => setSonTarih(e.target.value)}
               min={new Date().toISOString().slice(0, 10)}
               className="rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11px] text-kraft">📷 İlgili Instagram Gönderisi (opsiyonel)</label>
+            <input
+              type="text"
+              value={instagramUrl}
+              onChange={(e) => setInstagramUrl(e.target.value)}
+              placeholder="https://www.instagram.com/p/..."
+              className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
             />
           </div>
 
