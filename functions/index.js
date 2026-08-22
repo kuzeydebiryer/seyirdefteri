@@ -317,7 +317,12 @@ exports.instagramGom = onCall(async (request) => {
   if (!url || !url.includes('instagram.com')) {
     throw new HttpsError('invalid-argument', 'Geçerli bir Instagram gönderi linki gerekli')
   }
-  const oembedUrl = `https://graph.facebook.com/v25.0/instagram_oembed?url=${encodeURIComponent(url)}&omitscript=false`
+  // hidecaption=true: açıklama/hashtag/yorum kutusu bloğunu kaldırıyor —
+  // sitedeki kart tasarımına göre bu, dikeyde çok yer kaplıyordu.
+  // maxwidth=400: gömülen kartın genişliğini küçültüyor (varsayılan çok
+  // geniş), boyu da orantılı küçülüyor. İkisi de Instagram'ın resmi,
+  // desteklenen oEmbed parametreleri.
+  const oembedUrl = `https://graph.facebook.com/v25.0/instagram_oembed?url=${encodeURIComponent(url)}&omitscript=false&hidecaption=true&maxwidth=400`
   const res = await fetch(oembedUrl)
   if (!res.ok) throw new HttpsError('unavailable', 'Bu gönderi bulunamadı — herkese açık ve doğru bir Instagram linki olduğundan emin ol')
   const veri = await res.json()
