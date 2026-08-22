@@ -65,9 +65,24 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Dizi Müziği önbelleği — filmMuzikleri ile aynı kural.
+    match /diziMuzikleri/{tmdbId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Film müziği beğenileri — kullanıcı kendi beğenisini ekleyip
     // kaldırabilir, herkes okuyabilir (profil sekmesi + anasayfa widget'ı).
     match /begenilenMuzikler/{begeniId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Dizi müziği beğenileri — begenilenMuzikler ile aynı kural, ayrı
+    // koleksiyon (TMDB film/dizi ID çakışmasını önlemek için, bkz.
+    // diziMuzigiBegeni.js).
+    match /begenilenDiziMuzikleri/{begeniId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;

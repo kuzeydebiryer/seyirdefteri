@@ -8,6 +8,7 @@ import {
   izlenecekEkle,
   izlenecekKaldir,
   izlenecekGetir,
+  izlemeTamamlandiIsaretle,
   toplamSayfaTamamla,
   okumayaBasla,
   ilerlemeGuncelle,
@@ -27,6 +28,7 @@ import IzleyecegimIkonu from '../components/ikonlar/IzleyecegimIkonu.jsx'
 import ListeIkonu from '../components/ikonlar/ListeIkonu.jsx'
 import YorumIkonu from '../components/ikonlar/YorumIkonu.jsx'
 import FilmMuzigiWidget from '../components/FilmMuzigiWidget.jsx'
+import DiziMuzigiWidget from '../components/DiziMuzigiWidget.jsx'
 import IlgiliIlhamPanosu from '../components/IlgiliIlhamPanosu.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import { kitapGetir, kitapGuncelle, kitapElleEkle, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
@@ -952,6 +954,9 @@ export default function EserSayfasi({ tur }) {
       // "Bitirdim" — gerçek bir tamamlama olayı, günlüğe düşüyor. (938.
       // satırdaki genel "İzleyeceklerimden çıkar" ikon-butonu bunu
       // çağırmıyor — o sadece listeden çıkarma, bitirme garantisi yok.)
+      // Kayıt SİLİNMİYOR — durum 'tamamlandi' olarak işaretleniyor, böylece
+      // kart/profil sayfalarında "izleniyor" ile "tamamlandı" ayrımı
+      // güvenilir şekilde gösterilebiliyor.
       await gunlukKaydiEkle(kullanici, {
         tur,
         disId: id,
@@ -961,8 +966,8 @@ export default function EserSayfasi({ tur }) {
         izlemeTarihiISO: new Date().toISOString().slice(0, 10),
         olayTuru: 'bitirme',
       })
-      await izlenecekKaldir(kullanici.uid, tur, id)
-      setIzlenecekKaydi(null)
+      await izlemeTamamlandiIsaretle(kullanici.uid, tur, id)
+      setIzlenecekKaydi((onceki) => ({ ...onceki, durum: 'tamamlandi' }))
     } finally {
       setIzlenecekIsleniyor(false)
     }
@@ -1430,7 +1435,7 @@ export default function EserSayfasi({ tur }) {
                   </span>
                 </button>
               )}
-              {izlenecekKaydi && (
+              {izlenecekKaydi && izlenecekKaydi.durum !== 'tamamlandi' && (
                 <button
                   onClick={izlenecektenKaldir}
                   disabled={izlenecekIsleniyor}
@@ -1440,6 +1445,17 @@ export default function EserSayfasi({ tur }) {
                   <span className="text-[10px] uppercase tracking-wide text-kraft">
                     {tur === 'kitap' ? 'Okuyacaklarımda' : 'İzleyeceklerimde'}
                   </span>
+                </button>
+              )}
+              {izlenecekKaydi?.durum === 'tamamlandi' && (
+                <button
+                  onClick={izlenecektenKaldir}
+                  disabled={izlenecekIsleniyor}
+                  className="flex flex-col items-center gap-1 disabled:opacity-40"
+                  title="Listeden tamamen kaldır"
+                >
+                  <span className="text-2xl text-deniz">✓</span>
+                  <span className="text-[10px] uppercase tracking-wide text-kraft">Tamamladım</span>
                 </button>
               )}
 
@@ -2125,6 +2141,16 @@ export default function EserSayfasi({ tur }) {
         <FilmMuzigiWidget
           tmdbId={id}
           filmAdi={detay.orijinalBaslik || detay.baslik}
+          yil={detay.yil}
+          posterUrl={detay.posterUrl}
+          bestekarAdi={detay.bestekarlar?.[0]?.name}
+        />
+      )}
+
+      {tur === 'dizi' && (
+        <DiziMuzigiWidget
+          tmdbId={id}
+          diziAdi={detay.orijinalBaslik || detay.baslik}
           yil={detay.yil}
           posterUrl={detay.posterUrl}
           bestekarAdi={detay.bestekarlar?.[0]?.name}

@@ -20,7 +20,7 @@ export default function KitapDunyasiWidget() {
   useEffect(() => {
     let iptal = false
     async function getir() {
-      const liste = await topluluktaSuankiOkunanlariGetir(6)
+      const liste = await topluluktaSuankiOkunanlariGetir('kitap', 6)
 
       // Her kayıt sadece kullaniciId taşıyor; isim/avatar için kullanıcı
       // profillerini tek tek (tekrar edenler hariç) çekip eşliyoruz.

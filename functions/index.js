@@ -270,6 +270,75 @@ exports.filmMuzigiGetir = onCall({ secrets: [SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_S
   }
 })
 
+// --- Dizi Müziği (Spotify) ----------------------------------------------
+// filmMuzigiGetir ile birebir aynı mantık — sadece arama sorgusu ve önbellek
+// koleksiyonu diziye özel. Not: dizilerin çoğunda (filmlerin aksine) resmi
+// bir "soundtrack albümü" Spotify'da yok — bu normal, isabet oranı filme
+// göre daha düşük olacak, bulunamayan sessizce gizleniyor (widget kendi
+// tarafında null'ı zaten görmezden geliyor).
+exports.diziMuzigiGetir = onCall({ secrets: [SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET] }, async (request) => {
+  const { tmdbId, diziAdi, yil, bestekarAdi, zorlaYenile } = request.data || {}
+  if (!tmdbId || !diziAdi) throw new HttpsError('invalid-argument', 'tmdbId ve diziAdi gerekli')
+
+  const cacheRef = db.collection('diziMuzikleri').doc(String(tmdbId))
+  if (!zorlaYenile) {
+    const cacheSnap = await cacheRef.get()
+    if (cacheSnap.exists) return cacheSnap.data()
+  }
+
+  try {
+    const token = await spotifyTokenGetir(SPOTIFY_CLIENT_ID.value(), SPOTIFY_CLIENT_SECRET.value())
+    const sorgu = yil ? `album:"${diziAdi}" year:${yil}` : `album:"${diziAdi}"`
+    const ararUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(sorgu)}&type=album&limit=5`
+    const ararRes = await fetch(ararUrl, { headers: { Authorization: `Bearer ${token}` } })
+    if (!ararRes.ok) throw new HttpsError('unavailable', 'Spotify araması başarısız')
+    const ararVeri = await ararRes.json()
+    const sonuclar = ararVeri.albums?.items || []
+
+    let secilenAlbum = null
+    let guvenSeviyesi = 'yuksek'
+    if (bestekarAdi) {
+      const bestekarSade = sadelestir(bestekarAdi)
+      secilenAlbum = sonuclar.find((a) => (a.artists || []).some((s) => sadelestir(s.name).includes(bestekarSade) || bestekarSade.includes(sadelestir(s.name))))
+
+      if (!secilenAlbum && yil) {
+        let enYakin = null
+        let enKucukFark = Infinity
+        for (const a of sonuclar) {
+          const albumYili = parseInt((a.release_date || '').slice(0, 4), 10)
+          if (!albumYili) continue
+          const fark = Math.abs(albumYili - Number(yil))
+          if (fark <= 1 && fark < enKucukFark) {
+            enKucukFark = fark
+            enYakin = a
+          }
+        }
+        if (enYakin) {
+          secilenAlbum = enYakin
+          guvenSeviyesi = 'orta'
+        }
+      }
+    } else {
+      secilenAlbum = sonuclar[0] || null
+      guvenSeviyesi = 'dusuk'
+    }
+
+    const albumId = secilenAlbum?.id || null
+    const sonuc = {
+      spotifyAlbumId: albumId,
+      guvenSeviyesi: albumId ? guvenSeviyesi : null,
+      eslesenSanatci: secilenAlbum?.artists?.[0]?.name || null,
+      guncellemeTarihi: FieldValue.serverTimestamp(),
+    }
+    await cacheRef.set(sonuc)
+    return sonuc
+  } catch (err) {
+    const sonuc = { spotifyAlbumId: null, guncellemeTarihi: FieldValue.serverTimestamp() }
+    await cacheRef.set(sonuc)
+    return sonuc
+  }
+})
+
 // --- Kulüp Etkinlik Hatırlatması ---------------------------------------
 // Her gün Türkiye saatiyle 09:00'da çalışır, YARIN gerçekleşecek
 // (gelecekEtkinlikler'deki) tüm etkinlikleri bulup katılımcı olarak

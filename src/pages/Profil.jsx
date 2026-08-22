@@ -1121,8 +1121,8 @@ export default function Profil() {
       {sekme === 'izleyecegim' && (
         <div>
           {(() => {
-            const bekleyenFilmDizi = izlenecekler.filter((i) => i.durum !== 'okunuyor' && (i.tur === 'sinema' || i.tur === 'dizi'))
-            const bekleyenKitap = izlenecekler.filter((i) => i.durum !== 'okunuyor' && i.tur === 'kitap')
+            const bekleyenFilmDizi = izlenecekler.filter((i) => i.durum === 'planlanan' && (i.tur === 'sinema' || i.tur === 'dizi'))
+            const bekleyenKitap = izlenecekler.filter((i) => i.durum === 'planlanan' && i.tur === 'kitap')
             if (bekleyenFilmDizi.length === 0 && bekleyenKitap.length === 0) {
               return <p className="text-sm text-kraft">Liste boş.</p>
             }
