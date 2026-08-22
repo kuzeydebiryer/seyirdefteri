@@ -40,7 +40,7 @@ export default function SonAlintilarBolumu({ limitSayisi = 5, baslik = '💬 Son
   if (yukleniyor || alintilar.length === 0) return null
 
   return (
-    <div className="mb-6">
+    <div className="mb-10">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
         <Link to="/alintilar" className="shrink-0 whitespace-nowrap rounded-full bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi">

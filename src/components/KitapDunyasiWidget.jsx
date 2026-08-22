@@ -50,7 +50,7 @@ export default function KitapDunyasiWidget() {
   if (yukleniyor || kitaplar.length === 0) return null
 
   return (
-    <div className="mb-6">
+    <div className="mb-10">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-baslik text-lg text-murekkep">📖 Kitap Dünyası</h2>
         <Link to="/kitaplar" className="shrink-0 whitespace-nowrap rounded-full bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi">

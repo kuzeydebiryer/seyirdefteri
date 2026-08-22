@@ -68,7 +68,7 @@ export default function TopluluklarBildirimSeridi() {
   if (yukleniyor || yaklasanlar.length === 0) return null
 
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-sm bg-kagitKoyu px-3 py-2 text-xs ring-1 ring-cizgi">
+    <div className="mb-10 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-sm bg-kagitKoyu px-3 py-2 text-xs ring-1 ring-cizgi">
       <span className="text-kraft">Topluluklarında yaklaşan:</span>
       {yaklasanlar.slice(0, 3).map((e) => (
         <Link key={e.id} to={`/topluluk/${e.topluluklId}`} className="text-murekkep hover:text-deniz hover:underline">
