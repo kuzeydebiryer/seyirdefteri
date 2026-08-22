@@ -2,23 +2,30 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { geziPlaniGetir, geziPlaniGuncelle, geziPlaniSil } from '../utils/geziPlanlari.js'
+import GeziPlaniPaylasim from '../components/GeziPlaniPaylasim.jsx'
+import KisiselBilgilerBolumu from '../components/KisiselBilgilerBolumu.jsx'
 
 const HAVAYOLLARI = ['Pegasus', 'THY', 'AJet', 'Diğer']
 const MADDE_TIPI_IKONU = { gezilecek: '📍', 'yeme-icme': '🍽️', ulasim: '🚕', diger: '📌' }
 const MADDE_TIPI_ETIKETI = { gezilecek: 'Gezilecek Yer', 'yeme-icme': 'Yeme-İçme', ulasim: 'Ulaşım', diger: 'Diğer' }
+const UCUS_ALANLARI = [
+  { key: 'pnr', etiket: 'PNR', tip: 'text' },
+  { key: 'ucret', etiket: 'Ücret', tip: 'number' },
+]
+const UCRET_ALANI = [{ key: 'ucret', etiket: 'Ücret', tip: 'number' }]
 
 function benzersizId() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-function paraFormatla(sayi) {
-  return sayi.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 })
+function butceToplamHesapla(kisiselBilgiler = {}) {
+  return Object.values(kisiselBilgiler).reduce((t, v) => t + (Number(v?.ucret) || 0), 0)
 }
 
 // ---------------------------------------------------------------------
 // Uçuş bölümü
 // ---------------------------------------------------------------------
-function UcusForm({ onEkle, onVazgec }) {
+function UcusForm({ onEkle, onVazgec, currentUid }) {
   const [havayolu, setHavayolu] = useState('Pegasus')
   const [digerHavayolu, setDigerHavayolu] = useState('')
   const [gidisTarihSaat, setGidisTarihSaat] = useState('')
@@ -28,13 +35,14 @@ function UcusForm({ onEkle, onVazgec }) {
 
   function ekle(e) {
     e.preventDefault()
+    const kisiselBilgiler = {}
+    if (ucret || pnr) kisiselBilgiler[currentUid] = { ucret: ucret ? Number(ucret) : null, pnr: pnr.trim() }
     onEkle({
       id: benzersizId(),
       havayolu: havayolu === 'Diğer' ? digerHavayolu.trim() || 'Diğer' : havayolu,
       gidisTarihSaat,
       donusTarihSaat,
-      ucret: ucret ? Number(ucret) : null,
-      pnr: pnr.trim(),
+      kisiselBilgiler,
       tik: false,
     })
   }
@@ -58,13 +66,6 @@ function UcusForm({ onEkle, onVazgec }) {
             className="rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
           />
         )}
-        <input
-          type="text"
-          value={pnr}
-          onChange={(e) => setPnr(e.target.value)}
-          placeholder="PNR (opsiyonel)"
-          className="rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
-        />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -87,13 +88,23 @@ function UcusForm({ onEkle, onVazgec }) {
           />
         </div>
       </div>
-      <input
-        type="number"
-        value={ucret}
-        onChange={(e) => setUcret(e.target.value)}
-        placeholder="Ücret (₺, opsiyonel)"
-        className="w-full rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
-      />
+      <p className="text-[10px] text-kraft">Aşağıdaki PNR/ücret SENİN bilgin olarak kaydedilir — plan paylaşıldığında herkes kendi bilgisini ayrıca ekleyebilir.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          type="text"
+          value={pnr}
+          onChange={(e) => setPnr(e.target.value)}
+          placeholder="Senin PNR'in (opsiyonel)"
+          className="rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+        />
+        <input
+          type="number"
+          value={ucret}
+          onChange={(e) => setUcret(e.target.value)}
+          placeholder="Senin ücretin (₺, opsiyonel)"
+          className="rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+        />
+      </div>
       <div className="flex gap-2">
         <button type="submit" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit">
           Ekle
@@ -106,7 +117,7 @@ function UcusForm({ onEkle, onVazgec }) {
   )
 }
 
-function UcusSatiri({ ucus, onTikDegistir, onSil }) {
+function UcusSatiri({ ucus, onTikDegistir, onSil, onKisiselKaydet, currentUid, isimHaritasi }) {
   const gidis = ucus.gidisTarihSaat ? new Date(ucus.gidisTarihSaat).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''
   const donus = ucus.donusTarihSaat ? new Date(ucus.donusTarihSaat).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''
   return (
@@ -118,10 +129,7 @@ function UcusSatiri({ ucus, onTikDegistir, onSil }) {
           Gidiş: {gidis || '—'}
           {donus && <> · Dönüş: {donus}</>}
         </p>
-        <p className="text-xs text-kraft">
-          {ucus.pnr && <>PNR: {ucus.pnr} · </>}
-          {ucus.ucret != null && paraFormatla(ucus.ucret)}
-        </p>
+        <KisiselBilgilerBolumu kisiselBilgiler={ucus.kisiselBilgiler} alanlar={UCUS_ALANLARI} currentUid={currentUid} isimHaritasi={isimHaritasi} onKaydet={onKisiselKaydet} />
       </div>
       <button onClick={onSil} className="shrink-0 text-[11px] text-kraft hover:text-muhur">
         Sil
@@ -133,7 +141,7 @@ function UcusSatiri({ ucus, onTikDegistir, onSil }) {
 // ---------------------------------------------------------------------
 // Konaklama bölümü
 // ---------------------------------------------------------------------
-function KonaklamaForm({ onEkle, onVazgec }) {
+function KonaklamaForm({ onEkle, onVazgec, currentUid }) {
   const [ad, setAd] = useState('')
   const [konum, setKonum] = useState('')
   const [girisTarihi, setGirisTarihi] = useState('')
@@ -143,13 +151,15 @@ function KonaklamaForm({ onEkle, onVazgec }) {
   function ekle(e) {
     e.preventDefault()
     if (!ad.trim()) return
+    const kisiselBilgiler = {}
+    if (ucret) kisiselBilgiler[currentUid] = { ucret: Number(ucret) }
     onEkle({
       id: benzersizId(),
       ad: ad.trim(),
       konum: konum.trim(),
       girisTarihi,
       cikisTarihi,
-      ucret: ucret ? Number(ucret) : null,
+      kisiselBilgiler,
       tik: false,
     })
   }
@@ -191,11 +201,12 @@ function KonaklamaForm({ onEkle, onVazgec }) {
           />
         </div>
       </div>
+      <p className="text-[10px] text-kraft">Aşağıdaki ücret SENİN bilgin olarak kaydedilir — herkes kendi payını ayrıca ekleyebilir.</p>
       <input
         type="number"
         value={ucret}
         onChange={(e) => setUcret(e.target.value)}
-        placeholder="Ücret (₺, opsiyonel)"
+        placeholder="Senin ödediğin ücret (₺, opsiyonel)"
         className="w-full rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
       />
       <div className="flex gap-2">
@@ -210,7 +221,7 @@ function KonaklamaForm({ onEkle, onVazgec }) {
   )
 }
 
-function KonaklamaSatiri({ konaklama, onTikDegistir, onSil }) {
+function KonaklamaSatiri({ konaklama, onTikDegistir, onSil, onKisiselKaydet, currentUid, isimHaritasi }) {
   const giris = konaklama.girisTarihi ? new Date(konaklama.girisTarihi).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : ''
   const cikis = konaklama.cikisTarihi ? new Date(konaklama.cikisTarihi).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : ''
   return (
@@ -219,15 +230,12 @@ function KonaklamaSatiri({ konaklama, onTikDegistir, onSil }) {
       <div className="min-w-0 flex-1">
         <p className={`text-sm font-medium ${konaklama.tik ? 'text-kraft line-through' : 'text-murekkep'}`}>🏨 {konaklama.ad}</p>
         {konaklama.konum && <p className="text-xs text-kraft">📍 {konaklama.konum}</p>}
-        <p className="text-xs text-kraft">
-          {(giris || cikis) && (
-            <>
-              {giris || '—'} → {cikis || '—'}
-              {konaklama.ucret != null && ' · '}
-            </>
-          )}
-          {konaklama.ucret != null && paraFormatla(konaklama.ucret)}
-        </p>
+        {(giris || cikis) && (
+          <p className="text-xs text-kraft">
+            {giris || '—'} → {cikis || '—'}
+          </p>
+        )}
+        <KisiselBilgilerBolumu kisiselBilgiler={konaklama.kisiselBilgiler} alanlar={UCRET_ALANI} currentUid={currentUid} isimHaritasi={isimHaritasi} onKaydet={onKisiselKaydet} />
       </div>
       <button onClick={onSil} className="shrink-0 text-[11px] text-kraft hover:text-muhur">
         Sil
@@ -239,7 +247,7 @@ function KonaklamaSatiri({ konaklama, onTikDegistir, onSil }) {
 // ---------------------------------------------------------------------
 // Gün gün program bölümü
 // ---------------------------------------------------------------------
-function MaddeForm({ onEkle, onVazgec }) {
+function MaddeForm({ onEkle, onVazgec, currentUid }) {
   const [tip, setTip] = useState('gezilecek')
   const [baslik, setBaslik] = useState('')
   const [konum, setKonum] = useState('')
@@ -250,6 +258,8 @@ function MaddeForm({ onEkle, onVazgec }) {
   function ekle(e) {
     e.preventDefault()
     if (!baslik.trim()) return
+    const kisiselBilgiler = {}
+    if (ucret) kisiselBilgiler[currentUid] = { ucret: Number(ucret) }
     onEkle({
       id: benzersizId(),
       tip,
@@ -257,7 +267,7 @@ function MaddeForm({ onEkle, onVazgec }) {
       konum: konum.trim(),
       saat,
       not: not_.trim(),
-      ucret: ucret ? Number(ucret) : null,
+      kisiselBilgiler,
       tik: false,
     })
   }
@@ -305,7 +315,7 @@ function MaddeForm({ onEkle, onVazgec }) {
         type="number"
         value={ucret}
         onChange={(e) => setUcret(e.target.value)}
-        placeholder="Ücret (₺, opsiyonel)"
+        placeholder="Senin ücretin (₺, opsiyonel)"
         className="w-full rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
       />
       <textarea
@@ -327,7 +337,7 @@ function MaddeForm({ onEkle, onVazgec }) {
   )
 }
 
-function MaddeSatiri({ madde, onTikDegistir, onSil }) {
+function MaddeSatiri({ madde, onTikDegistir, onSil, onKisiselKaydet, currentUid, isimHaritasi }) {
   return (
     <div className="flex items-start gap-2 rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
       <input type="checkbox" checked={!!madde.tik} onChange={onTikDegistir} className="mt-0.5 h-4 w-4 shrink-0 accent-muhur" />
@@ -338,7 +348,7 @@ function MaddeSatiri({ madde, onTikDegistir, onSil }) {
         </p>
         {madde.konum && <p className="text-[11px] text-kraft">📍 {madde.konum}</p>}
         {madde.not && <p className="text-[11px] text-kraft">{madde.not}</p>}
-        {madde.ucret != null && <p className="text-[11px] text-kraft">{paraFormatla(madde.ucret)}</p>}
+        <KisiselBilgilerBolumu kisiselBilgiler={madde.kisiselBilgiler} alanlar={UCRET_ALANI} currentUid={currentUid} isimHaritasi={isimHaritasi} onKaydet={onKisiselKaydet} />
       </div>
       <button onClick={onSil} className="shrink-0 text-[11px] text-kraft hover:text-muhur">
         Sil
@@ -347,7 +357,7 @@ function MaddeSatiri({ madde, onTikDegistir, onSil }) {
   )
 }
 
-function GunKarti({ gun, onGunSil, onMaddeEkle, onMaddeSil, onMaddeTikDegistir, onBaslikDegistir }) {
+function GunKarti({ gun, onGunSil, onMaddeEkle, onMaddeSil, onMaddeTikDegistir, onMaddeKisiselKaydet, onBaslikDegistir, currentUid, isimHaritasi }) {
   const [maddeFormAcik, setMaddeFormAcik] = useState(false)
 
   return (
@@ -366,13 +376,22 @@ function GunKarti({ gun, onGunSil, onMaddeEkle, onMaddeSil, onMaddeTikDegistir, 
 
       <div className="space-y-1.5">
         {(gun.maddeler || []).map((m) => (
-          <MaddeSatiri key={m.id} madde={m} onTikDegistir={() => onMaddeTikDegistir(m.id)} onSil={() => onMaddeSil(m.id)} />
+          <MaddeSatiri
+            key={m.id}
+            madde={m}
+            onTikDegistir={() => onMaddeTikDegistir(m.id)}
+            onSil={() => onMaddeSil(m.id)}
+            onKisiselKaydet={(uid, veri) => onMaddeKisiselKaydet(m.id, uid, veri)}
+            currentUid={currentUid}
+            isimHaritasi={isimHaritasi}
+          />
         ))}
         {(gun.maddeler || []).length === 0 && !maddeFormAcik && <p className="text-xs text-kraft">Henüz madde eklenmedi.</p>}
       </div>
 
       {maddeFormAcik ? (
         <MaddeForm
+          currentUid={currentUid}
           onEkle={(madde) => {
             onMaddeEkle(madde)
             setMaddeFormAcik(false)
@@ -393,7 +412,7 @@ function GunKarti({ gun, onGunSil, onMaddeEkle, onMaddeSil, onMaddeTikDegistir, 
 // ---------------------------------------------------------------------
 export default function GeziPlaniDetay() {
   const { id } = useParams()
-  const { kullanici } = useAuth()
+  const { kullanici, profil } = useAuth()
   const navigate = useNavigate()
   const [plan, setPlan] = useState(undefined) // undefined: yükleniyor, null: bulunamadı
   const [ucusFormAcik, setUcusFormAcik] = useState(false)
@@ -405,6 +424,11 @@ export default function GeziPlaniDetay() {
   }, [id])
 
   const sahipMi = plan && kullanici && plan.sahipId === kullanici.uid
+  const yetkiliMi = plan && kullanici && (plan.sahipId === kullanici.uid || (plan.ortakDuzenleyenler || []).includes(kullanici.uid))
+
+  async function planiYenidenYukle() {
+    geziPlaniGetir(id).then(setPlan)
+  }
 
   async function alanGuncelle(alan, deger) {
     setPlan((p) => ({ ...p, [alan]: deger }))
@@ -421,6 +445,12 @@ export default function GeziPlaniDetay() {
   function ucusTikDegistir(ucusId) {
     alanGuncelle('ucuslar', plan.ucuslar.map((u) => (u.id === ucusId ? { ...u, tik: !u.tik } : u)))
   }
+  function ucusKisiselKaydet(ucusId, uid, veri) {
+    alanGuncelle(
+      'ucuslar',
+      plan.ucuslar.map((u) => (u.id === ucusId ? { ...u, kisiselBilgiler: { ...u.kisiselBilgiler, [uid]: veri } } : u))
+    )
+  }
 
   function konaklamaEkle(konaklama) {
     alanGuncelle('konaklamalar', [...(plan.konaklamalar || []), konaklama])
@@ -431,6 +461,12 @@ export default function GeziPlaniDetay() {
   }
   function konaklamaTikDegistir(konaklamaId) {
     alanGuncelle('konaklamalar', plan.konaklamalar.map((k) => (k.id === konaklamaId ? { ...k, tik: !k.tik } : k)))
+  }
+  function konaklamaKisiselKaydet(konaklamaId, uid, veri) {
+    alanGuncelle(
+      'konaklamalar',
+      plan.konaklamalar.map((k) => (k.id === konaklamaId ? { ...k, kisiselBilgiler: { ...k.kisiselBilgiler, [uid]: veri } } : k))
+    )
   }
 
   function gunEkle(e) {
@@ -466,6 +502,19 @@ export default function GeziPlaniDetay() {
       )
     )
   }
+  function maddeKisiselKaydet(gunId, maddeId, uid, veri) {
+    alanGuncelle(
+      'gunler',
+      plan.gunler.map((g) =>
+        g.id === gunId
+          ? {
+              ...g,
+              maddeler: g.maddeler.map((m) => (m.id === maddeId ? { ...m, kisiselBilgiler: { ...m.kisiselBilgiler, [uid]: veri } } : m)),
+            }
+          : g
+      )
+    )
+  }
 
   async function planiSil() {
     if (!window.confirm('Bu gezi planını tamamen silmek istediğine emin misin?')) return
@@ -475,11 +524,17 @@ export default function GeziPlaniDetay() {
 
   if (plan === undefined) return <p className="text-sm text-kraft">Yükleniyor...</p>
   if (plan === null) return <p className="text-sm text-kraft">Bu gezi planı bulunamadı.</p>
-  if (!sahipMi) return <p className="text-sm text-kraft">Bu gezi planını görüntüleme yetkin yok.</p>
+  if (!yetkiliMi) return <p className="text-sm text-kraft">Bu gezi planını görüntüleme yetkin yok.</p>
+
+  const currentUid = kullanici.uid
+  const isimHaritasi = {
+    [plan.sahipId]: plan.sahipAdi,
+    ...Object.fromEntries(Object.entries(plan.ortakDuzenleyenlerBilgi || {}).map(([uid, v]) => [uid, v.adSoyad])),
+  }
 
   const tumMaddeler = [...(plan.ucuslar || []), ...(plan.konaklamalar || []), ...(plan.gunler || []).flatMap((g) => g.maddeler || [])]
   const tamamlanan = tumMaddeler.filter((m) => m.tik).length
-  const butceToplam = tumMaddeler.reduce((t, m) => t + (m.ucret || 0), 0)
+  const butceToplam = tumMaddeler.reduce((t, m) => t + butceToplamHesapla(m.kisiselBilgiler), 0)
 
   return (
     <div>
@@ -494,10 +549,14 @@ export default function GeziPlaniDetay() {
           onChange={(e) => alanGuncelle('baslik', e.target.value)}
           className="min-w-0 flex-1 bg-transparent font-baslik text-2xl text-murekkep focus:outline-none"
         />
-        <button onClick={planiSil} className="shrink-0 text-xs text-kraft hover:text-muhur">
-          Planı Sil
-        </button>
+        {sahipMi && (
+          <button onClick={planiSil} className="shrink-0 text-xs text-kraft hover:text-muhur">
+            Planı Sil
+          </button>
+        )}
       </div>
+
+      {!sahipMi && <p className="mb-4 text-xs text-kraft">👥 {plan.sahipAdi} tarafından seninle paylaşıldı</p>}
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <select
@@ -523,12 +582,22 @@ export default function GeziPlaniDetay() {
         />
       </div>
 
+      {sahipMi && (
+        <GeziPlaniPaylasim
+          planId={id}
+          sahipId={plan.sahipId}
+          ortakDuzenleyenler={plan.ortakDuzenleyenler || []}
+          ortakDuzenleyenlerBilgi={plan.ortakDuzenleyenlerBilgi || {}}
+          onDegisti={planiYenidenYukle}
+        />
+      )}
+
       {tumMaddeler.length > 0 && (
         <div className="mb-6 flex flex-wrap items-center gap-4 rounded-sm bg-kagit p-3 ring-1 ring-cizgi">
           <p className="text-sm text-murekkep">
             ✓ {tamamlanan}/{tumMaddeler.length} tamamlandı
           </p>
-          {butceToplam > 0 && <p className="text-sm text-murekkep">💰 Toplam bütçe: {paraFormatla(butceToplam)}</p>}
+          {butceToplam > 0 && <p className="text-sm text-murekkep">💰 Toplam bütçe: {butceToplam.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 })}</p>}
         </div>
       )}
 
@@ -537,11 +606,19 @@ export default function GeziPlaniDetay() {
         <h2 className="mb-2 font-baslik text-lg text-murekkep">✈️ Uçuşlar</h2>
         <div className="space-y-2">
           {(plan.ucuslar || []).map((u) => (
-            <UcusSatiri key={u.id} ucus={u} onTikDegistir={() => ucusTikDegistir(u.id)} onSil={() => ucusSil(u.id)} />
+            <UcusSatiri
+              key={u.id}
+              ucus={u}
+              onTikDegistir={() => ucusTikDegistir(u.id)}
+              onSil={() => ucusSil(u.id)}
+              onKisiselKaydet={(uid, veri) => ucusKisiselKaydet(u.id, uid, veri)}
+              currentUid={currentUid}
+              isimHaritasi={isimHaritasi}
+            />
           ))}
         </div>
         {ucusFormAcik ? (
-          <UcusForm onEkle={ucusEkle} onVazgec={() => setUcusFormAcik(false)} />
+          <UcusForm currentUid={currentUid} onEkle={ucusEkle} onVazgec={() => setUcusFormAcik(false)} />
         ) : (
           <button onClick={() => setUcusFormAcik(true)} className="mt-2 text-xs text-deniz hover:underline">
             + Uçuş Ekle
@@ -554,11 +631,19 @@ export default function GeziPlaniDetay() {
         <h2 className="mb-2 font-baslik text-lg text-murekkep">🏨 Konaklama</h2>
         <div className="space-y-2">
           {(plan.konaklamalar || []).map((k) => (
-            <KonaklamaSatiri key={k.id} konaklama={k} onTikDegistir={() => konaklamaTikDegistir(k.id)} onSil={() => konaklamaSil(k.id)} />
+            <KonaklamaSatiri
+              key={k.id}
+              konaklama={k}
+              onTikDegistir={() => konaklamaTikDegistir(k.id)}
+              onSil={() => konaklamaSil(k.id)}
+              onKisiselKaydet={(uid, veri) => konaklamaKisiselKaydet(k.id, uid, veri)}
+              currentUid={currentUid}
+              isimHaritasi={isimHaritasi}
+            />
           ))}
         </div>
         {konaklamaFormAcik ? (
-          <KonaklamaForm onEkle={konaklamaEkle} onVazgec={() => setKonaklamaFormAcik(false)} />
+          <KonaklamaForm currentUid={currentUid} onEkle={konaklamaEkle} onVazgec={() => setKonaklamaFormAcik(false)} />
         ) : (
           <button onClick={() => setKonaklamaFormAcik(true)} className="mt-2 text-xs text-deniz hover:underline">
             + Konaklama Ekle
@@ -579,6 +664,9 @@ export default function GeziPlaniDetay() {
               onMaddeEkle={(madde) => maddeEkle(g.id, madde)}
               onMaddeSil={(maddeId) => maddeSil(g.id, maddeId)}
               onMaddeTikDegistir={(maddeId) => maddeTikDegistir(g.id, maddeId)}
+              onMaddeKisiselKaydet={(maddeId, uid, veri) => maddeKisiselKaydet(g.id, maddeId, uid, veri)}
+              currentUid={currentUid}
+              isimHaritasi={isimHaritasi}
             />
           ))}
         </div>

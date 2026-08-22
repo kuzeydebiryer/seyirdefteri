@@ -1,4 +1,21 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
+import {
+  addDoc,
+  arrayRemove,
+  arrayUnion,
+  collection,
+  deleteDoc,
+  doc,
+  endAt,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  serverTimestamp,
+  startAt,
+  updateDoc,
+  where,
+} from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 function planRef(id) {
@@ -10,6 +27,7 @@ export async function geziPlaniOlustur(kullanici, profil, { baslik, baslangicTar
     sahipId: kullanici.uid,
     sahipAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
     ortakDuzenleyenler: [],
+    ortakDuzenleyenlerBilgi: {},
     baslik: baslik || 'Yeni Gezi Planı',
     durum: 'planlaniyor',
     baslangicTarihi: baslangicTarihi || '',
@@ -22,12 +40,17 @@ export async function geziPlaniOlustur(kullanici, profil, { baslik, baslangicTar
   return belge.id
 }
 
-// Sadece sahip görür (MVP — ortak düzenleme v2'de eklenecek, alan zaten
-// hazır duruyor).
+// Sahip olduğun VEYA ortak düzenleyeni olduğun tüm planlar — Firestore tek
+// sorguda iki farklı alana göre OR yapamadığı için iki ayrı sorgu atılıp
+// sonuçlar birleştiriliyor (küçük bir kişisel koleksiyon için sorun değil).
 export async function geziPlanlariniGetir(uid) {
-  const q = query(collection(db, 'geziPlanlari'), where('sahipId', '==', uid))
-  const snap = await getDocs(q)
-  const liste = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  const [sahipSnap, ortakSnap] = await Promise.all([
+    getDocs(query(collection(db, 'geziPlanlari'), where('sahipId', '==', uid))),
+    getDocs(query(collection(db, 'geziPlanlari'), where('ortakDuzenleyenler', 'array-contains', uid))),
+  ])
+  const map = new Map()
+  ;[...sahipSnap.docs, ...ortakSnap.docs].forEach((d) => map.set(d.id, { id: d.id, ...d.data() }))
+  const liste = [...map.values()]
   liste.sort((a, b) => (b.olusturmaTarihi?.toMillis?.() || 0) - (a.olusturmaTarihi?.toMillis?.() || 0))
   return liste
 }
@@ -49,4 +72,37 @@ export async function geziPlaniGuncelle(id, kismiVeri) {
 
 export async function geziPlaniSil(id) {
   await deleteDoc(planRef(id))
+}
+
+// --- Paylaşım / ortak düzenleme -----------------------------------------
+
+// Kullanıcı adına göre (baştan eşleşen) arama — plana ortak düzenleyen
+// eklerken kullanılıyor. Kullanicilar.jsx'teki keşfet aramasıyla aynı desen.
+export async function kullaniciAraKullaniciAdiIle(terim) {
+  if (!terim.trim()) return []
+  const q = query(
+    collection(db, 'kullanicilar'),
+    orderBy('kullaniciAdi'),
+    startAt(terim.trim().toLowerCase()),
+    endAt(terim.trim().toLowerCase() + '\uf8ff'),
+    limit(8)
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+export async function planaOrtakDuzenleyenEkle(planId, eklenecekKullanici) {
+  await updateDoc(planRef(planId), {
+    ortakDuzenleyenler: arrayUnion(eklenecekKullanici.id),
+    [`ortakDuzenleyenlerBilgi.${eklenecekKullanici.id}`]: {
+      adSoyad: eklenecekKullanici.adSoyad || 'İsimsiz',
+      avatarUrl: eklenecekKullanici.avatarUrl || '',
+    },
+  })
+}
+
+export async function plandanOrtakDuzenleyenCikar(planId, uid) {
+  await updateDoc(planRef(planId), {
+    ortakDuzenleyenler: arrayRemove(uid),
+  })
 }

@@ -1,7 +1,7 @@
 const { initializeApp } = require('firebase-admin/app')
 const { getFirestore, FieldValue } = require('firebase-admin/firestore')
 const { getMessaging } = require('firebase-admin/messaging')
-const { onDocumentCreated } = require('firebase-functions/v2/firestore')
+const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore')
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const { onSchedule } = require('firebase-functions/v2/scheduler')
 const { defineSecret } = require('firebase-functions/params')
@@ -303,6 +303,26 @@ exports.etkinlikHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Eu
       url: etkinlik.topluluklId ? `/topluluk/${etkinlik.topluluklId}` : '/etkinlikler',
     })
   }
+})
+
+// --- Gezi Planı Paylaşım Bildirimi -------------------------------------
+// ortakDuzenleyenler dizisine YENİ eklenen kişi(ler) — genelde tek seferde
+// bir kişi — plana davet edildiğine dair bildirim alır. Diziyi öncesi/
+// sonrasıyla karşılaştırıp sadece FARKI (yeni eklenenleri) bildiriyoruz ki
+// var olan ortak düzenleyicilere her güncellemede tekrar bildirim gitmesin.
+exports.geziPlaniPaylasimBildirimi = onDocumentUpdated('geziPlanlari/{planId}', async (event) => {
+  const onceki = event.data.before.data()
+  const sonraki = event.data.after.data()
+  const oncekiListe = new Set(onceki.ortakDuzenleyenler || [])
+  const yeniEklenenler = (sonraki.ortakDuzenleyenler || []).filter((uid) => !oncekiListe.has(uid))
+  if (yeniEklenenler.length === 0) return
+
+  await bildirimleriYazVeGonder(yeniEklenenler, {
+    tur: 'gezi_plani_paylasim',
+    baslik: '🗺️ Bir gezi planına eklendin',
+    govde: `${sonraki.sahipAdi || 'Biri'}, "${sonraki.baslik}" planına seni ekledi`,
+    url: `/gezi-plani/${event.params.planId}`,
+  })
 })
 
 // --- Instagram Gömme --------------------------------------------------
