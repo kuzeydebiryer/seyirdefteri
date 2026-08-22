@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ULKELER } from '../data/ulkeler.js'
+import { konumGeocodeEt } from '../utils/konumGeocode.js'
 import { geziPlaniGetir, geziPlaniGuncelle, geziPlaniSil } from '../utils/geziPlanlari.js'
+import { geziPlaniPdfIndir } from '../utils/geziPlaniPdf.js'
 import GeziPlaniPaylasim from '../components/GeziPlaniPaylasim.jsx'
+import GeziPlaniHaritasi from '../components/GeziPlaniHaritasi.jsx'
 import KisiselBilgilerBolumu from '../components/KisiselBilgilerBolumu.jsx'
 
 const HAVAYOLLARI = ['Pegasus', 'THY', 'AJet', 'Diğer']
@@ -164,21 +167,30 @@ function KonaklamaForm({ onEkle, onVazgec, currentUid }) {
   const [girisTarihi, setGirisTarihi] = useState('')
   const [cikisTarihi, setCikisTarihi] = useState('')
   const [ucret, setUcret] = useState('')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
 
-  function ekle(e) {
+  async function ekle(e) {
     e.preventDefault()
     if (!ad.trim()) return
-    const kisiselBilgiler = {}
-    if (ucret) kisiselBilgiler[currentUid] = { ucret: Number(ucret) }
-    onEkle({
-      id: benzersizId(),
-      ad: ad.trim(),
-      konum: konum.trim(),
-      girisTarihi,
-      cikisTarihi,
-      kisiselBilgiler,
-      tik: false,
-    })
+    setKaydediliyor(true)
+    try {
+      const kisiselBilgiler = {}
+      if (ucret) kisiselBilgiler[currentUid] = { ucret: Number(ucret) }
+      const konumBilgisi = await konumGeocodeEt(konum)
+      onEkle({
+        id: benzersizId(),
+        ad: ad.trim(),
+        konum: konum.trim(),
+        enlem: konumBilgisi?.enlem ?? null,
+        boylem: konumBilgisi?.boylem ?? null,
+        girisTarihi,
+        cikisTarihi,
+        kisiselBilgiler,
+        tik: false,
+      })
+    } finally {
+      setKaydediliyor(false)
+    }
   }
 
   return (
@@ -227,8 +239,8 @@ function KonaklamaForm({ onEkle, onVazgec, currentUid }) {
         className="w-full rounded-sm bg-kagitKoyu px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
       />
       <div className="flex gap-2">
-        <button type="submit" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit">
-          Ekle
+        <button type="submit" disabled={kaydediliyor} className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40">
+          {kaydediliyor ? 'Ekleniyor...' : 'Ekle'}
         </button>
         <button type="button" onClick={onVazgec} className="text-xs text-kraft hover:text-murekkep">
           Vazgeç
@@ -271,22 +283,31 @@ function MaddeForm({ onEkle, onVazgec, currentUid }) {
   const [saat, setSaat] = useState('')
   const [not_, setNot_] = useState('')
   const [ucret, setUcret] = useState('')
+  const [kaydediliyor, setKaydediliyor] = useState(false)
 
-  function ekle(e) {
+  async function ekle(e) {
     e.preventDefault()
     if (!baslik.trim()) return
-    const kisiselBilgiler = {}
-    if (ucret) kisiselBilgiler[currentUid] = { ucret: Number(ucret) }
-    onEkle({
-      id: benzersizId(),
-      tip,
-      baslik: baslik.trim(),
-      konum: konum.trim(),
-      saat,
-      not: not_.trim(),
-      kisiselBilgiler,
-      tik: false,
-    })
+    setKaydediliyor(true)
+    try {
+      const kisiselBilgiler = {}
+      if (ucret) kisiselBilgiler[currentUid] = { ucret: Number(ucret) }
+      const konumBilgisi = await konumGeocodeEt(konum)
+      onEkle({
+        id: benzersizId(),
+        tip,
+        baslik: baslik.trim(),
+        konum: konum.trim(),
+        enlem: konumBilgisi?.enlem ?? null,
+        boylem: konumBilgisi?.boylem ?? null,
+        saat,
+        not: not_.trim(),
+        kisiselBilgiler,
+        tik: false,
+      })
+    } finally {
+      setKaydediliyor(false)
+    }
   }
 
   return (
@@ -343,8 +364,8 @@ function MaddeForm({ onEkle, onVazgec, currentUid }) {
         className="w-full rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
       />
       <div className="flex gap-2">
-        <button type="submit" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit">
-          Ekle
+        <button type="submit" disabled={kaydediliyor} className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40">
+          {kaydediliyor ? 'Ekleniyor...' : 'Ekle'}
         </button>
         <button type="button" onClick={onVazgec} className="text-xs text-kraft hover:text-murekkep">
           Vazgeç
@@ -396,7 +417,7 @@ function GunKarti({ gun, onGunSil, onMaddeEkle, onMaddeSil, onMaddeTikDegistir, 
           value={gun.ulkeKodu || ''}
           onChange={(e) => {
             const secilen = ULKELER.find((u) => u.kod === e.target.value)
-            onKonumDegistir({ ulkeKodu: secilen?.kod || '', ulkeAdi: secilen?.ad || '', sehir: gun.sehir || '' })
+            onKonumDegistir({ ulkeKodu: secilen?.kod || '', ulkeAdi: secilen?.ad || '', ulkeIso: secilen?.isoNumeric || '', sehir: gun.sehir || '' })
           }}
           className="rounded-sm bg-kagitKoyu px-2 py-1 text-[11px] text-murekkep ring-1 ring-cizgi"
         >
@@ -410,7 +431,7 @@ function GunKarti({ gun, onGunSil, onMaddeEkle, onMaddeSil, onMaddeTikDegistir, 
         <input
           type="text"
           value={gun.sehir || ''}
-          onChange={(e) => onKonumDegistir({ ulkeKodu: gun.ulkeKodu || '', ulkeAdi: gun.ulkeAdi || '', sehir: e.target.value })}
+          onChange={(e) => onKonumDegistir({ ulkeKodu: gun.ulkeKodu || '', ulkeAdi: gun.ulkeAdi || '', ulkeIso: gun.ulkeIso || '', sehir: e.target.value })}
           placeholder="Şehir (opsiyonel)"
           className="w-32 rounded-sm bg-kagitKoyu px-2 py-1 text-[11px] text-murekkep ring-1 ring-cizgi"
         />
@@ -606,11 +627,16 @@ export default function GeziPlaniDetay() {
           onChange={(e) => alanGuncelle('baslik', e.target.value)}
           className="min-w-0 flex-1 bg-transparent font-baslik text-2xl text-murekkep focus:outline-none"
         />
-        {sahipMi && (
-          <button onClick={planiSil} className="shrink-0 text-xs text-kraft hover:text-muhur">
-            Planı Sil
+        <div className="flex shrink-0 items-center gap-3">
+          <button onClick={() => geziPlaniPdfIndir(plan, isimHaritasi)} className="text-xs text-deniz hover:underline">
+            📄 PDF İndir
           </button>
-        )}
+          {sahipMi && (
+            <button onClick={planiSil} className="text-xs text-kraft hover:text-muhur">
+              Planı Sil
+            </button>
+          )}
+        </div>
       </div>
 
       {!sahipMi && <p className="mb-4 text-xs text-kraft">👥 {plan.sahipAdi} tarafından seninle paylaşıldı</p>}
@@ -657,6 +683,12 @@ export default function GeziPlaniDetay() {
           {butceToplam > 0 && <p className="text-sm text-murekkep">💰 Toplam bütçe: {butceToplam.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 })}</p>}
         </div>
       )}
+
+      {/* Harita */}
+      <div className="mb-6">
+        <h2 className="mb-2 font-baslik text-lg text-murekkep">🗺️ Harita</h2>
+        <GeziPlaniHaritasi gunler={plan.gunler} konaklamalar={plan.konaklamalar} />
+      </div>
 
       {/* Uçuşlar */}
       <div className="mb-6">
