@@ -26,6 +26,7 @@ export async function geziPlaniOlustur(kullanici, profil, { baslik, baslangicTar
   const belge = await addDoc(collection(db, 'geziPlanlari'), {
     sahipId: kullanici.uid,
     sahipAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+    sahipAvatarUrl: profil?.avatarUrl || '',
     ortakDuzenleyenler: [],
     ortakDuzenleyenlerBilgi: {},
     baslik: baslik || 'Yeni Gezi Planı',

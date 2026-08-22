@@ -305,7 +305,51 @@ exports.etkinlikHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Eu
   }
 })
 
-// --- Gezi Planı Paylaşım Bildirimi -------------------------------------
+// --- Gezi Planı Uçuş Check-in Hatırlatması ------------------------------
+// Her gün 09:00'da (İstanbul saati), gidiş tarihi TAM 7 gün sonrası olan
+// uçuşları bulup planın herkesine (sahip + ortak düzenleyenler) bildirim
+// gönderiyor. Aynı uçuşa iki kez bildirim gitmesin diye uçuş nesnesine
+// checkInBildirimGonderildi bayrağı yazılıyor — bu yüzden bulunan planlar
+// TEK TEK updateDoc ile güncelleniyor (etkinlikHatirlatmasi'nden farklı
+// olarak, o akış tekrarlanan bildirim riskini zaten "yarın" penceresiyle
+// doğal olarak önlüyordu, burada 7 günlük sabit pencere olduğu için ayrı
+// bir koruma gerekiyor).
+exports.geziUcusCheckInHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Europe/Istanbul' }, async () => {
+  const hedefGunBaslangic = new Date()
+  hedefGunBaslangic.setDate(hedefGunBaslangic.getDate() + 7)
+  hedefGunBaslangic.setHours(0, 0, 0, 0)
+  const hedefGunBitis = new Date(hedefGunBaslangic)
+  hedefGunBitis.setHours(23, 59, 59, 999)
+
+  const snap = await db.collection('geziPlanlari').get()
+
+  for (const belge of snap.docs) {
+    const plan = belge.data()
+    const ucuslar = plan.ucuslar || []
+    let degisiklikVarMi = false
+
+    for (const ucus of ucuslar) {
+      if (ucus.checkInBildirimGonderildi || !ucus.gidisTarihSaat) continue
+      const gidis = new Date(ucus.gidisTarihSaat)
+      if (gidis < hedefGunBaslangic || gidis > hedefGunBitis) continue
+
+      const aliciUidler = [plan.sahipId, ...(plan.ortakDuzenleyenler || [])].filter(Boolean)
+      await bildirimleriYazVeGonder(aliciUidler, {
+        tur: 'gezi_ucus_checkin',
+        baslik: `✈️ Check-in zamanı yaklaşıyor`,
+        govde: `${plan.baslik} — ${ucus.havayolu} uçuşuna bir hafta kaldı, check-in'i unutma`,
+        url: `/gezi-plani/${belge.id}`,
+      })
+      ucus.checkInBildirimGonderildi = true
+      degisiklikVarMi = true
+    }
+
+    if (degisiklikVarMi) {
+      await belge.ref.update({ ucuslar })
+    }
+  }
+})
+
 // ortakDuzenleyenler dizisine YENİ eklenen kişi(ler) — genelde tek seferde
 // bir kişi — plana davet edildiğine dair bildirim alır. Diziyi öncesi/
 // sonrasıyla karşılaştırıp sadece FARKI (yeni eklenenleri) bildiriyoruz ki

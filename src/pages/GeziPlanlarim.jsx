@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { geziPlanlariniGetir, geziPlaniOlustur, geziPlaniSil } from '../utils/geziPlanlari.js'
+import Avatar from '../components/Avatar.jsx'
 
 function tarihAraligi(p) {
   if (!p.baslangicTarihi) return null
@@ -9,6 +10,27 @@ function tarihAraligi(p) {
   if (!p.bitisTarihi) return bas
   const bit = new Date(p.bitisTarihi).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })
   return `${bas} — ${bit}`
+}
+
+// "3 gün kaldı" / "Bugün başlıyor" / "Yarın başlıyor" / geçmiş bir tarihse
+// null (kart kalabalıklaşmasın diye — geçmiş plan zaten "Tamamlandı" rozetiyle görünüyor).
+function kalanGunMetni(p) {
+  if (!p.baslangicTarihi || p.durum === 'tamamlandi') return null
+  const bugun = new Date(new Date().toISOString().slice(0, 10))
+  const baslangic = new Date(p.baslangicTarihi)
+  const farkGun = Math.round((baslangic - bugun) / (1000 * 60 * 60 * 24))
+  if (farkGun < 0) return null
+  if (farkGun === 0) return '🔥 Bugün başlıyor'
+  if (farkGun === 1) return '🔥 Yarın başlıyor'
+  return `⏳ ${farkGun} gün kaldı`
+}
+
+function katilimcilar(p) {
+  const liste = [{ uid: p.sahipId, adSoyad: p.sahipAdi, avatarUrl: p.sahipAvatarUrl }]
+  Object.entries(p.ortakDuzenleyenlerBilgi || {}).forEach(([uid, bilgi]) => {
+    liste.push({ uid, adSoyad: bilgi.adSoyad, avatarUrl: bilgi.avatarUrl })
+  })
+  return liste
 }
 
 function ilerlemeHesapla(p) {
@@ -65,7 +87,7 @@ export default function GeziPlanlarim() {
           type="text"
           value={yeniBaslik}
           onChange={(e) => setYeniBaslik(e.target.value)}
-          placeholder="Yeni plan başlığı — örn. Roma Balayı"
+          placeholder="Yeni plan başlığı — örn. Barselona Kaçamağı"
           className="flex-1 rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
         />
         <button
@@ -83,6 +105,8 @@ export default function GeziPlanlarim() {
       <div className="space-y-3">
         {planlar?.map((p) => {
           const ilerleme = ilerlemeHesapla(p)
+          const kalan = kalanGunMetni(p)
+          const katilimci = katilimcilar(p)
           return (
             <div key={p.id} className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
               <div className="flex items-start justify-between gap-3">
@@ -98,10 +122,18 @@ export default function GeziPlanlarim() {
                     </span>
                   </div>
                   {tarihAraligi(p) && <p className="mt-0.5 text-xs text-kraft">{tarihAraligi(p)}</p>}
+                  {kalan && <p className="mt-1 text-xs text-gise">{kalan}</p>}
                   {ilerleme && (
                     <p className="mt-1 text-xs text-kraft">
                       {ilerleme.tamamlanan}/{ilerleme.toplam} madde tamamlandı
                     </p>
+                  )}
+                  {katilimci.length > 1 && (
+                    <div className="mt-2 flex -space-x-2">
+                      {katilimci.map((k) => (
+                        <Avatar key={k.uid} adSoyad={k.adSoyad} avatarUrl={k.avatarUrl} boyut="h-6 w-6" />
+                      ))}
+                    </div>
                   )}
                 </Link>
                 <button onClick={() => planSil(p.id)} className="shrink-0 text-[11px] text-kraft hover:text-muhur">
