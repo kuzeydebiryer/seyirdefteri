@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { ULKELER } from '../data/ulkeler.js'
 import { geziPlaniGetir, geziPlaniGuncelle, geziPlaniSil } from '../utils/geziPlanlari.js'
 import GeziPlaniPaylasim from '../components/GeziPlaniPaylasim.jsx'
 import KisiselBilgilerBolumu from '../components/KisiselBilgilerBolumu.jsx'
@@ -20,6 +21,22 @@ function benzersizId() {
 
 function butceToplamHesapla(kisiselBilgiler = {}) {
   return Object.values(kisiselBilgiler).reduce((t, v) => t + (Number(v?.ucret) || 0), 0)
+}
+
+// Ard arda gelen günleri aynı ülke/şehirse tek grupta birleştirir — "1-2.
+// Gün: İstanbul, Türkiye → 3-5. Gün: Roma, İtalya" gibi bir rota özeti için.
+function rotaOzetiHesapla(gunler = []) {
+  const gruplar = []
+  gunler.forEach((g) => {
+    const konumAnahtari = `${g.ulkeKodu || ''}|${g.sehir || ''}`
+    const sonGrup = gruplar[gruplar.length - 1]
+    if (sonGrup && sonGrup.konumAnahtari === konumAnahtari) {
+      sonGrup.gunSonu = g.gunNo
+    } else {
+      gruplar.push({ konumAnahtari, gunBasi: g.gunNo, gunSonu: g.gunNo, sehir: g.sehir, ulkeAdi: g.ulkeAdi })
+    }
+  })
+  return gruplar.filter((gr) => gr.sehir || gr.ulkeAdi)
 }
 
 // ---------------------------------------------------------------------
@@ -357,7 +374,7 @@ function MaddeSatiri({ madde, onTikDegistir, onSil, onKisiselKaydet, currentUid,
   )
 }
 
-function GunKarti({ gun, onGunSil, onMaddeEkle, onMaddeSil, onMaddeTikDegistir, onMaddeKisiselKaydet, onBaslikDegistir, currentUid, isimHaritasi }) {
+function GunKarti({ gun, onGunSil, onMaddeEkle, onMaddeSil, onMaddeTikDegistir, onMaddeKisiselKaydet, onBaslikDegistir, onKonumDegistir, currentUid, isimHaritasi }) {
   const [maddeFormAcik, setMaddeFormAcik] = useState(false)
 
   return (
@@ -372,6 +389,31 @@ function GunKarti({ gun, onGunSil, onMaddeEkle, onMaddeSil, onMaddeTikDegistir, 
         <button onClick={onGunSil} className="shrink-0 text-[11px] text-kraft hover:text-muhur">
           Günü Sil
         </button>
+      </div>
+
+      <div className="mb-2 flex flex-wrap gap-2">
+        <select
+          value={gun.ulkeKodu || ''}
+          onChange={(e) => {
+            const secilen = ULKELER.find((u) => u.kod === e.target.value)
+            onKonumDegistir({ ulkeKodu: secilen?.kod || '', ulkeAdi: secilen?.ad || '', sehir: gun.sehir || '' })
+          }}
+          className="rounded-sm bg-kagitKoyu px-2 py-1 text-[11px] text-murekkep ring-1 ring-cizgi"
+        >
+          <option value="">Ülke seç...</option>
+          {ULKELER.map((u) => (
+            <option key={u.kod} value={u.kod}>
+              {u.ad}
+            </option>
+          ))}
+        </select>
+        <input
+          type="text"
+          value={gun.sehir || ''}
+          onChange={(e) => onKonumDegistir({ ulkeKodu: gun.ulkeKodu || '', ulkeAdi: gun.ulkeAdi || '', sehir: e.target.value })}
+          placeholder="Şehir (opsiyonel)"
+          className="w-32 rounded-sm bg-kagitKoyu px-2 py-1 text-[11px] text-murekkep ring-1 ring-cizgi"
+        />
       </div>
 
       <div className="space-y-1.5">
@@ -472,7 +514,19 @@ export default function GeziPlaniDetay() {
   function gunEkle(e) {
     e.preventDefault()
     const gunNo = (plan.gunler?.length || 0) + 1
-    const yeniGun = { id: benzersizId(), gunNo, baslik: yeniGunBasligi.trim() || `${gunNo}. Gün`, maddeler: [] }
+    // Kolaylık: yeni gün, bir önceki günün ülke/şehrini devralır — çoğu
+    // zaman art arda günler aynı yerde geçer, değişiklik varsa tek tıkla
+    // düzeltiliyor. Ülke/şehir DEĞİŞtiyse kullanıcı zaten güncelleyecek.
+    const oncekiGun = plan.gunler?.[plan.gunler.length - 1]
+    const yeniGun = {
+      id: benzersizId(),
+      gunNo,
+      baslik: yeniGunBasligi.trim() || `${gunNo}. Gün`,
+      ulkeKodu: oncekiGun?.ulkeKodu || '',
+      ulkeAdi: oncekiGun?.ulkeAdi || '',
+      sehir: oncekiGun?.sehir || '',
+      maddeler: [],
+    }
     alanGuncelle('gunler', [...(plan.gunler || []), yeniGun])
     setYeniGunBasligi('')
   }
@@ -481,6 +535,9 @@ export default function GeziPlaniDetay() {
   }
   function gunBasligiDegistir(gunId, baslik) {
     alanGuncelle('gunler', plan.gunler.map((g) => (g.id === gunId ? { ...g, baslik } : g)))
+  }
+  function gunKonumDegistir(gunId, konum) {
+    alanGuncelle('gunler', plan.gunler.map((g) => (g.id === gunId ? { ...g, ...konum } : g)))
   }
   function maddeEkle(gunId, madde) {
     alanGuncelle(
@@ -654,6 +711,22 @@ export default function GeziPlaniDetay() {
       {/* Gün gün program */}
       <div className="mb-6">
         <h2 className="mb-2 font-baslik text-lg text-murekkep">📅 Gün Gün Program</h2>
+        {(() => {
+          const rota = rotaOzetiHesapla(plan.gunler)
+          if (rota.length === 0) return null
+          return (
+            <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-kraft">
+              {rota.map((gr, i) => (
+                <span key={i} className="flex items-center gap-1.5">
+                  {i > 0 && <span>→</span>}
+                  <span className="rounded-full bg-kagitKoyu px-2 py-1 ring-1 ring-cizgi">
+                    {gr.gunBasi === gr.gunSonu ? `${gr.gunBasi}. Gün` : `${gr.gunBasi}-${gr.gunSonu}. Gün`} — {[gr.sehir, gr.ulkeAdi].filter(Boolean).join(', ')}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )
+        })()}
         <div className="space-y-3">
           {(plan.gunler || []).map((g) => (
             <GunKarti
@@ -661,6 +734,7 @@ export default function GeziPlaniDetay() {
               gun={g}
               onGunSil={() => gunSil(g.id)}
               onBaslikDegistir={(baslik) => gunBasligiDegistir(g.id, baslik)}
+              onKonumDegistir={(konum) => gunKonumDegistir(g.id, konum)}
               onMaddeEkle={(madde) => maddeEkle(g.id, madde)}
               onMaddeSil={(maddeId) => maddeSil(g.id, maddeId)}
               onMaddeTikDegistir={(maddeId) => maddeTikDegistir(g.id, maddeId)}
