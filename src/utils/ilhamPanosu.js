@@ -6,7 +6,24 @@ export const ILHAM_KATEGORILERI = ['Film', 'Dizi', 'Kitap', 'Oyuncu', 'Gezi', 'E
 export async function ilhamEkle(
   kullanici,
   profil,
-  { url, kategori, not: notMetni, iliskiliTur, iliskiliDisId, iliskiliBaslik, iliskiliPosterUrl, iliskiliYil, iliskiliAlt }
+  {
+    url,
+    kategori,
+    not: notMetni,
+    iliskiliTur,
+    iliskiliDisId,
+    iliskiliBaslik,
+    iliskiliPosterUrl,
+    iliskiliYil,
+    iliskiliAlt,
+    geziUlkeKodu,
+    geziUlkeAdi,
+    geziUlkeIso,
+    geziKonum,
+    geziEnlem,
+    geziBoylem,
+    geziKampanya,
+  }
 ) {
   await addDoc(collection(db, 'ilhamPanosu'), {
     url,
@@ -18,10 +35,43 @@ export async function ilhamEkle(
     iliskiliPosterUrl: iliskiliPosterUrl || '',
     iliskiliYil: iliskiliYil || '',
     iliskiliAlt: iliskiliAlt || '',
+    geziUlkeKodu: kategori === 'Gezi' ? geziUlkeKodu || '' : '',
+    geziUlkeAdi: kategori === 'Gezi' ? geziUlkeAdi || '' : '',
+    geziUlkeIso: kategori === 'Gezi' ? geziUlkeIso || '' : '',
+    geziKonum: kategori === 'Gezi' ? geziKonum || '' : '',
+    geziEnlem: kategori === 'Gezi' ? geziEnlem ?? null : null,
+    geziBoylem: kategori === 'Gezi' ? geziBoylem ?? null : null,
+    geziKampanya: kategori === 'Gezi' ? geziKampanya || '' : '',
     paylasanId: kullanici.uid,
     paylasanAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
     eklemeTarihi: serverTimestamp(),
   })
+}
+
+// Daha önce girilmiş Gezi mekanlarının listesi — formda otomatik tamamlama
+// (datalist) için. Aynı yerin "Kapadokya" / "kapadokya" gibi farklı
+// yazımlarla çoğalmasını tamamen engellemez ama en azından öneriyor.
+export async function geziMekanlariGetir() {
+  const q = query(collection(db, 'ilhamPanosu'), where('kategori', '==', 'Gezi'))
+  const snap = await getDocs(q)
+  const mekanlar = new Set()
+  snap.docs.forEach((d) => {
+    const konum = d.data().geziKonum
+    if (konum) mekanlar.add(konum)
+  })
+  return [...mekanlar].sort((a, b) => a.localeCompare(b, 'tr-TR'))
+}
+
+// Daha önce girilmiş Gezi kampanya/tur adlarının listesi — aynı mantık.
+export async function geziKampanyalariGetir() {
+  const q = query(collection(db, 'ilhamPanosu'), where('kategori', '==', 'Gezi'))
+  const snap = await getDocs(q)
+  const kampanyalar = new Set()
+  snap.docs.forEach((d) => {
+    const kampanya = d.data().geziKampanya
+    if (kampanya) kampanyalar.add(kampanya)
+  })
+  return [...kampanyalar].sort((a, b) => a.localeCompare(b, 'tr-TR'))
 }
 
 // iliskiliTur değerine göre eser/kişi sayfasının route'unu üretir — İlham
