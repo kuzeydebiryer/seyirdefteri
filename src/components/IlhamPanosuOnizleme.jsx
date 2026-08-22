@@ -27,8 +27,8 @@ export default function IlhamPanosuOnizleme({ kategori }) {
   return (
     <div className="mb-10">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-baslik text-lg text-murekkep">📌 İlham Panosu</h2>
-        <Link to={`/ilham-panosu?kategori=${kategori}`} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
+        <h2 className="font-baslik text-lg text-murekkep">📌 Seyir Panosu</h2>
+        <Link to={`/seyir-panosu?kategori=${kategori}`} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
           Tümünü Gör ›
         </Link>
       </div>

@@ -9,7 +9,7 @@ export default function GeziRozeti({ ilham }) {
     <div className="mb-2 flex flex-wrap gap-1.5">
       {ilham.geziUlkeAdi && (
         <Link
-          to={`/ilham-panosu?kategori=Gezi&ulke=${ilham.geziUlkeKodu}`}
+          to={`/seyir-panosu?kategori=Gezi&ulke=${ilham.geziUlkeKodu}`}
           className="rounded-full bg-kagit px-2 py-0.5 text-[11px] text-murekkep ring-1 ring-cizgi hover:ring-deniz/50"
         >
           🌍 {ilham.geziUlkeAdi}
@@ -17,7 +17,7 @@ export default function GeziRozeti({ ilham }) {
       )}
       {ilham.geziKonum && (
         <Link
-          to={`/ilham-panosu?kategori=Gezi&mekan=${encodeURIComponent(ilham.geziKonum)}`}
+          to={`/seyir-panosu?kategori=Gezi&mekan=${encodeURIComponent(ilham.geziKonum)}`}
           className="rounded-full bg-kagit px-2 py-0.5 text-[11px] text-murekkep ring-1 ring-cizgi hover:ring-deniz/50"
         >
           📍 {ilham.geziKonum}
@@ -25,7 +25,7 @@ export default function GeziRozeti({ ilham }) {
       )}
       {ilham.geziKampanya && (
         <Link
-          to={`/ilham-panosu?kategori=Gezi&kampanya=${encodeURIComponent(ilham.geziKampanya)}`}
+          to={`/seyir-panosu?kategori=Gezi&kampanya=${encodeURIComponent(ilham.geziKampanya)}`}
           className="rounded-full bg-kagit px-2 py-0.5 text-[11px] text-murekkep ring-1 ring-cizgi hover:ring-deniz/50"
         >
           🏷️ {ilham.geziKampanya}

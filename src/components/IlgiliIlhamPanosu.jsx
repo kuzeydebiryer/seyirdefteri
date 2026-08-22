@@ -64,7 +64,7 @@ export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kateg
   return (
     <div className="mt-6">
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="font-baslik text-lg text-murekkep">📌 İlham Panosu</h2>
+        <h2 className="font-baslik text-lg text-murekkep">📌 Seyir Panosu</h2>
         {kullanici && (
           <button onClick={() => setFormAcik((a) => !a)} className="text-xs text-deniz hover:underline">
             {formAcik ? 'Vazgeç' : '+ Instagram Paylaşımı Ekle'}

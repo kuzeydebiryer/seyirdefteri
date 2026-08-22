@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
 import Nav from './components/Nav.jsx'
 import OzelRota from './components/OzelRota.jsx'
 import Anasayfa from './pages/Anasayfa.jsx'
@@ -52,6 +52,14 @@ import MuzikTahmin from './pages/oyunlar/MuzikTahmin.jsx'
 
 // Sayfalar birleştirildi (bkz. KisiSayfasi.jsx) — eski /yonetmen/:id linkleri
 // (yer imleri, dışarıdan gelen linkler) kırılmasın diye /kisi/:id'ye yönlendiriyoruz.
+// Eski /ilham-panosu linkleri (yer imleri, bildirimler, dışarıdan gelen
+// linkler) kırılmasın diye /seyir-panosu'ya yönlendiriyoruz — kategori/ülke/
+// mekan gibi sorgu parametreleri de korunuyor.
+function IlhamPanosuYonlendirme() {
+  const { search } = useLocation()
+  return <Navigate to={`/seyir-panosu${search}`} replace />
+}
+
 function YonetmenYonlendirme() {
   const { id } = useParams()
   return <Navigate to={`/kisi/${id}`} replace />
@@ -70,7 +78,8 @@ export default function App() {
           <Route path="/uyelik-basvuru" element={<UyelikBasvuru />} />
           <Route path="/dusunce-arsivi" element={<OzelRota><DusunceArsivi /></OzelRota>} />
           <Route path="/dusunce-havuzu-yonetim" element={<OzelRota><DusunceHavuzuYonetim /></OzelRota>} />
-          <Route path="/ilham-panosu" element={<OzelRota><IlhamPanosu /></OzelRota>} />
+          <Route path="/ilham-panosu" element={<IlhamPanosuYonlendirme />} />
+          <Route path="/seyir-panosu" element={<OzelRota><IlhamPanosu /></OzelRota>} />
           <Route path="/basvurular" element={<OzelRota><Basvurular /></OzelRota>} />
           <Route path="/gonderi-ekle" element={<OzelRota><GonderiEkle /></OzelRota>} />
           <Route path="/gonderi/:id" element={<OzelRota><GonderiDetay /></OzelRota>} />

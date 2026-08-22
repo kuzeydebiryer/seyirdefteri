@@ -119,7 +119,7 @@ export default function IlhamPanosu() {
         ← Anasayfa
       </Link>
       <div className="mt-1 mb-1 flex items-center justify-between">
-        <h1 className="font-baslik text-2xl text-murekkep">📌 İlham Panosu</h1>
+        <h1 className="font-baslik text-2xl text-murekkep">📌 Seyir Panosu</h1>
         {kullanici && (
           <button
             onClick={() => setFormAcik((a) => !a)}

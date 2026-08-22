@@ -24,7 +24,7 @@ const LINKLER = [
   { yol: '/gezi', etiket: 'Gezi', ikon: '✈️' },
   { yol: '/etkinlik-dunyasi', etiket: 'Etkinlik', ikon: '🎟️' },
   { yol: '/oyunlar', etiket: 'Oyunlar', ikon: '🎲' },
-  { yol: '/ilham-panosu', etiket: 'İlham Panosu', ikon: '📌' },
+  { yol: '/seyir-panosu', etiket: 'Seyir Panosu', ikon: '📌' },
 ]
 const TOPLULUK_LINKLERI = [{ yol: '/topluluklar', etiket: 'Topluluk', ikon: '👥' }]
 
