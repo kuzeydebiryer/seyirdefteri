@@ -79,11 +79,7 @@ export default function Anasayfa() {
         </div>
       )}
 
-      <BugununDusuncesiWidget />
-
       <TopluluklarBildirimSeridi />
-
-      <BugunAktifOlanlarBolumu />
 
       <SeyirPanosuOnizleme />
 
@@ -128,6 +124,10 @@ export default function Anasayfa() {
       <KitapDunyasiWidget />
 
       <GunlukKesif />
+
+      <BugununDusuncesiWidget />
+
+      <BugunAktifOlanlarBolumu />
 
       <EtkinlikHabercisiOnizleme />
 

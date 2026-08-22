@@ -87,7 +87,7 @@ export default function GeziPlanlarim() {
           type="text"
           value={yeniBaslik}
           onChange={(e) => setYeniBaslik(e.target.value)}
-          placeholder="Yeni plan başlığı — örn. Barselona Kaçamağı"
+          placeholder="Yeni plan başlığı — örn. Barselona"
           className="flex-1 rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
         />
         <button
