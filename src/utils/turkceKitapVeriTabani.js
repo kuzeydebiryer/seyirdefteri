@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { aksansizKucultulmus } from './metinNormallestir.js'
+import { isbnIleMevcutKitabiBul } from './kitapIsbnEslestir.js'
 
 // Türkçe Kitap Veri Tabanı — Google Books'ta Türkçe baskıların sık sık
 // bulunamaması sorununu çözmek için, Kitapyurdu'ndan derlenmiş 67.000+ kitaplık
@@ -96,6 +97,15 @@ export async function turkceKitaptanKaydet(kitap) {
   const oncekiSnap = await getDoc(ref)
   if (oncekiSnap.exists()) {
     return { id, ...oncekiSnap.data() }
+  }
+
+  // Bu kitap DAHA ÖNCE Google Books üzerinden (farklı bir ID şemasıyla)
+  // zaten kaydedilmiş olabilir — "aynı kitaptan iki farklı sayfa"
+  // sorununu önlemek için, sabit tr_{isbn} ID'sini oluşturmadan önce aynı
+  // ISBN'e sahip başka bir kayıt var mı diye bakıyoruz.
+  if (kitap.isbn) {
+    const esdeger = await isbnIleMevcutKitabiBul(kitap.isbn)
+    if (esdeger) return esdeger
   }
 
   let posterUrl = ''

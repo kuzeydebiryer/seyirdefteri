@@ -16,7 +16,21 @@ export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kateg
 
   useEffect(() => {
     if (!disId) return
-    ilhamlariEserIcinGetir(tur, disId).then(setIlhamlar)
+    // KRİTİK: sayfalar arası hızlı geçişte (SPA navigasyonu, tam sayfa
+    // yenilemeden) eski sayfanın isteği yeni sayfadakinden GEÇ dönerse,
+    // eski (yanlış) veriyle üzerine yazabiliyordu — "bir sayfadaki paylaşım
+    // başka birinin sayfasında görünüyor" sorununun kök sebebi buydu.
+    // Hem "iptal" bayrağıyla geç gelen yanıtı yok sayıyoruz, hem de tur/
+    // disId değişir değişmez eski veriyi hemen temizliyoruz (bir anlığına
+    // bile yanlış paylaşım görünmesin diye).
+    let iptal = false
+    setIlhamlar(null)
+    ilhamlariEserIcinGetir(tur, disId).then((liste) => {
+      if (!iptal) setIlhamlar(liste)
+    })
+    return () => {
+      iptal = true
+    }
   }, [tur, disId])
 
   async function ekleTiklandi(e) {

@@ -10,7 +10,14 @@ export default function IlhamPanosuOnizleme({ kategori }) {
   const [ilhamlar, setIlhamlar] = useState(null)
 
   useEffect(() => {
-    ilhamlariGetir(kategori, 2).then(setIlhamlar)
+    let iptal = false
+    setIlhamlar(null)
+    ilhamlariGetir(kategori, 2).then((liste) => {
+      if (!iptal) setIlhamlar(liste)
+    })
+    return () => {
+      iptal = true
+    }
   }, [kategori])
 
   if (ilhamlar === null || ilhamlar.length === 0) return null

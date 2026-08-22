@@ -31,6 +31,7 @@ import {
 import { db } from '../firebase.js'
 import { aksansizKucultulmus } from './metinNormallestir.js'
 import { turkceKitapAra } from './turkceKitapVeriTabani.js'
+import { isbnIleMevcutKitabiBul } from './kitapIsbnEslestir.js'
 
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
@@ -208,6 +209,12 @@ export async function kitapGetir(id) {
 // zaten Google'ın arama sonucu (item) var, tekrar volume isteği atmadan onu
 // normalize edip Open Library ile zenginleştirir ve kalıcı yazar. Böylece
 // hem arama hem detay sayfası aynı zengin veriye kavuşur.
+//
+// KÖPRÜ/TEKİLLEŞTİRME: Aynı fiziksel kitap, statik 67 bin veri setinden
+// (kendi ID sistemi) VE Google Books'tan (kendi ID sistemi) AYRI AYRI
+// kaydedilebiliyordu — "aynı kitaptan iki farklı sayfa" sorununun kök
+// sebebi buydu. Kaydetmeden önce, aynı ISBN'e sahip BAŞKA bir kayıt var mı
+// diye bakıp varsa ONU kullanıyoruz — yeni bir kopya oluşturmuyoruz.
 export async function kitapAramaSonucundanKaydet(item) {
   const id = item.id
   const ref = kitapRef(id)
@@ -217,6 +224,12 @@ export async function kitapAramaSonucundanKaydet(item) {
   }
 
   const google = googleVerisiniNormallestir(item)
+  const isbnAdayi = google.isbn13 || google.isbn10
+  if (isbnAdayi) {
+    const esdeger = await isbnIleMevcutKitabiBul(isbnAdayi)
+    if (esdeger) return esdeger
+  }
+
   const openLibrary = await openLibraryZenginlestir(google)
   const birlesik = birlestir(google, openLibrary)
 
