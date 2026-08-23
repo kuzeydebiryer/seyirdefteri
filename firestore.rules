@@ -213,6 +213,15 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.sahipId == request.auth.uid;
     }
 
+    // Meydan Okumalar — varsayılan özel: sadece sahip okuyup yazabilir.
+    // herkeseAcik:true olanlar İSTİSNA olarak herkese okunabilir (profil
+    // sayfasında başkalarının paylaştığı meydan okumaları göstermek için).
+    match /meydanOkumalar/{moId} {
+      allow read: if resource.data.herkeseAcik == true || (request.auth != null && resource.data.sahipId == request.auth.uid);
+      allow update, delete: if request.auth != null && resource.data.sahipId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.sahipId == request.auth.uid;
+    }
+
     match /gonderiler/{gonderiId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;

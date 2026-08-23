@@ -73,7 +73,7 @@ export default function Nav() {
   return (
     <header className="border-b border-cizgi">
       <div className="mx-auto flex max-w-3xl items-center px-4 py-4">
-        <Link to="/" onClick={() => setMenuAcik(false)} className="shrink-0">
+        <Link to="/" onClick={() => setMenuAcik(false)} className="shrink-0" aria-label="Anasayfa">
           <Logo sadeceIkon boyut={34} />
         </Link>
 
@@ -101,11 +101,12 @@ export default function Nav() {
                   disabled={bildirimIsleniyor}
                   className="text-kraft hover:text-murekkep disabled:opacity-40"
                   title={bildirimIzni === 'granted' ? 'Push bildirimlerini kapat' : 'Push bildirimlerini aç'}
+                  aria-label={bildirimIzni === 'granted' ? 'Push bildirimlerini kapat' : 'Push bildirimlerini aç'}
                 >
                   {bildirimIzni === 'granted' ? '📳' : '🔕'}
                 </button>
               )}
-              <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
+              <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'} aria-label={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
                 <TiyatroMaskeleriIkon tema={tema} boyut={28} />
               </button>
               <button onClick={cikis} className="text-kraft hover:text-murekkep">
@@ -134,7 +135,7 @@ export default function Nav() {
           </div>
         ) : (
           <nav className="ml-auto flex items-center gap-4 font-govde text-sm">
-            <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
+            <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'} aria-label={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
               <TiyatroMaskeleriIkon tema={tema} boyut={28} />
             </button>
             <NavLink to="/giris" className="text-kraft hover:text-murekkep">

@@ -59,6 +59,7 @@ export default function YaziArama() {
               value={metin}
               onChange={(e) => setMetin(e.target.value)}
               placeholder="Başlık, yazar adı ya da içerikte ara..."
+              aria-label="Başlık, yazar adı ya da içerikte ara"
               className="min-w-0 flex-1 rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
             />
             <select

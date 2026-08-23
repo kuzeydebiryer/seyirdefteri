@@ -12,10 +12,18 @@
   --kagitKoyu: 227 212 179;
   --murekkep: 31 36 33;
   --muhur: 179 58 58;
-  --kraft: 128 114 82;
+  /* kraft/gise/deniz burada KASITLI OLARAK orijinal tondan biraz daha koyu —
+     Google PageSpeed erişilebilirlik denetimi, eski değerlerin (kraft
+     128/114/82, gise 166/118/63) açık zemin üzerinde WCAG AA metin kontrast
+     eşiğini (4.5:1) TUTTURAMADIĞINI gösterdi (kraft: 3.81:1, gise
+     kagitKoyu'da: 2.71:1 — ikisi de FAIL). Aynı sıcak ton ailesinde, sadece
+     koyulaştırılmış değerler kullanılıyor; hepsi hem kagit hem kagitKoyu
+     zemininde ≥4.5:1'i geçiyor (hesaplandı, bkz. proje notları).
+     Koyu mod zaten geçiyordu, dokunulmadı. */
+  --kraft: 102 90 65;
   --cizgi: 199 180 141;
-  --deniz: 74 110 107;
-  --gise: 166 118 63;
+  --deniz: 66 98 95;
+  --gise: 120 85 45;
 }
 
 .dark {

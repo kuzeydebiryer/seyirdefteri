@@ -144,6 +144,7 @@ export default function FilmDiziArama({ tur }) {
             value={arama}
             onChange={(e) => setArama(e.target.value)}
             placeholder={tur === 'sinema' ? 'Film adı ara...' : 'Dizi adı ara...'}
+            aria-label={tur === 'sinema' ? 'Film adı ara' : 'Dizi adı ara'}
             className="flex-1 rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
           />
           <button type="submit" className="rounded-sm bg-deniz px-4 py-2 font-govde text-xs text-kagit">
@@ -173,6 +174,7 @@ export default function FilmDiziArama({ tur }) {
               value={yilBaslangic}
               onChange={(e) => setYilBaslangic(e.target.value)}
               placeholder="Yıl (min)"
+              aria-label="Başlangıç yılı"
               className="rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
             />
             <input
@@ -180,6 +182,7 @@ export default function FilmDiziArama({ tur }) {
               value={yilBitis}
               onChange={(e) => setYilBitis(e.target.value)}
               placeholder="Yıl (max)"
+              aria-label="Bitiş yılı"
               className="rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
             />
             <input
@@ -190,6 +193,7 @@ export default function FilmDiziArama({ tur }) {
               value={minPuan}
               onChange={(e) => setMinPuan(e.target.value)}
               placeholder="Min TMDB puanı"
+              aria-label="Minimum TMDB puanı"
               className="rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
             />
             {OMDB_API_KEY && (
@@ -201,6 +205,7 @@ export default function FilmDiziArama({ tur }) {
                 value={minImdbPuan}
                 onChange={(e) => setMinImdbPuan(e.target.value)}
                 placeholder="Min IMDb puanı"
+                aria-label="Minimum IMDb puanı"
                 className="rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
               />
             )}

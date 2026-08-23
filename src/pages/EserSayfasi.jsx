@@ -522,11 +522,32 @@ export default function EserSayfasi({ tur }) {
 
   // Sadece tarihi (yıldıza tekrar tıklamadan) düzeltmek için — eskiden bunun
   // hiçbir kaydetme yolu yoktu, kutu değişse de sayfa yenilenince kaybolurdu.
+  // ÖNEMLİ: hiç günlük kaydı yoksa (kullanıcı henüz puan vermedi/başlama-
+  // bitirme tıklamadı) buton önceden HİÇ görünmüyordu — tarih kutusu boşa
+  // duruyor, kaydedecek bir yer yokmuş gibi kafa karıştırıyordu. Artık böyle
+  // bir durumda puansız, sade bir "izleme" kaydı OLUŞTURUYOR (tıpkı
+  // "başlama"/"bitirme" olayları gibi), böylece buton her zaman bir şey
+  // yapıyor.
   async function tarihiKaydet() {
-    if (!mevcutGunlukKaydi) return
+    if (!kullanici || !detay) return
     setTarihKaydediliyor(true)
     try {
-      await gunlukKaydiGuncelle(mevcutGunlukKaydi.id, { izlemeTarihiISO: gunlukTarihi })
+      if (mevcutGunlukKaydi) {
+        await gunlukKaydiGuncelle(mevcutGunlukKaydi.id, { izlemeTarihiISO: gunlukTarihi })
+      } else {
+        await gunlukKaydiEkle(kullanici, {
+          tur,
+          disId: id,
+          baslik: detay.baslik,
+          posterUrl: detay.posterUrl,
+          yil: detay.yil || '',
+          izlemeTarihiISO: gunlukTarihi,
+          tekrarMi: gunlukTekrar,
+          olayTuru: 'izleme',
+        })
+        const yeniKayit = await kullanicininSonKaydiGetir(kullanici.uid, tur, tur === 'kitap' ? id : Number(id))
+        setMevcutGunlukKaydi(yeniKayit)
+      }
       setTarihKaydedildi(true)
       setTimeout(() => setTarihKaydedildi(false), 2000)
     } finally {
@@ -1548,15 +1569,13 @@ export default function EserSayfasi({ tur }) {
                 onChange={(e) => setGunlukTarihi(e.target.value)}
                 className="rounded-sm bg-kagit px-2 py-0.5 text-xs text-murekkep ring-1 ring-cizgi"
               />
-              {mevcutGunlukKaydi && (
-                <button
-                  onClick={tarihiKaydet}
-                  disabled={tarihKaydediliyor}
-                  className="rounded-sm bg-deniz px-2 py-0.5 text-xs text-kagit disabled:opacity-40"
-                >
-                  {tarihKaydediliyor ? 'Kaydediliyor...' : tarihKaydedildi ? '✓ Kaydedildi' : 'Kaydet'}
-                </button>
-              )}
+              <button
+                onClick={tarihiKaydet}
+                disabled={tarihKaydediliyor}
+                className="rounded-sm bg-deniz px-2 py-0.5 text-xs text-kagit disabled:opacity-40"
+              >
+                {tarihKaydediliyor ? 'Kaydediliyor...' : tarihKaydedildi ? '✓ Kaydedildi' : 'Kaydet'}
+              </button>
               <label className="flex items-center gap-1">
                 <input type="checkbox" checked={gunlukTekrar} onChange={(e) => setGunlukTekrar(e.target.checked)} />
                 🔄 Yeniden {tur === 'kitap' ? 'okuma' : 'izleme'}

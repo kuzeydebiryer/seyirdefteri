@@ -31,6 +31,9 @@ import YilOzeti from '../components/YilOzeti.jsx'
 import GunlukListesi from '../components/GunlukListesi.jsx'
 import { gunlukYilininKayitlariniGetir, gunlukIlkYiliGetir, mukerrerGunlukKayitlariniTemizle } from '../utils/gunluk.js'
 import { buYilOlaylariHesapla } from '../utils/yilOzeti.js'
+import { meydanOkumalariGetir, herkeseAcikMeydanOkumalariGetir, meydanOkumaOlustur } from '../utils/meydanOkuma.js'
+import MeydanOkumaFormu from '../components/MeydanOkumaFormu.jsx'
+import MeydanOkumaKarti from '../components/MeydanOkumaKarti.jsx'
 
 const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
@@ -66,6 +69,8 @@ export default function Profil() {
   const benimProfilimMi = kullanici?.uid === uid
 
   const [hedefProfil, setHedefProfil] = useState(benimProfilimMi ? kendiProfilim : null)
+  const [meydanOkumalar, setMeydanOkumalar] = useState(null)
+  const [meydanOkumaFormAcik, setMeydanOkumaFormAcik] = useState(false)
   const [kahinSezonlari, setKahinSezonlari] = useState([])
   const [sanatKoleksiyonu, setSanatKoleksiyonu] = useState([])
   const [begenilenMuzikler, setBegenilenMuzikler] = useState([])
@@ -90,6 +95,18 @@ export default function Profil() {
   const [takipIsleniyor, setTakipIsleniyor] = useState(false)
 
   const [sekme, setSekme] = useState('yilozeti')
+
+  useEffect(() => {
+    if (sekme !== 'meydanokumalar' || !uid) return
+    setMeydanOkumalar(null)
+    ;(benimProfilimMi ? meydanOkumalariGetir(uid) : herkeseAcikMeydanOkumalariGetir(uid)).then(setMeydanOkumalar)
+  }, [sekme, uid, benimProfilimMi])
+
+  async function meydanOkumaOlusturTiklandi(veri) {
+    await meydanOkumaOlustur(kullanici, kendiProfilim, veri)
+    setMeydanOkumaFormAcik(false)
+    meydanOkumalariGetir(uid).then(setMeydanOkumalar)
+  }
   const [favoriSekmesi, setFavoriSekmesi] = useState('sinema')
   const { favoriler, yenidenYukle: favorileriYenile } = useFavoriler(uid, favoriSekmesi)
   // Profilin en üstündeki "Sabitlenmiş Favoriler" vitrini için — sekmedeki
@@ -301,6 +318,8 @@ export default function Profil() {
     { id: 'okuduklarim', etiket: '📖 Okuduklarım' },
     { id: 'yazigezi', etiket: '✍️ Yazı & Gezi' },
     { id: 'suanda', etiket: '⏳ Şu An' },
+    { id: 'tamamladiklarim', etiket: '✓ Tamamladıklarım' },
+    { id: 'meydanokumalar', etiket: '🏆 Meydan Okumalarım' },
     { id: 'izleyecegim', etiket: '📋 İzleyecek/Okuyacaklarım' },
     { id: 'favoriler', etiket: '♥ Favoriler' },
     { id: 'raflarim', etiket: '📚 Raflarım' },
@@ -1114,6 +1133,85 @@ export default function Profil() {
               </>
             )
           })()}
+        </div>
+      )}
+
+      {sekme === 'tamamladiklarim' && (
+        <div>
+          {(() => {
+            // "Bitirdim" artık kaydı silmek yerine durum:'tamamlandi' olarak
+            // işaretliyor (bkz. utils/izlenecek.js) — bu sekme o kalıcı
+            // veriyi gösteriyor. En son tamamlanan en üstte.
+            const tamamlananFilmDizi = izlenecekler
+              .filter((i) => i.durum === 'tamamlandi' && (i.tur === 'sinema' || i.tur === 'dizi'))
+              .sort((a, b) => (b.tamamlanmaTarihi?.toMillis?.() || 0) - (a.tamamlanmaTarihi?.toMillis?.() || 0))
+            const tamamlananKitap = izlenecekler
+              .filter((i) => i.durum === 'tamamlandi' && i.tur === 'kitap')
+              .sort((a, b) => (b.tamamlanmaTarihi?.toMillis?.() || 0) - (a.tamamlanmaTarihi?.toMillis?.() || 0))
+            if (tamamlananFilmDizi.length === 0 && tamamlananKitap.length === 0) {
+              return <p className="text-sm text-kraft">Henüz "Bitirdim" dediğin bir şey yok.</p>
+            }
+            return (
+              <>
+                {tamamlananFilmDizi.length > 0 && (
+                  <div className="mb-8">
+                    <h2 className="font-baslik text-lg text-murekkep mb-3">Tamamladıklarım</h2>
+                    <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+                      {tamamlananFilmDizi.map((i) => (
+                        <PosterKart key={i.id} baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {tamamlananKitap.length > 0 && (
+                  <div>
+                    <h2 className="font-baslik text-lg text-murekkep mb-3">Bitirdiğim Kitaplar</h2>
+                    <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+                      {tamamlananKitap.map((i) => (
+                        <PosterKart key={i.id} baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          })()}
+        </div>
+      )}
+
+      {sekme === 'meydanokumalar' && (
+        <div>
+          {benimProfilimMi && (
+            <div className="mb-4">
+              {meydanOkumaFormAcik ? (
+                <MeydanOkumaFormu onOlustur={meydanOkumaOlusturTiklandi} onVazgec={() => setMeydanOkumaFormAcik(false)} />
+              ) : (
+                <button
+                  onClick={() => setMeydanOkumaFormAcik(true)}
+                  className="rounded-sm bg-gise px-3 py-1.5 font-govde text-xs text-kagit"
+                >
+                  + Yeni Meydan Okuma
+                </button>
+              )}
+            </div>
+          )}
+          {meydanOkumalar === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
+          {meydanOkumalar?.length === 0 && (
+            <p className="text-sm text-kraft">
+              {benimProfilimMi ? 'Henüz bir meydan okuma başlatmadın.' : 'Herkese açık bir meydan okuması yok.'}
+            </p>
+          )}
+          <div className="space-y-3">
+            {meydanOkumalar?.map((mo) => (
+              <MeydanOkumaKarti
+                key={mo.id}
+                mo={mo}
+                uid={uid}
+                sahibiMiyim={benimProfilimMi}
+                onSil={(id) => setMeydanOkumalar((liste) => liste.filter((m) => m.id !== id))}
+              />
+            ))}
+          </div>
         </div>
       )}
 
