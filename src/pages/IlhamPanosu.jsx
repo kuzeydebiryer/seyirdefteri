@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { ILHAM_KATEGORILERI, ilhamEkle, ilhamlariGetir, ilhamSil } from '../utils/ilhamPanosu.js'
 import { ULKELER } from '../data/ulkeler.js'
 import { konumGeocodeEt } from '../utils/konumGeocode.js'
-import InstagramGomulusu from '../components/InstagramGomulusu.jsx'
+import MedyaGomulusu from '../components/MedyaGomulusu.jsx'
 import IliskiliEserRozeti from '../components/IliskiliEserRozeti.jsx'
 import GeziRozeti from '../components/GeziRozeti.jsx'
 import GeziBilgisiFormu from '../components/GeziBilgisiFormu.jsx'
@@ -136,13 +136,13 @@ export default function IlhamPanosu() {
       {formAcik && (
         <form onSubmit={ekleTiklandi} className="mb-6 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
           <div>
-            <label className="mb-1 block text-[11px] text-kraft">Instagram Gönderi Linki</label>
+            <label className="mb-1 block text-[11px] text-kraft">Instagram, YouTube veya X Linki</label>
             <input
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               required
-              placeholder="https://www.instagram.com/p/..."
+              placeholder="Instagram, YouTube veya X linki..."
               className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
             />
           </div>
@@ -252,7 +252,7 @@ export default function IlhamPanosu() {
             </div>
             <IliskiliEserRozeti ilham={i} />
             <GeziRozeti ilham={i} />
-            <InstagramGomulusu url={i.url} />
+            <MedyaGomulusu url={i.url} />
             {i.not && <p className="mt-2 text-sm text-murekkep">{i.not}</p>}
             <div className="mt-2 flex items-center gap-1.5">
               <Avatar adSoyad={i.paylasanAdi} boyut="h-5 w-5" />

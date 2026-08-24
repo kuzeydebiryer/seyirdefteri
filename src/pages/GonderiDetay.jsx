@@ -21,7 +21,7 @@ import { useTartismaEtkinlikleri } from '../hooks/useTartismaEtkinlikleri.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import EtkinlikKarti from '../components/EtkinlikKarti.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
-import InstagramGomulusu from '../components/InstagramGomulusu.jsx'
+import MedyaGomulusu from '../components/MedyaGomulusu.jsx'
 import HavaDurumuOzeti from '../components/HavaDurumuOzeti.jsx'
 import YerBilgiKutusu from '../components/YerBilgiKutusu.jsx'
 
@@ -368,7 +368,7 @@ export default function GonderiDetay() {
         </div>
       )}
 
-      {gonderi.instagramUrl && <InstagramGomulusu url={gonderi.instagramUrl} paylasanAdi={gonderi.yazarAdi} />}
+      {gonderi.instagramUrl && <MedyaGomulusu url={gonderi.instagramUrl} paylasanAdi={gonderi.yazarAdi} />}
 
       <button
         onClick={begenTiklandi}

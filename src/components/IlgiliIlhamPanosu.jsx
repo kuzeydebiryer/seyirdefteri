@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ilhamlariEserIcinGetir, ilhamEkle } from '../utils/ilhamPanosu.js'
-import InstagramGomulusu from './InstagramGomulusu.jsx'
+import MedyaGomulusu from './MedyaGomulusu.jsx'
 
 // Film/Dizi/Kitap/Oyuncu sayfasına gömülü, o SAYFAYA ÖZEL İlham Panosu
 // bölümü — genel panodaki gibi arayıp eser seçmeye gerek yok, zaten o
@@ -79,7 +79,7 @@ export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kateg
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
-            placeholder="https://www.instagram.com/p/..."
+            placeholder="Instagram, YouTube veya X linki..."
             className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
           />
           <textarea
@@ -103,7 +103,7 @@ export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kateg
       <div className="grid gap-4 sm:grid-cols-2">
         {ilhamlar.map((i) => (
           <div key={i.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-            <InstagramGomulusu url={i.url} paylasanAdi={i.paylasanAdi} kompakt />
+            <MedyaGomulusu url={i.url} paylasanAdi={i.paylasanAdi} kompakt />
             {i.not && <p className="mt-2 text-sm text-murekkep">{i.not}</p>}
           </div>
         ))}

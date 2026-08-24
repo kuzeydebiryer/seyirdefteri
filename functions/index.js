@@ -461,3 +461,35 @@ exports.instagramGom = onCall(async (request) => {
   const veri = await res.json()
   return { html: veri.html, yazarAdi: veri.author_name || '' }
 })
+
+// X (Twitter) oEmbed — instagramGom/youtubeGom ile aynı mantık. X'in resmi
+// oEmbed uç noktası (publish.x.com) de API anahtarı gerektirmiyor, ücretsiz
+// ve kotasız — X'in kilitli/ücretli olan asıl Data API'siyle (arama, zaman
+// tüneli çekme vb.) KARIŞTIRILMAMALI, bu farklı, herkese açık bir servis.
+exports.twitterGom = onCall(async (request) => {
+  const { url } = request.data || {}
+  if (!url || !/(twitter\.com|x\.com)/.test(url)) {
+    throw new HttpsError('invalid-argument', 'Geçerli bir X (Twitter) gönderi linki gerekli')
+  }
+  const oembedUrl = `https://publish.x.com/oembed?url=${encodeURIComponent(url)}&omit_script=true`
+  const res = await fetch(oembedUrl)
+  if (!res.ok) throw new HttpsError('unavailable', 'Bu gönderi bulunamadı — herkese açık ve doğru bir X linki olduğundan emin ol')
+  const veri = await res.json()
+  return { html: veri.html, yazarAdi: veri.author_name || '' }
+})
+
+// YouTube oEmbed — aynı mantık, farklı platform. YouTube'un oEmbed uç
+// noktası API ANAHTARI GEREKTİRMİYOR (arama gibi kotalı bir YouTube Data
+// API v3 işlemi değil) — bu yüzden burada da tamamen ücretsiz ve sınırsız.
+// Video başlığı, kanal adı ve embed HTML'i dönüyor.
+exports.youtubeGom = onCall(async (request) => {
+  const { url } = request.data || {}
+  if (!url || !/(youtube\.com|youtu\.be)/.test(url)) {
+    throw new HttpsError('invalid-argument', 'Geçerli bir YouTube video linki gerekli')
+  }
+  const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
+  const res = await fetch(oembedUrl)
+  if (!res.ok) throw new HttpsError('unavailable', 'Bu video bulunamadı — herkese açık ve doğru bir YouTube linki olduğundan emin ol')
+  const veri = await res.json()
+  return { html: veri.html, baslik: veri.title || '', kanalAdi: veri.author_name || '', thumbnailUrl: veri.thumbnail_url || '' }
+})

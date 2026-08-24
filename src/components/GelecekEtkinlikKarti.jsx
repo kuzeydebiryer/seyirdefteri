@@ -8,7 +8,7 @@ import { useKaynaklar } from '../hooks/useKaynaklar.js'
 import { kulupIlerlemeGetir } from '../utils/kulupIstatistik.js'
 import { kitapIcVeriTabanindaAra } from '../utils/kitapKatalog.js'
 import { turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
-import InstagramGomulusu from './InstagramGomulusu.jsx'
+import MedyaGomulusu from './MedyaGomulusu.jsx'
 import Avatar from './Avatar.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -395,7 +395,7 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
             )}
             <p className="text-xs text-kraft mt-0.5">{tarihSaatGoster(etkinlik.tarih)}</p>
             {etkinlik.aciklama && <p className="mt-1 text-xs text-murekkep/90">{etkinlik.aciklama}</p>}
-            {etkinlik.instagramUrl && <InstagramGomulusu url={etkinlik.instagramUrl} paylasanAdi={etkinlik.olusturanAdi} />}
+            {etkinlik.instagramUrl && <MedyaGomulusu url={etkinlik.instagramUrl} paylasanAdi={etkinlik.olusturanAdi} />}
             {katilacaklar.length > 0 ? (
               <div className="mt-1.5 flex items-center gap-1.5">
                 <div className="flex -space-x-2">

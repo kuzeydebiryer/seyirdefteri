@@ -111,7 +111,6 @@ export default function InstagramGomulusu({ url, paylasanAdi, kompakt = false })
         className="my-3 flex w-full items-center justify-between gap-2 rounded-sm bg-kagitKoyu px-3 py-2 text-left ring-1 ring-cizgi transition hover:ring-deniz/50"
       >
         <span className="text-xs text-kraft">📷 Instagram{reelMi ? ' Reels' : ''}</span>
-        <span className="shrink-0 text-xs text-deniz">İzlemek için tıkla ▸</span>
         <span className="ml-auto shrink-0 text-xs text-deniz">İzlemek için tıkla ▸</span>
       </button>
     )

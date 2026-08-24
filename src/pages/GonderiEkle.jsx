@@ -1199,12 +1199,12 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
           )}
           {kategori === 'yazi' && (
             <div className="mt-3">
-              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">📷 İlgili Instagram Gönderisi (opsiyonel)</label>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">📷 İlgili Instagram / YouTube / X (opsiyonel)</label>
               <input
                 type="text"
                 value={instagramUrl}
                 onChange={(e) => setInstagramUrl(e.target.value)}
-                placeholder="https://www.instagram.com/p/..."
+                placeholder="Instagram, YouTube veya X linki..."
                 className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>

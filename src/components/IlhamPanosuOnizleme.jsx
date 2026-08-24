@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ilhamlariGetir } from '../utils/ilhamPanosu.js'
-import InstagramGomulusu from './InstagramGomulusu.jsx'
+import MedyaGomulusu from './MedyaGomulusu.jsx'
 import IliskiliEserRozeti from './IliskiliEserRozeti.jsx'
 import GeziRozeti from './GeziRozeti.jsx'
 
@@ -37,7 +37,7 @@ export default function IlhamPanosuOnizleme({ kategori }) {
           <div key={i.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
             <IliskiliEserRozeti ilham={i} />
             <GeziRozeti ilham={i} />
-            <InstagramGomulusu url={i.url} paylasanAdi={i.paylasanAdi} />
+            <MedyaGomulusu url={i.url} paylasanAdi={i.paylasanAdi} />
             {i.not && <p className="mt-2 text-sm text-murekkep">{i.not}</p>}
           </div>
         ))}
