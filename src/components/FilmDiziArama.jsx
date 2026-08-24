@@ -49,6 +49,9 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
   const [zenginlesiyor, setZenginlesiyor] = useState(false)
   const [ulke, setUlke] = useState('')
   const [siralama, setSiralama] = useState('popularity.desc')
+  const [sayfa, setSayfa] = useState(1)
+  const [toplamSayfa, setToplamSayfa] = useState(1)
+  const [dahaFazlaYukleniyor, setDahaFazlaYukleniyor] = useState(false)
 
   useEffect(() => {
     if (!TMDB_API_KEY) return
@@ -82,16 +85,19 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
   }
 
   // OMDb'nin bir "keşfet/filtrele" uç noktası yok — sadece tek tek IMDb ID
-  // ile sorgulanabiliyor. Bu yüzden TMDB'nin zaten getirdiği sonuç sayfasını
-  // (en fazla ~18 öğe) tek tek zenginleştirip client-side filtreliyoruz;
-  // TMDB'nin tüm kataloğunu IMDb puanına göre taramak mümkün değil.
+  // ile sorgulanabiliyor. Bu yüzden TMDB'nin getirdiği TEK SAYFAYI (en fazla
+  // 20 öğe) tek tek zenginleştirip client-side filtreliyoruz; TMDB'nin tüm
+  // kataloğunu IMDb puanına göre taramak mümkün değil. Kullanıcı "Daha Fazla
+  // Yükle" dedikçe bir sonraki sayfa da aynı şekilde taranıp mevcut listeye
+  // ekleniyor — OMDb'nin günlük 1000 istek kotasını tek seferde tüketmemek
+  // için tarama derinliği kullanıcının kendi hızında ilerliyor.
   async function omdbIleZenginlestirVeFiltrele(liste) {
     if (!minImdbPuan || !OMDB_API_KEY) return liste
     setZenginlesiyor(true)
     try {
       const esikDeger = parseFloat(minImdbPuan)
       const zenginlesmis = await Promise.all(
-        liste.slice(0, 18).map(async (item) => {
+        liste.map(async (item) => {
           try {
             const extRes = await fetch(`https://api.themoviedb.org/3/${uc}/${item.id}/external_ids?api_key=${TMDB_API_KEY}`)
             const ext = await extRes.json()
@@ -111,14 +117,19 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
     }
   }
 
-  async function filtreUygula(e) {
+  async function filtreUygula(e, ekleModuMu = false) {
     e?.preventDefault()
     if (!TMDB_API_KEY) return
-    setYukleniyor(true)
+    const hedefSayfa = ekleModuMu ? sayfa + 1 : 1
+    if (ekleModuMu) setDahaFazlaYukleniyor(true)
+    else {
+      setYukleniyor(true)
+      setSonuclar([])
+    }
     setAramaYapildi(true)
     try {
       const tarihAlani = tur === 'sinema' ? 'primary_release_date' : 'first_air_date'
-      const parcalar = [`api_key=${TMDB_API_KEY}`, 'language=tr-TR', `sort_by=${siralama}`]
+      const parcalar = [`api_key=${TMDB_API_KEY}`, 'language=tr-TR', `sort_by=${siralama}`, `page=${hedefSayfa}`]
       if (seciliTur) parcalar.push(`with_genres=${seciliTur}`)
       if (yilBaslangic) parcalar.push(`${tarihAlani}.gte=${yilBaslangic}-01-01`)
       if (yilBitis) parcalar.push(`${tarihAlani}.lte=${yilBitis}-12-31`)
@@ -129,9 +140,12 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
       const res = await fetch(url)
       const data = await res.json()
       const sonuc = await omdbIleZenginlestirVeFiltrele(data.results || [])
-      setSonuclar(sonuc)
+      setSonuclar((mevcut) => (ekleModuMu ? [...mevcut, ...sonuc] : sonuc))
+      setSayfa(hedefSayfa)
+      setToplamSayfa(Math.min(data.total_pages || 1, 500)) // TMDB'nin kendi üst sınırı 500 sayfa
     } finally {
       setYukleniyor(false)
+      setDahaFazlaYukleniyor(false)
     }
   }
 
@@ -236,7 +250,8 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
           </div>
           <p className="text-[11px] text-kraft">
             Not: TMDB puanı kendi kullanıcı puanı (IMDb değil).
-            {OMDB_API_KEY && ' IMDb puanı filtresi sadece bu sayfadaki sonuçlara uygulanır (TMDB\'nin tüm kataloğu değil), bu yüzden bazı iyi filmler dar bir sonuç setinde elenmiş olabilir.'}
+            {OMDB_API_KEY &&
+              ' IMDb puanı filtresi, o an yüklü olan sonuçlara uygulanır (TMDB\'nin tüm kataloğuna değil) — az sonuç çıkarsa "Daha Fazla Yükle" ile taramayı derinleştirebilirsin.'}
           </p>
           <button type="submit" className="rounded-sm bg-deniz px-4 py-2 font-govde text-xs text-kagit">
             {yukleniyor ? (zenginlesiyor ? 'IMDb puanları kontrol ediliyor...' : 'Filtreleniyor...') : 'Uygula'}
@@ -248,7 +263,7 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
         <div className="mt-4">
           {sonuclar.length === 0 && !yukleniyor && <p className="text-sm text-kraft">Sonuç bulunamadı.</p>}
           <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
-            {sonuclar.slice(0, 18).map((item) => (
+            {sonuclar.map((item) => (
               <Link key={item.id} to={`/${uc === 'movie' ? 'film' : 'dizi'}/${item.id}`} className="block">
                 <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
                   {item.poster_path && (
@@ -264,6 +279,17 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
               </Link>
             ))}
           </div>
+          {sonuclar.length > 0 && sayfa < toplamSayfa && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={(e) => filtreUygula(e, true)}
+                disabled={dahaFazlaYukleniyor}
+                className="rounded-full bg-kagit px-4 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi disabled:opacity-40"
+              >
+                {dahaFazlaYukleniyor ? (zenginlesiyor ? 'IMDb puanları kontrol ediliyor...' : 'Yükleniyor...') : 'Daha Fazla Yükle'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
