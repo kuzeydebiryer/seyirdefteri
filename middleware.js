@@ -79,7 +79,16 @@ export default async function middleware(request) {
       const data = await res.json()
       const baslik = data.title || data.name
       if (!baslik) return
-      const gorsel = data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : ''
+      // Poster DİKEY (2:3) — X/WhatsApp'ın "büyük görsel" kartı YATAY (16:9)
+      // bekliyor, posteri zorla yatay çerçeveye sığdırırken üst/alt kısmını
+      // kırpıyordu. Backdrop (film/dizi sahnesinden geniş, zaten yatay bir
+      // sahne görüntüsü) bu kart formatına doğal olarak uyuyor — hiç
+      // kırpılmadan tam görünüyor. Backdrop yoksa (nadiren) postere düşüyoruz.
+      const gorsel = data.backdrop_path
+        ? `https://image.tmdb.org/t/p/w1280${data.backdrop_path}`
+        : data.poster_path
+          ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
+          : ''
       const aciklama = (data.overview || 'Seyirdefteri’de incele.').slice(0, 200)
       return new Response(onizlemeHtml({ baslik, aciklama, gorsel, url: url.toString() }), {
         headers: { 'content-type': 'text/html; charset=utf-8' },

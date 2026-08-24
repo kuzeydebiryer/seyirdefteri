@@ -34,6 +34,8 @@ const EserSayfasi = lazy(() => import('./pages/EserSayfasi.jsx'))
 const KisiSayfasi = lazy(() => import('./pages/KisiSayfasi.jsx'))
 const Filmler = lazy(() => import('./pages/Filmler.jsx'))
 const Diziler = lazy(() => import('./pages/Diziler.jsx'))
+const Platformlar = lazy(() => import('./pages/Platformlar.jsx'))
+const PlatformDetay = lazy(() => import('./pages/PlatformDetay.jsx'))
 const KitaplarKesfet = lazy(() => import('./pages/KitaplarKesfet.jsx'))
 const KitapKatalogBakimi = lazy(() => import('./pages/KitapKatalogBakimi.jsx'))
 const Listelerim = lazy(() => import('./pages/Listelerim.jsx'))
@@ -114,6 +116,8 @@ export default function App() {
             <Route path="/topluluk/:topluluklId/liste/:listeId" element={<OzelRota><ListeDetay /></OzelRota>} />
             <Route path="/filmler" element={<OzelRota><Filmler /></OzelRota>} />
             <Route path="/diziler" element={<OzelRota><Diziler /></OzelRota>} />
+            <Route path="/platformlar" element={<OzelRota><Platformlar /></OzelRota>} />
+            <Route path="/platform/:id" element={<OzelRota><PlatformDetay /></OzelRota>} />
             <Route path="/kitaplar" element={<OzelRota><KitaplarKesfet /></OzelRota>} />
             <Route path="/kitaplar/bakim" element={<OzelRota><KitapKatalogBakimi /></OzelRota>} />
             <Route path="/listelerim" element={<OzelRota><Listelerim /></OzelRota>} />

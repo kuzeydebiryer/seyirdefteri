@@ -25,9 +25,15 @@ const SIRALAMALAR = [
   { deger: 'vote_count.desc', etiket: 'Oy sayısı' },
 ]
 
-export default function FilmDiziArama({ tur }) {
+export default function FilmDiziArama({ tur, sabitPlatformId }) {
   const uc = tur === 'sinema' ? 'movie' : 'tv'
-  const [mod, setMod] = useState('ara') // 'ara' | 'filtrele'
+  // Platform sayfasında (sabitPlatformId verilmişse) "İsimle Ara" modu
+  // anlamsız — TMDB'nin arama uç noktası with_watch_providers'ı
+  // desteklemiyor, yani isimle arasak sonuçlar platformdan bağımsız
+  // çıkardı. Bu yüzden platform sayfasında doğrudan "Filtrele" moduna
+  // (discover — bu, with_watch_providers'ı destekliyor) sabitleniyor ve
+  // sayfa açılır açılmaz otomatik ilk sonuçlar getiriliyor.
+  const [mod, setMod] = useState(sabitPlatformId ? 'filtrele' : 'ara')
 
   const [arama, setArama] = useState('')
   const [sonuclar, setSonuclar] = useState([])
@@ -51,6 +57,14 @@ export default function FilmDiziArama({ tur }) {
       .then((data) => setTurler(data.genres || []))
       .catch(() => {})
   }, [uc])
+
+  // Platform sayfasında ilk açılışta (filtre hiç dokunulmadan) o platformun
+  // popüler içeriğini hemen göster — "Uygula"ya basmadan boş bir ekran
+  // görmesin.
+  useEffect(() => {
+    if (sabitPlatformId) filtreUygula()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sabitPlatformId, uc])
 
   async function isimleAra(e) {
     e.preventDefault()
@@ -98,7 +112,7 @@ export default function FilmDiziArama({ tur }) {
   }
 
   async function filtreUygula(e) {
-    e.preventDefault()
+    e?.preventDefault()
     if (!TMDB_API_KEY) return
     setYukleniyor(true)
     setAramaYapildi(true)
@@ -110,6 +124,7 @@ export default function FilmDiziArama({ tur }) {
       if (yilBitis) parcalar.push(`${tarihAlani}.lte=${yilBitis}-12-31`)
       if (minPuan) parcalar.push(`vote_average.gte=${minPuan}`, 'vote_count.gte=20')
       if (ulke) parcalar.push(`with_origin_country=${ulke}`)
+      if (sabitPlatformId) parcalar.push(`with_watch_providers=${sabitPlatformId}`, 'watch_region=TR', 'with_watch_monetization_types=flatrate')
       const url = `https://api.themoviedb.org/3/discover/${uc}?${parcalar.join('&')}`
       const res = await fetch(url)
       const data = await res.json()
@@ -122,20 +137,22 @@ export default function FilmDiziArama({ tur }) {
 
   return (
     <div className="mb-10 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-      <div className="mb-3 flex gap-2">
-        <button
-          onClick={() => setMod('ara')}
-          className={`rounded-sm px-3 py-1 font-govde text-xs ${mod === 'ara' ? 'bg-murekkep text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
-        >
-          İsimle Ara
-        </button>
-        <button
-          onClick={() => setMod('filtrele')}
-          className={`rounded-sm px-3 py-1 font-govde text-xs ${mod === 'filtrele' ? 'bg-murekkep text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
-        >
-          Filtrele
-        </button>
-      </div>
+      {!sabitPlatformId && (
+        <div className="mb-3 flex gap-2">
+          <button
+            onClick={() => setMod('ara')}
+            className={`rounded-sm px-3 py-1 font-govde text-xs ${mod === 'ara' ? 'bg-murekkep text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
+          >
+            İsimle Ara
+          </button>
+          <button
+            onClick={() => setMod('filtrele')}
+            className={`rounded-sm px-3 py-1 font-govde text-xs ${mod === 'filtrele' ? 'bg-murekkep text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
+          >
+            Filtrele
+          </button>
+        </div>
+      )}
 
       {mod === 'ara' ? (
         <form onSubmit={isimleAra} className="flex gap-2">

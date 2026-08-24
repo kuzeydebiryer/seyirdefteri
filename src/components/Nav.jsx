@@ -16,6 +16,7 @@ const LINKLER = [
   { yol: '/akis', etiket: 'Akış', ikon: '🗒️' },
   { yol: '/filmler', etiket: 'Film', ikon: '🎬' },
   { yol: '/diziler', etiket: 'Dizi', ikon: '📺' },
+  { yol: '/platformlar', etiket: 'Platformlar', ikon: '📡' },
   { yol: '/oyuncular', etiket: 'Oyuncu', ikon: '🎭' },
   { yol: '/oscar', etiket: 'Oscar', ikon: '🏆' },
   { yol: '/festival', etiket: 'Festival', ikon: '🎪' },
