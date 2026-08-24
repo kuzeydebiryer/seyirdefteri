@@ -37,7 +37,7 @@ export default function IlhamPanosuOnizleme({ kategori }) {
           <div key={i.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
             <IliskiliEserRozeti ilham={i} />
             <GeziRozeti ilham={i} />
-            <MedyaGomulusu url={i.url} paylasanAdi={i.paylasanAdi} />
+            <MedyaGomulusu url={i.url} paylasanAdi={i.paylasanAdi} kompakt />
             {i.not && <p className="mt-2 text-sm text-murekkep">{i.not}</p>}
           </div>
         ))}

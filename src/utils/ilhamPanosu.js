@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, startAfter, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export const ILHAM_KATEGORILERI = ['Film', 'Dizi', 'Kitap', 'Oyuncu', 'Gezi', 'Etkinlik', 'Sanat']
@@ -95,6 +95,24 @@ export async function ilhamlariEserIcinGetir(tur, disId) {
   const liste = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
   liste.sort((a, b) => (b.eklemeTarihi?.toMillis?.() || 0) - (a.eklemeTarihi?.toMillis?.() || 0))
   return liste
+}
+
+// Seyir Panosu'nda hem Tümünü Gör listesinde hem önizleme widget'larında
+// kullanılan sayfalanmış sorgu — kategori filtresi opsiyonel, eklemeTarihi'ne
+// göre en yeniden eskiye sıralı. sonrakiBelge verilirse ondan sonrasını
+// getirir ("Daha Fazla Yükle" akışı için).
+export async function ilhamlariSayfalanmisGetir(kategori, limitSayisi = 20, sonrakiBelge = null) {
+  const kosullar = [orderBy('eklemeTarihi', 'desc'), limit(limitSayisi + 1)]
+  if (kategori) kosullar.unshift(where('kategori', '==', kategori))
+  if (sonrakiBelge) kosullar.push(startAfter(sonrakiBelge))
+  const q = query(collection(db, 'ilhamPanosu'), ...kosullar)
+  const snap = await getDocs(q)
+  const belgeler = snap.docs.slice(0, limitSayisi)
+  return {
+    liste: belgeler.map((d) => ({ id: d.id, ...d.data() })),
+    sonBelge: belgeler[belgeler.length - 1] || null,
+    dahaVarMi: snap.docs.length > limitSayisi,
+  }
 }
 
 export async function ilhamlariGetir(kategori, limitSayisi) {

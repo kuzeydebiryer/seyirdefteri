@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { ILHAM_KATEGORILERI, ilhamEkle, ilhamlariGetir, ilhamSil } from '../utils/ilhamPanosu.js'
+import { ILHAM_KATEGORILERI, ilhamEkle, ilhamlariGetir, ilhamlariSayfalanmisGetir, ilhamSil } from '../utils/ilhamPanosu.js'
 import { ULKELER } from '../data/ulkeler.js'
 import { konumGeocodeEt } from '../utils/konumGeocode.js'
 import MedyaGomulusu from '../components/MedyaGomulusu.jsx'
@@ -13,6 +13,7 @@ import EserSecici from '../components/EserSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
 
 const KATEGORI_IKONU = { Film: '🎬', Dizi: '📺', Kitap: '📖', Oyuncu: '🎭', Gezi: '🧳', Etkinlik: '🎟️', Sanat: '🎨' }
+const SAYFA_BOYUTU = 20
 
 export default function IlhamPanosu() {
   const { kullanici, profil } = useAuth()
@@ -21,8 +22,20 @@ export default function IlhamPanosu() {
   const ulkeFiltre = aramaParametreleri.get('ulke') || ''
   const mekanFiltre = aramaParametreleri.get('mekan') || ''
   const kampanyaFiltre = aramaParametreleri.get('kampanya') || ''
+  const geziAltFiltreAktif = kategoriFiltre === 'Gezi' && (ulkeFiltre || mekanFiltre || kampanyaFiltre)
 
+  // Ana akış — sayfalanmış. "Daha Fazla Yükle" ile üstüne ekleniyor.
   const [ilhamlar, setIlhamlar] = useState(null)
+  const [sonBelge, setSonBelge] = useState(null)
+  const [dahaVarMi, setDahaVarMi] = useState(false)
+  const [dahaYukleniyor, setDahaYukleniyor] = useState(false)
+
+  // Gezi haritası + ülke/mekan/kampanya alt filtreleri TÜM Gezi paylaşımlarını
+  // görmek zorunda (aksi halde harita eksik ülke gösterir, alt filtre de
+  // sadece o an yüklü sayfadaki paylaşımlarda arama yapar) — bu yüzden
+  // sayfalamadan bağımsız, ayrı ve tam bir sorgu.
+  const [geziTumIlhamlari, setGeziTumIlhamlari] = useState(null)
+
   const [formAcik, setFormAcik] = useState(false)
   const [url, setUrl] = useState('')
   const [kategori, setKategori] = useState('Film')
@@ -33,8 +46,37 @@ export default function IlhamPanosu() {
 
   useEffect(() => {
     setIlhamlar(null)
-    ilhamlariGetir(kategoriFiltre || undefined).then(setIlhamlar)
+    setSonBelge(null)
+    ilhamlariSayfalanmisGetir(kategoriFiltre || undefined, SAYFA_BOYUTU).then(({ liste, sonBelge, dahaVarMi }) => {
+      setIlhamlar(liste)
+      setSonBelge(sonBelge)
+      setDahaVarMi(dahaVarMi)
+    })
   }, [kategoriFiltre])
+
+  useEffect(() => {
+    if (kategoriFiltre !== 'Gezi') {
+      setGeziTumIlhamlari(null)
+      return
+    }
+    ilhamlariGetir('Gezi').then(setGeziTumIlhamlari)
+  }, [kategoriFiltre])
+
+  async function dahaFazlaYukleTiklandi() {
+    setDahaYukleniyor(true)
+    try {
+      const { liste, sonBelge: yeniSonBelge, dahaVarMi: yeniDahaVarMi } = await ilhamlariSayfalanmisGetir(
+        kategoriFiltre || undefined,
+        SAYFA_BOYUTU,
+        sonBelge
+      )
+      setIlhamlar((mevcut) => [...mevcut, ...liste])
+      setSonBelge(yeniSonBelge)
+      setDahaVarMi(yeniDahaVarMi)
+    } finally {
+      setDahaYukleniyor(false)
+    }
+  }
 
   function kategoriFiltreSec(k) {
     const yeni = new URLSearchParams()
@@ -92,7 +134,11 @@ export default function IlhamPanosu() {
       setIliskili(null)
       setGeziBilgi({ ulkeKodu: '', konum: '', kampanya: '' })
       setFormAcik(false)
-      ilhamlariGetir(kategoriFiltre || undefined).then(setIlhamlar)
+      const { liste, sonBelge: yeniSonBelge, dahaVarMi: yeniDahaVarMi } = await ilhamlariSayfalanmisGetir(kategoriFiltre || undefined, SAYFA_BOYUTU)
+      setIlhamlar(liste)
+      setSonBelge(yeniSonBelge)
+      setDahaVarMi(yeniDahaVarMi)
+      if (kategoriFiltre === 'Gezi') ilhamlariGetir('Gezi').then(setGeziTumIlhamlari)
     } finally {
       setGonderiliyor(false)
     }
@@ -102,16 +148,19 @@ export default function IlhamPanosu() {
     if (!window.confirm('Bu paylaşımı kaldırmak istediğine emin misin?')) return
     await ilhamSil(id)
     setIlhamlar((liste) => liste.filter((i) => i.id !== id))
+    setGeziTumIlhamlari((liste) => liste?.filter((i) => i.id !== id) ?? liste)
   }
 
-  const geziIlhamlari = ilhamlar?.filter((i) => i.kategori === 'Gezi') || []
-  const gosterilecekIlhamlar =
-    ilhamlar?.filter((i) => {
+  const geziAltFiltreliIlhamlar =
+    geziTumIlhamlari?.filter((i) => {
       if (ulkeFiltre && i.geziUlkeKodu !== ulkeFiltre) return false
       if (mekanFiltre && i.geziKonum !== mekanFiltre) return false
       if (kampanyaFiltre && i.geziKampanya !== kampanyaFiltre) return false
       return true
     }) || []
+
+  const gosterilecekIlhamlar = geziAltFiltreAktif ? geziAltFiltreliIlhamlar : ilhamlar
+  const yukleniyorMu = geziAltFiltreAktif ? geziTumIlhamlari === null : ilhamlar === null
 
   return (
     <div>
@@ -209,9 +258,9 @@ export default function IlhamPanosu() {
         ))}
       </div>
 
-      {kategoriFiltre === 'Gezi' && ilhamlar !== null && (
+      {kategoriFiltre === 'Gezi' && geziTumIlhamlari !== null && (
         <IlhamGeziHaritasi
-          ilhamlar={geziIlhamlari}
+          ilhamlar={geziTumIlhamlari}
           onUlkeTikla={(kod) => geziAltFiltreSec('ulke', kod)}
           onMekanTikla={(mekan) => geziAltFiltreSec('mekan', mekan)}
         />
@@ -231,14 +280,15 @@ export default function IlhamPanosu() {
         </div>
       )}
 
-      {ilhamlar === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
-      {ilhamlar?.length === 0 && <p className="text-sm text-kraft">Henüz bir paylaşım yok — ilkini sen ekle.</p>}
-      {ilhamlar?.length > 0 && gosterilecekIlhamlar.length === 0 && (
-        <p className="text-sm text-kraft">Bu filtreye uyan bir paylaşım yok.</p>
+      {yukleniyorMu && <p className="text-sm text-kraft">Yükleniyor...</p>}
+      {!yukleniyorMu && gosterilecekIlhamlar?.length === 0 && (
+        <p className="text-sm text-kraft">
+          {geziAltFiltreAktif ? 'Bu filtreye uyan bir paylaşım yok.' : 'Henüz bir paylaşım yok — ilkini sen ekle.'}
+        </p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {gosterilecekIlhamlar.map((i) => (
+        {gosterilecekIlhamlar?.map((i) => (
           <div key={i.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs text-gise">
@@ -252,7 +302,7 @@ export default function IlhamPanosu() {
             </div>
             <IliskiliEserRozeti ilham={i} />
             <GeziRozeti ilham={i} />
-            <MedyaGomulusu url={i.url} />
+            <MedyaGomulusu url={i.url} kompakt />
             {i.not && <p className="mt-2 text-sm text-murekkep">{i.not}</p>}
             <div className="mt-2 flex items-center gap-1.5">
               <Avatar adSoyad={i.paylasanAdi} boyut="h-5 w-5" />
@@ -261,6 +311,18 @@ export default function IlhamPanosu() {
           </div>
         ))}
       </div>
+
+      {!geziAltFiltreAktif && dahaVarMi && (
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={dahaFazlaYukleTiklandi}
+            disabled={dahaYukleniyor}
+            className="rounded-full bg-kagitKoyu px-4 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi disabled:opacity-40"
+          >
+            {dahaYukleniyor ? 'Yükleniyor...' : 'Daha Fazla Yükle'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
