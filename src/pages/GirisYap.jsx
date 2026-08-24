@@ -1,14 +1,22 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function GirisYap() {
   const { girisYap } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [eposta, setEposta] = useState('')
   const [sifre, setSifre] = useState('')
   const [hata, setHata] = useState('')
   const [gonderiliyor, setGonderiliyor] = useState(false)
+
+  // Artık film/dizi/kitap/kişi/profil sayfaları giriş yapmadan da
+  // görülebiliyor — ama bir eylem (puanlama, favori, takip) tıklandığında
+  // buraya geldiyse, girişten sonra kaldığı sayfaya geri dönmesi gerekiyor.
+  // "/giris" sayfasına ?donus=/film/123 gibi bir sorgu parametresiyle ya da
+  // react-router state'iyle (location.state.donus) gelinebiliyor.
+  const donusYolu = new URLSearchParams(location.search).get('donus') || location.state?.donus || '/'
 
   async function gonder(e) {
     e.preventDefault()
@@ -16,7 +24,7 @@ export default function GirisYap() {
     setGonderiliyor(true)
     try {
       await girisYap(eposta, sifre)
-      navigate('/')
+      navigate(donusYolu)
     } catch (err) {
       setHata('E-posta veya şifre hatalı.')
     } finally {

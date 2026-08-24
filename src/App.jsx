@@ -106,7 +106,7 @@ export default function App() {
             <Route path="/basvurular" element={<OzelRota><Basvurular /></OzelRota>} />
             <Route path="/gonderi-ekle" element={<OzelRota><GonderiEkle /></OzelRota>} />
             <Route path="/gonderi/:id" element={<OzelRota><GonderiDetay /></OzelRota>} />
-            <Route path="/profil/:uid" element={<OzelRota><Profil /></OzelRota>} />
+            <Route path="/profil/:uid" element={<Profil />} />
             <Route path="/kullanicilar" element={<OzelRota><Kullanicilar /></OzelRota>} />
             <Route path="/etkinlikler" element={<OzelRota><Etkinlikler /></OzelRota>} />
             <Route path="/topluluklar" element={<OzelRota><Topluluklar /></OzelRota>} />
@@ -167,10 +167,10 @@ export default function App() {
             <Route path="/oyunlar/kopru" element={<OzelRota><FilmKoprusu /></OzelRota>} />
             <Route path="/oyunlar/alinti" element={<OzelRota><AlintiTahmin /></OzelRota>} />
             <Route path="/oyunlar/muzik" element={<OzelRota><MuzikTahmin /></OzelRota>} />
-            <Route path="/film/:id" element={<OzelRota><EserSayfasi tur="sinema" /></OzelRota>} />
-            <Route path="/dizi/:id" element={<OzelRota><EserSayfasi tur="dizi" /></OzelRota>} />
-            <Route path="/kitap/:id" element={<OzelRota><EserSayfasi tur="kitap" /></OzelRota>} />
-            <Route path="/kisi/:id" element={<OzelRota><KisiSayfasi /></OzelRota>} />
+            <Route path="/film/:id" element={<EserSayfasi tur="sinema" />} />
+            <Route path="/dizi/:id" element={<EserSayfasi tur="dizi" />} />
+            <Route path="/kitap/:id" element={<EserSayfasi tur="kitap" />} />
+            <Route path="/kisi/:id" element={<KisiSayfasi />} />
           </Routes>
         </Suspense>
       </main>

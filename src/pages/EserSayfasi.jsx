@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useEserGonderileri, useKitapIncelemeleri } from '../hooks/useEser.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
@@ -28,6 +28,9 @@ import IzleyecegimIkonu from '../components/ikonlar/IzleyecegimIkonu.jsx'
 import ListeIkonu from '../components/ikonlar/ListeIkonu.jsx'
 import YorumIkonu from '../components/ikonlar/YorumIkonu.jsx'
 import FilmMuzigiWidget from '../components/FilmMuzigiWidget.jsx'
+import PaylasButonu from '../components/PaylasButonu.jsx'
+import KitapligimButonu from '../components/KitapligimButonu.jsx'
+import { girisGerekiyorsaYonlendir } from '../utils/girisYonlendir.js'
 import DiziMuzigiWidget from '../components/DiziMuzigiWidget.jsx'
 import IlgiliIlhamPanosu from '../components/IlgiliIlhamPanosu.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
@@ -97,6 +100,7 @@ function KisiListesi({ kisiler, etiket, acikRenk = false }) {
 
 export default function EserSayfasi({ tur }) {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { kullanici, profil } = useAuth()
   const {
     gonderiler,
@@ -901,7 +905,8 @@ export default function EserSayfasi({ tur }) {
   }
 
   async function favoriDegistir() {
-    if (!kullanici || !detay) return
+    if (girisGerekiyorsaYonlendir(kullanici, navigate)) return
+    if (!detay) return
     setFavoriIsleniyor(true)
     try {
       if (favoriMi_) {
@@ -1089,7 +1094,7 @@ export default function EserSayfasi({ tur }) {
   }
 
   async function puanGonder(puan) {
-    if (!kullanici) return
+    if (girisGerekiyorsaYonlendir(kullanici, navigate)) return
     setPuanKaydediliyor(true)
     try {
       await eserPuanla(tur, id, puan, kullanici, {
@@ -1227,6 +1232,10 @@ export default function EserSayfasi({ tur }) {
           />
         </div>
       )}
+
+      <div className="mb-3 flex justify-end">
+        <PaylasButonu baslik={`${detay.baslik}${detay.yil ? ` (${detay.yil})` : ''}`} url={`/${tur === 'sinema' ? 'film' : tur}/${id}`} boyut="kucuk" />
+      </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
         {!heroAktifMi && detay.posterUrl && (
@@ -1444,6 +1453,10 @@ export default function EserSayfasi({ tur }) {
                 <span className="text-[10px] uppercase tracking-wide text-kraft">Favori</span>
               </button>
 
+              {tur === 'kitap' && (
+                <KitapligimButonu disId={id} baslik={detay.baslik} alt={detay.yazar || ''} posterUrl={detay.posterUrl} />
+              )}
+
               {!izlenecekKaydi && (
                 <button
                   onClick={izlenecegeEkle}
@@ -1556,7 +1569,14 @@ export default function EserSayfasi({ tur }) {
                 ? `Topluluk: ${ortalamaPuan.toFixed(1)} (${puanSayisi} kişi)`
                 : kullanici
                   ? 'Henüz kimse puanlamadı'
-                  : 'Puan vermek için giriş yap'}
+                  : (
+                    <>
+                      Puan vermek için{' '}
+                      <Link to={`/giris?donus=${encodeURIComponent(window.location.pathname)}`} className="text-deniz hover:underline">
+                        giriş yap
+                      </Link>
+                    </>
+                  )}
             </span>
           </div>
           {kullanici && (tur === 'sinema' || tur === 'dizi' || tur === 'kitap') && (

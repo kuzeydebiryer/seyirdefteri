@@ -18,7 +18,7 @@
 // Vercel normal SPA'yı (index.html) servis etmeye devam ediyor.
 
 export const config = {
-  matcher: ['/film/:id', '/dizi/:id', '/kitap/:id', '/gonderi/:id'],
+  matcher: ['/film/:id', '/dizi/:id', '/kitap/:id', '/kisi/:id', '/gonderi/:id', '/profil/:id'],
 }
 
 const BOT_DESENI = /(WhatsApp|facebookexternalhit|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|SkypeUriPreview|Pinterest)/i
@@ -96,6 +96,19 @@ export default async function middleware(request) {
       })
     }
 
+    if (tur === 'kisi' && TMDB_API_KEY) {
+      const res = await fetch(`https://api.themoviedb.org/3/person/${id}?api_key=${TMDB_API_KEY}&language=tr-TR`)
+      if (!res.ok) return
+      const data = await res.json()
+      const baslik = data.name
+      if (!baslik) return
+      const gorsel = data.profile_path ? `https://image.tmdb.org/t/p/w500${data.profile_path}` : ''
+      const aciklama = (data.biography || data.known_for_department || 'Seyirdefteri’de incele.').slice(0, 200)
+      return new Response(onizlemeHtml({ baslik, aciklama, gorsel, url: url.toString() }), {
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      })
+    }
+
     if (tur === 'gonderi' && FIREBASE_PROJECT_ID) {
       const belge = await firestoreBelgeGetir('gonderiler', id)
       if (!belge) return
@@ -104,6 +117,18 @@ export default async function middleware(request) {
       const gorsel = belge.metinAl('posterUrl')
       const yazarAdi = belge.metinAl('yazarAdi')
       const aciklama = yazarAdi ? `${yazarAdi} paylaştı — Seyirdefteri` : 'Seyirdefteri'
+      return new Response(onizlemeHtml({ baslik, aciklama, gorsel, url: url.toString() }), {
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      })
+    }
+
+    if (tur === 'profil' && FIREBASE_PROJECT_ID) {
+      const belge = await firestoreBelgeGetir('kullanicilar', id)
+      if (!belge) return
+      const baslik = belge.metinAl('adSoyad')
+      if (!baslik) return
+      const gorsel = belge.metinAl('avatarUrl')
+      const aciklama = `${baslik} — Seyirdefteri profili`
       return new Response(onizlemeHtml({ baslik, aciklama, gorsel, url: url.toString() }), {
         headers: { 'content-type': 'text/html; charset=utf-8' },
       })

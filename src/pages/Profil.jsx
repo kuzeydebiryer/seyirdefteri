@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -34,6 +34,8 @@ import { buYilOlaylariHesapla } from '../utils/yilOzeti.js'
 import { meydanOkumalariGetir, herkeseAcikMeydanOkumalariGetir, meydanOkumaOlustur } from '../utils/meydanOkuma.js'
 import MeydanOkumaFormu from '../components/MeydanOkumaFormu.jsx'
 import MeydanOkumaKarti from '../components/MeydanOkumaKarti.jsx'
+import PaylasButonu from '../components/PaylasButonu.jsx'
+import { girisGerekiyorsaYonlendir } from '../utils/girisYonlendir.js'
 
 const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
@@ -65,6 +67,7 @@ function PosterKart({ baslik, alt, posterUrl, link }) {
 
 export default function Profil() {
   const { uid } = useParams()
+  const navigate = useNavigate()
   const { kullanici, profil: kendiProfilim, profilGuncelle } = useAuth()
   const benimProfilimMi = kullanici?.uid === uid
 
@@ -266,7 +269,8 @@ export default function Profil() {
   }
 
   async function takipDegistir() {
-    if (!kullanici || takipIsleniyor) return
+    if (girisGerekiyorsaYonlendir(kullanici, navigate)) return
+    if (takipIsleniyor) return
     setTakipIsleniyor(true)
     try {
       if (takipEdiyorMu) {
@@ -363,6 +367,7 @@ export default function Profil() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="font-baslik text-2xl text-murekkep">{hedefProfil.adSoyad}</h1>
+            <PaylasButonu baslik={`${hedefProfil.adSoyad} — Seyirdefteri`} url={`/profil/${uid}`} boyut="kucuk" />
             {benimProfilimMi && (
               <button
                 onClick={() => setDuzenlemeAcik((a) => !a)}

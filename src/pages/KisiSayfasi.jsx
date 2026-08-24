@@ -14,6 +14,7 @@ import { ilgiliKitaplarGetir as eskiYonetmenKitaplariGetir, ilgiliKitapSil as es
 
 import { kitapAramaSonucundanKaydet, kitapElleEkle } from '../utils/kitapKatalog.js'
 import { kisiEtkilesimleriGetir } from '../utils/wikidata.js'
+import PaylasButonu from '../components/PaylasButonu.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342'
@@ -316,6 +317,10 @@ export default function KisiSayfasi() {
 
   return (
     <div>
+      <div className="mb-3 flex justify-end">
+        <PaylasButonu baslik={kisi.name} url={`/kisi/${id}`} boyut="kucuk" />
+      </div>
+
       <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
         {kisi.profile_path && (
           <img
