@@ -1,7 +1,7 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, startAfter, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-export const ILHAM_KATEGORILERI = ['Film', 'Dizi', 'Kitap', 'Oyuncu', 'Gezi', 'Etkinlik', 'Sanat']
+export const ILHAM_KATEGORILERI = ['Film', 'Dizi', 'Kitap', 'Oyuncu', 'Gezi', 'Etkinlik', 'Sanat', 'Felsefe', 'Psikoloji']
 
 export async function ilhamEkle(
   kullanici,

@@ -12,7 +12,7 @@ import IlhamGeziHaritasi from '../components/IlhamGeziHaritasi.jsx'
 import EserSecici from '../components/EserSecici.jsx'
 import Avatar from '../components/Avatar.jsx'
 
-const KATEGORI_IKONU = { Film: '🎬', Dizi: '📺', Kitap: '📖', Oyuncu: '🎭', Gezi: '🧳', Etkinlik: '🎟️', Sanat: '🎨' }
+const KATEGORI_IKONU = { Film: '🎬', Dizi: '📺', Kitap: '📖', Oyuncu: '🎭', Gezi: '🧳', Etkinlik: '🎟️', Sanat: '🎨', Felsefe: '🦉', Psikoloji: '🧠' }
 const SAYFA_BOYUTU = 20
 
 export default function IlhamPanosu() {

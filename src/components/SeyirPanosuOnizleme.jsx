@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ilhamlariGetir } from '../utils/ilhamPanosu.js'
 
-const KATEGORI_IKONU = { Film: '🎬', Dizi: '📺', Kitap: '📖', Oyuncu: '🎭', Gezi: '🧳', Etkinlik: '🎟️', Sanat: '🎨' }
+const KATEGORI_IKONU = { Film: '🎬', Dizi: '📺', Kitap: '📖', Oyuncu: '🎭', Gezi: '🧳', Etkinlik: '🎟️', Sanat: '🎨', Felsefe: '🦉', Psikoloji: '🧠' }
 
 // Anasayfada "Bugün Aktif Olanlar"ın hemen altında — Seyir Panosu'na (eski
 // adıyla İlham Panosu) dikkat çekmek için kompakt bir teaser. Bilinçli
