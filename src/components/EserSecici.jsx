@@ -27,7 +27,7 @@ export default function EserSecici({ kategori, secili, onSecim, onTemizle }) {
   if (!hedef) return null // Gezi/Etkinlik/Sanat için bağlantı arama yok
 
   async function ara(e) {
-    e.preventDefault()
+    e?.preventDefault()
     if (!arama.trim()) return
     setYukleniyor(true)
     setHata('')
@@ -142,18 +142,27 @@ export default function EserSecici({ kategori, secili, onSecim, onTemizle }) {
       <label className="mb-1 block text-[11px] text-kraft">
         Bağlantılı {kategori} (opsiyonel)
       </label>
-      <form onSubmit={ara} className="flex gap-2">
+      {/* Not: <form> DEĞİL — bu bileşen her zaman başka bir formun (Seyir
+          Panosu paylaşım formu, Meydan Okuma formu vb.) içine yerleştiriliyor.
+          İç içe <form> etiketleri HTML'de geçersiz — tarayıcı içteki
+          form'u yok sayıyor, "Ara" butonu da dıştaki formu (yanlışlıkla
+          "Panoya Ekle"yi) tetikliyordu. Enter tuşu da onKeyDown ile elle
+          yakalanıyor, native form submit'e güvenmiyoruz. */}
+      <div className="flex gap-2">
         <input
           type="text"
           value={arama}
           onChange={(e) => setArama(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') ara(e)
+          }}
           placeholder={`${kategori} ara...`}
           className="flex-1 rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
         />
-        <button type="submit" disabled={yukleniyor} className="rounded-sm bg-deniz px-3 py-2 font-govde text-xs text-kagit disabled:opacity-40">
+        <button type="button" onClick={ara} disabled={yukleniyor} className="rounded-sm bg-deniz px-3 py-2 font-govde text-xs text-kagit disabled:opacity-40">
           {yukleniyor ? 'Aranıyor...' : 'Ara'}
         </button>
-      </form>
+      </div>
       {hata && <p className="mt-1 text-[11px] text-muhur">{hata}</p>}
       {sonuclar.length > 0 && (
         <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-sm bg-kagit p-1.5 ring-1 ring-cizgi">
