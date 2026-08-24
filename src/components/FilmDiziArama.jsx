@@ -91,8 +91,13 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
   // Yükle" dedikçe bir sonraki sayfa da aynı şekilde taranıp mevcut listeye
   // ekleniyor — OMDb'nin günlük 1000 istek kotasını tek seferde tüketmemek
   // için tarama derinliği kullanıcının kendi hızında ilerliyor.
+  // Platform sayfalarında (sabitPlatformId) bu fonksiyon hiç çağrılmıyor —
+  // "Daha Fazla Yükle" ile hızlı art arda derinleşen bir gezinme burada,
+  // OMDb'nin paylaşılan günlük kotasını (film/dizi sayfalarındaki "Dış
+  // Puanlar" widget'ıyla ortak) hızla tüketirdi. Genel Film/Dizi keşfet
+  // sayfalarında (tek seferlik, sığ arama) IMDb filtresi olduğu gibi kalıyor.
   async function omdbIleZenginlestirVeFiltrele(liste) {
-    if (!minImdbPuan || !OMDB_API_KEY) return liste
+    if (sabitPlatformId || !minImdbPuan || !OMDB_API_KEY) return liste
     setZenginlesiyor(true)
     try {
       const esikDeger = parseFloat(minImdbPuan)
@@ -227,7 +232,7 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
               aria-label="Minimum TMDB puanı"
               className="rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
             />
-            {OMDB_API_KEY && (
+            {OMDB_API_KEY && !sabitPlatformId && (
               <input
                 type="number"
                 step="0.1"
@@ -251,6 +256,7 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
           <p className="text-[11px] text-kraft">
             Not: TMDB puanı kendi kullanıcı puanı (IMDb değil).
             {OMDB_API_KEY &&
+              !sabitPlatformId &&
               ' IMDb puanı filtresi, o an yüklü olan sonuçlara uygulanır (TMDB\'nin tüm kataloğuna değil) — az sonuç çıkarsa "Daha Fazla Yükle" ile taramayı derinleştirebilirsin.'}
           </p>
           <button type="submit" className="rounded-sm bg-deniz px-4 py-2 font-govde text-xs text-kagit">
