@@ -42,7 +42,10 @@ ${gorsel ? `<meta property="og:image" content="${kacisliMetin(gorsel)}">` : ''}
 <meta property="og:type" content="website">
 <meta property="og:url" content="${kacisliMetin(url)}">
 <meta property="og:site_name" content="Seyirdefteri">
-<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:card" content="${gorsel ? 'summary_large_image' : 'summary'}">
+<meta name="twitter:title" content="${kacisliMetin(baslik)}">
+<meta name="twitter:description" content="${kacisliMetin(aciklama)}">
+${gorsel ? `<meta name="twitter:image" content="${kacisliMetin(gorsel)}">` : ''}
 </head>
 <body></body>
 </html>`
