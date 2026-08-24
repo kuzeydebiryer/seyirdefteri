@@ -10,7 +10,7 @@ import { useState } from 'react'
 // native menüde (Instagram uygulaması kuruluysa) çıkabilir.
 export default function PaylasButonu({ baslik, url, boyut = 'normal' }) {
   const [panelAcik, setPanelAcik] = useState(false)
-  const tamUrl = url.startsWith('http') ? url : `https://seyirdefteri.com${url}`
+  const tamUrl = url.startsWith('http') ? url : `https://seyirdefteri.net${url}`
 
   async function tiklandi() {
     if (navigator.share) {
