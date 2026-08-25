@@ -111,6 +111,13 @@ export async function sezonuKilitle(sezonId, kilitli) {
   await updateDoc(doc(db, 'oscarSezonlari', sezonId), { kilitli })
 }
 
+// Sezon oluşturulduktan SONRA ad/tarih düzeltmek için — önceden bu hiç
+// mümkün değildi, bir yazım/tarih hatası olduğunda tüm kategorileri/
+// adayları kaybetmeden düzeltecek bir yol yoktu.
+export async function sezonDuzenle(sezonId, { ad, torenTarihi }) {
+  await updateDoc(doc(db, 'oscarSezonlari', sezonId), { ad, torenTarihi })
+}
+
 // Doküman ID'si kasıtlı olarak `${kategoriId}_${uid}` — bir kullanıcı bir
 // kategoride sadece bir tahmine sahip olabilir, değiştirdiğinde üzerine yazılır.
 export async function tahminVer(sezonId, kategoriId, kullanici, profil, adayId) {

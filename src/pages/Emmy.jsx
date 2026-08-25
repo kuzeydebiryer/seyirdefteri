@@ -6,7 +6,7 @@ export default function Emmy() {
       torenTuru="emmy"
       baslik="Emmy Yolculuğu"
       varsayilanSezonAdi="78. Primetime Emmy Ödülleri"
-      varsayilanTorenTarihi="2027-09-19"
+      varsayilanTorenTarihi="2026-09-14"
     />
   )
 }

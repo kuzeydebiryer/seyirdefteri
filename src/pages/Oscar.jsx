@@ -14,6 +14,7 @@ import {
   adaySil,
   adaylarGetir,
   sezonuKilitle,
+  sezonDuzenle,
   tahminVer,
   tahminleriGetir,
   sonucGir,
@@ -251,6 +252,9 @@ export default function Oscar({
   const [bitirmeIsleniyor, setBitirmeIsleniyor] = useState(false)
   const [topluAcik, setTopluAcik] = useState(false)
   const [wikidataAcik, setWikidataAcik] = useState(false)
+  const [sezonDuzenleAcik, setSezonDuzenleAcik] = useState(false)
+  const [sezonDuzenleAdi, setSezonDuzenleAdi] = useState('')
+  const [sezonDuzenleTarihi, setSezonDuzenleTarihi] = useState('')
   const [topluMetin, setTopluMetin] = useState('')
   const [topluFilmDiziTuru, setTopluFilmDiziTuru] = useState('film')
   const [topluKisiBirincil, setTopluKisiBirincil] = useState(false)
@@ -591,7 +595,58 @@ export default function Oscar({
         {ustSayfaEtiketi}
       </Link>
       <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> {baslik}</h1>
-      <p className="mb-1 text-sm text-kraft">{sezon.ad}</p>
+      {sezonDuzenleAcik ? (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault()
+            await sezonDuzenle(sezon.id, { ad: sezonDuzenleAdi, torenTarihi: sezonDuzenleTarihi })
+            setSezon((s) => ({ ...s, ad: sezonDuzenleAdi, torenTarihi: sezonDuzenleTarihi }))
+            setSezonDuzenleAcik(false)
+          }}
+          className="mb-4 flex flex-wrap items-end gap-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi"
+        >
+          <div>
+            <label className="block text-[10px] text-kraft">Sezon Adı</label>
+            <input
+              type="text"
+              value={sezonDuzenleAdi}
+              onChange={(e) => setSezonDuzenleAdi(e.target.value)}
+              className="rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-kraft">Tören Tarihi</label>
+            <input
+              type="date"
+              value={sezonDuzenleTarihi}
+              onChange={(e) => setSezonDuzenleTarihi(e.target.value)}
+              className="rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+          <button type="submit" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit">
+            Kaydet
+          </button>
+          <button type="button" onClick={() => setSezonDuzenleAcik(false)} className="text-xs text-kraft hover:text-murekkep">
+            Vazgeç
+          </button>
+        </form>
+      ) : (
+        <p className="mb-1 flex items-center gap-2 text-sm text-kraft">
+          {sezon.ad}
+          {kullanici && (
+            <button
+              onClick={() => {
+                setSezonDuzenleAdi(sezon.ad)
+                setSezonDuzenleTarihi(sezon.torenTarihi || '')
+                setSezonDuzenleAcik(true)
+              }}
+              className="text-[11px] text-deniz hover:underline"
+            >
+              ✏️ Düzenle
+            </button>
+          )}
+        </p>
+      )}
       {gun != null && (
         <p className="mb-4 text-sm text-kraft">
           {gun > 0 ? `Törene ${gun} gün kaldı` : gun === 0 ? 'Tören bugün! 🎬' : 'Tören geçti'} ·{' '}
