@@ -18,6 +18,7 @@ import GununKitabi from '../components/GununKitabi.jsx'
 import MeydanOkuma from '../components/MeydanOkuma.jsx'
 import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
 import AlintiOyunuKarti from '../components/AlintiOyunuKarti.jsx'
+import KitapIstekTanitimKarti from '../components/KitapIstekTanitimKarti.jsx'
 
 function SuankiKitapWidget() {
   const { kullanici } = useAuth()
@@ -210,6 +211,7 @@ export default function KitaplarKesfet() {
 
       <SonAlintilarBolumu limitSayisi={5} />
       <AlintiOyunuKarti />
+      <KitapIstekTanitimKarti />
       <IlhamPanosuOnizleme kategori="Kitap" />
 
       <TavsiyeBolumu tur="kitap" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />

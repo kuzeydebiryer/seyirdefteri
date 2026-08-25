@@ -16,7 +16,7 @@ export async function rafSil(rafId) {
   await deleteDoc(doc(db, 'raflar', rafId))
 }
 
-export async function rafOgeEkle(rafId, kullanici, { tur, disId, baslik, alt, posterUrl }) {
+export async function rafOgeEkle(rafId, kullanici, { tur, disId, baslik, alt, posterUrl, ozelTur }) {
   await addDoc(collection(db, 'rafOgeleri'), {
     rafId,
     kullaniciId: kullanici.uid,
@@ -25,6 +25,7 @@ export async function rafOgeEkle(rafId, kullanici, { tur, disId, baslik, alt, po
     baslik,
     alt: alt || '',
     posterUrl: posterUrl || '',
+    ozelTur: ozelTur || null,
     eklemeTarihi: serverTimestamp(),
   })
   await updateDoc(doc(db, 'raflar', rafId), { ogeSayisi: increment(1) })
@@ -84,6 +85,16 @@ export async function kitapligimdaDegistir(kullanici, { disId, baslik, alt, post
     await rafOgeSil(rafId, mevcutOgeId)
     return false
   }
-  await rafOgeEkle(rafId, kullanici, { tur: 'kitap', disId, baslik, alt, posterUrl })
+  await rafOgeEkle(rafId, kullanici, { tur: 'kitap', disId, baslik, alt, posterUrl, ozelTur: 'kitapligim' })
   return true
+}
+
+// "Şu kitabı arıyorum" isteklerinde otomatik eşleştirme için — bu kitabı
+// "Kitaplığımda" işaretlemiş herkesi buluyor. rafOgeleri'ne ozelTur
+// denormalize edildiği için (bkz. kitapligimdaDegistir) tek sorguda,
+// raflar koleksiyonuna hiç gitmeden çalışıyor.
+export async function kitabinSahipleriniBul(disId) {
+  const q = query(collection(db, 'rafOgeleri'), where('disId', '==', disId), where('ozelTur', '==', 'kitapligim'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => d.data().kullaniciId)
 }

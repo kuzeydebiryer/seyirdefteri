@@ -458,6 +458,23 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
+    // Kitap İstekleri — "Şu kitabı arıyorum" panosu. Herkes okuyabilir,
+    // sadece isteği açan güncelleyebilir/silebilir (kapatma dahil).
+    match /kitapIstekleri/{istekId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.isteyenId == request.auth.uid;
+      // v2: ödünç veren kişi isteyen DEĞİL — ama isteği güncelleyebilmesi
+      // (oduncVerenId'yi kendi uid'sine ayarlaması, sonra "iade edildi"
+      // işaretlemesi) gerekiyor. Kendini oduncVerenId olarak yazmasına ya da
+      // zaten oduncVerenId oysa güncellemeye izin veriyoruz — başkasını
+      // oduncVerenId diye işaretleyemez.
+      allow update: if request.auth != null &&
+        (resource.data.isteyenId == request.auth.uid ||
+         request.resource.data.oduncVerenId == request.auth.uid ||
+         resource.data.oduncVerenId == request.auth.uid);
+      allow delete: if request.auth != null && resource.data.isteyenId == request.auth.uid;
+    }
+
     // Yönetmenler: üyelerin elle eklediği küratörlü liste, doküman ID'si TMDB kişi ID'si.
     match /yonetmenler/{tmdbId} {
       allow read: if true;

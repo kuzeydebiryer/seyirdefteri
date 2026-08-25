@@ -32,6 +32,7 @@ import GunlukListesi from '../components/GunlukListesi.jsx'
 import { gunlukYilininKayitlariniGetir, gunlukIlkYiliGetir, mukerrerGunlukKayitlariniTemizle } from '../utils/gunluk.js'
 import { buYilOlaylariHesapla } from '../utils/yilOzeti.js'
 import { meydanOkumalariGetir, herkeseAcikMeydanOkumalariGetir, meydanOkumaOlustur } from '../utils/meydanOkuma.js'
+import { oduncVerdiklerimiGetir, oduncAldiklarimiGetir, itibarSayisiGetir } from '../utils/kitapIstek.js'
 import MeydanOkumaFormu from '../components/MeydanOkumaFormu.jsx'
 import MeydanOkumaKarti from '../components/MeydanOkumaKarti.jsx'
 import PaylasButonu from '../components/PaylasButonu.jsx'
@@ -73,6 +74,9 @@ export default function Profil() {
 
   const [hedefProfil, setHedefProfil] = useState(benimProfilimMi ? kendiProfilim : null)
   const [meydanOkumalar, setMeydanOkumalar] = useState(null)
+  const [oduncVerdiklerim, setOduncVerdiklerim] = useState(null)
+  const [oduncAldiklarim, setOduncAldiklarim] = useState(null)
+  const [itibarSayisi, setItibarSayisi] = useState(null)
   const [meydanOkumaFormAcik, setMeydanOkumaFormAcik] = useState(false)
   const [kahinSezonlari, setKahinSezonlari] = useState([])
   const [sanatKoleksiyonu, setSanatKoleksiyonu] = useState([])
@@ -104,6 +108,19 @@ export default function Profil() {
     setMeydanOkumalar(null)
     ;(benimProfilimMi ? meydanOkumalariGetir(uid) : herkeseAcikMeydanOkumalariGetir(uid)).then(setMeydanOkumalar)
   }, [sekme, uid, benimProfilimMi])
+
+  useEffect(() => {
+    if (sekme !== 'oduncKitaplar' || !uid) return
+    setOduncVerdiklerim(null)
+    setOduncAldiklarim(null)
+    oduncVerdiklerimiGetir(uid).then(setOduncVerdiklerim)
+    oduncAldiklarimiGetir(uid).then(setOduncAldiklarim)
+  }, [sekme, uid])
+
+  useEffect(() => {
+    if (!uid) return
+    itibarSayisiGetir(uid).then(setItibarSayisi)
+  }, [uid])
 
   async function meydanOkumaOlusturTiklandi(veri) {
     await meydanOkumaOlustur(kullanici, kendiProfilim, veri)
@@ -210,6 +227,7 @@ export default function Profil() {
 
   const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
   const [bioTaslak, setBioTaslak] = useState('')
+  const [sehirTaslak, setSehirTaslak] = useState('')
   const [avatarTaslak, setAvatarTaslak] = useState('')
   const [kapakTaslak, setKapakTaslak] = useState('')
   const [letterboxdTaslak, setLetterboxdTaslak] = useState('')
@@ -240,6 +258,7 @@ export default function Profil() {
   useEffect(() => {
     if (hedefProfil && benimProfilimMi) {
       setBioTaslak(hedefProfil.bio || '')
+      setSehirTaslak(hedefProfil.sehir || '')
       setAvatarTaslak(hedefProfil.avatarUrl || '')
       setKapakTaslak(hedefProfil.kapakUrl || '')
       setLetterboxdTaslak(hedefProfil.letterboxdUrl || '')
@@ -254,6 +273,7 @@ export default function Profil() {
     try {
       const guncelVeri = {
         bio: bioTaslak,
+        sehir: sehirTaslak,
         avatarUrl: avatarTaslak,
         kapakUrl: kapakTaslak,
         letterboxdUrl: letterboxdTaslak,
@@ -324,6 +344,7 @@ export default function Profil() {
     { id: 'suanda', etiket: '⏳ Şu An' },
     { id: 'tamamladiklarim', etiket: '✓ Tamamladıklarım' },
     { id: 'meydanokumalar', etiket: '🏆 Meydan Okumalarım' },
+    { id: 'oduncKitaplar', etiket: '🤝 Ödünç Kitaplar' },
     { id: 'izleyecegim', etiket: '📋 İzleyecek/Okuyacaklarım' },
     { id: 'favoriler', etiket: '♥ Favoriler' },
     { id: 'raflarim', etiket: '📚 Raflarım' },
@@ -427,6 +448,7 @@ export default function Profil() {
             </div>
           )}
           {!duzenlemeAcik && hedefProfil.bio && <p className="mt-2 text-sm text-murekkep">{hedefProfil.bio}</p>}
+          {!duzenlemeAcik && hedefProfil.sehir && <p className="mt-0.5 text-xs text-kraft">📍 {hedefProfil.sehir}</p>}
 
           {!duzenlemeAcik && tumFavoriler.length > 0 && (
             <div className="mt-3">
@@ -492,6 +514,17 @@ export default function Profil() {
                   rows={3}
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Şehir (opsiyonel)</label>
+                <input
+                  type="text"
+                  value={sehirTaslak}
+                  onChange={(e) => setSehirTaslak(e.target.value)}
+                  placeholder="örn. Kocaeli"
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+                <p className="mt-1 text-[11px] text-kraft">Kitap ödünç alışverişinde aynı şehirdekileri bulmak için kullanılır.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -1215,6 +1248,48 @@ export default function Profil() {
                 sahibiMiyim={benimProfilimMi}
                 onSil={(id) => setMeydanOkumalar((liste) => liste.filter((m) => m.id !== id))}
               />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {sekme === 'oduncKitaplar' && (
+        <div>
+          {benimProfilimMi && itibarSayisi !== null && itibarSayisi > 0 && (
+            <p className="mb-4 text-sm text-murekkep">🤝 Şimdiye kadar {itibarSayisi} kez kitap ödünç verdi.</p>
+          )}
+
+          <h2 className="mb-2 font-baslik text-lg text-murekkep">Ödünç Verdiklerim</h2>
+          {oduncVerdiklerim === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
+          {oduncVerdiklerim?.length === 0 && <p className="mb-6 text-sm text-kraft">Henüz kimseye kitap ödünç vermedin.</p>}
+          <div className="mb-8 space-y-2">
+            {oduncVerdiklerim?.map((i) => (
+              <Link key={i.id} to={`/kitap/${i.disId}`} className="flex items-center gap-2 rounded-sm bg-kagitKoyu p-2.5 ring-1 ring-cizgi">
+                {i.posterUrl && <img src={i.posterUrl} alt={i.baslik} className="h-12 w-8 shrink-0 rounded-sm object-cover" />}
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-murekkep">{i.baslik}</p>
+                  <p className="text-xs text-kraft">
+                    {i.isteyenAdi}'e verildi{i.durum === 'tamamlandi' ? ' · ✓ iade edildi' : ` · iade: ${new Date(i.iadeTarihi).toLocaleDateString('tr-TR')}`}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <h2 className="mb-2 font-baslik text-lg text-murekkep">Ödünç Aldıklarım</h2>
+          {oduncAldiklarim === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
+          {oduncAldiklarim?.length === 0 && <p className="text-sm text-kraft">Henüz kimseden kitap ödünç almadın.</p>}
+          <div className="space-y-2">
+            {oduncAldiklarim?.map((i) => (
+              <Link key={i.id} to={`/kitap/${i.disId}`} className="flex items-center gap-2 rounded-sm bg-kagitKoyu p-2.5 ring-1 ring-cizgi">
+                {i.posterUrl && <img src={i.posterUrl} alt={i.baslik} className="h-12 w-8 shrink-0 rounded-sm object-cover" />}
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-murekkep">{i.baslik}</p>
+                  <p className="text-xs text-kraft">
+                    {i.oduncVerenAdi}'den alındı{i.durum === 'tamamlandi' ? ' · ✓ iade edildi' : ` · iade: ${new Date(i.iadeTarihi).toLocaleDateString('tr-TR')}`}
+                  </p>
+                </div>
+              </Link>
             ))}
           </div>
         </div>

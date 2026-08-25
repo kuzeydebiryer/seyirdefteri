@@ -537,6 +537,61 @@ exports.geziPlaniPaylasimBildirimi = onDocumentUpdated('geziPlanlari/{planId}', 
   })
 })
 
+// --- Kitap İstek Bildirimi -----------------------------------------------
+// Biri "Şu kitabı arıyorum" isteği oluşturunca, o kitabı "Kitaplığımda"
+// işaretlemiş herkese anında bildirim gidiyor — ayrı bir "bende var" akışına
+// gerek kalmadan, zaten var olan Kitaplığım verisi üzerinden otomatik
+// eşleştirme. rafOgeleri'nde ozelTur denormalize edildiği için (bkz.
+// src/utils/raf.js) tek sorguda, ekstra bir join olmadan çalışıyor.
+exports.kitapIstegiBildirimi = onDocumentCreated('kitapIstekleri/{istekId}', async (event) => {
+  const istek = event.data.data()
+  const sahiplerSnap = await db
+    .collection('rafOgeleri')
+    .where('disId', '==', istek.disId)
+    .where('ozelTur', '==', 'kitapligim')
+    .get()
+
+  const sahipUidler = [...new Set(sahiplerSnap.docs.map((d) => d.data().kullaniciId))].filter((uid) => uid !== istek.isteyenId)
+  if (sahipUidler.length === 0) return
+
+  await bildirimleriYazVeGonder(sahipUidler, {
+    tur: 'kitap_istegi',
+    baslik: '📖 Kitaplığındaki bir kitap aranıyor',
+    govde: `${istek.isteyenAdi}, sahip olduğun "${istek.baslik}" kitabını arıyor`,
+    url: `/kitap-istekleri`,
+  })
+})
+
+// v2 — İade tarihi hatırlatması. Her gün 09:00'da, iade tarihine TAM 1 gün
+// kalan (yarına düşen) ödünç kayıtlarını bulup ödünç alan kişiye hatırlatma
+// gönderiyor. Gezi Planı'ndaki uçuş check-in hatırlatmasıyla aynı kalıp —
+// aynı gün tekrar bildirim gitmesin diye iadeHatirlatmaGonderildi bayrağı
+// kullanılıyor.
+exports.kitapIadeHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Europe/Istanbul' }, async () => {
+  const yarin = new Date()
+  yarin.setDate(yarin.getDate() + 1)
+  const yarinISO = yarin.toISOString().slice(0, 10)
+
+  const snap = await db
+    .collection('kitapIstekleri')
+    .where('durum', '==', 'oduncte')
+    .where('iadeTarihi', '==', yarinISO)
+    .get()
+
+  for (const belge of snap.docs) {
+    const istek = belge.data()
+    if (istek.iadeHatirlatmaGonderildi) continue
+
+    await bildirimleriYazVeGonder([istek.isteyenId], {
+      tur: 'kitap_iade_hatirlatma',
+      baslik: '📖 İade zamanı yaklaşıyor',
+      govde: `"${istek.baslik}" kitabını yarın ${istek.oduncVerenAdi}'e iade etmeyi unutma`,
+      url: `/kitap-istekleri`,
+    })
+    await belge.ref.update({ iadeHatirlatmaGonderildi: true })
+  }
+})
+
 // --- Instagram Gömme --------------------------------------------------
 // 15 Haziran 2026'dan beri Meta'nın oEmbed uç noktası TOKEN GEREKTİRMİYOR
 // (2020-2026 arası zorunluydu, kaldırıldı) — yine de tarayıcıdan doğrudan
