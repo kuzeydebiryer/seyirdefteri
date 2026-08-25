@@ -45,6 +45,8 @@ const OdulSecimi = lazy(() => import('./pages/OdulSecimi.jsx'))
 const Bafta = lazy(() => import('./pages/Bafta.jsx'))
 const GoldenGlobe = lazy(() => import('./pages/GoldenGlobe.jsx'))
 const Emmy = lazy(() => import('./pages/Emmy.jsx'))
+const Sag = lazy(() => import('./pages/Sag.jsx'))
+const CriticsChoice = lazy(() => import('./pages/CriticsChoice.jsx'))
 const Festivaller = lazy(() => import('./pages/Festivaller.jsx'))
 const TurSayfasi = lazy(() => import('./pages/TurSayfasi.jsx'))
 const KisiselListeDetay = lazy(() => import('./pages/KisiselListeDetay.jsx'))
@@ -140,6 +142,8 @@ export default function App() {
             <Route path="/odul-toreni/bafta" element={<OzelRota><Bafta /></OzelRota>} />
             <Route path="/odul-toreni/golden-globe" element={<OzelRota><GoldenGlobe /></OzelRota>} />
             <Route path="/odul-toreni/emmy" element={<OzelRota><Emmy /></OzelRota>} />
+            <Route path="/odul-toreni/sag" element={<OzelRota><Sag /></OzelRota>} />
+            <Route path="/odul-toreni/critics-choice" element={<OzelRota><CriticsChoice /></OzelRota>} />
             <Route path="/festival" element={<OzelRota><Festivaller /></OzelRota>} />
             <Route path="/tur/:tur/:turId" element={<OzelRota><TurSayfasi /></OzelRota>} />
             <Route path="/liste/:listeId" element={<OzelRota><KisiselListeDetay /></OzelRota>} />

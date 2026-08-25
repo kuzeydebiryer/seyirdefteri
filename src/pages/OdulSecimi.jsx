@@ -6,6 +6,8 @@ const ODUL_TORENLERI = [
   { yol: '/odul-toreni/bafta', ad: 'BAFTA', aciklama: 'İngiliz Film ve Televizyon Sanatları Akademisi' },
   { yol: '/odul-toreni/golden-globe', ad: 'Golden Globe', aciklama: 'Altın Küre Ödülleri' },
   { yol: '/odul-toreni/emmy', ad: 'Emmy', aciklama: 'Televizyon Akademisi Ödülleri' },
+  { yol: '/odul-toreni/sag', ad: 'SAG Ödülleri', aciklama: 'Screen Actors Guild — Oscar\'ın en güvenilir öncüsü' },
+  { yol: '/odul-toreni/critics-choice', ad: "Critics' Choice", aciklama: 'Eleştirmenler Birliği Ödülleri' },
 ]
 
 export default function OdulSecimi() {

@@ -363,9 +363,9 @@ export default function EserSayfasi({ tur }) {
   }
 
   useEffect(() => {
-    if (tur !== 'sinema') return
+    if (tur !== 'sinema' && tur !== 'dizi') return
     let iptal = false
-    filmOscarBilgisiGetir(Number(id)).then((s) => {
+    filmOscarBilgisiGetir(Number(id), tur === 'dizi' ? 'dizi' : 'film').then((s) => {
       if (!iptal) setOscarSezonlari(s)
     })
     return () => {

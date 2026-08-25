@@ -52,15 +52,19 @@ export async function kategorilerGetir(sezonId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
-// tmdbId: film bazlı adaylarda (En İyi Film gibi) zorunlu. kisiTmdbId: oyunculuk/
+// tmdbId: film/dizi bazlı adaylarda (En İyi Film/Dizi gibi) zorunlu. tur:
+// 'film' ya da 'dizi' — hangi sayfaya link verileceğini belirliyor (TMDB'de
+// film ve dizi ID uzayları birbirinden bağımsız, aynı sayı farklı bir şeye
+// ait olabilir, bu yüzden ayırt etmek şart). kisiTmdbId: oyunculuk/
 // yönetmenlik kategorilerinde kişinin kendisini birincil aday yapmak için —
 // bu durumda tmdbId hâlâ verilir (afiş yerine kişi fotoğrafı öncelikli gösterilir)
 // ama esas kimlik kişi olur, filmBasligi ise "hangi film için aday olduğu" bilgisidir.
-export async function adayEkle(sezonId, kategoriId, { tmdbId, filmBasligi, filmYili, posterUrl, kisiAdi, kisiTmdbId, kisiFotoUrl, sira }) {
-  await addDoc(collection(db, 'oscarAdaylari'), {
+export async function adayEkle(sezonId, kategoriId, { tmdbId, tur, filmBasligi, filmYili, posterUrl, kisiAdi, kisiTmdbId, kisiFotoUrl, sira }) {
+  const ref = await addDoc(collection(db, 'oscarAdaylari'), {
     sezonId,
     kategoriId,
     tmdbId: tmdbId ?? null,
+    tur: tur || 'film',
     filmBasligi,
     filmYili: filmYili || '',
     posterUrl: posterUrl || '',
@@ -69,6 +73,7 @@ export async function adayEkle(sezonId, kategoriId, { tmdbId, filmBasligi, filmY
     kisiFotoUrl: kisiFotoUrl || '',
     sira: sira ?? 0,
   })
+  return { id: ref.id }
 }
 
 export async function adaySil(adayId) {
@@ -183,11 +188,17 @@ export async function kahinOlduguSezonlariGetir(uid) {
 // hangi kategori(ler)de aday — hem doğrudan film adaylıkları (En İyi Film gibi)
 // hem de bu filmle bağlantılı KİŞİ adaylıkları (En İyi Yönetmen/Oyuncu gibi,
 // artık tmdbId ile filme bağlı) TEK bir listede toplanıyor.
-export async function filmOscarBilgisiGetir(tmdbId) {
+// tur: 'film' | 'dizi' — TMDB'de film ve dizi ID uzayları bağımsız, aynı
+// sayı tamamen farklı bir yapıma ait olabilir. tur filtrelenmezse (örn.
+// Emmy'nin çoğu adayı dizi iken) bir dizi sayfasında alakasız bir filmin
+// adaylığı, ya da tam tersi, yanlışlıkla gösterilebilirdi. Client-side
+// filtreleniyor (Firestore where'e taşımak eski, tur alanı olmayan
+// kayıtları — hepsi film — sessizce kaybettirirdi).
+export async function filmOscarBilgisiGetir(tmdbId, tur = 'film') {
   const q = query(collection(db, 'oscarAdaylari'), where('tmdbId', '==', tmdbId))
   const adaySnap = await getDocs(q)
-  if (adaySnap.empty) return []
-  const adaylar = adaySnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  const adaylar = adaySnap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((a) => (a.tur || 'film') === tur)
+  if (adaylar.length === 0) return []
 
   const sezonIdleri = [...new Set(adaylar.map((a) => a.sezonId))]
   const kategoriIdleri = [...new Set(adaylar.map((a) => a.kategoriId))]
