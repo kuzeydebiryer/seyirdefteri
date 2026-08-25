@@ -252,6 +252,7 @@ export default function Oscar({
   const [topluAcik, setTopluAcik] = useState(false)
   const [wikidataAcik, setWikidataAcik] = useState(false)
   const [topluMetin, setTopluMetin] = useState('')
+  const [topluFilmDiziTuru, setTopluFilmDiziTuru] = useState('film')
   const [topluCalisiyor, setTopluCalisiyor] = useState(false)
   const [topluIlerleme, setTopluIlerleme] = useState('')
 
@@ -289,9 +290,30 @@ export default function Oscar({
     hepsiniYukle()
   }
 
-  async function tmdbdeFilmAra(isim) {
+  // Yayıncı/kanal adı satır sonunda parantez içinde geliyorsa ("Hacks (HBO
+  // Max)" gibi — Emmy adaylık listelerinde standart bir biçim) TMDB
+  // aramasını bozuyordu, temizliyoruz.
+  function parantezTemizle(metin) {
+    return metin.replace(/\s*\([^)]*\)\s*$/, '').trim()
+  }
+
+  async function tmdbdeFilmAra(isim, tur = 'film') {
     if (!TMDB_API_KEY) return null
-    const url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(isim)}`
+    const temizIsim = parantezTemizle(isim)
+    const uc = tur === 'dizi' ? 'tv' : 'movie'
+    const url = `https://api.themoviedb.org/3/search/${uc}?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(temizIsim)}`
+    try {
+      const res = await fetch(url)
+      const data = await res.json()
+      return data.results?.[0] || null
+    } catch {
+      return null
+    }
+  }
+
+  async function tmdbdeKisiAra(isim) {
+    if (!TMDB_API_KEY) return null
+    const url = `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(isim.trim())}`
     try {
       const res = await fetch(url)
       const data = await res.json()
@@ -302,9 +324,18 @@ export default function Oscar({
   }
 
   // Format: boş satırla ayrılmış bloklar. Her bloğun ilk satırı kategori adı,
-  // sonraki satırlar "Film Adı" ya da "Film Adı | Kişi Adı" (oyunculuk/yönetmenlik
-  // kategorileri için). Ör. bir ödül tahmin sitesinden (elle, bir kerelik) kopyalanan
-  // güncel aday listesini buraya yapıştırıp saniyeler içinde eklemek için.
+  // sonraki satırlar üç şekilden biri olabilir:
+  //   1. "Film/Dizi Adı" — sade, sadece eser (En İyi Film/Dizi gibi kategoriler)
+  //   2. "Film/Dizi Adı | Kişi Adı" — eser BİRİNCİL, kişi etiket (Yönetmenlik gibi)
+  //   3. "Kişi Adı – Film/Dizi Adı" — kişi BİRİNCİL, eser bağlam (Oyunculuk
+  //      kategorileri — Wikipedia'nın kendi adaylık tablolarında birebir bu
+  //      formatta geliyor: "Sterling K. Brown – Paradise (Hulu)"). Kişi hem
+  //      isimle hem TMDB'deki gerçek kaydıyla (fotoğraf dahil) ekleniyor, eser
+  //      de ayrıca aranıp bağlanıyor — ikisi de gerçek TMDB kayıtları.
+  // topluFilmDiziTuru: bu yapıştırmadaki TÜM satırlar için film mi dizi mi
+  // aranacağını belirliyor (Emmy gibi tören bazında neredeyse hep aynı türde
+  // olduğu için tek bir seçim yeterli — karışık bir yapıştırmada kullanıcı
+  // iki ayrı seferde, türü değiştirerek yapıştırabilir).
   async function topluEkleYap() {
     const bloklar = topluMetin
       .split(/\n\s*\n/)
@@ -326,15 +357,44 @@ export default function Oscar({
 
         let sira = 0
         for (const satir of filmSatirlari) {
+          // "Kişi – Eser" biçimi (uzun tire/em tire — Wikipedia'nın adaylık
+          // tablolarında kullandığı ayraç) — oyunculuk kategorileri için,
+          // kişi birincil. Kasıtlı olarak DÜZ tireyi ("-") tetiklemiyoruz —
+          // "Spider-Man" gibi film adlarının içinde geçebilir, yanlış
+          // bölünmeye yol açardı; uzun tire çok daha net bir ayraç niyeti.
+          const kisiEserAyraci = satir.match(/^(.+?)\s+[–—]\s+(.+)$/)
+          if (kisiEserAyraci) {
+            const [, kisiAdiStr, filmAdi] = kisiEserAyraci
+            islenen++
+            setTopluIlerleme(`(${islenen}/${toplamFilm}) "${kisiAdiStr}" aranıyor...`)
+            const [kisi, film] = await Promise.all([tmdbdeKisiAra(kisiAdiStr), tmdbdeFilmAra(filmAdi, topluFilmDiziTuru)])
+            if (kisi) {
+              await adayEkle(sezon.id, kategori.id, {
+                tmdbId: film?.id ?? null,
+                tur: topluFilmDiziTuru,
+                filmBasligi: film?.title || film?.name || parantezTemizle(filmAdi),
+                filmYili: film && (film.release_date || film.first_air_date) ? (film.release_date || film.first_air_date).slice(0, 4) : '',
+                posterUrl: film?.poster_path ? `${TMDB_POSTER}${film.poster_path}` : '',
+                kisiTmdbId: kisi.id,
+                kisiAdi: kisi.name,
+                kisiFotoUrl: kisi.profile_path ? `${TMDB_PROFIL}${kisi.profile_path}` : '',
+                sira: sira++,
+              })
+            }
+            continue
+          }
+
+          // Eski biçim: "Eser | Kişi" ya da sade "Eser".
           const [filmAdi, kisiAdi] = satir.split('|').map((s) => s?.trim())
           islenen++
           setTopluIlerleme(`(${islenen}/${toplamFilm}) "${filmAdi}" aranıyor...`)
-          const film = await tmdbdeFilmAra(filmAdi)
+          const film = await tmdbdeFilmAra(filmAdi, topluFilmDiziTuru)
           if (film) {
             await adayEkle(sezon.id, kategori.id, {
               tmdbId: film.id,
-              filmBasligi: film.title,
-              filmYili: film.release_date ? film.release_date.slice(0, 4) : '',
+              tur: topluFilmDiziTuru,
+              filmBasligi: film.title || film.name,
+              filmYili: (film.release_date || film.first_air_date) ? (film.release_date || film.first_air_date).slice(0, 4) : '',
               posterUrl: film.poster_path ? `${TMDB_POSTER}${film.poster_path}` : '',
               kisiAdi: kisiAdi || '',
               sira: sira++,
@@ -616,17 +676,39 @@ export default function Oscar({
           {topluAcik && (
             <div className="max-w-xl space-y-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
               <p className="text-xs text-kraft">
-                Bir tahmin sitesinden kopyaladığın listeyi yapıştır. Format: her kategori ayrı bir blok (aralarında boş
-                satır), ilk satır kategori adı, sonraki satırlar film adları — oyunculuk/yönetmenlik gibi kategorilerde{' '}
-                <code>Film Adı | Kişi Adı</code> şeklinde yazabilirsin.
+                Bir tahmin sitesinden (ya da Wikipedia'daki resmi aday listesinden) kopyaladığın listeyi yapıştır. Format: her
+                kategori ayrı bir blok (aralarında boş satır). Satırlar üç şekilde olabilir:{' '}
+                <code>Film/Dizi Adı</code> (sade), <code>Film Adı | Kişi Adı</code> (yönetmenlik gibi, eser birincil) ya da{' '}
+                <code>Kişi Adı – Film/Dizi Adı</code> (oyunculuk gibi, kişi birincil — Wikipedia'daki adaylık tablolarını
+                doğrudan bu haliyle yapıştırabilirsin). Yayıncı/kanal adı satır sonunda parantez içindeyse ("Hacks (HBO Max)"
+                gibi) otomatik temizlenip aranıyor.
               </p>
+              <div className="flex gap-1">
+                {[
+                  { id: 'film', etiket: '🎬 Bunlar Film' },
+                  { id: 'dizi', etiket: '📺 Bunlar Dizi' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTopluFilmDiziTuru(t.id)}
+                    className={`rounded-sm px-2 py-1 text-[11px] ${
+                      topluFilmDiziTuru === t.id ? 'bg-deniz text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
+                    }`}
+                  >
+                    {t.etiket}
+                  </button>
+                ))}
+              </div>
               <textarea
                 value={topluMetin}
                 onChange={(e) => setTopluMetin(e.target.value)}
                 rows={10}
                 disabled={topluCalisiyor}
                 placeholder={
-                  'En İyi Film\nThe Odyssey\nLa Bola Negra\nWild Horse Nine\n\nEn İyi Yönetmen\nThe Odyssey | Christopher Nolan\nLa Bola Negra | Javier Ambrossi'
+                  topluFilmDiziTuru === 'dizi'
+                    ? 'En İyi Komedi Dizisi\nAbbott Elementary (ABC)\nHacks (HBO Max)\nThe Bear (FX)\n\nDrama Dizilerinde En İyi Erkek Oyuncu\nSterling K. Brown – Paradise (Hulu)\nGary Oldman – Slow Horses (Apple TV+)\nMark Ruffalo – Task (HBO)'
+                    : 'En İyi Film\nThe Odyssey\nLa Bola Negra\nWild Horse Nine\n\nEn İyi Yönetmen\nThe Odyssey | Christopher Nolan\nLa Bola Negra | Javier Ambrossi'
                 }
                 className="w-full rounded-sm bg-kagit px-3 py-2 text-xs text-murekkep ring-1 ring-cizgi"
               />
