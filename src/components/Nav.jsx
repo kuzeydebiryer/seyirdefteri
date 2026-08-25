@@ -10,10 +10,13 @@ import Avatar from './Avatar.jsx'
 import Logo from './Logo.jsx'
 
 // Kişiler profile, Etkinlikler Topluluklar sayfasına taşındı. Yönetmenler
-// artık Oyuncular sayfasının içinde (ayrı menü maddesi değil). Akış, anasayfa
-// artık sade bir vitrin olduğu için kendi bağımsız sayfasına taşındı.
+// artık Oyuncular sayfasının içinde (ayrı menü maddesi değil). Akış,
+// anasayfadaki "Yeni Güncelerde Tümünü Gör" linkiyle hâlâ erişilebiliyor
+// (kendi rotası duruyor), sadece üst menüden kaldırıldı — menü kalabalığını
+// azaltmak için. Oyunlar da aynı mantıkla menüden kalktı: film oyunları
+// Film sayfasına, kitap alıntı oyunu Kitap sayfasına taşındı (kendi rotası
+// ve /oyunlar hub sayfası hâlâ duruyor, sadece üst menüde değil).
 const LINKLER = [
-  { yol: '/akis', etiket: 'Akış', ikon: '🗒️' },
   { yol: '/filmler', etiket: 'Film', ikon: '🎬' },
   { yol: '/diziler', etiket: 'Dizi', ikon: '📺' },
   { yol: '/platformlar', etiket: 'Platformlar', ikon: '📡' },
@@ -24,7 +27,6 @@ const LINKLER = [
   { yol: '/yazilar', etiket: 'Yazı', ikon: '📝' },
   { yol: '/gezi', etiket: 'Gezi', ikon: '✈️' },
   { yol: '/etkinlik-dunyasi', etiket: 'Etkinlik', ikon: '🎟️' },
-  { yol: '/oyunlar', etiket: 'Oyunlar', ikon: '🎲' },
   { yol: '/seyir-panosu', etiket: 'Seyir Panosu', ikon: '📌' },
 ]
 const TOPLULUK_LINKLERI = [{ yol: '/topluluklar', etiket: 'Topluluk', ikon: '👥' }]
