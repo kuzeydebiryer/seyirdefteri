@@ -1926,7 +1926,7 @@ export default function EserSayfasi({ tur }) {
           {oscarSezonlari.length > 0 && (
             <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
               <p className="mb-2 flex items-center gap-1 text-xs uppercase tracking-widest text-gise">
-                <OscarHeykelIkon boyut={14} /> Oscar Adaylıkları · {oscarSezonlari.reduce((n, s) => n + s.kategoriler.length, 0)} dal
+                <OscarHeykelIkon boyut={14} /> Ödül Adaylıkları · {oscarSezonlari.reduce((n, s) => n + s.kategoriler.length, 0)} dal
               </p>
               <div className="space-y-2">
                 {oscarSezonlari.map((s) => (

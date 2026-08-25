@@ -21,7 +21,7 @@ const LINKLER = [
   { yol: '/diziler', etiket: 'Dizi', ikon: '📺' },
   { yol: '/platformlar', etiket: 'Platformlar', ikon: '📡' },
   { yol: '/oyuncular', etiket: 'Oyuncu', ikon: '🎭' },
-  { yol: '/oscar', etiket: 'Oscar', ikon: '🏆' },
+  { yol: '/odul-toreni', etiket: 'Ödüller', ikon: '🏆' },
   { yol: '/festival', etiket: 'Festival', ikon: '🎪' },
   { yol: '/kitaplar', etiket: 'Kitap', ikon: '📚' },
   { yol: '/yazilar', etiket: 'Yazı', ikon: '📝' },

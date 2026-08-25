@@ -41,6 +41,10 @@ const KitapIstekleri = lazy(() => import('./pages/KitapIstekleri.jsx'))
 const KitapKatalogBakimi = lazy(() => import('./pages/KitapKatalogBakimi.jsx'))
 const Listelerim = lazy(() => import('./pages/Listelerim.jsx'))
 const Oscar = lazy(() => import('./pages/Oscar.jsx'))
+const OdulSecimi = lazy(() => import('./pages/OdulSecimi.jsx'))
+const Bafta = lazy(() => import('./pages/Bafta.jsx'))
+const GoldenGlobe = lazy(() => import('./pages/GoldenGlobe.jsx'))
+const Emmy = lazy(() => import('./pages/Emmy.jsx'))
 const Festivaller = lazy(() => import('./pages/Festivaller.jsx'))
 const TurSayfasi = lazy(() => import('./pages/TurSayfasi.jsx'))
 const KisiselListeDetay = lazy(() => import('./pages/KisiselListeDetay.jsx'))
@@ -75,6 +79,13 @@ const MuzikTahmin = lazy(() => import('./pages/oyunlar/MuzikTahmin.jsx'))
 function IlhamPanosuYonlendirme() {
   const { search } = useLocation()
   return <Navigate to={`/seyir-panosu${search}`} replace />
+}
+
+// Oscar, artık "Ödüller" şemsiyesi altında BAFTA/Golden Globe/Emmy ile
+// birlikte yaşıyor — eski /oscar linkleri (yer imleri, dışarıdan gelen
+// linkler) kırılmasın diye yönlendiriyoruz.
+function OscarYonlendirme() {
+  return <Navigate to="/odul-toreni/oscar" replace />
 }
 
 function YonetmenYonlendirme() {
@@ -123,7 +134,12 @@ export default function App() {
             <Route path="/kitap-istekleri" element={<OzelRota><KitapIstekleri /></OzelRota>} />
             <Route path="/kitaplar/bakim" element={<OzelRota><KitapKatalogBakimi /></OzelRota>} />
             <Route path="/listelerim" element={<OzelRota><Listelerim /></OzelRota>} />
-            <Route path="/oscar" element={<OzelRota><Oscar /></OzelRota>} />
+            <Route path="/oscar" element={<OscarYonlendirme />} />
+            <Route path="/odul-toreni" element={<OzelRota><OdulSecimi /></OzelRota>} />
+            <Route path="/odul-toreni/oscar" element={<OzelRota><Oscar /></OzelRota>} />
+            <Route path="/odul-toreni/bafta" element={<OzelRota><Bafta /></OzelRota>} />
+            <Route path="/odul-toreni/golden-globe" element={<OzelRota><GoldenGlobe /></OzelRota>} />
+            <Route path="/odul-toreni/emmy" element={<OzelRota><Emmy /></OzelRota>} />
             <Route path="/festival" element={<OzelRota><Festivaller /></OzelRota>} />
             <Route path="/tur/:tur/:turId" element={<OzelRota><TurSayfasi /></OzelRota>} />
             <Route path="/liste/:listeId" element={<OzelRota><KisiselListeDetay /></OzelRota>} />

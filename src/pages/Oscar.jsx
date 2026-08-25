@@ -191,7 +191,14 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
   )
 }
 
-export default function Oscar() {
+export default function Oscar({
+  torenTuru = 'oscar',
+  baslik = 'Oscar Yolculuğu',
+  ustSayfaLinki = '/odul-toreni',
+  ustSayfaEtiketi = '← Ödüller',
+  varsayilanSezonAdi = '99. Akademi Ödülleri',
+  varsayilanTorenTarihi = '2027-03-14',
+}) {
   const { kullanici, profil } = useAuth()
   const [sezon, setSezon] = useState(null)
   const [gecmisSezonlar, setGecmisSezonlar] = useState([])
@@ -200,8 +207,8 @@ export default function Oscar() {
   const [tahminler, setTahminler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
 
-  const [sezonAdi, setSezonAdi] = useState('99. Akademi Ödülleri')
-  const [torenTarihi, setTorenTarihi] = useState('2027-03-14')
+  const [sezonAdi, setSezonAdi] = useState(varsayilanSezonAdi)
+  const [torenTarihi, setTorenTarihi] = useState(varsayilanTorenTarihi)
   const [yeniKategoriAdi, setYeniKategoriAdi] = useState('')
   const [aciKategoriId, setAciKategoriId] = useState(null)
   const [kilitlemeIsleniyor, setKilitlemeIsleniyor] = useState(false)
@@ -213,7 +220,7 @@ export default function Oscar() {
 
   async function hepsiniYukle() {
     setYukleniyor(true)
-    const tumSezonlar = await tumSezonlariGetir()
+    const tumSezonlar = await tumSezonlariGetir(torenTuru)
     const bitmemis = tumSezonlar.find((s) => !s.bittiMi) || null
     setSezon(bitmemis)
     setGecmisSezonlar(tumSezonlar.filter((s) => s.bittiMi))
@@ -241,7 +248,7 @@ export default function Oscar() {
   async function sezonuOlustur(e) {
     e.preventDefault()
     if (!sezonAdi.trim() || !kullanici) return
-    await sezonOlustur(kullanici, { ad: sezonAdi, torenTarihi })
+    await sezonOlustur(kullanici, { ad: sezonAdi, torenTarihi, torenTuru })
     hepsiniYukle()
   }
 
@@ -393,9 +400,12 @@ export default function Oscar() {
   if (!sezon) {
     return (
       <div>
-        <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> Oscar Yolculuğu</h1>
+        <Link to={ustSayfaLinki} className="mb-2 inline-block text-xs text-kraft hover:text-deniz">
+          {ustSayfaEtiketi}
+        </Link>
+        <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> {baslik}</h1>
         <p className="mb-6 text-sm text-kraft">
-          {gecmisSezonlar.length > 0 ? 'Yeni bir sezon henüz başlamadı.' : 'Henüz bir Oscar sezonu oluşturulmadı.'}
+          {gecmisSezonlar.length > 0 ? 'Yeni bir sezon henüz başlamadı.' : 'Henüz bir sezon oluşturulmadı.'}
         </p>
         {kullanici && (
           <form onSubmit={sezonuOlustur} className="mb-8 max-w-sm space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
@@ -456,7 +466,10 @@ export default function Oscar() {
 
   return (
     <div>
-      <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> Oscar Yolculuğu</h1>
+      <Link to={ustSayfaLinki} className="mb-2 inline-block text-xs text-kraft hover:text-deniz">
+        {ustSayfaEtiketi}
+      </Link>
+      <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> {baslik}</h1>
       <p className="mb-1 text-sm text-kraft">{sezon.ad}</p>
       {gun != null && (
         <p className="mb-4 text-sm text-kraft">
@@ -467,7 +480,7 @@ export default function Oscar() {
 
       
 
-      <SohbetPaneli konumId={`oscar_${sezon.id}`} baslik="💬 Oscar Sohbeti" />
+      <SohbetPaneli konumId={`oscar_${sezon.id}`} baslik={`💬 ${baslik.replace(' Yolculuğu', '')} Sohbeti`} />
 
       {kategoriler.length > 0 && (
         <div className="mb-6 flex items-center justify-between rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">

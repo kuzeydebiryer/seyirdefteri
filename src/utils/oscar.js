@@ -1,15 +1,19 @@
-// Oscar Yolculuğu — Faz 1: Sezon + Kategori + Aday yönetimi ve izleme ilerlemesi.
-// Not: Akademi Ödülleri'nin adayları için resmi bir API yok, bu yüzden
-// kategoriler ve adaylar (OKULLAR listesi gibi) elle girilen referans veridir.
-// Puanlama/tahmin sistemi (Faz 2) ve sonuç+rozet (Faz 3) sonraya bırakıldı.
+// Ödül Yolculuğu — Oscar/BAFTA/Golden Globe/Emmy hepsi bu AYNI mekanizmayı
+// (sezon+kategori+aday, tahmin, kilitleme, Kahin) paylaşıyor — torenTuru
+// alanıyla ayrılıyorlar. Koleksiyon adları tarihsel nedenlerle hâlâ
+// "oscar*" (ilk kurulduğunda sadece Oscar vardı) ama artık dört ödül türünü
+// de barındırıyor — yeniden adlandırmak var olan veriyi taşımayı
+// gerektirirdi, bunun yerine mevcut adlar korunup genelleştirildi.
+// Eski (torenTuru'süz) kayıtlar Oscar sayılıyor (bkz. aşağıdaki || 'oscar').
 
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-export async function sezonOlustur(kullanici, { ad, torenTarihi }) {
+export async function sezonOlustur(kullanici, { ad, torenTarihi, torenTuru }) {
   const ref = await addDoc(collection(db, 'oscarSezonlari'), {
     ad,
     torenTarihi,
+    torenTuru: torenTuru || 'oscar',
     kilitli: false,
     olusturanId: kullanici.uid,
     olusturmaTarihi: serverTimestamp(),
@@ -20,11 +24,15 @@ export async function sezonOlustur(kullanici, { ad, torenTarihi }) {
 // En son oluşturulan sezonu getirir — bu, "aktif" sezon olarak kabul edilir.
 // Şimdilik tek bir aktif sezon varsayımıyla en basit hâliyle bırakıldı;
 // geçmiş sezonlar Faz 3'te "arşiv" (sadece kazananlar) olarak ayrıca tutulacak.
-export async function aktifSezonuGetir() {
+// torenTuru'ye göre client-side filtreleniyor (Firestore where'e taşımak
+// yeni bir bileşik indeks gerektirirdi — sezon sayısı zaten çok az, tüm
+// koleksiyonu çekmek maliyetsiz).
+export async function aktifSezonuGetir(torenTuru = 'oscar') {
   const q = query(collection(db, 'oscarSezonlari'), orderBy('olusturmaTarihi', 'desc'))
   const snap = await getDocs(q)
-  if (snap.empty) return null
-  const d = snap.docs[0]
+  const buTurdekiler = snap.docs.filter((d) => (d.data().torenTuru || 'oscar') === torenTuru)
+  if (buTurdekiler.length === 0) return null
+  const d = buTurdekiler[0]
   return { id: d.id, ...d.data() }
 }
 
@@ -156,10 +164,10 @@ export async function sezonuBitir(sezonId, kahinUid, kahinAdi) {
   await updateDoc(doc(db, 'oscarSezonlari', sezonId), { bittiMi: true, kahinUid, kahinAdi })
 }
 
-export async function tumSezonlariGetir() {
+export async function tumSezonlariGetir(torenTuru = 'oscar') {
   const q = query(collection(db, 'oscarSezonlari'), orderBy('olusturmaTarihi', 'desc'))
   const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  return snap.docs.filter((d) => (d.data().torenTuru || 'oscar') === torenTuru).map((d) => ({ id: d.id, ...d.data() }))
 }
 
 // Profildeki rozet gösterimi için: bu kullanıcının Kahin ilan edildiği sezonlar.
