@@ -25,6 +25,7 @@ async function tmdbDetayGetir(tmdbId, tur) {
 // kaldırıp öyle ekliyor.
 export default function WikidataIceAktar({ sezonId, mevcutKategoriSayisi, onEklendi }) {
   const [torenQid, setTorenQid] = useState('')
+  const [yil, setYil] = useState(new Date().getFullYear())
   const [cekiliyor, setCekiliyor] = useState(false)
   const [hata, setHata] = useState('')
   const [onizleme, setOnizleme] = useState(null) // [{ kategoriAdi, adaylar: [{..., secili}] }]
@@ -33,12 +34,12 @@ export default function WikidataIceAktar({ sezonId, mevcutKategoriSayisi, onEkle
 
   async function getir(e) {
     e.preventDefault()
-    if (!torenQid.trim()) return
+    if (!torenQid.trim() || !yil) return
     setCekiliyor(true)
     setHata('')
     setOnizleme(null)
     try {
-      const sonuc = await wikidataOduluCek(torenQid)
+      const sonuc = await wikidataOduluCek(torenQid, yil)
       setOnizleme(sonuc.map((k) => ({ ...k, adaylar: k.adaylar.map((a) => ({ ...a, secili: true })) })))
     } catch (err) {
       setHata(err.message || 'Bir hata oluştu.')
@@ -111,17 +112,25 @@ export default function WikidataIceAktar({ sezonId, mevcutKategoriSayisi, onEkle
   return (
     <div className="max-w-xl space-y-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
       <p className="text-xs text-kraft">
-        Wikidata'da o yılki törenin sayfasını ara (ör. "98th Academy Awards"), adres çubuğundaki <code>Q</code> ile başlayan kodu
-        buraya yapıştır. <strong>Sadece resmi olarak açıklanmış adaylıklar/kazananlar için veri döner</strong> — tahmin aşamasında
-        boş gelir, bu normal.
+        Wikidata'da ödülün <strong>jenerik (yıldan bağımsız) sayfasını</strong> ara — ör. "Primetime Emmy Award", "78th Primetime
+        Emmy Awards" gibi YILLIK tören sayfası değil — adres çubuğundaki <code>Q</code> ile başlayan kodu yapıştır, yanına da
+        hangi yılın adaylarını istediğini yaz. <strong>Sadece resmi olarak açıklanmış adaylıklar/kazananlar için veri döner</strong>
+        — tahmin aşamasında boş gelir, bu normal.
       </p>
       <form onSubmit={getir} className="flex gap-2">
         <input
           type="text"
           value={torenQid}
           onChange={(e) => setTorenQid(e.target.value)}
-          placeholder="ör. Q131234567"
+          placeholder="ör. Q1194145 (jenerik ödül kodu)"
           className="flex-1 rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+        />
+        <input
+          type="number"
+          value={yil}
+          onChange={(e) => setYil(e.target.value)}
+          placeholder="Yıl"
+          className="w-20 rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
         />
         <button type="submit" disabled={cekiliyor} className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40">
           {cekiliyor ? 'Getiriliyor...' : 'Getir'}

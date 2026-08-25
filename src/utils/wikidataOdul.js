@@ -2,34 +2,37 @@
 // Wikidata sadece gönüllülerin girdiği, ONAYLANMIŞ sonuçları içeriyor, tahmin
 // aşamasında (adaylıklar açıklanmadan önce) burada hiçbir veri olmaz.
 //
-// SPARQL sorgusu şu Wikidata kalıbına dayanıyor: bir ödül töreninin
-// (ör. "98th Academy Awards") her kategorisi P361 ("parçasıdır") ile o
-// törene bağlı ayrı bir varlık; bir eser/kişi P1411 ("aday gösterildi") ya
-// da P166 ("ödül aldı") ile doğrudan o KATEGORİYE bağlanıyor. TMDB'yle
-// doğrudan eşleşme için P4947 (TMDB Film ID) / P4983 (TMDB Dizi ID) /
-// P4985 (TMDB Kişi ID) varsa onu da çekiyoruz — varsa isimle aramaya hiç
-// gerek kalmıyor, yoksa çağıran taraf (Oscar.jsx) isimle TMDB araması
-// yapıyor.
+// SPARQL sorgusu, Serkan'la birlikte canlı Wikidata'da test ederek
+// doğrulanan GERÇEK modele göre kuruldu — önceden "kategoriler o yılki
+// törene bağlı" varsayımıyla yazılmıştı, bu YANLIŞ çıktı: kategoriler
+// aslında JENERİK, yıldan bağımsız ödüle (ör. "Primetime Emmy Award")
+// P361 ("parçasıdır") ile bağlı. Yıl bilgisi ise her adaylık/kazanma
+// KAYDININ kendi üzerinde bir P585 ("point in time") niteleyicisi olarak
+// duruyor. Bu yüzden nitelikleri okumak için basit `wdt:` kısayolları değil,
+// tam "statement" söz dizimi (`p:`/`ps:`/`pq:`) gerekiyor.
 //
-// NOT: Bu sorgu Wikidata'nın belgelenmiş property kalıplarına göre
-// tasarlandı ama bu ortamdan canlı test edilemedi (query.wikidata.org bu
-// sanal alana kapalı) — ilk denemede küçük bir ayar gerekebilir.
+// Bu yüzden artık İKİ girdi isteniyor: jenerik ödül Q kodu + hedef yıl.
 
 const SPARQL_UC_NOKTASI = 'https://query.wikidata.org/sparql'
 
-function sorguOlustur(torenQid) {
+function sorguOlustur(odulQid, yil) {
   return `
     SELECT ?work ?workLabel ?tmdbMovie ?tmdbTv ?tmdbPerson ?category ?categoryLabel ?won WHERE {
-      ?category wdt:P361 wd:${torenQid}.
+      ?category wdt:P361 wd:${odulQid}.
       {
-        ?work wdt:P1411 ?category.
+        ?work p:P1411 ?statement.
+        ?statement ps:P1411 ?category.
+        ?statement pq:P585 ?tarih.
         BIND(false AS ?won)
       }
       UNION
       {
-        ?work wdt:P166 ?category.
+        ?work p:P166 ?statement.
+        ?statement ps:P166 ?category.
+        ?statement pq:P585 ?tarih.
         BIND(true AS ?won)
       }
+      FILTER(YEAR(?tarih) = ${Number(yil)})
       OPTIONAL { ?work wdt:P4947 ?tmdbMovie. }
       OPTIONAL { ?work wdt:P4983 ?tmdbTv. }
       OPTIONAL { ?work wdt:P4985 ?tmdbPerson. }
@@ -38,17 +41,18 @@ function sorguOlustur(torenQid) {
   `.trim()
 }
 
-// torenQid: "Q..." formatında, o yılki törenin Wikidata sayfa kodu — admin
-// Wikidata.org'da o töreni arayıp URL'deki kodu buraya yapıştırıyor.
+// odulQid: "Q..." formatında, JENERİK (yıldan bağımsız) ödülün Wikidata
+// kodu — ör. "Primetime Emmy Award" sayfasının kodu, "78th Primetime Emmy
+// Awards" gibi yıllık tören sayfasının DEĞİL. yil: sayı, ör. 2026.
 // Dönüş: [{ kategoriAdi, adaylar: [{ ad, tmdbId, tur: 'film'|'dizi'|'kisi', kazandiMi }] }]
-export async function wikidataOduluCek(torenQid) {
-  const sorgu = sorguOlustur(torenQid.trim())
+export async function wikidataOduluCek(odulQid, yil) {
+  const sorgu = sorguOlustur(odulQid.trim(), yil)
   const url = `${SPARQL_UC_NOKTASI}?query=${encodeURIComponent(sorgu)}&format=json`
   const res = await fetch(url, { headers: { Accept: 'application/sparql-results+json' } })
   if (!res.ok) throw new Error('Wikidata sorgusu başarısız oldu (SPARQL yanıt vermedi).')
   const data = await res.json()
   const satirlar = data.results?.bindings || []
-  if (satirlar.length === 0) throw new Error('Bu Wikidata kodu için hiç kategori/aday bulunamadı — kodu kontrol et.')
+  if (satirlar.length === 0) throw new Error('Bu ödül + yıl için hiç kategori/aday bulunamadı — kodu ve yılı kontrol et.')
 
   const kategoriMap = new Map()
   satirlar.forEach((satir) => {
