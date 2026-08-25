@@ -253,6 +253,7 @@ export default function Oscar({
   const [wikidataAcik, setWikidataAcik] = useState(false)
   const [topluMetin, setTopluMetin] = useState('')
   const [topluFilmDiziTuru, setTopluFilmDiziTuru] = useState('film')
+  const [topluKisiBirincil, setTopluKisiBirincil] = useState(false)
   const [topluCalisiyor, setTopluCalisiyor] = useState(false)
   const [topluIlerleme, setTopluIlerleme] = useState('')
 
@@ -295,6 +296,16 @@ export default function Oscar({
   // aramasını bozuyordu, temizliyoruz.
   function parantezTemizle(metin) {
     return metin.replace(/\s*\([^)]*\)\s*$/, '').trim()
+  }
+
+  // Wikipedia'dan (özellikle markdown'a çeviren bir araçla) kopyalanan
+  // satırlarda "* " madde işareti ve "[İsim](url)" link biçimi kalabiliyor —
+  // ikisi de arama sorgusuna karışıp yanlış eşleşmeye yol açıyordu.
+  function satirTemizle(satir) {
+    return satir
+      .replace(/^[*\-•]\s*/, '')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .trim()
   }
 
   async function tmdbdeFilmAra(isim, tur = 'film') {
@@ -356,23 +367,36 @@ export default function Oscar({
         if (!kategori) continue
 
         let sira = 0
-        for (const satir of filmSatirlari) {
-          // "Kişi – Eser" biçimi (uzun tire/em tire — Wikipedia'nın adaylık
-          // tablolarında kullandığı ayraç) — oyunculuk kategorileri için,
-          // kişi birincil. Kasıtlı olarak DÜZ tireyi ("-") tetiklemiyoruz —
-          // "Spider-Man" gibi film adlarının içinde geçebilir, yanlış
-          // bölünmeye yol açardı; uzun tire çok daha net bir ayraç niyeti.
-          const kisiEserAyraci = satir.match(/^(.+?)\s+[–—]\s+(.+)$/)
-          if (kisiEserAyraci) {
-            const [, kisiAdiStr, filmAdi] = kisiEserAyraci
+        for (const satirHam of filmSatirlari) {
+          const satir = satirTemizle(satirHam)
+          if (!satir) continue
+
+          // "Kişi Birincil" modunda iki ayraç biçimi destekleniyor:
+          //   a) "Kişi – Eser" (uzun tire)
+          //   b) "Kişi (Eser)" (parantez — Wikipedia'nın bazı adaylık
+          //      tablolarında bu biçimde geliyor). ÖNEMLİ: bu mod açık
+          //      DEĞİLKEN aynı "X (Y)" biçimi tam tersi anlama geliyor —
+          //      Y bir kanal/yayıncı adı sayılıp SİLİNİYOR (parantezTemizle).
+          //      İkisi metinden ayırt edilemediği için kullanıcı hangisini
+          //      kastettiğini bu anahtarla açıkça belirtiyor.
+          if (topluKisiBirincil) {
+            const tireAyraci = satir.match(/^(.+?)\s+[–—]\s+(.+)$/)
+            const parantezAyraci = !tireAyraci && satir.match(/^(.+?)\s*\(([^)]+)\)\s*$/)
+            const esleme = tireAyraci || parantezAyraci
+            const kisiAdiStr = esleme ? esleme[1].trim() : satir
+            const filmAdi = esleme ? esleme[2].trim() : ''
+
             islenen++
             setTopluIlerleme(`(${islenen}/${toplamFilm}) "${kisiAdiStr}" aranıyor...`)
-            const [kisi, film] = await Promise.all([tmdbdeKisiAra(kisiAdiStr), tmdbdeFilmAra(filmAdi, topluFilmDiziTuru)])
+            const [kisi, film] = await Promise.all([
+              tmdbdeKisiAra(kisiAdiStr),
+              filmAdi ? tmdbdeFilmAra(filmAdi, topluFilmDiziTuru) : Promise.resolve(null),
+            ])
             if (kisi) {
               await adayEkle(sezon.id, kategori.id, {
                 tmdbId: film?.id ?? null,
                 tur: topluFilmDiziTuru,
-                filmBasligi: film?.title || film?.name || parantezTemizle(filmAdi),
+                filmBasligi: film?.title || film?.name || filmAdi,
                 filmYili: film && (film.release_date || film.first_air_date) ? (film.release_date || film.first_air_date).slice(0, 4) : '',
                 posterUrl: film?.poster_path ? `${TMDB_POSTER}${film.poster_path}` : '',
                 kisiTmdbId: kisi.id,
@@ -677,13 +701,14 @@ export default function Oscar({
             <div className="max-w-xl space-y-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
               <p className="text-xs text-kraft">
                 Bir tahmin sitesinden (ya da Wikipedia'daki resmi aday listesinden) kopyaladığın listeyi yapıştır. Format: her
-                kategori ayrı bir blok (aralarında boş satır). Satırlar üç şekilde olabilir:{' '}
-                <code>Film/Dizi Adı</code> (sade), <code>Film Adı | Kişi Adı</code> (yönetmenlik gibi, eser birincil) ya da{' '}
-                <code>Kişi Adı – Film/Dizi Adı</code> (oyunculuk gibi, kişi birincil — Wikipedia'daki adaylık tablolarını
-                doğrudan bu haliyle yapıştırabilirsin). Yayıncı/kanal adı satır sonunda parantez içindeyse ("Hacks (HBO Max)"
-                gibi) otomatik temizlenip aranıyor.
+                kategori ayrı bir blok (aralarında boş satır). "Kişi Birincil" kapalıyken satırlar <code>Film/Dizi Adı</code>{' '}
+                (sade) ya da <code>Film Adı | Kişi Adı</code> (eser birincil, kişi etiket) olabilir — bu modda parantez içi
+                ("Hacks (HBO Max)" gibi) kanal adı sayılıp temizlenir. "Kişi Birincil" AÇIKKEN (oyunculuk kategorileri için)
+                satırlar <code>Kişi Adı – Film/Dizi Adı</code> ya da <code>Kişi Adı (Film/Dizi Adı)</code> olabilir — bu modda
+                parantez içi artık kanal DEĞİL, bağlantılı eser sayılır. İkisi aynı görünüp zıt anlama geldiği için hangi
+                modda olduğunu doğru seçmen önemli.
               </p>
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1">
                 {[
                   { id: 'film', etiket: '🎬 Bunlar Film' },
                   { id: 'dizi', etiket: '📺 Bunlar Dizi' },
@@ -699,6 +724,15 @@ export default function Oscar({
                     {t.etiket}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => setTopluKisiBirincil((k) => !k)}
+                  className={`rounded-sm px-2 py-1 text-[11px] ${
+                    topluKisiBirincil ? 'bg-gise text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
+                  }`}
+                >
+                  👤 Kişi Birincil {topluKisiBirincil ? '(açık)' : '(kapalı)'}
+                </button>
               </div>
               <textarea
                 value={topluMetin}
@@ -706,9 +740,11 @@ export default function Oscar({
                 rows={10}
                 disabled={topluCalisiyor}
                 placeholder={
-                  topluFilmDiziTuru === 'dizi'
-                    ? 'En İyi Komedi Dizisi\nAbbott Elementary (ABC)\nHacks (HBO Max)\nThe Bear (FX)\n\nDrama Dizilerinde En İyi Erkek Oyuncu\nSterling K. Brown – Paradise (Hulu)\nGary Oldman – Slow Horses (Apple TV+)\nMark Ruffalo – Task (HBO)'
-                    : 'En İyi Film\nThe Odyssey\nLa Bola Negra\nWild Horse Nine\n\nEn İyi Yönetmen\nThe Odyssey | Christopher Nolan\nLa Bola Negra | Javier Ambrossi'
+                  topluKisiBirincil
+                    ? 'Drama Dizilerinde En İyi Erkek Oyuncu\nColman Domingo (The Four Seasons)\nSterling K. Brown – Paradise\nHarrison Ford (Shrinking)'
+                    : topluFilmDiziTuru === 'dizi'
+                      ? 'En İyi Komedi Dizisi\nAbbott Elementary (ABC)\nHacks (HBO Max)\nThe Bear (FX)'
+                      : 'En İyi Film\nThe Odyssey\nLa Bola Negra\nWild Horse Nine\n\nEn İyi Yönetmen\nThe Odyssey | Christopher Nolan\nLa Bola Negra | Javier Ambrossi'
                 }
                 className="w-full rounded-sm bg-kagit px-3 py-2 text-xs text-murekkep ring-1 ring-cizgi"
               />
