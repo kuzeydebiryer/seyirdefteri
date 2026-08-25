@@ -464,6 +464,22 @@ exports.platformYeniEklenenleriTespitEt = onSchedule({ schedule: '0 6 * * *', ti
       await snapshotRef.set({ idler: guncelIdler, guncellemeTarihi: FieldValue.serverTimestamp() })
     }
   }
+
+  // Temizlik — "Son 30 Gün" gösterimi zaten sadece yakın tarihlileri
+  // istiyor, 90 günden eski kayıtların kalıcı olarak durmasının hiçbir
+  // faydası yok, sadece koleksiyonu sonsuza büyütüyor. Firestore toplu silme
+  // işlemi başına en fazla 500 belge kabul ediyor, bu yüzden 400'lük
+  // parçalar halinde siliniyor.
+  const doksanGunOnce = new Date()
+  doksanGunOnce.setDate(doksanGunOnce.getDate() - 90)
+  const eskiKayitlarSnap = await db.collection('platformYeniEklenenler').where('tespitTarihi', '<', doksanGunOnce).get()
+  const silinecekler = eskiKayitlarSnap.docs
+  for (let i = 0; i < silinecekler.length; i += 400) {
+    const parca = silinecekler.slice(i, i + 400)
+    const batch = db.batch()
+    parca.forEach((d) => batch.delete(d.ref))
+    await batch.commit()
+  }
 })
 
 exports.geziUcusCheckInHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Europe/Istanbul' }, async () => {
