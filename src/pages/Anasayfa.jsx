@@ -31,7 +31,6 @@ export default function Anasayfa() {
   const [takipEdilenler, setTakipEdilenler] = useState(null) // null = henüz yüklenmedi
 
   const { tavsiyeler: filmTavsiyeleri, yenidenYukle: filmTavsiyeleriYenile } = useTavsiyeler('sinema')
-  const { tavsiyeler: yeniGelenFilmler, yenidenYukle: yeniGelenFilmleriYenile } = useTavsiyeler('sinema', 'yeniGelenFilmler')
   const { tavsiyeler: kitapTavsiyeleri, yenidenYukle: kitapTavsiyeleriYenile } = useTavsiyeler('kitap')
 
   useEffect(() => {
@@ -85,8 +84,6 @@ export default function Anasayfa() {
 
       <SeyirPanosuOnizleme />
 
-      <KulupEtkinlikleriOnizleme />
-
       <YeniGunlukGridi kayitlar={takipGunlukKayitlari} tumunuGorLink="/akis" />
 
       <TavsiyeBolumu
@@ -97,18 +94,6 @@ export default function Anasayfa() {
         sade
         baslik="Film Tavsiyeleri"
         tumunuGorLink="/film-tavsiyeleri"
-      />
-
-      <TavsiyeBolumu
-        tur="sinema"
-        koleksiyon="yeniGelenFilmler"
-        tavsiyeler={yeniGelenFilmler}
-        yenidenYukle={yeniGelenFilmleriYenile}
-        yatay
-        sade
-        baslik="Yeni Gelen Filmler"
-        tumunuGorLink="/yeni-gelen-filmler"
-        ekleButonuMetni="+ Film Ekle"
       />
 
       <PlatformYeniGelenlerBolumu />
@@ -134,6 +119,8 @@ export default function Anasayfa() {
       <BugununDusuncesiWidget />
 
       <BugunAktifOlanlarBolumu />
+
+      <KulupEtkinlikleriOnizleme />
 
       <EtkinlikHabercisiOnizleme />
 

@@ -40,6 +40,7 @@ export default function Filmler() {
   const [yakinda, setYakinda] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const { tavsiyeler, yenidenYukle: tavsiyeleriYenile } = useTavsiyeler('sinema')
+  const { tavsiyeler: yeniGelenFilmler, yenidenYukle: yeniGelenFilmleriYenile } = useTavsiyeler('sinema', 'yeniGelenFilmler')
   const { haberler, yenidenYukle: haberleriYenile } = useHaberler('sinema')
 
   useEffect(() => {
@@ -80,6 +81,15 @@ export default function Filmler() {
       <FilmDiziArama tur="sinema" />
 
       <TavsiyeBolumu tur="sinema" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
+      <TavsiyeBolumu
+        tur="sinema"
+        koleksiyon="yeniGelenFilmler"
+        tavsiyeler={yeniGelenFilmler}
+        yenidenYukle={yeniGelenFilmleriYenile}
+        baslik="Yeni Gelen Filmler"
+        tumunuGorLink="/yeni-gelen-filmler"
+        ekleButonuMetni="+ Film Ekle"
+      />
       <BegenilenMuziklerBolumu />
       <SinemaOyunlariBolumu />
       <IlhamPanosuOnizleme kategori="Film" />
