@@ -7,6 +7,7 @@ import GonderiEkle from './GonderiEkle.jsx'
 import YeniGunlukGridi from '../components/YeniGunlukGridi.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import PlatformYeniGelenlerBolumu from '../components/PlatformYeniGelenlerBolumu.jsx'
+import OdullerVitrini from '../components/OdullerVitrini.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
 import BugunAktifOlanlarBolumu from '../components/BugunAktifOlanlarBolumu.jsx'
 import SeyirPanosuOnizleme from '../components/SeyirPanosuOnizleme.jsx'
@@ -111,6 +112,8 @@ export default function Anasayfa() {
       />
 
       <PlatformYeniGelenlerBolumu />
+
+      <OdullerVitrini />
 
       <TavsiyeBolumu
         tur="kitap"

@@ -592,6 +592,38 @@ exports.kitapIadeHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'E
   }
 })
 
+// --- Ödül Tahmin Kilidi Hatırlatması -------------------------------------
+// Her gün 09:00'da, tören tarihine TAM 3 gün kalan ve henüz kilitlenmemiş
+// (kilitli:false) sezonları bulup, o sezona en az bir tahmin girmiş
+// herkese "tahminlerini tamamla, kilit yaklaşıyor" hatırlatması gönderiyor.
+// Aynı sezon için iki kez bildirim gitmesin diye tahminHatirlatmaGonderildi
+// bayrağı kullanılıyor — Gezi Planı uçuş hatırlatmasıyla aynı kalıp.
+exports.odulTahminHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Europe/Istanbul' }, async () => {
+  const ucGunSonra = new Date()
+  ucGunSonra.setDate(ucGunSonra.getDate() + 3)
+  const ucGunSonraISO = ucGunSonra.toISOString().slice(0, 10)
+
+  const snap = await db.collection('oscarSezonlari').where('kilitli', '==', false).get()
+
+  for (const belge of snap.docs) {
+    const sezon = belge.data()
+    if (sezon.tahminHatirlatmaGonderildi) continue
+    if (!sezon.torenTarihi || sezon.torenTarihi.slice(0, 10) !== ucGunSonraISO) continue
+
+    const tahminSnap = await db.collection('oscarTahminleri').where('sezonId', '==', belge.id).get()
+    const kullaniciIdler = [...new Set(tahminSnap.docs.map((d) => d.data().kullaniciId))]
+    if (kullaniciIdler.length === 0) continue
+
+    await bildirimleriYazVeGonder(kullaniciIdler, {
+      tur: 'odul_tahmin_hatirlatma',
+      baslik: '🏆 Tahmin kilidi yaklaşıyor',
+      govde: `${sezon.ad} 3 gün sonra — eksik kategorilerin varsa tahminlerini tamamlamayı unutma`,
+      url: `/odul-toreni`,
+    })
+    await belge.ref.update({ tahminHatirlatmaGonderildi: true })
+  }
+})
+
 // --- Instagram Gömme --------------------------------------------------
 // 15 Haziran 2026'dan beri Meta'nın oEmbed uç noktası TOKEN GEREKTİRMİYOR
 // (2020-2026 arası zorunluydu, kaldırıldı) — yine de tarayıcıdan doğrudan
