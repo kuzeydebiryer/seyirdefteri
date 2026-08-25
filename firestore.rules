@@ -71,6 +71,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Platform katalog anlık görüntüsü — SADECE Cloud Function yazıyor
+    // (dünle bugünü kıyaslamak için), istemciye hiç gösterilmiyor.
+    match /platformKatalogSnapshot/{belgeId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // Platformlara yeni eklenenler — herkes okuyabilir (platform sayfasında
+    // gösteriliyor), sadece Cloud Function yazabilir.
+    match /platformYeniEklenenler/{belgeId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Film müziği beğenileri — kullanıcı kendi beğenisini ekleyip
     // kaldırabilir, herkes okuyabilir (profil sekmesi + anasayfa widget'ı).
     match /begenilenMuzikler/{begeniId} {

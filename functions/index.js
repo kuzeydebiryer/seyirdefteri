@@ -156,6 +156,7 @@ exports.yeniGonderiBildirimi = onDocumentCreated('gonderiler/{gonderiId}', async
 // okuma maliyeti oluşturmaz).
 const SPOTIFY_CLIENT_ID = defineSecret('SPOTIFY_CLIENT_ID')
 const SPOTIFY_CLIENT_SECRET = defineSecret('SPOTIFY_CLIENT_SECRET')
+const TMDB_API_KEY = defineSecret('TMDB_API_KEY')
 
 let spotifyTokenOnbellek = { token: null, sonaErmeMs: 0 }
 
@@ -383,6 +384,88 @@ exports.etkinlikHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Eu
 // olarak, o akış tekrarlanan bildirim riskini zaten "yarın" penceresiyle
 // doğal olarak önlüyordu, burada 7 günlük sabit pencere olduğu için ayrı
 // bir koruma gerekiyor).
+// --- Platformlarda Yeni Eklenenler --------------------------------------
+// TMDB'nin JustWatch verisinde "ne zaman eklendi" diye bir alan YOK — sadece
+// "şu an mevcut mu" bilgisi var. Bu yüzden kendimiz takip ediyoruz: her gün,
+// her platformun (popülerliğe göre ilk birkaç sayfasının) mevcut kataloğunu
+// çekip bir önceki günün kaydıyla karşılıyoruz — dünde olmayıp bugün beliren
+// ID'ler "yeni eklendi" sayılıyor. İLK ÇALIŞTIRMADA (önceki kayıt yoksa)
+// hiçbir şey "yeni" sayılmıyor, sadece o günün kataloğu kaydediliyor —
+// kıyaslayacak bir "dün" olmadan her şeyi "yeni" saymak yanlış olurdu.
+//
+// Platform listesi Platformlar.jsx'teki TANIDIK_PLATFORMLAR ile senkron
+// tutulmalı — biri değişirse diğeri de güncellenmeli (iki ayrı kod tabanı
+// -Vite/ESM frontend, Node/CJS functions- olduğu için paylaşılan tek bir
+// dosyaları yok, elle senkron tutuyoruz).
+const TAKIP_EDILEN_PLATFORM_ADLARI = ['Netflix', 'Amazon Prime Video', 'Disney Plus', 'Max', 'HBO Max', 'BluTV', 'Gain', 'MUBI', 'TOD', 'Apple TV', 'Apple TV+']
+const TARANACAK_SAYFA_SAYISI = 10 // sayfa başı 20 sonuç → platform başına ~200 en popüler başlık
+
+async function platformListesiGetir(apiKey) {
+  const [filmRes, diziRes] = await Promise.all([
+    fetch(`https://api.themoviedb.org/3/watch/providers/movie?api_key=${apiKey}&watch_region=TR`).then((r) => r.json()),
+    fetch(`https://api.themoviedb.org/3/watch/providers/tv?api_key=${apiKey}&watch_region=TR`).then((r) => r.json()),
+  ])
+  const hepsi = [...(filmRes.results || []), ...(diziRes.results || [])]
+  const benzersiz = new Map()
+  hepsi.forEach((p) => {
+    if (TAKIP_EDILEN_PLATFORM_ADLARI.some((ad) => p.provider_name.toLowerCase().includes(ad.toLowerCase()))) {
+      if (!benzersiz.has(p.provider_id)) benzersiz.set(p.provider_id, p)
+    }
+  })
+  return [...benzersiz.values()]
+}
+
+async function platformKataloguGetir(apiKey, providerId, tmdbTuru) {
+  const sonuclar = []
+  for (let sayfa = 1; sayfa <= TARANACAK_SAYFA_SAYISI; sayfa++) {
+    const url = `https://api.themoviedb.org/3/discover/${tmdbTuru}?api_key=${apiKey}&language=tr-TR&sort_by=popularity.desc&page=${sayfa}&with_watch_providers=${providerId}&watch_region=TR&with_watch_monetization_types=flatrate`
+    const res = await fetch(url)
+    const data = await res.json()
+    if (!data.results?.length) break
+    sonuclar.push(...data.results)
+    if (sayfa >= (data.total_pages || 1)) break
+  }
+  return sonuclar
+}
+
+exports.platformYeniEklenenleriTespitEt = onSchedule({ schedule: '0 6 * * *', timeZone: 'Europe/Istanbul', secrets: [TMDB_API_KEY] }, async () => {
+  const apiKey = TMDB_API_KEY.value()
+  const platformlar = await platformListesiGetir(apiKey)
+
+  for (const platform of platformlar) {
+    for (const [tur, tmdbTuru] of [
+      ['sinema', 'movie'],
+      ['dizi', 'tv'],
+    ]) {
+      const katalog = await platformKataloguGetir(apiKey, platform.provider_id, tmdbTuru)
+      const guncelIdler = katalog.map((k) => String(k.id))
+
+      const snapshotRef = db.collection('platformKatalogSnapshot').doc(`${platform.provider_id}_${tur}`)
+      const snapshotSnap = await snapshotRef.get()
+      const oncekiIdler = snapshotSnap.exists ? snapshotSnap.data().idler || [] : null
+
+      if (oncekiIdler) {
+        const oncekiSet = new Set(oncekiIdler)
+        const yeniIdler = guncelIdler.filter((id) => !oncekiSet.has(id))
+        for (const yeniId of yeniIdler) {
+          const eser = katalog.find((k) => String(k.id) === yeniId)
+          await db.collection('platformYeniEklenenler').add({
+            platformId: String(platform.provider_id),
+            platformAdi: platform.provider_name,
+            tur,
+            disId: Number(yeniId),
+            baslik: eser.title || eser.name || '',
+            posterUrl: eser.poster_path ? `https://image.tmdb.org/t/p/w342${eser.poster_path}` : '',
+            tespitTarihi: FieldValue.serverTimestamp(),
+          })
+        }
+      }
+
+      await snapshotRef.set({ idler: guncelIdler, guncellemeTarihi: FieldValue.serverTimestamp() })
+    }
+  }
+})
+
 exports.geziUcusCheckInHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Europe/Istanbul' }, async () => {
   const hedefGunBaslangic = new Date()
   hedefGunBaslangic.setDate(hedefGunBaslangic.getDate() + 7)

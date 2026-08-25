@@ -15,14 +15,11 @@ const TANIDIK_PLATFORMLAR = [
   'Max',
   'HBO Max',
   'BluTV',
-  'Exxen',
   'Gain',
   'MUBI',
   'TOD',
   'Apple TV',
   'Apple TV+',
-  'Google Play Movies',
-  'YouTube',
 ]
 
 export default function Platformlar() {

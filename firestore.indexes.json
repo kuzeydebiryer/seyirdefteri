@@ -529,6 +529,24 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "platformYeniEklenenler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "platformId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tespitTarihi",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
