@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export async function haberEkle({
@@ -31,4 +31,10 @@ export async function haberEkle({
 
 export async function haberSil(haberId) {
   await deleteDoc(doc(db, 'haberler', haberId))
+}
+
+export async function haberGetir(haberId) {
+  const snap = await getDoc(doc(db, 'haberler', haberId))
+  if (!snap.exists()) return null
+  return { id: snap.id, ...snap.data() }
 }

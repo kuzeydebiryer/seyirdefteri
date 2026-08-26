@@ -32,6 +32,7 @@ const TopluluklarDetay = lazy(() => import('./pages/TopluluklarDetay.jsx'))
 const ListeDetay = lazy(() => import('./pages/ListeDetay.jsx'))
 const EserSayfasi = lazy(() => import('./pages/EserSayfasi.jsx'))
 const KisiSayfasi = lazy(() => import('./pages/KisiSayfasi.jsx'))
+const HaberDetay = lazy(() => import('./pages/HaberDetay.jsx'))
 const Filmler = lazy(() => import('./pages/Filmler.jsx'))
 const Diziler = lazy(() => import('./pages/Diziler.jsx'))
 const Platformlar = lazy(() => import('./pages/Platformlar.jsx'))
@@ -197,6 +198,7 @@ export default function App() {
             <Route path="/dizi/:id" element={<EserSayfasi tur="dizi" />} />
             <Route path="/kitap/:id" element={<EserSayfasi tur="kitap" />} />
             <Route path="/kisi/:id" element={<KisiSayfasi />} />
+            <Route path="/haber/:id" element={<HaberDetay />} />
           </Routes>
         </Suspense>
       </main>

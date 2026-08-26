@@ -18,7 +18,7 @@
 // Vercel normal SPA'yı (index.html) servis etmeye devam ediyor.
 
 export const config = {
-  matcher: ['/film/:id', '/dizi/:id', '/kitap/:id', '/kisi/:id', '/gonderi/:id', '/profil/:id'],
+  matcher: ['/film/:id', '/dizi/:id', '/kitap/:id', '/kisi/:id', '/gonderi/:id', '/profil/:id', '/haber/:id'],
 }
 
 const BOT_DESENI = /(WhatsApp|facebookexternalhit|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|SkypeUriPreview|Pinterest)/i
@@ -141,6 +141,19 @@ export default async function middleware(request) {
       if (!baslik) return
       const gorsel = belge.metinAl('avatarUrl')
       const aciklama = `${baslik} — Seyirdefteri profili`
+      return new Response(onizlemeHtml({ baslik, aciklama, gorsel, url: url.toString() }), {
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      })
+    }
+
+    if (tur === 'haber' && FIREBASE_PROJECT_ID) {
+      const belge = await firestoreBelgeGetir('haberler', id)
+      if (!belge) return
+      const baslik = belge.metinAl('baslik')
+      if (!baslik) return
+      const gorsel = belge.metinAl('gorselUrl') || belge.metinAl('ilgiliPosterUrl')
+      const icerik = belge.metinAl('icerik')
+      const aciklama = icerik ? icerik.slice(0, 200) : 'Seyirdefteri'
       return new Response(onizlemeHtml({ baslik, aciklama, gorsel, url: url.toString() }), {
         headers: { 'content-type': 'text/html; charset=utf-8' },
       })
