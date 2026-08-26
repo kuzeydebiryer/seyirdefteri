@@ -185,10 +185,13 @@ export default function Profil() {
     })
   }
 
-  // GEÇİCİ — Rüya için tespit edilen mükerrer günlük kaydı sorununu (bkz.
-  // puanGonder eski davranışı, EserSayfasi.jsx) temizlemek için tek seferlik
-  // geri eklendi. Kullanım sonrası tekrar kaldırılacak — meraktan tekrar
-  // tekrar tıklanmasın diye burada bilerek KALICI bir arayüz elemanı DEĞİL.
+  // puanGonder'daki eski davranış (bkz. EserSayfasi.jsx) yıldıza her
+  // tıklamada ayrı bir günlük kaydı düşürüyordu — kök sebep düzeltildi
+  // (artık aynı güne ikinci kayıt eklemek yerine var olanı güncelliyor),
+  // ama düzeltmeden ÖNCE oluşmuş mükerrer kayıtlar otomatik silinmiyor.
+  // Önce Rüya'da, sonra başka kullanıcılarda da aynı kalıntı görülünce
+  // tek seferlik bir yama olmaktan çıkıp kalıcı, herkesin kendi
+  // profilinden kendi kendine düzeltebileceği bir bakım aracına dönüştü.
   const [temizleniyor, setTemizleniyor] = useState(false)
   async function mukerrerleriTemizleTiklandi() {
     setTemizleniyor(true)
@@ -726,7 +729,7 @@ export default function Profil() {
               disabled={temizleniyor}
               className="mb-3 text-[11px] text-kraft hover:text-deniz hover:underline disabled:opacity-40"
             >
-              {temizleniyor ? 'Kontrol ediliyor...' : '🧹 Mükerrer Kayıtları Temizle (geçici)'}
+              {temizleniyor ? 'Kontrol ediliyor...' : '🧹 Mükerrer Kayıtları Temizle'}
             </button>
           )}
           <div className="mb-4 flex flex-wrap gap-2">

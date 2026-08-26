@@ -3,17 +3,32 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import FilmDiziArama from '../components/FilmDiziArama.jsx'
 import { platformdaYeniEklenenleriGetir } from '../utils/platformYeniEklenenler.js'
 
+// Film/Dizi sekmesi "sekme" parametre adıyla URL'e yazılıyor —
+// FilmDiziArama'nın kendi tür (genre) filtresi de "tur" parametresini
+// kullandığı için aynı isimde çakışma olmasın diye ayrı bir ad seçildi.
 export default function PlatformDetay() {
   const { id } = useParams()
-  const [aramaParametreleri] = useSearchParams()
+  const [aramaParametreleri, setAramaParametreleri] = useSearchParams()
   const ad = aramaParametreleri.get('ad') || 'Platform'
-  const [tur, setTur] = useState('sinema')
+  const sekme = aramaParametreleri.get('sekme') || 'sinema'
   const [yeniEklenenler, setYeniEklenenler] = useState(null)
 
   useEffect(() => {
     setYeniEklenenler(null)
-    platformdaYeniEklenenleriGetir(id, tur).then(setYeniEklenenler)
-  }, [id, tur])
+    platformdaYeniEklenenleriGetir(id, sekme).then(setYeniEklenenler)
+  }, [id, sekme])
+
+  function sekmeSec(yeniSekme) {
+    const guncel = new URLSearchParams(aramaParametreleri)
+    guncel.set('sekme', yeniSekme)
+    // Sekme değişince önceki filtreler (yıl/puan/tür vb.) artık farklı bir
+    // TMDB kategorisine ait olur — kafa karıştırmasın diye temizleniyor,
+    // sadece "ad" ve yeni "sekme" kalıyor.
+    const temiz = new URLSearchParams()
+    temiz.set('ad', ad)
+    temiz.set('sekme', yeniSekme)
+    setAramaParametreleri(temiz)
+  }
 
   return (
     <div>
@@ -25,17 +40,17 @@ export default function PlatformDetay() {
 
       <div className="mb-6 flex gap-2">
         <button
-          onClick={() => setTur('sinema')}
+          onClick={() => sekmeSec('sinema')}
           className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
-            tur === 'sinema' ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagitKoyu text-kraft ring-cizgi'
+            sekme === 'sinema' ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagitKoyu text-kraft ring-cizgi'
           }`}
         >
           🎬 Film
         </button>
         <button
-          onClick={() => setTur('dizi')}
+          onClick={() => sekmeSec('dizi')}
           className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
-            tur === 'dizi' ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagitKoyu text-kraft ring-cizgi'
+            sekme === 'dizi' ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagitKoyu text-kraft ring-cizgi'
           }`}
         >
           📺 Dizi
@@ -49,7 +64,7 @@ export default function PlatformDetay() {
             {yeniEklenenler.map((k) => (
               <Link
                 key={k.id}
-                to={`/${tur === 'sinema' ? 'film' : 'dizi'}/${k.disId}`}
+                to={`/${sekme === 'sinema' ? 'film' : 'dizi'}/${k.disId}`}
                 className="shrink-0"
                 style={{ width: 104 }}
               >
@@ -67,7 +82,7 @@ export default function PlatformDetay() {
         </div>
       )}
 
-      <FilmDiziArama tur={tur} sabitPlatformId={id} />
+      <FilmDiziArama tur={sekme} sabitPlatformId={id} />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342'
@@ -27,28 +27,39 @@ const SIRALAMALAR = [
 
 export default function FilmDiziArama({ tur, sabitPlatformId }) {
   const uc = tur === 'sinema' ? 'movie' : 'tv'
+  // Filtreler ve sonuçlar URL'e senkronize ediliyor (query string) — önceden
+  // sadece bileşenin kendi state'indeydi, bir filme/diziye girip "geri"ye
+  // basınca bileşen sıfırdan kurulup her şey sıfırlanıyordu (tarayıcı "geri"
+  // AYNI URL'ye döner ama URL'de hiçbir filtre bilgisi olmadığı için
+  // kurtaracak bir şey yoktu). Şimdi ilk değerler URL'den okunuyor,
+  // "Uygula"ya her basıldığında da URL güncelleniyor — geri dönüş, filtreleri
+  // olduğu gibi geri getiriyor. Sayfa derinliği ("Daha Fazla Yükle" ile
+  // inilen nokta) kasıtlı olarak senkronize edilmiyor — dönüşte 1. sayfadan
+  // başlıyor, ama en azından hangi filtrelerle arandığı kayboldu.
+  const [aramaParametreleri, setAramaParametreleri] = useSearchParams()
+
   // Platform sayfasında (sabitPlatformId verilmişse) "İsimle Ara" modu
   // anlamsız — TMDB'nin arama uç noktası with_watch_providers'ı
   // desteklemiyor, yani isimle arasak sonuçlar platformdan bağımsız
   // çıkardı. Bu yüzden platform sayfasında doğrudan "Filtrele" moduna
   // (discover — bu, with_watch_providers'ı destekliyor) sabitleniyor ve
   // sayfa açılır açılmaz otomatik ilk sonuçlar getiriliyor.
-  const [mod, setMod] = useState(sabitPlatformId ? 'filtrele' : 'ara')
+  const [mod, setMod] = useState(sabitPlatformId ? 'filtrele' : aramaParametreleri.get('mod') || 'ara')
 
-  const [arama, setArama] = useState('')
+  const [arama, setArama] = useState(aramaParametreleri.get('q') || '')
   const [sonuclar, setSonuclar] = useState([])
   const [yukleniyor, setYukleniyor] = useState(false)
   const [aramaYapildi, setAramaYapildi] = useState(false)
 
   const [turler, setTurler] = useState([])
-  const [seciliTur, setSeciliTur] = useState('')
-  const [yilBaslangic, setYilBaslangic] = useState('')
-  const [yilBitis, setYilBitis] = useState('')
-  const [minPuan, setMinPuan] = useState('')
-  const [minImdbPuan, setMinImdbPuan] = useState('')
+  const [seciliTur, setSeciliTur] = useState(aramaParametreleri.get('tur') || '')
+  const [yilBaslangic, setYilBaslangic] = useState(aramaParametreleri.get('yilMin') || '')
+  const [yilBitis, setYilBitis] = useState(aramaParametreleri.get('yilMaks') || '')
+  const [minPuan, setMinPuan] = useState(aramaParametreleri.get('puanMin') || '')
+  const [minImdbPuan, setMinImdbPuan] = useState(aramaParametreleri.get('imdbMin') || '')
   const [zenginlesiyor, setZenginlesiyor] = useState(false)
-  const [ulke, setUlke] = useState('')
-  const [siralama, setSiralama] = useState('popularity.desc')
+  const [ulke, setUlke] = useState(aramaParametreleri.get('ulke') || '')
+  const [siralama, setSiralama] = useState(aramaParametreleri.get('sirala') || 'popularity.desc')
   const [sayfa, setSayfa] = useState(1)
   const [toplamSayfa, setToplamSayfa] = useState(1)
   const [dahaFazlaYukleniyor, setDahaFazlaYukleniyor] = useState(false)
@@ -61,19 +72,32 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
       .catch(() => {})
   }, [uc])
 
-  // Platform sayfasında ilk açılışta (filtre hiç dokunulmadan) o platformun
-  // popüler içeriğini hemen göster — "Uygula"ya basmadan boş bir ekran
-  // görmesin.
+  // İlk açılışta — ya platform sayfasıysa (her zaman), ya da URL'de zaten
+  // bir arama/filtre varsa (bir sonuçtan geri dönülmüşse) — otomatik olarak
+  // önceki aramayı/filtreyi tekrar çalıştırıyor. "Uygula"ya/Ara'ya basmadan
+  // boş bir ekranla karşılaşmasın.
   useEffect(() => {
-    if (sabitPlatformId) filtreUygula()
+    if (sabitPlatformId) {
+      filtreUygula()
+    } else if (mod === 'filtrele' && aramaParametreleri.get('mod') === 'filtrele') {
+      filtreUygula()
+    } else if (mod === 'ara' && aramaParametreleri.get('q')) {
+      isimleAra()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sabitPlatformId, uc])
 
   async function isimleAra(e) {
-    e.preventDefault()
+    e?.preventDefault()
     if (!arama.trim() || !TMDB_API_KEY) return
     setYukleniyor(true)
     setAramaYapildi(true)
+    setAramaParametreleri((onceki) => {
+      const guncel = new URLSearchParams(onceki)
+      guncel.set('mod', 'ara')
+      guncel.set('q', arama)
+      return guncel
+    })
     try {
       const url = `https://api.themoviedb.org/3/search/${uc}?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(arama)}`
       const res = await fetch(url)
@@ -130,6 +154,27 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
     else {
       setYukleniyor(true)
       setSonuclar([])
+      // Sadece gerçek "Uygula" anında URL'i güncelliyoruz — her tuşa
+      // basışta değil, sadece arama gerçekten çalıştırıldığında. Mevcut TÜM
+      // parametrelerden (platform sayfasındaki "ad"/"sekme" gibi, bu
+      // bileşenin bilmediği/dokunmaması gereken alanlar dahil) başlayıp
+      // sadece kendi filtre alanlarımızı güncelliyoruz/temizliyoruz — aksi
+      // halde PlatformDetay'in yazdığı "sekme" parametresi burada
+      // sessizce silinirdi.
+      const guncelParametreler = new URLSearchParams(aramaParametreleri)
+      if (!sabitPlatformId) guncelParametreler.set('mod', 'filtrele')
+      const ayarla = (anahtar, deger) => {
+        if (deger) guncelParametreler.set(anahtar, deger)
+        else guncelParametreler.delete(anahtar)
+      }
+      ayarla('tur', seciliTur)
+      ayarla('ulke', ulke)
+      ayarla('yilMin', yilBaslangic)
+      ayarla('yilMaks', yilBitis)
+      ayarla('puanMin', minPuan)
+      ayarla('imdbMin', minImdbPuan)
+      ayarla('sirala', siralama !== 'popularity.desc' ? siralama : '')
+      setAramaParametreleri(guncelParametreler)
     }
     setAramaYapildi(true)
     try {

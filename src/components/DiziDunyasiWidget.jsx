@@ -55,9 +55,6 @@ export default function DiziDunyasiWidget() {
     <div className="mb-10">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-baslik text-lg text-murekkep">📺 Dizi Dünyası</h2>
-        <Link to="/diziler" className="shrink-0 whitespace-nowrap rounded-full bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi">
-          Tümünü Gör →
-        </Link>
       </div>
 
       <div className="space-y-3">
