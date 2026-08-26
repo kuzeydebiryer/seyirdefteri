@@ -80,6 +80,7 @@ export default function Kullanicilar() {
         value={arama}
         onChange={(e) => setArama(e.target.value)}
         placeholder="Kullanıcı adına göre ara..."
+        aria-label="Kullanıcı adına göre ara"
         className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi mb-6"
       />
 

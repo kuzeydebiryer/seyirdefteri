@@ -25,6 +25,18 @@ export async function izlenecekKaldir(uid, tur, disId) {
   await deleteDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)))
 }
 
+// "Bitirdim" — kaydı SİLMEK yerine tamamlandı olarak işaretliyoruz. Önceden
+// silmek, "izleniyor" ile "tamamlandı" arasındaki tek güvenilir ayrımı yok
+// ediyordu (kart/profil sayfalarında hangi dizinin bitip hangisinin devam
+// ettiğini gösterecek veri kalmıyordu). Artık kayıt duruyor, sadece durumu
+// değişiyor — ilerlemesini (mevcutSezon/mevcutBolum) de koruyoruz.
+export async function izlemeTamamlandiIsaretle(uid, tur, disId) {
+  await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), {
+    durum: 'tamamlandi',
+    tamamlanmaTarihi: serverTimestamp(),
+  })
+}
+
 export function izlenecekDokIdOlustur(uid, tur, disId) {
   return izlenecekDokId(uid, tur, disId)
 }
@@ -128,13 +140,13 @@ export async function suankiOkunanKitabiGetir(uid) {
   return { id: d.id, ...d.data() }
 }
 
-// Anasayfa'daki "Kitap Dünyası" widget'ı için: TÜM topluluğun şu an okuduğu
-// kitapları getirir (herkese görünür, kişisel değil). En son okumaya
-// başlayanlar önce gelir.
-export async function topluluktaSuankiOkunanlariGetir(limitSayisi = 6) {
+// Anasayfa'daki "Kitap Dünyası" ve Diziler sayfasındaki "Şu An İzlenenler"
+// widget'ları için ortak fonksiyon — TÜM topluluğun o an okuduğu/izlediği
+// eserleri getirir (herkese görünür, kişisel değil). En son başlayanlar önce.
+export async function topluluktaSuankiOkunanlariGetir(tur, limitSayisi = 6) {
   const q = query(
     collection(db, 'izlenecekler'),
-    where('tur', '==', 'kitap'),
+    where('tur', '==', tur),
     where('durum', '==', 'okunuyor'),
     orderBy('eklemeTarihi', 'desc'),
     limit(limitSayisi)

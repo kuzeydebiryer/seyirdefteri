@@ -35,7 +35,7 @@ export default function OneCikanlarSeridi() {
     <div className="mb-6 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
       {oscarSezonu && (
         <Link
-          to="/oscar"
+          to="/odul-toreni/oscar"
           title={`${oscarSezonu.ad} açık — tahminini ver`}
           className="flex shrink-0 items-center justify-center rounded-full bg-murekkep p-2 text-kagit hover:opacity-90"
         >

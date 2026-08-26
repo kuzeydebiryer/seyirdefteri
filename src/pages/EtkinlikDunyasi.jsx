@@ -233,11 +233,11 @@ export default function EtkinlikDunyasi() {
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">📷 İlgili Sosyal Medya Gönderisi (opsiyonel)</label>
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">📷 İlgili Instagram / YouTube / X (opsiyonel)</label>
               <input
                 value={form.instagramUrl}
                 onChange={(e) => setForm((f) => ({ ...f, instagramUrl: e.target.value }))}
-                placeholder="https://www.instagram.com/p/..."
+                placeholder="Instagram, YouTube veya X linki..."
                 className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>

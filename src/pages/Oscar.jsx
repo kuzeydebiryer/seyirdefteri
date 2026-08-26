@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import SohbetPaneli from '../components/SohbetPaneli.jsx'
+import WikidataIceAktar from '../components/WikidataIceAktar.jsx'
 import {
   sezonOlustur,
   tumSezonlariGetir,
@@ -13,6 +14,7 @@ import {
   adaySil,
   adaylarGetir,
   sezonuKilitle,
+  sezonDuzenle,
   tahminVer,
   tahminleriGetir,
   sonucGir,
@@ -33,6 +35,7 @@ function gunSayisi(torenTarihi) {
 
 function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
   const [mod, setMod] = useState('film') // 'film' | 'kisi'
+  const [filmDiziTuru, setFilmDiziTuru] = useState('film') // 'film' | 'dizi' — hem 'film' modunda hem 'kisi' modunun 2. adımında kullanılıyor
   const [arama, setArama] = useState('')
   const [kisiAdi, setKisiAdi] = useState('') // 'film' modunda: aday filmle ilişkili kişi adı (opsiyonel)
   const [kisiSecili, setKisiSecili] = useState(null) // 'kisi' modunda 1. adımda seçilen kişi
@@ -41,15 +44,17 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
   const [ekleniyor, setEkleniyor] = useState(false)
 
   // 'kisi' modunda henüz bir kişi seçilmediyse kişi aranıyor; kişi seçildikten
-  // sonra AYNI arama kutusu bu sefer FİLM aramaya geçiyor — böylece adayın
-  // hem kişiyle hem de gerçek bir TMDB filmiyle bağlantısı kuruluyor (serbest
-  // metinle film adı yazmak yerine).
+  // sonra AYNI arama kutusu bu sefer FİLM/DİZİ aramaya geçiyor — böylece adayın
+  // hem kişiyle hem de gerçek bir TMDB kaydıyla bağlantısı kuruluyor (serbest
+  // metinle film adı yazmak yerine). Emmy gibi dizi ağırlıklı ödüllerde
+  // filmDiziTuru 'dizi'ye çevrilerek TMDB'nin dizi arama uç noktası kullanılıyor
+  // — TMDB'de film/dizi ID uzayları bağımsız olduğu için bu ayrım şart.
   async function ara(e) {
     e.preventDefault()
     if (!arama.trim() || !TMDB_API_KEY) return
     setAramaYukleniyor(true)
     try {
-      const uc = mod === 'kisi' ? (kisiSecili ? 'movie' : 'person') : 'movie'
+      const uc = mod === 'kisi' ? (kisiSecili ? (filmDiziTuru === 'dizi' ? 'tv' : 'movie') : 'person') : filmDiziTuru === 'dizi' ? 'tv' : 'movie'
       const url = `https://api.themoviedb.org/3/search/${uc}?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(arama)}`
       const res = await fetch(url)
       const data = await res.json()
@@ -71,11 +76,12 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
     setEkleniyor(true)
     try {
       if (mod === 'kisi') {
-        // 2. adım: film de seçildi, ikisini birlikte, gerçek bir bağlantıyla kaydet.
+        // 2. adım: film/dizi de seçildi, ikisini birlikte, gerçek bir bağlantıyla kaydet.
         await adayEkle(sezonId, kategori.id, {
           tmdbId: secim.id,
-          filmBasligi: secim.title,
-          filmYili: secim.release_date ? secim.release_date.slice(0, 4) : '',
+          tur: filmDiziTuru,
+          filmBasligi: secim.title || secim.name,
+          filmYili: (secim.release_date || secim.first_air_date) ? (secim.release_date || secim.first_air_date).slice(0, 4) : '',
           posterUrl: secim.poster_path ? `${TMDB_POSTER}${secim.poster_path}` : '',
           kisiTmdbId: kisiSecili.id,
           kisiAdi: kisiSecili.name,
@@ -85,8 +91,9 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
       } else {
         await adayEkle(sezonId, kategori.id, {
           tmdbId: secim.id,
-          filmBasligi: secim.title,
-          filmYili: secim.release_date ? secim.release_date.slice(0, 4) : '',
+          tur: filmDiziTuru,
+          filmBasligi: secim.title || secim.name,
+          filmYili: (secim.release_date || secim.first_air_date) ? (secim.release_date || secim.first_air_date).slice(0, 4) : '',
           posterUrl: secim.poster_path ? `${TMDB_POSTER}${secim.poster_path}` : '',
           kisiAdi,
           sira: siradakiSira,
@@ -106,7 +113,7 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
     <div className="mt-2 space-y-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
       <div className="flex gap-1">
         {[
-          { id: 'film', etiket: 'Film' },
+          { id: 'film', etiket: 'Film/Dizi' },
           { id: 'kisi', etiket: 'Kişi (Oyuncu/Yönetmen)' },
         ].map((m) => (
           <button
@@ -126,6 +133,30 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
           </button>
         ))}
       </div>
+
+      {(mod === 'film' || (mod === 'kisi' && kisiSecili)) && (
+        <div className="flex gap-1">
+          {[
+            { id: 'film', etiket: '🎬 Film' },
+            { id: 'dizi', etiket: '📺 Dizi' },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => {
+                setFilmDiziTuru(t.id)
+                setSonuclar([])
+                setArama('')
+              }}
+              className={`rounded-sm px-2 py-0.5 text-[10px] ${
+                filmDiziTuru === t.id ? 'bg-deniz text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
+              }`}
+            >
+              {t.etiket}
+            </button>
+          ))}
+        </div>
+      )}
 
       {mod === 'kisi' && kisiSecili && (
         <div className="flex items-center gap-2 rounded-sm bg-kagitKoyu px-2 py-1.5 ring-1 ring-cizgi">
@@ -154,7 +185,13 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
           type="text"
           value={arama}
           onChange={(e) => setArama(e.target.value)}
-          placeholder={mod === 'kisi' ? (kisiSecili ? 'Şimdi filmi ara... (ör. The Odyssey)' : 'Oyuncu/yönetmen ara...') : 'Film ara...'}
+          placeholder={
+            mod === 'kisi'
+              ? kisiSecili
+                ? `Şimdi ${filmDiziTuru === 'dizi' ? 'diziyi' : 'filmi'} ara... (ör. ${filmDiziTuru === 'dizi' ? 'Severance' : 'The Odyssey'})`
+                : 'Oyuncu/yönetmen ara...'
+              : `${filmDiziTuru === 'dizi' ? 'Dizi' : 'Film'} ara...`
+          }
           className="flex-1 rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
         />
         {mod === 'film' && (
@@ -175,7 +212,7 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
           {sonuclar.slice(0, 12).map((sonuc) => {
             const kisiAraniyor = mod === 'kisi' && !kisiSecili
             const foto = kisiAraniyor ? sonuc.profile_path : sonuc.poster_path
-            const ad = kisiAraniyor ? sonuc.name : sonuc.title
+            const ad = kisiAraniyor ? sonuc.name : sonuc.title || sonuc.name
             return (
               <button key={sonuc.id} onClick={() => sec(sonuc)} disabled={ekleniyor} className="text-left disabled:opacity-40">
                 <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
@@ -191,7 +228,14 @@ function AdayEkleFormu({ sezonId, kategori, siradakiSira, onEklendi }) {
   )
 }
 
-export default function Oscar() {
+export default function Oscar({
+  torenTuru = 'oscar',
+  baslik = 'Oscar Yolculuğu',
+  ustSayfaLinki = '/odul-toreni',
+  ustSayfaEtiketi = '← Ödüller',
+  varsayilanSezonAdi = '99. Akademi Ödülleri',
+  varsayilanTorenTarihi = '2027-03-14',
+}) {
   const { kullanici, profil } = useAuth()
   const [sezon, setSezon] = useState(null)
   const [gecmisSezonlar, setGecmisSezonlar] = useState([])
@@ -200,20 +244,26 @@ export default function Oscar() {
   const [tahminler, setTahminler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
 
-  const [sezonAdi, setSezonAdi] = useState('99. Akademi Ödülleri')
-  const [torenTarihi, setTorenTarihi] = useState('2027-03-14')
+  const [sezonAdi, setSezonAdi] = useState(varsayilanSezonAdi)
+  const [torenTarihi, setTorenTarihi] = useState(varsayilanTorenTarihi)
   const [yeniKategoriAdi, setYeniKategoriAdi] = useState('')
   const [aciKategoriId, setAciKategoriId] = useState(null)
   const [kilitlemeIsleniyor, setKilitlemeIsleniyor] = useState(false)
   const [bitirmeIsleniyor, setBitirmeIsleniyor] = useState(false)
   const [topluAcik, setTopluAcik] = useState(false)
+  const [wikidataAcik, setWikidataAcik] = useState(false)
+  const [sezonDuzenleAcik, setSezonDuzenleAcik] = useState(false)
+  const [sezonDuzenleAdi, setSezonDuzenleAdi] = useState('')
+  const [sezonDuzenleTarihi, setSezonDuzenleTarihi] = useState('')
   const [topluMetin, setTopluMetin] = useState('')
+  const [topluFilmDiziTuru, setTopluFilmDiziTuru] = useState('film')
+  const [topluKisiBirincil, setTopluKisiBirincil] = useState(false)
   const [topluCalisiyor, setTopluCalisiyor] = useState(false)
   const [topluIlerleme, setTopluIlerleme] = useState('')
 
   async function hepsiniYukle() {
     setYukleniyor(true)
-    const tumSezonlar = await tumSezonlariGetir()
+    const tumSezonlar = await tumSezonlariGetir(torenTuru)
     const bitmemis = tumSezonlar.find((s) => !s.bittiMi) || null
     setSezon(bitmemis)
     setGecmisSezonlar(tumSezonlar.filter((s) => s.bittiMi))
@@ -241,13 +291,44 @@ export default function Oscar() {
   async function sezonuOlustur(e) {
     e.preventDefault()
     if (!sezonAdi.trim() || !kullanici) return
-    await sezonOlustur(kullanici, { ad: sezonAdi, torenTarihi })
+    await sezonOlustur(kullanici, { ad: sezonAdi, torenTarihi, torenTuru })
     hepsiniYukle()
   }
 
-  async function tmdbdeFilmAra(isim) {
+  // Yayıncı/kanal adı satır sonunda parantez içinde geliyorsa ("Hacks (HBO
+  // Max)" gibi — Emmy adaylık listelerinde standart bir biçim) TMDB
+  // aramasını bozuyordu, temizliyoruz.
+  function parantezTemizle(metin) {
+    return metin.replace(/\s*\([^)]*\)\s*$/, '').trim()
+  }
+
+  // Wikipedia'dan (özellikle markdown'a çeviren bir araçla) kopyalanan
+  // satırlarda "* " madde işareti ve "[İsim](url)" link biçimi kalabiliyor —
+  // ikisi de arama sorgusuna karışıp yanlış eşleşmeye yol açıyordu.
+  function satirTemizle(satir) {
+    return satir
+      .replace(/^[*\-•]\s*/, '')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .trim()
+  }
+
+  async function tmdbdeFilmAra(isim, tur = 'film') {
     if (!TMDB_API_KEY) return null
-    const url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(isim)}`
+    const temizIsim = parantezTemizle(isim)
+    const uc = tur === 'dizi' ? 'tv' : 'movie'
+    const url = `https://api.themoviedb.org/3/search/${uc}?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(temizIsim)}`
+    try {
+      const res = await fetch(url)
+      const data = await res.json()
+      return data.results?.[0] || null
+    } catch {
+      return null
+    }
+  }
+
+  async function tmdbdeKisiAra(isim) {
+    if (!TMDB_API_KEY) return null
+    const url = `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(isim.trim())}`
     try {
       const res = await fetch(url)
       const data = await res.json()
@@ -258,9 +339,18 @@ export default function Oscar() {
   }
 
   // Format: boş satırla ayrılmış bloklar. Her bloğun ilk satırı kategori adı,
-  // sonraki satırlar "Film Adı" ya da "Film Adı | Kişi Adı" (oyunculuk/yönetmenlik
-  // kategorileri için). Ör. bir ödül tahmin sitesinden (elle, bir kerelik) kopyalanan
-  // güncel aday listesini buraya yapıştırıp saniyeler içinde eklemek için.
+  // sonraki satırlar üç şekilden biri olabilir:
+  //   1. "Film/Dizi Adı" — sade, sadece eser (En İyi Film/Dizi gibi kategoriler)
+  //   2. "Film/Dizi Adı | Kişi Adı" — eser BİRİNCİL, kişi etiket (Yönetmenlik gibi)
+  //   3. "Kişi Adı – Film/Dizi Adı" — kişi BİRİNCİL, eser bağlam (Oyunculuk
+  //      kategorileri — Wikipedia'nın kendi adaylık tablolarında birebir bu
+  //      formatta geliyor: "Sterling K. Brown – Paradise (Hulu)"). Kişi hem
+  //      isimle hem TMDB'deki gerçek kaydıyla (fotoğraf dahil) ekleniyor, eser
+  //      de ayrıca aranıp bağlanıyor — ikisi de gerçek TMDB kayıtları.
+  // topluFilmDiziTuru: bu yapıştırmadaki TÜM satırlar için film mi dizi mi
+  // aranacağını belirliyor (Emmy gibi tören bazında neredeyse hep aynı türde
+  // olduğu için tek bir seçim yeterli — karışık bir yapıştırmada kullanıcı
+  // iki ayrı seferde, türü değiştirerek yapıştırabilir).
   async function topluEkleYap() {
     const bloklar = topluMetin
       .split(/\n\s*\n/)
@@ -281,16 +371,58 @@ export default function Oscar() {
         if (!kategori) continue
 
         let sira = 0
-        for (const satir of filmSatirlari) {
+        for (const satirHam of filmSatirlari) {
+          const satir = satirTemizle(satirHam)
+          if (!satir) continue
+
+          // "Kişi Birincil" modunda iki ayraç biçimi destekleniyor:
+          //   a) "Kişi – Eser" (uzun tire)
+          //   b) "Kişi (Eser)" (parantez — Wikipedia'nın bazı adaylık
+          //      tablolarında bu biçimde geliyor). ÖNEMLİ: bu mod açık
+          //      DEĞİLKEN aynı "X (Y)" biçimi tam tersi anlama geliyor —
+          //      Y bir kanal/yayıncı adı sayılıp SİLİNİYOR (parantezTemizle).
+          //      İkisi metinden ayırt edilemediği için kullanıcı hangisini
+          //      kastettiğini bu anahtarla açıkça belirtiyor.
+          if (topluKisiBirincil) {
+            const tireAyraci = satir.match(/^(.+?)\s+[–—]\s+(.+)$/)
+            const parantezAyraci = !tireAyraci && satir.match(/^(.+?)\s*\(([^)]+)\)\s*$/)
+            const esleme = tireAyraci || parantezAyraci
+            const kisiAdiStr = esleme ? esleme[1].trim() : satir
+            const filmAdi = esleme ? esleme[2].trim() : ''
+
+            islenen++
+            setTopluIlerleme(`(${islenen}/${toplamFilm}) "${kisiAdiStr}" aranıyor...`)
+            const [kisi, film] = await Promise.all([
+              tmdbdeKisiAra(kisiAdiStr),
+              filmAdi ? tmdbdeFilmAra(filmAdi, topluFilmDiziTuru) : Promise.resolve(null),
+            ])
+            if (kisi) {
+              await adayEkle(sezon.id, kategori.id, {
+                tmdbId: film?.id ?? null,
+                tur: topluFilmDiziTuru,
+                filmBasligi: film?.title || film?.name || filmAdi,
+                filmYili: film && (film.release_date || film.first_air_date) ? (film.release_date || film.first_air_date).slice(0, 4) : '',
+                posterUrl: film?.poster_path ? `${TMDB_POSTER}${film.poster_path}` : '',
+                kisiTmdbId: kisi.id,
+                kisiAdi: kisi.name,
+                kisiFotoUrl: kisi.profile_path ? `${TMDB_PROFIL}${kisi.profile_path}` : '',
+                sira: sira++,
+              })
+            }
+            continue
+          }
+
+          // Eski biçim: "Eser | Kişi" ya da sade "Eser".
           const [filmAdi, kisiAdi] = satir.split('|').map((s) => s?.trim())
           islenen++
           setTopluIlerleme(`(${islenen}/${toplamFilm}) "${filmAdi}" aranıyor...`)
-          const film = await tmdbdeFilmAra(filmAdi)
+          const film = await tmdbdeFilmAra(filmAdi, topluFilmDiziTuru)
           if (film) {
             await adayEkle(sezon.id, kategori.id, {
               tmdbId: film.id,
-              filmBasligi: film.title,
-              filmYili: film.release_date ? film.release_date.slice(0, 4) : '',
+              tur: topluFilmDiziTuru,
+              filmBasligi: film.title || film.name,
+              filmYili: (film.release_date || film.first_air_date) ? (film.release_date || film.first_air_date).slice(0, 4) : '',
               posterUrl: film.poster_path ? `${TMDB_POSTER}${film.poster_path}` : '',
               kisiAdi: kisiAdi || '',
               sira: sira++,
@@ -393,9 +525,12 @@ export default function Oscar() {
   if (!sezon) {
     return (
       <div>
-        <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> Oscar Yolculuğu</h1>
+        <Link to={ustSayfaLinki} className="mb-2 inline-block text-xs text-kraft hover:text-deniz">
+          {ustSayfaEtiketi}
+        </Link>
+        <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> {baslik}</h1>
         <p className="mb-6 text-sm text-kraft">
-          {gecmisSezonlar.length > 0 ? 'Yeni bir sezon henüz başlamadı.' : 'Henüz bir Oscar sezonu oluşturulmadı.'}
+          {gecmisSezonlar.length > 0 ? 'Yeni bir sezon henüz başlamadı.' : 'Henüz bir sezon oluşturulmadı.'}
         </p>
         {kullanici && (
           <form onSubmit={sezonuOlustur} className="mb-8 max-w-sm space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
@@ -456,8 +591,62 @@ export default function Oscar() {
 
   return (
     <div>
-      <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> Oscar Yolculuğu</h1>
-      <p className="mb-1 text-sm text-kraft">{sezon.ad}</p>
+      <Link to={ustSayfaLinki} className="mb-2 inline-block text-xs text-kraft hover:text-deniz">
+        {ustSayfaEtiketi}
+      </Link>
+      <h1 className="font-baslik text-2xl text-murekkep mb-1 flex items-center gap-2"><OscarHeykelIkon boyut={22} /> {baslik}</h1>
+      {sezonDuzenleAcik ? (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault()
+            await sezonDuzenle(sezon.id, { ad: sezonDuzenleAdi, torenTarihi: sezonDuzenleTarihi })
+            setSezon((s) => ({ ...s, ad: sezonDuzenleAdi, torenTarihi: sezonDuzenleTarihi }))
+            setSezonDuzenleAcik(false)
+          }}
+          className="mb-4 flex flex-wrap items-end gap-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi"
+        >
+          <div>
+            <label className="block text-[10px] text-kraft">Sezon Adı</label>
+            <input
+              type="text"
+              value={sezonDuzenleAdi}
+              onChange={(e) => setSezonDuzenleAdi(e.target.value)}
+              className="rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-kraft">Tören Tarihi</label>
+            <input
+              type="date"
+              value={sezonDuzenleTarihi}
+              onChange={(e) => setSezonDuzenleTarihi(e.target.value)}
+              className="rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+          <button type="submit" className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit">
+            Kaydet
+          </button>
+          <button type="button" onClick={() => setSezonDuzenleAcik(false)} className="text-xs text-kraft hover:text-murekkep">
+            Vazgeç
+          </button>
+        </form>
+      ) : (
+        <p className="mb-1 flex items-center gap-2 text-sm text-kraft">
+          {sezon.ad}
+          {kullanici && (
+            <button
+              onClick={() => {
+                setSezonDuzenleAdi(sezon.ad)
+                setSezonDuzenleTarihi(sezon.torenTarihi || '')
+                setSezonDuzenleAcik(true)
+              }}
+              className="text-[11px] text-deniz hover:underline"
+            >
+              ✏️ Düzenle
+            </button>
+          )}
+        </p>
+      )}
       {gun != null && (
         <p className="mb-4 text-sm text-kraft">
           {gun > 0 ? `Törene ${gun} gün kaldı` : gun === 0 ? 'Tören bugün! 🎬' : 'Tören geçti'} ·{' '}
@@ -467,7 +656,7 @@ export default function Oscar() {
 
       
 
-      <SohbetPaneli konumId={`oscar_${sezon.id}`} baslik="💬 Oscar Sohbeti" />
+      <SohbetPaneli konumId={`oscar_${sezon.id}`} baslik={`💬 ${baslik.replace(' Yolculuğu', '')} Sohbeti`} />
 
       {kategoriler.length > 0 && (
         <div className="mb-6 flex items-center justify-between rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
@@ -544,22 +733,73 @@ export default function Oscar() {
             >
               📋 Toplu Ekle
             </button>
+            <button
+              onClick={() => setWikidataAcik((a) => !a)}
+              className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi"
+            >
+              🔗 Wikidata'dan Çek
+            </button>
           </div>
+
+          {wikidataAcik && (
+            <WikidataIceAktar
+              sezonId={sezon.id}
+              mevcutKategoriSayisi={kategoriler.length}
+              onEklendi={() => {
+                setWikidataAcik(false)
+                hepsiniYukle()
+              }}
+            />
+          )}
 
           {topluAcik && (
             <div className="max-w-xl space-y-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
               <p className="text-xs text-kraft">
-                Bir tahmin sitesinden kopyaladığın listeyi yapıştır. Format: her kategori ayrı bir blok (aralarında boş
-                satır), ilk satır kategori adı, sonraki satırlar film adları — oyunculuk/yönetmenlik gibi kategorilerde{' '}
-                <code>Film Adı | Kişi Adı</code> şeklinde yazabilirsin.
+                Bir tahmin sitesinden (ya da Wikipedia'daki resmi aday listesinden) kopyaladığın listeyi yapıştır. Format: her
+                kategori ayrı bir blok (aralarında boş satır). "Kişi Birincil" kapalıyken satırlar <code>Film/Dizi Adı</code>{' '}
+                (sade) ya da <code>Film Adı | Kişi Adı</code> (eser birincil, kişi etiket) olabilir — bu modda parantez içi
+                ("Hacks (HBO Max)" gibi) kanal adı sayılıp temizlenir. "Kişi Birincil" AÇIKKEN (oyunculuk kategorileri için)
+                satırlar <code>Kişi Adı – Film/Dizi Adı</code> ya da <code>Kişi Adı (Film/Dizi Adı)</code> olabilir — bu modda
+                parantez içi artık kanal DEĞİL, bağlantılı eser sayılır. İkisi aynı görünüp zıt anlama geldiği için hangi
+                modda olduğunu doğru seçmen önemli.
               </p>
+              <div className="flex flex-wrap gap-1">
+                {[
+                  { id: 'film', etiket: '🎬 Bunlar Film' },
+                  { id: 'dizi', etiket: '📺 Bunlar Dizi' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTopluFilmDiziTuru(t.id)}
+                    className={`rounded-sm px-2 py-1 text-[11px] ${
+                      topluFilmDiziTuru === t.id ? 'bg-deniz text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
+                    }`}
+                  >
+                    {t.etiket}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setTopluKisiBirincil((k) => !k)}
+                  className={`rounded-sm px-2 py-1 text-[11px] ${
+                    topluKisiBirincil ? 'bg-gise text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
+                  }`}
+                >
+                  👤 Kişi Birincil {topluKisiBirincil ? '(açık)' : '(kapalı)'}
+                </button>
+              </div>
               <textarea
                 value={topluMetin}
                 onChange={(e) => setTopluMetin(e.target.value)}
                 rows={10}
                 disabled={topluCalisiyor}
                 placeholder={
-                  'En İyi Film\nThe Odyssey\nLa Bola Negra\nWild Horse Nine\n\nEn İyi Yönetmen\nThe Odyssey | Christopher Nolan\nLa Bola Negra | Javier Ambrossi'
+                  topluKisiBirincil
+                    ? 'Drama Dizilerinde En İyi Erkek Oyuncu\nColman Domingo (The Four Seasons)\nSterling K. Brown – Paradise\nHarrison Ford (Shrinking)'
+                    : topluFilmDiziTuru === 'dizi'
+                      ? 'En İyi Komedi Dizisi\nAbbott Elementary (ABC)\nHacks (HBO Max)\nThe Bear (FX)'
+                      : 'En İyi Film\nThe Odyssey\nLa Bola Negra\nWild Horse Nine\n\nEn İyi Yönetmen\nThe Odyssey | Christopher Nolan\nLa Bola Negra | Javier Ambrossi'
                 }
                 className="w-full rounded-sm bg-kagit px-3 py-2 text-xs text-murekkep ring-1 ring-cizgi"
               />
@@ -610,7 +850,7 @@ export default function Oscar() {
                   const gorselUrl = kisiBazliMi ? a.kisiFotoUrl : a.posterUrl
                   const ustBaslik = kisiBazliMi ? a.kisiAdi : a.filmBasligi
                   const altBaslik = kisiBazliMi ? a.filmBasligi : a.kisiAdi
-                  const link = kisiBazliMi ? `/kisi/${a.kisiTmdbId}` : `/film/${a.tmdbId}`
+                  const link = kisiBazliMi ? `/kisi/${a.kisiTmdbId}` : `/${a.tur === 'dizi' ? 'dizi' : 'film'}/${a.tmdbId}`
                   return (
                     <div key={a.id} className="group relative">
                       <button
@@ -642,7 +882,7 @@ export default function Oscar() {
                       </Link>
                       {altBaslik &&
                         (kisiBazliMi && a.tmdbId ? (
-                          <Link to={`/film/${a.tmdbId}`} className="truncate text-[11px] text-kraft hover:text-deniz hover:underline block">
+                          <Link to={`/${a.tur === 'dizi' ? 'dizi' : 'film'}/${a.tmdbId}`} className="truncate text-[11px] text-kraft hover:text-deniz hover:underline block">
                             {altBaslik}
                           </Link>
                         ) : (
