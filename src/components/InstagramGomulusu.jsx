@@ -29,29 +29,14 @@ function embedScriptiYukle() {
 // yüklemek sayfayı yavaşlatıyordu. Bu yüzden her kart, IntersectionObserver
 // ile SADECE görünüm alanına yaklaşınca (rootMargin: 300px — biraz önceden,
 // kullanıcı kaydırırken fark etmesin diye) Instagram'a istek atıyor.
-//
-// REELS UYARISI: Instagram, Reels linklerini (/reel/...) oEmbed'de çoğu
-// zaman sayfa içinde oynatmıyor — sadece "Instagram'da izle" diyerek dışarı
-// yönlendiriyor (normal gönderiler /p/... genelde kart içinde oynuyor). Bu
-// bizim kontrolümüzde olmayan bir Instagram davranışı; kullanıcı tıklamadan
-// önce bilsin diye küçük bir rozet ekliyoruz.
-//
-// KOMPAKT MOD: Etkinlik Habercisi gibi birden fazla kartın yan yana/alt alta
-// göründüğü yerlerde tam Instagram kartı (görsel + oynat + beğeni + yorum
-// kutusu) çok dikey yer kaplıyordu. kompakt=true verildiğinde, tam gömme
-// hemen yüklenmiyor — küçük, tıklanabilir tek satırlık bir önizleme
-// gösteriliyor, tıklanınca aynı IntersectionObserver akışı devreye giriyor.
-export default function InstagramGomulusu({ url, paylasanAdi, kompakt = false }) {
-  const [genisletildiMi, setGenisletildiMi] = useState(!kompakt)
+export default function InstagramGomulusu({ url, paylasanAdi }) {
   const [gorunumeGeldiMi, setGorunumeGeldiMi] = useState(false)
   const [html, setHtml] = useState(undefined) // undefined = yükleniyor, null = hata
   const disKapsayiciRef = useRef(null)
   const kapsayiciRef = useRef(null)
 
-  const reelMi = !!url && /\/reels?\//.test(url)
-
   useEffect(() => {
-    if (!url || !genisletildiMi || gorunumeGeldiMi) return
+    if (!url || gorunumeGeldiMi) return
     const eleman = disKapsayiciRef.current
     if (!eleman) return
     const gozlemci = new IntersectionObserver(
@@ -65,7 +50,7 @@ export default function InstagramGomulusu({ url, paylasanAdi, kompakt = false })
     )
     gozlemci.observe(eleman)
     return () => gozlemci.disconnect()
-  }, [url, genisletildiMi, gorunumeGeldiMi])
+  }, [url, gorunumeGeldiMi])
 
   useEffect(() => {
     if (!url || !gorunumeGeldiMi) return
@@ -100,31 +85,10 @@ export default function InstagramGomulusu({ url, paylasanAdi, kompakt = false })
 
   if (!url) return null
 
-  // Kompakt mod + henüz genişletilmedi: tek satırlık tıklanabilir önizleme.
-  // Not: paylaşan adı burada tekrar edilmiyor — HabercKarti gibi zaten
-  // "X paylaştı" bilgisini kartın kendi altbilgisinde gösteriyor.
-  if (kompakt && !genisletildiMi) {
-    return (
-      <button
-        type="button"
-        onClick={() => setGenisletildiMi(true)}
-        className="my-3 flex w-full items-center justify-between gap-2 rounded-sm bg-kagitKoyu px-3 py-2 text-left ring-1 ring-cizgi transition hover:ring-deniz/50"
-      >
-        <span className="text-xs text-kraft">📷 Instagram{reelMi ? ' Reels' : ''}</span>
-        <span className="ml-auto shrink-0 text-xs text-deniz">İzlemek için tıkla ▸</span>
-      </button>
-    )
-  }
-
   return (
     <div ref={disKapsayiciRef} className="my-4 max-w-md overflow-hidden rounded-sm ring-1 ring-cizgi">
       <div className="flex items-center gap-2 bg-kagitKoyu px-3 py-2">
         <span className="text-xs text-kraft">📷 Instagram</span>
-        {reelMi && (
-          <span className="rounded-sm bg-murekkep/10 px-1.5 py-0.5 text-[10px] text-kraft" title="Reels genelde Instagram'a yönlendirir">
-            ▶ Reels
-          </span>
-        )}
         {paylasanAdi && <span className="text-xs text-kraft">— {paylasanAdi} paylaştı</span>}
       </div>
       {!gorunumeGeldiMi && <div className="h-32 animate-pulse bg-kagitKoyu/50" />}

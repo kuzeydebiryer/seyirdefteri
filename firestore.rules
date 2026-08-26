@@ -65,38 +65,9 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Dizi Müziği önbelleği — filmMuzikleri ile aynı kural.
-    match /diziMuzikleri/{tmdbId} {
-      allow read: if true;
-      allow write: if false;
-    }
-
-    // Platform katalog anlık görüntüsü — SADECE Cloud Function yazıyor
-    // (dünle bugünü kıyaslamak için), istemciye hiç gösterilmiyor.
-    match /platformKatalogSnapshot/{belgeId} {
-      allow read: if false;
-      allow write: if false;
-    }
-
-    // Platformlara yeni eklenenler — herkes okuyabilir (platform sayfasında
-    // gösteriliyor), sadece Cloud Function yazabilir.
-    match /platformYeniEklenenler/{belgeId} {
-      allow read: if true;
-      allow write: if false;
-    }
-
     // Film müziği beğenileri — kullanıcı kendi beğenisini ekleyip
     // kaldırabilir, herkes okuyabilir (profil sekmesi + anasayfa widget'ı).
     match /begenilenMuzikler/{begeniId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
-    }
-
-    // Dizi müziği beğenileri — begenilenMuzikler ile aynı kural, ayrı
-    // koleksiyon (TMDB film/dizi ID çakışmasını önlemek için, bkz.
-    // diziMuzigiBegeni.js).
-    match /begenilenDiziMuzikleri/{begeniId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
@@ -215,25 +186,6 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.paylasanId == request.auth.uid;
       allow delete: if request.auth != null && resource.data.paylasanId == request.auth.uid;
-    }
-
-    // Gezi Planları — sahip veya ortak düzenleyenler okuyup düzenleyebilir
-    // (küçük, güvenilir bir topluluk için — kim ortak düzenleyici eklediğini
-    // alan bazında ayırmıyoruz). Sadece sahip planı silebilir.
-    match /geziPlanlari/{planId} {
-      allow read, update: if request.auth != null &&
-        (resource.data.sahipId == request.auth.uid || request.auth.uid in resource.data.ortakDuzenleyenler);
-      allow delete: if request.auth != null && resource.data.sahipId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.sahipId == request.auth.uid;
-    }
-
-    // Meydan Okumalar — varsayılan özel: sadece sahip okuyup yazabilir.
-    // herkeseAcik:true olanlar İSTİSNA olarak herkese okunabilir (profil
-    // sayfasında başkalarının paylaştığı meydan okumaları göstermek için).
-    match /meydanOkumalar/{moId} {
-      allow read: if resource.data.herkeseAcik == true || (request.auth != null && resource.data.sahipId == request.auth.uid);
-      allow update, delete: if request.auth != null && resource.data.sahipId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.sahipId == request.auth.uid;
     }
 
     match /gonderiler/{gonderiId} {
@@ -456,23 +408,6 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
-    }
-
-    // Kitap İstekleri — "Şu kitabı arıyorum" panosu. Herkes okuyabilir,
-    // sadece isteği açan güncelleyebilir/silebilir (kapatma dahil).
-    match /kitapIstekleri/{istekId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.isteyenId == request.auth.uid;
-      // v2: ödünç veren kişi isteyen DEĞİL — ama isteği güncelleyebilmesi
-      // (oduncVerenId'yi kendi uid'sine ayarlaması, sonra "iade edildi"
-      // işaretlemesi) gerekiyor. Kendini oduncVerenId olarak yazmasına ya da
-      // zaten oduncVerenId oysa güncellemeye izin veriyoruz — başkasını
-      // oduncVerenId diye işaretleyemez.
-      allow update: if request.auth != null &&
-        (resource.data.isteyenId == request.auth.uid ||
-         request.resource.data.oduncVerenId == request.auth.uid ||
-         resource.data.oduncVerenId == request.auth.uid);
-      allow delete: if request.auth != null && resource.data.isteyenId == request.auth.uid;
     }
 
     // Yönetmenler: üyelerin elle eklediği küratörlü liste, doküman ID'si TMDB kişi ID'si.

@@ -7,7 +7,6 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { suankiOkunanKitabiGetir, ilerlemeGuncelle, izlenecekEkle, toplamSayfaTamamla } from '../utils/izlenecek.js'
 import { kitapGetir } from '../utils/kitapKatalog.js'
 import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
-import AlintiKatkiCagrisi from '../components/AlintiKatkiCagrisi.jsx'
 import KitapSecici from '../components/KitapSecici.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
@@ -18,8 +17,6 @@ import NobelBanner from '../components/NobelBanner.jsx'
 import GununKitabi from '../components/GununKitabi.jsx'
 import MeydanOkuma from '../components/MeydanOkuma.jsx'
 import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
-import AlintiOyunuKarti from '../components/AlintiOyunuKarti.jsx'
-import KitapIstekTanitimKarti from '../components/KitapIstekTanitimKarti.jsx'
 
 function SuankiKitapWidget() {
   const { kullanici } = useAuth()
@@ -210,10 +207,7 @@ export default function KitaplarKesfet() {
 
       <KitapArama />
 
-      <AlintiKatkiCagrisi />
       <SonAlintilarBolumu limitSayisi={5} />
-      <AlintiOyunuKarti />
-      <KitapIstekTanitimKarti />
       <IlhamPanosuOnizleme kategori="Kitap" />
 
       <TavsiyeBolumu tur="kitap" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />

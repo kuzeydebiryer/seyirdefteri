@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useEserGonderileri, useKitapIncelemeleri } from '../hooks/useEser.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
@@ -8,7 +8,6 @@ import {
   izlenecekEkle,
   izlenecekKaldir,
   izlenecekGetir,
-  izlemeTamamlandiIsaretle,
   toplamSayfaTamamla,
   okumayaBasla,
   ilerlemeGuncelle,
@@ -28,10 +27,6 @@ import IzleyecegimIkonu from '../components/ikonlar/IzleyecegimIkonu.jsx'
 import ListeIkonu from '../components/ikonlar/ListeIkonu.jsx'
 import YorumIkonu from '../components/ikonlar/YorumIkonu.jsx'
 import FilmMuzigiWidget from '../components/FilmMuzigiWidget.jsx'
-import PaylasButonu from '../components/PaylasButonu.jsx'
-import KitapligimButonu from '../components/KitapligimButonu.jsx'
-import { girisGerekiyorsaYonlendir } from '../utils/girisYonlendir.js'
-import DiziMuzigiWidget from '../components/DiziMuzigiWidget.jsx'
 import IlgiliIlhamPanosu from '../components/IlgiliIlhamPanosu.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import { kitapGetir, kitapGuncelle, kitapElleEkle, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js'
@@ -100,7 +95,6 @@ function KisiListesi({ kisiler, etiket, acikRenk = false }) {
 
 export default function EserSayfasi({ tur }) {
   const { id } = useParams()
-  const navigate = useNavigate()
   const { kullanici, profil } = useAuth()
   const {
     gonderiler,
@@ -363,9 +357,9 @@ export default function EserSayfasi({ tur }) {
   }
 
   useEffect(() => {
-    if (tur !== 'sinema' && tur !== 'dizi') return
+    if (tur !== 'sinema') return
     let iptal = false
-    filmOscarBilgisiGetir(Number(id), tur === 'dizi' ? 'dizi' : 'film').then((s) => {
+    filmOscarBilgisiGetir(Number(id)).then((s) => {
       if (!iptal) setOscarSezonlari(s)
     })
     return () => {
@@ -526,32 +520,11 @@ export default function EserSayfasi({ tur }) {
 
   // Sadece tarihi (yıldıza tekrar tıklamadan) düzeltmek için — eskiden bunun
   // hiçbir kaydetme yolu yoktu, kutu değişse de sayfa yenilenince kaybolurdu.
-  // ÖNEMLİ: hiç günlük kaydı yoksa (kullanıcı henüz puan vermedi/başlama-
-  // bitirme tıklamadı) buton önceden HİÇ görünmüyordu — tarih kutusu boşa
-  // duruyor, kaydedecek bir yer yokmuş gibi kafa karıştırıyordu. Artık böyle
-  // bir durumda puansız, sade bir "izleme" kaydı OLUŞTURUYOR (tıpkı
-  // "başlama"/"bitirme" olayları gibi), böylece buton her zaman bir şey
-  // yapıyor.
   async function tarihiKaydet() {
-    if (!kullanici || !detay) return
+    if (!mevcutGunlukKaydi) return
     setTarihKaydediliyor(true)
     try {
-      if (mevcutGunlukKaydi) {
-        await gunlukKaydiGuncelle(mevcutGunlukKaydi.id, { izlemeTarihiISO: gunlukTarihi })
-      } else {
-        await gunlukKaydiEkle(kullanici, {
-          tur,
-          disId: id,
-          baslik: detay.baslik,
-          posterUrl: detay.posterUrl,
-          yil: detay.yil || '',
-          izlemeTarihiISO: gunlukTarihi,
-          tekrarMi: gunlukTekrar,
-          olayTuru: 'izleme',
-        })
-        const yeniKayit = await kullanicininSonKaydiGetir(kullanici.uid, tur, tur === 'kitap' ? id : Number(id))
-        setMevcutGunlukKaydi(yeniKayit)
-      }
+      await gunlukKaydiGuncelle(mevcutGunlukKaydi.id, { izlemeTarihiISO: gunlukTarihi })
       setTarihKaydedildi(true)
       setTimeout(() => setTarihKaydedildi(false), 2000)
     } finally {
@@ -905,8 +878,7 @@ export default function EserSayfasi({ tur }) {
   }
 
   async function favoriDegistir() {
-    if (girisGerekiyorsaYonlendir(kullanici, navigate)) return
-    if (!detay) return
+    if (!kullanici || !detay) return
     setFavoriIsleniyor(true)
     try {
       if (favoriMi_) {
@@ -980,9 +952,6 @@ export default function EserSayfasi({ tur }) {
       // "Bitirdim" — gerçek bir tamamlama olayı, günlüğe düşüyor. (938.
       // satırdaki genel "İzleyeceklerimden çıkar" ikon-butonu bunu
       // çağırmıyor — o sadece listeden çıkarma, bitirme garantisi yok.)
-      // Kayıt SİLİNMİYOR — durum 'tamamlandi' olarak işaretleniyor, böylece
-      // kart/profil sayfalarında "izleniyor" ile "tamamlandı" ayrımı
-      // güvenilir şekilde gösterilebiliyor.
       await gunlukKaydiEkle(kullanici, {
         tur,
         disId: id,
@@ -992,8 +961,8 @@ export default function EserSayfasi({ tur }) {
         izlemeTarihiISO: new Date().toISOString().slice(0, 10),
         olayTuru: 'bitirme',
       })
-      await izlemeTamamlandiIsaretle(kullanici.uid, tur, id)
-      setIzlenecekKaydi((onceki) => ({ ...onceki, durum: 'tamamlandi' }))
+      await izlenecekKaldir(kullanici.uid, tur, id)
+      setIzlenecekKaydi(null)
     } finally {
       setIzlenecekIsleniyor(false)
     }
@@ -1094,7 +1063,7 @@ export default function EserSayfasi({ tur }) {
   }
 
   async function puanGonder(puan) {
-    if (girisGerekiyorsaYonlendir(kullanici, navigate)) return
+    if (!kullanici) return
     setPuanKaydediliyor(true)
     try {
       await eserPuanla(tur, id, puan, kullanici, {
@@ -1232,10 +1201,6 @@ export default function EserSayfasi({ tur }) {
           />
         </div>
       )}
-
-      <div className="mb-3 flex justify-end">
-        <PaylasButonu baslik={`${detay.baslik}${detay.yil ? ` (${detay.yil})` : ''}`} url={`/${tur === 'sinema' ? 'film' : tur}/${id}`} boyut="kucuk" />
-      </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
         {!heroAktifMi && detay.posterUrl && (
@@ -1453,10 +1418,6 @@ export default function EserSayfasi({ tur }) {
                 <span className="text-[10px] uppercase tracking-wide text-kraft">Favori</span>
               </button>
 
-              {tur === 'kitap' && (
-                <KitapligimButonu disId={id} baslik={detay.baslik} alt={detay.yazar || ''} posterUrl={detay.posterUrl} />
-              )}
-
               {!izlenecekKaydi && (
                 <button
                   onClick={izlenecegeEkle}
@@ -1469,7 +1430,7 @@ export default function EserSayfasi({ tur }) {
                   </span>
                 </button>
               )}
-              {izlenecekKaydi && izlenecekKaydi.durum !== 'tamamlandi' && (
+              {izlenecekKaydi && (
                 <button
                   onClick={izlenecektenKaldir}
                   disabled={izlenecekIsleniyor}
@@ -1479,17 +1440,6 @@ export default function EserSayfasi({ tur }) {
                   <span className="text-[10px] uppercase tracking-wide text-kraft">
                     {tur === 'kitap' ? 'Okuyacaklarımda' : 'İzleyeceklerimde'}
                   </span>
-                </button>
-              )}
-              {izlenecekKaydi?.durum === 'tamamlandi' && (
-                <button
-                  onClick={izlenecektenKaldir}
-                  disabled={izlenecekIsleniyor}
-                  className="flex flex-col items-center gap-1 disabled:opacity-40"
-                  title="Listeden tamamen kaldır"
-                >
-                  <span className="text-2xl text-deniz">✓</span>
-                  <span className="text-[10px] uppercase tracking-wide text-kraft">Tamamladım</span>
                 </button>
               )}
 
@@ -1569,14 +1519,7 @@ export default function EserSayfasi({ tur }) {
                 ? `Topluluk: ${ortalamaPuan.toFixed(1)} (${puanSayisi} kişi)`
                 : kullanici
                   ? 'Henüz kimse puanlamadı'
-                  : (
-                    <>
-                      Puan vermek için{' '}
-                      <Link to={`/giris?donus=${encodeURIComponent(window.location.pathname)}`} className="text-deniz hover:underline">
-                        giriş yap
-                      </Link>
-                    </>
-                  )}
+                  : 'Puan vermek için giriş yap'}
             </span>
           </div>
           {kullanici && (tur === 'sinema' || tur === 'dizi' || tur === 'kitap') && (
@@ -1589,13 +1532,15 @@ export default function EserSayfasi({ tur }) {
                 onChange={(e) => setGunlukTarihi(e.target.value)}
                 className="rounded-sm bg-kagit px-2 py-0.5 text-xs text-murekkep ring-1 ring-cizgi"
               />
-              <button
-                onClick={tarihiKaydet}
-                disabled={tarihKaydediliyor}
-                className="rounded-sm bg-deniz px-2 py-0.5 text-xs text-kagit disabled:opacity-40"
-              >
-                {tarihKaydediliyor ? 'Kaydediliyor...' : tarihKaydedildi ? '✓ Kaydedildi' : 'Kaydet'}
-              </button>
+              {mevcutGunlukKaydi && (
+                <button
+                  onClick={tarihiKaydet}
+                  disabled={tarihKaydediliyor}
+                  className="rounded-sm bg-deniz px-2 py-0.5 text-xs text-kagit disabled:opacity-40"
+                >
+                  {tarihKaydediliyor ? 'Kaydediliyor...' : tarihKaydedildi ? '✓ Kaydedildi' : 'Kaydet'}
+                </button>
+              )}
               <label className="flex items-center gap-1">
                 <input type="checkbox" checked={gunlukTekrar} onChange={(e) => setGunlukTekrar(e.target.checked)} />
                 🔄 Yeniden {tur === 'kitap' ? 'okuma' : 'izleme'}
@@ -1926,7 +1871,7 @@ export default function EserSayfasi({ tur }) {
           {oscarSezonlari.length > 0 && (
             <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
               <p className="mb-2 flex items-center gap-1 text-xs uppercase tracking-widest text-gise">
-                <OscarHeykelIkon boyut={14} /> Ödül Adaylıkları · {oscarSezonlari.reduce((n, s) => n + s.kategoriler.length, 0)} dal
+                <OscarHeykelIkon boyut={14} /> Oscar Adaylıkları · {oscarSezonlari.reduce((n, s) => n + s.kategoriler.length, 0)} dal
               </p>
               <div className="space-y-2">
                 {oscarSezonlari.map((s) => (
@@ -2186,16 +2131,6 @@ export default function EserSayfasi({ tur }) {
         />
       )}
 
-      {tur === 'dizi' && (
-        <DiziMuzigiWidget
-          tmdbId={id}
-          diziAdi={detay.orijinalBaslik || detay.baslik}
-          yil={detay.yil}
-          posterUrl={detay.posterUrl}
-          bestekarAdi={detay.bestekarlar?.[0]?.name}
-        />
-      )}
-
       {detay.oyuncular?.length > 0 && (
         <div className="mt-6">
           <h2 className="font-baslik text-lg text-murekkep mb-2">Oyuncular</h2>
@@ -2418,18 +2353,10 @@ export default function EserSayfasi({ tur }) {
           baslik={detay.baslik}
           posterUrl={detay.posterUrl}
           kategori={tur === 'dizi' ? 'Dizi' : 'Film'}
-          yil={detay.yil}
         />
       )}
       {tur === 'kitap' && (
-        <IlgiliIlhamPanosu
-          tur={tur}
-          disId={id}
-          baslik={detay.baslik}
-          posterUrl={detay.posterUrl}
-          kategori="Kitap"
-          altBaslik={detay.yazar}
-        />
+        <IlgiliIlhamPanosu tur={tur} disId={id} baslik={detay.baslik} posterUrl={detay.posterUrl} kategori="Kitap" />
       )}
 
       <div className="defter-cizgi my-6" />

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -31,12 +31,6 @@ import YilOzeti from '../components/YilOzeti.jsx'
 import GunlukListesi from '../components/GunlukListesi.jsx'
 import { gunlukYilininKayitlariniGetir, gunlukIlkYiliGetir, mukerrerGunlukKayitlariniTemizle } from '../utils/gunluk.js'
 import { buYilOlaylariHesapla } from '../utils/yilOzeti.js'
-import { meydanOkumalariGetir, herkeseAcikMeydanOkumalariGetir, meydanOkumaOlustur } from '../utils/meydanOkuma.js'
-import { oduncVerdiklerimiGetir, oduncAldiklarimiGetir, itibarSayisiGetir } from '../utils/kitapIstek.js'
-import MeydanOkumaFormu from '../components/MeydanOkumaFormu.jsx'
-import MeydanOkumaKarti from '../components/MeydanOkumaKarti.jsx'
-import PaylasButonu from '../components/PaylasButonu.jsx'
-import { girisGerekiyorsaYonlendir } from '../utils/girisYonlendir.js'
 
 const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
@@ -68,16 +62,10 @@ function PosterKart({ baslik, alt, posterUrl, link }) {
 
 export default function Profil() {
   const { uid } = useParams()
-  const navigate = useNavigate()
   const { kullanici, profil: kendiProfilim, profilGuncelle } = useAuth()
   const benimProfilimMi = kullanici?.uid === uid
 
   const [hedefProfil, setHedefProfil] = useState(benimProfilimMi ? kendiProfilim : null)
-  const [meydanOkumalar, setMeydanOkumalar] = useState(null)
-  const [oduncVerdiklerim, setOduncVerdiklerim] = useState(null)
-  const [oduncAldiklarim, setOduncAldiklarim] = useState(null)
-  const [itibarSayisi, setItibarSayisi] = useState(null)
-  const [meydanOkumaFormAcik, setMeydanOkumaFormAcik] = useState(false)
   const [kahinSezonlari, setKahinSezonlari] = useState([])
   const [sanatKoleksiyonu, setSanatKoleksiyonu] = useState([])
   const [begenilenMuzikler, setBegenilenMuzikler] = useState([])
@@ -102,31 +90,6 @@ export default function Profil() {
   const [takipIsleniyor, setTakipIsleniyor] = useState(false)
 
   const [sekme, setSekme] = useState('yilozeti')
-
-  useEffect(() => {
-    if (sekme !== 'meydanokumalar' || !uid) return
-    setMeydanOkumalar(null)
-    ;(benimProfilimMi ? meydanOkumalariGetir(uid) : herkeseAcikMeydanOkumalariGetir(uid)).then(setMeydanOkumalar)
-  }, [sekme, uid, benimProfilimMi])
-
-  useEffect(() => {
-    if (sekme !== 'oduncKitaplar' || !uid) return
-    setOduncVerdiklerim(null)
-    setOduncAldiklarim(null)
-    oduncVerdiklerimiGetir(uid).then(setOduncVerdiklerim)
-    oduncAldiklarimiGetir(uid).then(setOduncAldiklarim)
-  }, [sekme, uid])
-
-  useEffect(() => {
-    if (!uid) return
-    itibarSayisiGetir(uid).then(setItibarSayisi)
-  }, [uid])
-
-  async function meydanOkumaOlusturTiklandi(veri) {
-    await meydanOkumaOlustur(kullanici, kendiProfilim, veri)
-    setMeydanOkumaFormAcik(false)
-    meydanOkumalariGetir(uid).then(setMeydanOkumalar)
-  }
   const [favoriSekmesi, setFavoriSekmesi] = useState('sinema')
   const { favoriler, yenidenYukle: favorileriYenile } = useFavoriler(uid, favoriSekmesi)
   // Profilin en üstündeki "Sabitlenmiş Favoriler" vitrini için — sekmedeki
@@ -227,7 +190,6 @@ export default function Profil() {
 
   const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
   const [bioTaslak, setBioTaslak] = useState('')
-  const [sehirTaslak, setSehirTaslak] = useState('')
   const [avatarTaslak, setAvatarTaslak] = useState('')
   const [kapakTaslak, setKapakTaslak] = useState('')
   const [letterboxdTaslak, setLetterboxdTaslak] = useState('')
@@ -258,7 +220,6 @@ export default function Profil() {
   useEffect(() => {
     if (hedefProfil && benimProfilimMi) {
       setBioTaslak(hedefProfil.bio || '')
-      setSehirTaslak(hedefProfil.sehir || '')
       setAvatarTaslak(hedefProfil.avatarUrl || '')
       setKapakTaslak(hedefProfil.kapakUrl || '')
       setLetterboxdTaslak(hedefProfil.letterboxdUrl || '')
@@ -273,7 +234,6 @@ export default function Profil() {
     try {
       const guncelVeri = {
         bio: bioTaslak,
-        sehir: sehirTaslak,
         avatarUrl: avatarTaslak,
         kapakUrl: kapakTaslak,
         letterboxdUrl: letterboxdTaslak,
@@ -289,8 +249,7 @@ export default function Profil() {
   }
 
   async function takipDegistir() {
-    if (girisGerekiyorsaYonlendir(kullanici, navigate)) return
-    if (takipIsleniyor) return
+    if (!kullanici || takipIsleniyor) return
     setTakipIsleniyor(true)
     try {
       if (takipEdiyorMu) {
@@ -342,9 +301,6 @@ export default function Profil() {
     { id: 'okuduklarim', etiket: '📖 Okuduklarım' },
     { id: 'yazigezi', etiket: '✍️ Yazı & Gezi' },
     { id: 'suanda', etiket: '⏳ Şu An' },
-    { id: 'tamamladiklarim', etiket: '✓ Tamamladıklarım' },
-    { id: 'meydanokumalar', etiket: '🏆 Meydan Okumalarım' },
-    { id: 'oduncKitaplar', etiket: '🤝 Ödünç Kitaplar' },
     { id: 'izleyecegim', etiket: '📋 İzleyecek/Okuyacaklarım' },
     { id: 'favoriler', etiket: '♥ Favoriler' },
     { id: 'raflarim', etiket: '📚 Raflarım' },
@@ -388,7 +344,6 @@ export default function Profil() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="font-baslik text-2xl text-murekkep">{hedefProfil.adSoyad}</h1>
-            <PaylasButonu baslik={`${hedefProfil.adSoyad} — Seyirdefteri`} url={`/profil/${uid}`} boyut="kucuk" />
             {benimProfilimMi && (
               <button
                 onClick={() => setDuzenlemeAcik((a) => !a)}
@@ -448,7 +403,6 @@ export default function Profil() {
             </div>
           )}
           {!duzenlemeAcik && hedefProfil.bio && <p className="mt-2 text-sm text-murekkep">{hedefProfil.bio}</p>}
-          {!duzenlemeAcik && hedefProfil.sehir && <p className="mt-0.5 text-xs text-kraft">📍 {hedefProfil.sehir}</p>}
 
           {!duzenlemeAcik && tumFavoriler.length > 0 && (
             <div className="mt-3">
@@ -514,17 +468,6 @@ export default function Profil() {
                   rows={3}
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
-              </div>
-              <div>
-                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Şehir (opsiyonel)</label>
-                <input
-                  type="text"
-                  value={sehirTaslak}
-                  onChange={(e) => setSehirTaslak(e.target.value)}
-                  placeholder="örn. Kocaeli"
-                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
-                />
-                <p className="mt-1 text-[11px] text-kraft">Kitap ödünç alışverişinde aynı şehirdekileri bulmak için kullanılır.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -1174,133 +1117,12 @@ export default function Profil() {
         </div>
       )}
 
-      {sekme === 'tamamladiklarim' && (
-        <div>
-          {(() => {
-            // "Bitirdim" artık kaydı silmek yerine durum:'tamamlandi' olarak
-            // işaretliyor (bkz. utils/izlenecek.js) — bu sekme o kalıcı
-            // veriyi gösteriyor. En son tamamlanan en üstte.
-            const tamamlananFilmDizi = izlenecekler
-              .filter((i) => i.durum === 'tamamlandi' && (i.tur === 'sinema' || i.tur === 'dizi'))
-              .sort((a, b) => (b.tamamlanmaTarihi?.toMillis?.() || 0) - (a.tamamlanmaTarihi?.toMillis?.() || 0))
-            const tamamlananKitap = izlenecekler
-              .filter((i) => i.durum === 'tamamlandi' && i.tur === 'kitap')
-              .sort((a, b) => (b.tamamlanmaTarihi?.toMillis?.() || 0) - (a.tamamlanmaTarihi?.toMillis?.() || 0))
-            if (tamamlananFilmDizi.length === 0 && tamamlananKitap.length === 0) {
-              return <p className="text-sm text-kraft">Henüz "Bitirdim" dediğin bir şey yok.</p>
-            }
-            return (
-              <>
-                {tamamlananFilmDizi.length > 0 && (
-                  <div className="mb-8">
-                    <h2 className="font-baslik text-lg text-murekkep mb-3">Tamamladıklarım</h2>
-                    <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
-                      {tamamlananFilmDizi.map((i) => (
-                        <PosterKart key={i.id} baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {tamamlananKitap.length > 0 && (
-                  <div>
-                    <h2 className="font-baslik text-lg text-murekkep mb-3">Bitirdiğim Kitaplar</h2>
-                    <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
-                      {tamamlananKitap.map((i) => (
-                        <PosterKart key={i.id} baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )
-          })()}
-        </div>
-      )}
-
-      {sekme === 'meydanokumalar' && (
-        <div>
-          {benimProfilimMi && (
-            <div className="mb-4">
-              {meydanOkumaFormAcik ? (
-                <MeydanOkumaFormu onOlustur={meydanOkumaOlusturTiklandi} onVazgec={() => setMeydanOkumaFormAcik(false)} />
-              ) : (
-                <button
-                  onClick={() => setMeydanOkumaFormAcik(true)}
-                  className="rounded-sm bg-gise px-3 py-1.5 font-govde text-xs text-kagit"
-                >
-                  + Yeni Meydan Okuma
-                </button>
-              )}
-            </div>
-          )}
-          {meydanOkumalar === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
-          {meydanOkumalar?.length === 0 && (
-            <p className="text-sm text-kraft">
-              {benimProfilimMi ? 'Henüz bir meydan okuma başlatmadın.' : 'Herkese açık bir meydan okuması yok.'}
-            </p>
-          )}
-          <div className="space-y-3">
-            {meydanOkumalar?.map((mo) => (
-              <MeydanOkumaKarti
-                key={mo.id}
-                mo={mo}
-                uid={uid}
-                sahibiMiyim={benimProfilimMi}
-                onSil={(id) => setMeydanOkumalar((liste) => liste.filter((m) => m.id !== id))}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {sekme === 'oduncKitaplar' && (
-        <div>
-          {benimProfilimMi && itibarSayisi !== null && itibarSayisi > 0 && (
-            <p className="mb-4 text-sm text-murekkep">🤝 Şimdiye kadar {itibarSayisi} kez kitap ödünç verdi.</p>
-          )}
-
-          <h2 className="mb-2 font-baslik text-lg text-murekkep">Ödünç Verdiklerim</h2>
-          {oduncVerdiklerim === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
-          {oduncVerdiklerim?.length === 0 && <p className="mb-6 text-sm text-kraft">Henüz kimseye kitap ödünç vermedin.</p>}
-          <div className="mb-8 space-y-2">
-            {oduncVerdiklerim?.map((i) => (
-              <Link key={i.id} to={`/kitap/${i.disId}`} className="flex items-center gap-2 rounded-sm bg-kagitKoyu p-2.5 ring-1 ring-cizgi">
-                {i.posterUrl && <img src={i.posterUrl} alt={i.baslik} className="h-12 w-8 shrink-0 rounded-sm object-cover" />}
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-murekkep">{i.baslik}</p>
-                  <p className="text-xs text-kraft">
-                    {i.isteyenAdi}'e verildi{i.durum === 'tamamlandi' ? ' · ✓ iade edildi' : ` · iade: ${new Date(i.iadeTarihi).toLocaleDateString('tr-TR')}`}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          <h2 className="mb-2 font-baslik text-lg text-murekkep">Ödünç Aldıklarım</h2>
-          {oduncAldiklarim === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
-          {oduncAldiklarim?.length === 0 && <p className="text-sm text-kraft">Henüz kimseden kitap ödünç almadın.</p>}
-          <div className="space-y-2">
-            {oduncAldiklarim?.map((i) => (
-              <Link key={i.id} to={`/kitap/${i.disId}`} className="flex items-center gap-2 rounded-sm bg-kagitKoyu p-2.5 ring-1 ring-cizgi">
-                {i.posterUrl && <img src={i.posterUrl} alt={i.baslik} className="h-12 w-8 shrink-0 rounded-sm object-cover" />}
-                <div className="min-w-0">
-                  <p className="truncate text-sm text-murekkep">{i.baslik}</p>
-                  <p className="text-xs text-kraft">
-                    {i.oduncVerenAdi}'den alındı{i.durum === 'tamamlandi' ? ' · ✓ iade edildi' : ` · iade: ${new Date(i.iadeTarihi).toLocaleDateString('tr-TR')}`}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* İzleyecek/Okuyacaklarım */}
       {sekme === 'izleyecegim' && (
         <div>
           {(() => {
-            const bekleyenFilmDizi = izlenecekler.filter((i) => i.durum === 'planlanan' && (i.tur === 'sinema' || i.tur === 'dizi'))
-            const bekleyenKitap = izlenecekler.filter((i) => i.durum === 'planlanan' && i.tur === 'kitap')
+            const bekleyenFilmDizi = izlenecekler.filter((i) => i.durum !== 'okunuyor' && (i.tur === 'sinema' || i.tur === 'dizi'))
+            const bekleyenKitap = izlenecekler.filter((i) => i.durum !== 'okunuyor' && i.tur === 'kitap')
             if (bekleyenFilmDizi.length === 0 && bekleyenKitap.length === 0) {
               return <p className="text-sm text-kraft">Liste boş.</p>
             }

@@ -6,12 +6,10 @@ import { takipAktiviteleriGetir } from '../utils/gunluk.js'
 import GonderiEkle from './GonderiEkle.jsx'
 import YeniGunlukGridi from '../components/YeniGunlukGridi.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
-import PlatformYeniGelenlerBolumu from '../components/PlatformYeniGelenlerBolumu.jsx'
-import OdullerVitrini from '../components/OdullerVitrini.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
 import BugunAktifOlanlarBolumu from '../components/BugunAktifOlanlarBolumu.jsx'
-import SeyirPanosuOnizleme from '../components/SeyirPanosuOnizleme.jsx'
 import KulupEtkinlikleriOnizleme from '../components/KulupEtkinlikleriOnizleme.jsx'
+import OdulToreniOnizleme from '../components/OdulToreniOnizleme.jsx'
 import GunlukKesif from '../components/GunlukKesif.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
 import EtkinlikHabercisiOnizleme from '../components/EtkinlikHabercisiOnizleme.jsx'
@@ -31,6 +29,7 @@ export default function Anasayfa() {
   const [takipEdilenler, setTakipEdilenler] = useState(null) // null = henüz yüklenmedi
 
   const { tavsiyeler: filmTavsiyeleri, yenidenYukle: filmTavsiyeleriYenile } = useTavsiyeler('sinema')
+  const { tavsiyeler: yeniGelenFilmler, yenidenYukle: yeniGelenFilmleriYenile } = useTavsiyeler('sinema', 'yeniGelenFilmler')
   const { tavsiyeler: kitapTavsiyeleri, yenidenYukle: kitapTavsiyeleriYenile } = useTavsiyeler('kitap')
 
   useEffect(() => {
@@ -80,9 +79,15 @@ export default function Anasayfa() {
         </div>
       )}
 
+      <BugununDusuncesiWidget />
+
       <TopluluklarBildirimSeridi />
 
-      <SeyirPanosuOnizleme />
+      <BugunAktifOlanlarBolumu />
+
+      <OdulToreniOnizleme />
+
+      <KulupEtkinlikleriOnizleme />
 
       <YeniGunlukGridi kayitlar={takipGunlukKayitlari} tumunuGorLink="/akis" />
 
@@ -96,9 +101,17 @@ export default function Anasayfa() {
         tumunuGorLink="/film-tavsiyeleri"
       />
 
-      <PlatformYeniGelenlerBolumu />
-
-      <OdullerVitrini />
+      <TavsiyeBolumu
+        tur="sinema"
+        koleksiyon="yeniGelenFilmler"
+        tavsiyeler={yeniGelenFilmler}
+        yenidenYukle={yeniGelenFilmleriYenile}
+        yatay
+        sade
+        baslik="Yeni Gelen Filmler"
+        tumunuGorLink="/yeni-gelen-filmler"
+        ekleButonuMetni="+ Film Ekle"
+      />
 
       <TavsiyeBolumu
         tur="kitap"
@@ -115,12 +128,6 @@ export default function Anasayfa() {
       <KitapDunyasiWidget />
 
       <GunlukKesif />
-
-      <BugununDusuncesiWidget />
-
-      <BugunAktifOlanlarBolumu />
-
-      <KulupEtkinlikleriOnizleme />
 
       <EtkinlikHabercisiOnizleme />
 

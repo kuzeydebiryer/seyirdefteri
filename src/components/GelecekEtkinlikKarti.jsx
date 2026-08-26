@@ -8,7 +8,7 @@ import { useKaynaklar } from '../hooks/useKaynaklar.js'
 import { kulupIlerlemeGetir } from '../utils/kulupIstatistik.js'
 import { kitapIcVeriTabanindaAra } from '../utils/kitapKatalog.js'
 import { turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
-import MedyaGomulusu from './MedyaGomulusu.jsx'
+import InstagramGomulusu from './InstagramGomulusu.jsx'
 import Avatar from './Avatar.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -346,7 +346,7 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
   return (
     <div className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 gap-3">
+        <div className="flex gap-3">
           {(canliKitapVerisi?.posterUrl || etkinlik.eserPosterUrl) && (
             <img
               src={canliKitapVerisi?.posterUrl || etkinlik.eserPosterUrl}
@@ -354,7 +354,7 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
               className="h-24 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi"
             />
           )}
-          <div className="min-w-0 flex-1">
+          <div>
             <p className="font-govde text-sm text-murekkep">
               {etkinlik.baslik}
               {etkinlik.tekrarSeriId && <span title="Tekrarlayan etkinlik"> 🔁</span>}
@@ -395,7 +395,7 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
             )}
             <p className="text-xs text-kraft mt-0.5">{tarihSaatGoster(etkinlik.tarih)}</p>
             {etkinlik.aciklama && <p className="mt-1 text-xs text-murekkep/90">{etkinlik.aciklama}</p>}
-            {etkinlik.instagramUrl && <MedyaGomulusu url={etkinlik.instagramUrl} paylasanAdi={etkinlik.olusturanAdi} />}
+            {etkinlik.instagramUrl && <InstagramGomulusu url={etkinlik.instagramUrl} paylasanAdi={etkinlik.olusturanAdi} />}
             {katilacaklar.length > 0 ? (
               <div className="mt-1.5 flex items-center gap-1.5">
                 <div className="flex -space-x-2">

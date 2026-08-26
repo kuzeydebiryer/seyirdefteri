@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import MedyaGomulusu from './MedyaGomulusu.jsx'
+import InstagramGomulusu from './InstagramGomulusu.jsx'
 
 function gunSayisi(tarih) {
   if (!tarih) return null
@@ -83,7 +83,7 @@ export default function HabercKarti({ haberci, kullanici, onKatilimDegistir, onS
           </div>
         )}
 
-        {haberci.instagramUrl && <MedyaGomulusu url={haberci.instagramUrl} paylasanAdi={haberci.ekleyenAdi} kompakt />}
+        {haberci.instagramUrl && <InstagramGomulusu url={haberci.instagramUrl} paylasanAdi={haberci.ekleyenAdi} />}
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
           {haberci.satisLinki && (

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ilhamlariEserIcinGetir, ilhamEkle } from '../utils/ilhamPanosu.js'
-import MedyaGomulusu from './MedyaGomulusu.jsx'
+import InstagramGomulusu from './InstagramGomulusu.jsx'
 
 // Film/Dizi/Kitap/Oyuncu sayfasına gömülü, o SAYFAYA ÖZEL İlham Panosu
 // bölümü — genel panodaki gibi arayıp eser seçmeye gerek yok, zaten o
 // eserin sayfasındasınız, sadece linki yapıştırıp eklemeniz yeterli.
-export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kategori, yil, altBaslik }) {
+export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kategori }) {
   const { kullanici, profil } = useAuth()
   const [ilhamlar, setIlhamlar] = useState(null)
   const [formAcik, setFormAcik] = useState(false)
@@ -46,8 +46,6 @@ export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kateg
         iliskiliDisId: disId,
         iliskiliBaslik: baslik,
         iliskiliPosterUrl: posterUrl,
-        iliskiliYil: yil,
-        iliskiliAlt: altBaslik,
       })
       setUrl('')
       setNot_('')
@@ -64,10 +62,10 @@ export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kateg
   return (
     <div className="mt-6">
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="font-baslik text-lg text-murekkep">📌 Seyir Panosu</h2>
+        <h2 className="font-baslik text-lg text-murekkep">📌 İlham Panosu</h2>
         {kullanici && (
           <button onClick={() => setFormAcik((a) => !a)} className="text-xs text-deniz hover:underline">
-            {formAcik ? 'Vazgeç' : '+ Instagram Paylaşımı Ekle'}
+            {formAcik ? 'Vazgeç' : '+ Sosyal Medya Paylaşımı Ekle'}
           </button>
         )}
       </div>
@@ -79,7 +77,7 @@ export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kateg
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
-            placeholder="Instagram, YouTube veya X linki..."
+            placeholder="https://www.instagram.com/p/..."
             className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
           />
           <textarea
@@ -103,7 +101,7 @@ export default function IlgiliIlhamPanosu({ tur, disId, baslik, posterUrl, kateg
       <div className="grid gap-4 sm:grid-cols-2">
         {ilhamlar.map((i) => (
           <div key={i.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-            <MedyaGomulusu url={i.url} paylasanAdi={i.paylasanAdi} kompakt />
+            <InstagramGomulusu url={i.url} paylasanAdi={i.paylasanAdi} />
             {i.not && <p className="mt-2 text-sm text-murekkep">{i.not}</p>}
           </div>
         ))}

@@ -339,12 +339,12 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
           </div>
 
           <div>
-            <label className="mb-1 block text-[11px] text-kraft">📷 İlgili Instagram / YouTube / X (opsiyonel)</label>
+            <label className="mb-1 block text-[11px] text-kraft">📷 İlgili Sosyal Medya Gönderisi (opsiyonel)</label>
             <input
               type="text"
               value={instagramUrl}
               onChange={(e) => setInstagramUrl(e.target.value)}
-              placeholder="Instagram, YouTube veya X linki..."
+              placeholder="https://www.instagram.com/p/..."
               className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
             />
           </div>

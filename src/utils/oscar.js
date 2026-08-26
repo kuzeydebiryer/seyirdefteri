@@ -1,19 +1,15 @@
-// Ödül Yolculuğu — Oscar/BAFTA/Golden Globe/Emmy hepsi bu AYNI mekanizmayı
-// (sezon+kategori+aday, tahmin, kilitleme, Kahin) paylaşıyor — torenTuru
-// alanıyla ayrılıyorlar. Koleksiyon adları tarihsel nedenlerle hâlâ
-// "oscar*" (ilk kurulduğunda sadece Oscar vardı) ama artık dört ödül türünü
-// de barındırıyor — yeniden adlandırmak var olan veriyi taşımayı
-// gerektirirdi, bunun yerine mevcut adlar korunup genelleştirildi.
-// Eski (torenTuru'süz) kayıtlar Oscar sayılıyor (bkz. aşağıdaki || 'oscar').
+// Oscar Yolculuğu — Faz 1: Sezon + Kategori + Aday yönetimi ve izleme ilerlemesi.
+// Not: Akademi Ödülleri'nin adayları için resmi bir API yok, bu yüzden
+// kategoriler ve adaylar (OKULLAR listesi gibi) elle girilen referans veridir.
+// Puanlama/tahmin sistemi (Faz 2) ve sonuç+rozet (Faz 3) sonraya bırakıldı.
 
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
-export async function sezonOlustur(kullanici, { ad, torenTarihi, torenTuru }) {
+export async function sezonOlustur(kullanici, { ad, torenTarihi }) {
   const ref = await addDoc(collection(db, 'oscarSezonlari'), {
     ad,
     torenTarihi,
-    torenTuru: torenTuru || 'oscar',
     kilitli: false,
     olusturanId: kullanici.uid,
     olusturmaTarihi: serverTimestamp(),
@@ -24,15 +20,11 @@ export async function sezonOlustur(kullanici, { ad, torenTarihi, torenTuru }) {
 // En son oluşturulan sezonu getirir — bu, "aktif" sezon olarak kabul edilir.
 // Şimdilik tek bir aktif sezon varsayımıyla en basit hâliyle bırakıldı;
 // geçmiş sezonlar Faz 3'te "arşiv" (sadece kazananlar) olarak ayrıca tutulacak.
-// torenTuru'ye göre client-side filtreleniyor (Firestore where'e taşımak
-// yeni bir bileşik indeks gerektirirdi — sezon sayısı zaten çok az, tüm
-// koleksiyonu çekmek maliyetsiz).
-export async function aktifSezonuGetir(torenTuru = 'oscar') {
+export async function aktifSezonuGetir() {
   const q = query(collection(db, 'oscarSezonlari'), orderBy('olusturmaTarihi', 'desc'))
   const snap = await getDocs(q)
-  const buTurdekiler = snap.docs.filter((d) => (d.data().torenTuru || 'oscar') === torenTuru)
-  if (buTurdekiler.length === 0) return null
-  const d = buTurdekiler[0]
+  if (snap.empty) return null
+  const d = snap.docs[0]
   return { id: d.id, ...d.data() }
 }
 
@@ -52,19 +44,15 @@ export async function kategorilerGetir(sezonId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
-// tmdbId: film/dizi bazlı adaylarda (En İyi Film/Dizi gibi) zorunlu. tur:
-// 'film' ya da 'dizi' — hangi sayfaya link verileceğini belirliyor (TMDB'de
-// film ve dizi ID uzayları birbirinden bağımsız, aynı sayı farklı bir şeye
-// ait olabilir, bu yüzden ayırt etmek şart). kisiTmdbId: oyunculuk/
+// tmdbId: film bazlı adaylarda (En İyi Film gibi) zorunlu. kisiTmdbId: oyunculuk/
 // yönetmenlik kategorilerinde kişinin kendisini birincil aday yapmak için —
 // bu durumda tmdbId hâlâ verilir (afiş yerine kişi fotoğrafı öncelikli gösterilir)
 // ama esas kimlik kişi olur, filmBasligi ise "hangi film için aday olduğu" bilgisidir.
-export async function adayEkle(sezonId, kategoriId, { tmdbId, tur, filmBasligi, filmYili, posterUrl, kisiAdi, kisiTmdbId, kisiFotoUrl, sira }) {
-  const ref = await addDoc(collection(db, 'oscarAdaylari'), {
+export async function adayEkle(sezonId, kategoriId, { tmdbId, filmBasligi, filmYili, posterUrl, kisiAdi, kisiTmdbId, kisiFotoUrl, sira }) {
+  await addDoc(collection(db, 'oscarAdaylari'), {
     sezonId,
     kategoriId,
     tmdbId: tmdbId ?? null,
-    tur: tur || 'film',
     filmBasligi,
     filmYili: filmYili || '',
     posterUrl: posterUrl || '',
@@ -73,7 +61,6 @@ export async function adayEkle(sezonId, kategoriId, { tmdbId, tur, filmBasligi, 
     kisiFotoUrl: kisiFotoUrl || '',
     sira: sira ?? 0,
   })
-  return { id: ref.id }
 }
 
 export async function adaySil(adayId) {
@@ -109,13 +96,6 @@ export async function adaylarGetir(sezonId) {
 
 export async function sezonuKilitle(sezonId, kilitli) {
   await updateDoc(doc(db, 'oscarSezonlari', sezonId), { kilitli })
-}
-
-// Sezon oluşturulduktan SONRA ad/tarih düzeltmek için — önceden bu hiç
-// mümkün değildi, bir yazım/tarih hatası olduğunda tüm kategorileri/
-// adayları kaybetmeden düzeltecek bir yol yoktu.
-export async function sezonDuzenle(sezonId, { ad, torenTarihi }) {
-  await updateDoc(doc(db, 'oscarSezonlari', sezonId), { ad, torenTarihi })
 }
 
 // Doküman ID'si kasıtlı olarak `${kategoriId}_${uid}` — bir kullanıcı bir
@@ -176,10 +156,10 @@ export async function sezonuBitir(sezonId, kahinUid, kahinAdi) {
   await updateDoc(doc(db, 'oscarSezonlari', sezonId), { bittiMi: true, kahinUid, kahinAdi })
 }
 
-export async function tumSezonlariGetir(torenTuru = 'oscar') {
+export async function tumSezonlariGetir() {
   const q = query(collection(db, 'oscarSezonlari'), orderBy('olusturmaTarihi', 'desc'))
   const snap = await getDocs(q)
-  return snap.docs.filter((d) => (d.data().torenTuru || 'oscar') === torenTuru).map((d) => ({ id: d.id, ...d.data() }))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
 // Profildeki rozet gösterimi için: bu kullanıcının Kahin ilan edildiği sezonlar.
@@ -195,17 +175,11 @@ export async function kahinOlduguSezonlariGetir(uid) {
 // hangi kategori(ler)de aday — hem doğrudan film adaylıkları (En İyi Film gibi)
 // hem de bu filmle bağlantılı KİŞİ adaylıkları (En İyi Yönetmen/Oyuncu gibi,
 // artık tmdbId ile filme bağlı) TEK bir listede toplanıyor.
-// tur: 'film' | 'dizi' — TMDB'de film ve dizi ID uzayları bağımsız, aynı
-// sayı tamamen farklı bir yapıma ait olabilir. tur filtrelenmezse (örn.
-// Emmy'nin çoğu adayı dizi iken) bir dizi sayfasında alakasız bir filmin
-// adaylığı, ya da tam tersi, yanlışlıkla gösterilebilirdi. Client-side
-// filtreleniyor (Firestore where'e taşımak eski, tur alanı olmayan
-// kayıtları — hepsi film — sessizce kaybettirirdi).
-export async function filmOscarBilgisiGetir(tmdbId, tur = 'film') {
+export async function filmOscarBilgisiGetir(tmdbId) {
   const q = query(collection(db, 'oscarAdaylari'), where('tmdbId', '==', tmdbId))
   const adaySnap = await getDocs(q)
-  const adaylar = adaySnap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((a) => (a.tur || 'film') === tur)
-  if (adaylar.length === 0) return []
+  if (adaySnap.empty) return []
+  const adaylar = adaySnap.docs.map((d) => ({ id: d.id, ...d.data() }))
 
   const sezonIdleri = [...new Set(adaylar.map((a) => a.sezonId))]
   const kategoriIdleri = [...new Set(adaylar.map((a) => a.kategoriId))]

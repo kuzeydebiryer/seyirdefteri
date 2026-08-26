@@ -16,7 +16,7 @@ export default function BugunAktifOlanlarBolumu() {
   if (kullanicilar === null || kullanicilar.length === 0) return null
 
   return (
-    <div className="mb-10">
+    <div className="mb-8">
       <p className="mb-2 text-xs uppercase tracking-widest text-kraft">🟢 Bugün Aktif Olanlar</p>
       <div className="flex flex-wrap gap-3">
         {kullanicilar.map((k) => (

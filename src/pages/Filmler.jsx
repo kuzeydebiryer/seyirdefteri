@@ -9,7 +9,6 @@ import FilmDiziArama from '../components/FilmDiziArama.jsx'
 import EserKarti from '../components/EserKarti.jsx'
 import BegenilenMuziklerBolumu from '../components/BegenilenMuziklerBolumu.jsx'
 import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
-import SinemaOyunlariBolumu from '../components/SinemaOyunlariBolumu.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -40,7 +39,6 @@ export default function Filmler() {
   const [yakinda, setYakinda] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const { tavsiyeler, yenidenYukle: tavsiyeleriYenile } = useTavsiyeler('sinema')
-  const { tavsiyeler: yeniGelenFilmler, yenidenYukle: yeniGelenFilmleriYenile } = useTavsiyeler('sinema', 'yeniGelenFilmler')
   const { haberler, yenidenYukle: haberleriYenile } = useHaberler('sinema')
 
   useEffect(() => {
@@ -81,17 +79,7 @@ export default function Filmler() {
       <FilmDiziArama tur="sinema" />
 
       <TavsiyeBolumu tur="sinema" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
-      <TavsiyeBolumu
-        tur="sinema"
-        koleksiyon="yeniGelenFilmler"
-        tavsiyeler={yeniGelenFilmler}
-        yenidenYukle={yeniGelenFilmleriYenile}
-        baslik="Yeni Gelen Filmler"
-        tumunuGorLink="/yeni-gelen-filmler"
-        ekleButonuMetni="+ Film Ekle"
-      />
       <BegenilenMuziklerBolumu />
-      <SinemaOyunlariBolumu />
       <IlhamPanosuOnizleme kategori="Film" />
       <HaberBolumu kategori="sinema" haberler={haberler} yenidenYukle={haberleriYenile} />
       <ListelerBolumu tur="sinema" />

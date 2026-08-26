@@ -37,7 +37,6 @@ export default function KisiArama() {
           value={arama}
           onChange={(e) => setArama(e.target.value)}
           placeholder="Oyuncu ya da yönetmen ara..."
-          aria-label="Oyuncu ya da yönetmen ara"
           className="flex-1 max-w-sm rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
         />
         <button type="submit" disabled={yukleniyor} className="rounded-sm bg-muhur px-4 py-2 font-govde text-sm text-kagit disabled:opacity-40">

@@ -75,7 +75,7 @@ export default function GunlukKesif() {
   if (yukleniyor || !icerik) return null
 
   return (
-    <div className="mb-10 flex items-center gap-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+    <div className="mb-6 flex items-center gap-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
       {tur === 'eser' &&
         (icerik.imageUrl ? (
           <img
