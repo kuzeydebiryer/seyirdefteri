@@ -199,25 +199,30 @@ export default function KitaplarKesfet() {
         </Link>
       </div>
 
-      <SuankiKitapWidget />
+      <KitapArama />
+
+      <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} />
+
+      <KitapIstekTanitimKarti />
+
+      <AlintiKatkiCagrisi />
+      <SonAlintilarBolumu limitSayisi={3} />
 
       <NobelBanner />
+
+      <AlintiOyunuKarti />
+
+      <SuankiKitapWidget />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <GununKitabi />
         <MeydanOkuma />
       </div>
 
-      <KitapArama />
+      <TavsiyeBolumu tur="kitap" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
 
-      <AlintiKatkiCagrisi />
-      <SonAlintilarBolumu limitSayisi={5} />
-      <AlintiOyunuKarti />
-      <KitapIstekTanitimKarti />
       <IlhamPanosuOnizleme kategori="Kitap" />
 
-      <TavsiyeBolumu tur="kitap" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
-      <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} />
       <ListelerBolumu tur="kitap" />
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Bizim Aramızda Popüler</h2>
