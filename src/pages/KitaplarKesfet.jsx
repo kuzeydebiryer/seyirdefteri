@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { suankiOkunanKitabiGetir, ilerlemeGuncelle, izlenecekEkle, toplamSayfaTamamla } from '../utils/izlenecek.js'
 import { kitapGetir } from '../utils/kitapKatalog.js'
 import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
+import AlintiKatkiCagrisi from '../components/AlintiKatkiCagrisi.jsx'
 import KitapSecici from '../components/KitapSecici.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
@@ -209,6 +210,7 @@ export default function KitaplarKesfet() {
 
       <KitapArama />
 
+      <AlintiKatkiCagrisi />
       <SonAlintilarBolumu limitSayisi={5} />
       <AlintiOyunuKarti />
       <KitapIstekTanitimKarti />
