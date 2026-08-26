@@ -77,10 +77,13 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
   // önceki aramayı/filtreyi tekrar çalıştırıyor. "Uygula"ya/Ara'ya basmadan
   // boş bir ekranla karşılaşmasın.
   useEffect(() => {
+    const urlSayfa = parseInt(aramaParametreleri.get('sayfa') || '1', 10)
     if (sabitPlatformId) {
-      filtreUygula()
+      if (urlSayfa > 1) hepsiniGeriYukle(urlSayfa)
+      else filtreUygula()
     } else if (mod === 'filtrele' && aramaParametreleri.get('mod') === 'filtrele') {
-      filtreUygula()
+      if (urlSayfa > 1) hepsiniGeriYukle(urlSayfa)
+      else filtreUygula()
     } else if (mod === 'ara' && aramaParametreleri.get('q')) {
       isimleAra()
     }
@@ -146,6 +149,22 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
     }
   }
 
+  async function tekSayfaGetir(hedefSayfa) {
+    const tarihAlani = tur === 'sinema' ? 'primary_release_date' : 'first_air_date'
+    const parcalar = [`api_key=${TMDB_API_KEY}`, 'language=tr-TR', `sort_by=${siralama}`, `page=${hedefSayfa}`]
+    if (seciliTur) parcalar.push(`with_genres=${seciliTur}`)
+    if (yilBaslangic) parcalar.push(`${tarihAlani}.gte=${yilBaslangic}-01-01`)
+    if (yilBitis) parcalar.push(`${tarihAlani}.lte=${yilBitis}-12-31`)
+    if (minPuan) parcalar.push(`vote_average.gte=${minPuan}`, 'vote_count.gte=20')
+    if (ulke) parcalar.push(`with_origin_country=${ulke}`)
+    if (sabitPlatformId) parcalar.push(`with_watch_providers=${sabitPlatformId}`, 'watch_region=TR', 'with_watch_monetization_types=flatrate')
+    const url = `https://api.themoviedb.org/3/discover/${uc}?${parcalar.join('&')}`
+    const res = await fetch(url)
+    const data = await res.json()
+    const sonuc = await omdbIleZenginlestirVeFiltrele(data.results || [])
+    return { sonuc, toplamSayfa: Math.min(data.total_pages || 1, 500) } // TMDB'nin kendi üst sınırı 500 sayfa
+  }
+
   async function filtreUygula(e, ekleModuMu = false) {
     e?.preventDefault()
     if (!TMDB_API_KEY) return
@@ -174,28 +193,50 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
       ayarla('puanMin', minPuan)
       ayarla('imdbMin', minImdbPuan)
       ayarla('sirala', siralama !== 'popularity.desc' ? siralama : '')
+      // Yeni bir arama — önceki "Daha Fazla Yükle" derinliği artık geçersiz.
+      guncelParametreler.delete('sayfa')
       setAramaParametreleri(guncelParametreler)
     }
     setAramaYapildi(true)
     try {
-      const tarihAlani = tur === 'sinema' ? 'primary_release_date' : 'first_air_date'
-      const parcalar = [`api_key=${TMDB_API_KEY}`, 'language=tr-TR', `sort_by=${siralama}`, `page=${hedefSayfa}`]
-      if (seciliTur) parcalar.push(`with_genres=${seciliTur}`)
-      if (yilBaslangic) parcalar.push(`${tarihAlani}.gte=${yilBaslangic}-01-01`)
-      if (yilBitis) parcalar.push(`${tarihAlani}.lte=${yilBitis}-12-31`)
-      if (minPuan) parcalar.push(`vote_average.gte=${minPuan}`, 'vote_count.gte=20')
-      if (ulke) parcalar.push(`with_origin_country=${ulke}`)
-      if (sabitPlatformId) parcalar.push(`with_watch_providers=${sabitPlatformId}`, 'watch_region=TR', 'with_watch_monetization_types=flatrate')
-      const url = `https://api.themoviedb.org/3/discover/${uc}?${parcalar.join('&')}`
-      const res = await fetch(url)
-      const data = await res.json()
-      const sonuc = await omdbIleZenginlestirVeFiltrele(data.results || [])
+      const { sonuc, toplamSayfa: yeniToplamSayfa } = await tekSayfaGetir(hedefSayfa)
       setSonuclar((mevcut) => (ekleModuMu ? [...mevcut, ...sonuc] : sonuc))
       setSayfa(hedefSayfa)
-      setToplamSayfa(Math.min(data.total_pages || 1, 500)) // TMDB'nin kendi üst sınırı 500 sayfa
+      setToplamSayfa(yeniToplamSayfa)
+      // "Daha Fazla Yükle" ile inilen derinliği de URL'e yazıyoruz — bir
+      // filme/diziye girip "geri" dönüldüğünde, kaldığın noktaya kadar
+      // otomatik olarak yeniden yüklensin diye (bkz. hepsiniGeriYukle).
+      if (ekleModuMu) {
+        const guncel = new URLSearchParams(aramaParametreleri)
+        guncel.set('sayfa', String(hedefSayfa))
+        setAramaParametreleri(guncel, { replace: true })
+      }
     } finally {
       setYukleniyor(false)
       setDahaFazlaYukleniyor(false)
+    }
+  }
+
+  // Geri dönüşte URL'de sayfa=N varsa (kullanıcı N kez "Daha Fazla Yükle"
+  // demişti), 1'den N'e kadar TÜM sayfaları sırayla çekip tek seferde
+  // birleştiriyor — böylece kaldığı noktaya, tek tek "Daha Fazla Yükle"ye
+  // basmadan otomatik olarak geri dönüyor.
+  async function hepsiniGeriYukle(hedefSayfa) {
+    setYukleniyor(true)
+    setAramaYapildi(true)
+    try {
+      let birlesikSonuclar = []
+      let sonToplamSayfa = 1
+      for (let s = 1; s <= hedefSayfa; s++) {
+        const { sonuc, toplamSayfa: t } = await tekSayfaGetir(s)
+        birlesikSonuclar = [...birlesikSonuclar, ...sonuc]
+        sonToplamSayfa = t
+        setSonuclar(birlesikSonuclar)
+      }
+      setSayfa(hedefSayfa)
+      setToplamSayfa(sonToplamSayfa)
+    } finally {
+      setYukleniyor(false)
     }
   }
 

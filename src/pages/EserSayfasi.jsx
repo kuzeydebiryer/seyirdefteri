@@ -513,7 +513,7 @@ export default function EserSayfasi({ tur }) {
   useEffect(() => {
     if (!kullanici || !id) return
     let iptal = false
-    kullanicininSonKaydiGetir(kullanici.uid, tur, tur === 'kitap' ? id : Number(id)).then((kayit) => {
+    kullanicininSonKaydiGetir(kullanici.uid, tur, id).then((kayit) => {
       if (iptal || !kayit) return
       const tarih = typeof kayit.izlemeTarihi?.toDate === 'function' ? kayit.izlemeTarihi.toDate() : new Date(kayit.izlemeTarihi)
       if (!isNaN(tarih.getTime())) setGunlukTarihi(tarih.toISOString().slice(0, 10))
@@ -549,7 +549,7 @@ export default function EserSayfasi({ tur }) {
           tekrarMi: gunlukTekrar,
           olayTuru: 'izleme',
         })
-        const yeniKayit = await kullanicininSonKaydiGetir(kullanici.uid, tur, tur === 'kitap' ? id : Number(id))
+        const yeniKayit = await kullanicininSonKaydiGetir(kullanici.uid, tur, id)
         setMevcutGunlukKaydi(yeniKayit)
       }
       setTarihKaydedildi(true)
@@ -1133,7 +1133,7 @@ export default function EserSayfasi({ tur }) {
       // "Kaydet" butonunun ilk puanlamadan hemen sonra (sayfa yenilenmeden)
       // görünmesi için — mevcutGunlukKaydi state'i az önce oluşturduğumuz/
       // güncellediğimiz kayıtla senkron olsun.
-      kullanicininSonKaydiGetir(kullanici.uid, tur, tur === 'kitap' ? id : Number(id)).then(setMevcutGunlukKaydi)
+      kullanicininSonKaydiGetir(kullanici.uid, tur, id).then(setMevcutGunlukKaydi)
     } finally {
       setPuanKaydediliyor(false)
     }
