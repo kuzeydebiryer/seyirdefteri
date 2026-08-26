@@ -81,7 +81,7 @@ export default function EserSecici({ kategori, secili, onSecim, onTemizle }) {
     if (hedef === 'sinema' || hedef === 'dizi') {
       onSecim({
         tur: hedef,
-        disId: item.id,
+        disId: String(item.id),
         baslik: item.title || item.name,
         posterUrl: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '',
         yil: (item.release_date || item.first_air_date || '').slice(0, 4),
@@ -89,7 +89,7 @@ export default function EserSecici({ kategori, secili, onSecim, onTemizle }) {
     } else if (hedef === 'kisi') {
       onSecim({
         tur: 'kisi',
-        disId: item.id,
+        disId: String(item.id),
         baslik: item.name,
         posterUrl: item.profile_path ? `${TMDB_PROFIL}${item.profile_path}` : '',
         altBaslik: item.known_for_department || '',

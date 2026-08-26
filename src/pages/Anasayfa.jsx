@@ -98,8 +98,6 @@ export default function Anasayfa() {
 
       <PlatformYeniGelenlerBolumu />
 
-      <OdullerVitrini />
-
       <TavsiyeBolumu
         tur="kitap"
         tavsiyeler={kitapTavsiyeleri}
@@ -119,6 +117,8 @@ export default function Anasayfa() {
       <BugununDusuncesiWidget />
 
       <BugunAktifOlanlarBolumu />
+
+      <OdullerVitrini />
 
       <KulupEtkinlikleriOnizleme />
 
