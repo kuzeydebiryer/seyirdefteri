@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { platformYeniEklentiEkle } from '../utils/platformYeniEklenenler.js'
 import EserSecici from './EserSecici.jsx'
@@ -18,6 +19,7 @@ export default function PlatformYeniEklentiFormu({ platformlar }) {
   const [tarih, setTarih] = useState(bugun())
   const [gonderiliyor, setGonderiliyor] = useState(false)
   const [basariMesaji, setBasariMesaji] = useState('')
+  const [eklenenPlatform, setEklenenPlatform] = useState(null) // { id, ad } — az önce eklenenin nerede göründüğünü doğrudan göstermek için
 
   if (!kullanici) return null
 
@@ -39,6 +41,7 @@ export default function PlatformYeniEklentiFormu({ platformlar }) {
       })
       setSecili(null)
       setBasariMesaji(`"${secili.baslik}" eklendi.`)
+      setEklenenPlatform({ id: platformId, ad: platform?.provider_name || '' })
     } catch (err) {
       window.alert(`Eklenemedi: ${err.message || 'Bilinmeyen bir hata oluştu.'}`)
     } finally {
@@ -54,6 +57,10 @@ export default function PlatformYeniEklentiFormu({ platformlar }) {
 
       {acik && (
         <form onSubmit={eklemeYap} className="mt-2 max-w-md space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+          <p className="text-[11px] text-kraft">
+            Eklenen kayıt burada değil, seçtiğin platformun kendi sayfasında ("Son 30 Günde Eklenenler") ve anasayfadaki
+            "Platformlarda Yeni" widget'ında görünür.
+          </p>
           <div className="flex gap-1">
             {[
               { id: 'sinema', etiket: '🎬 Film' },
@@ -106,7 +113,19 @@ export default function PlatformYeniEklentiFormu({ platformlar }) {
             />
           </div>
 
-          {basariMesaji && <p className="text-xs text-gise">✓ {basariMesaji}</p>}
+          {basariMesaji && (
+            <p className="text-xs text-gise">
+              ✓ {basariMesaji}{' '}
+              {eklenenPlatform && (
+                <>
+                  —{' '}
+                  <Link to={`/platform/${eklenenPlatform.id}?ad=${encodeURIComponent(eklenenPlatform.ad)}`} className="text-deniz hover:underline">
+                    {eklenenPlatform.ad} sayfasında görüntüle
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
 
           <button
             type="submit"
