@@ -505,7 +505,7 @@ exports.yakindaGelenleriGecisYap = onSchedule({ schedule: '10 6 * * *', timeZone
         posterUrl: k.posterUrl,
         tespitTarihi: FieldValue.serverTimestamp(),
       })
-    } else {
+    } else if (k.hedefTuru === 'dijital') {
       await db.collection('dijitalYeniCikanlar').add({
         tur: k.tur,
         disId: k.disId,
@@ -513,11 +513,17 @@ exports.yakindaGelenleriGecisYap = onSchedule({ schedule: '10 6 * * *', timeZone
         alt: '',
         posterUrl: k.posterUrl,
         not: '',
+        platformEtiketi: '💻 Dijital',
         ekleyenId: k.ekleyenId,
         ekleyenAdi: k.ekleyenAdi,
         tarih: FieldValue.serverTimestamp(),
       })
     }
+    // hedefTuru === 'sinema' ise hiçbir yere taşınmıyor — vizyon tarihi
+    // geçince bu kaydın işi bitmiş demektir, "Sinemaya Yeni Çıkanlar" diye
+    // bir liste yok. Film daha sonra bir platforma/dijitale gelirse, o
+    // ayrı, kendi tarihiyle yeni bir "Yakında Geliyor" kaydı olarak elle
+    // eklenmesi gerekiyor — otomatik bağlanmıyor.
     await belge.ref.delete()
   }
 })

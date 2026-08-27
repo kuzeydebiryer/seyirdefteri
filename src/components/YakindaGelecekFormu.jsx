@@ -29,7 +29,7 @@ export default function YakindaGelecekFormu({ platformlar, onEklendi }) {
   // yapmıyor — kullanıcı zaten elle girmeye devam ediyordu.
   useEffect(() => {
     setTmdbBulunanNot('')
-    if (tur !== 'sinema' || !secili) return
+    if (tur !== 'sinema' || hedefTuru === 'sinema' || !secili) return
     let iptal = false
     setTmdbAraniyor(true)
     dijitalTarihGetir(secili.disId).then((sonuc) => {
@@ -47,7 +47,7 @@ export default function YakindaGelecekFormu({ platformlar, onEklendi }) {
     return () => {
       iptal = true
     }
-  }, [secili, tur])
+  }, [secili, tur, hedefTuru])
 
   if (!kullanici) return null
 
@@ -85,32 +85,47 @@ export default function YakindaGelecekFormu({ platformlar, onEklendi }) {
 
       {acik && (
         <form onSubmit={eklemeYap} className="mt-2 max-w-md space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-          <div className="flex gap-1">
-            {[
-              { id: 'sinema', etiket: '🎬 Film' },
-              { id: 'dizi', etiket: '📺 Dizi' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => {
-                  setTur(t.id)
-                  setSecili(null)
-                }}
-                className={`rounded-sm px-3 py-1 text-xs font-govde ${
-                  tur === t.id ? 'bg-murekkep text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
-                }`}
-              >
-                {t.etiket}
-              </button>
-            ))}
-          </div>
+          {hedefTuru !== 'sinema' && (
+            <div className="flex gap-1">
+              {[
+                { id: 'sinema', etiket: '🎬 Film' },
+                { id: 'dizi', etiket: '📺 Dizi' },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setTur(t.id)
+                    setSecili(null)
+                  }}
+                  className={`rounded-sm px-3 py-1 text-xs font-govde ${
+                    tur === t.id ? 'bg-murekkep text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
+                  }`}
+                >
+                  {t.etiket}
+                </button>
+              ))}
+            </div>
+          )}
 
           <EserSecici kategori={tur === 'sinema' ? 'Film' : 'Dizi'} secili={secili} onSecim={setSecili} onTemizle={() => setSecili(null)} />
 
           <div>
             <label className="mb-1 block text-[11px] text-kraft">Nereye geliyor?</label>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setHedefTuru('sinema')
+                  setTur('sinema') // Vizyon tarihi sadece film için anlamlı, dizi bu modda seçilemesin diye Film'e sabitleniyor.
+                  setSecili(null)
+                }}
+                className={`rounded-sm px-3 py-1 text-xs font-govde ${
+                  hedefTuru === 'sinema' ? 'bg-murekkep text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
+                }`}
+              >
+                🎬 Sinema (Vizyon)
+              </button>
               <button
                 type="button"
                 onClick={() => setHedefTuru('platform')}
@@ -130,6 +145,12 @@ export default function YakindaGelecekFormu({ platformlar, onEklendi }) {
                 💻 Genel Dijital
               </button>
             </div>
+            {hedefTuru === 'sinema' && (
+              <p className="mt-1 text-[11px] text-kraft">
+                Vizyon tarihi geçince bu kayıt otomatik olarak silinir — hiçbir listeye taşınmaz. Film daha sonra bir
+                platforma/dijitale gelirse, o zaman ayrı bir "Yakında Geliyor" kaydı açman gerekir.
+              </p>
+            )}
           </div>
 
           {hedefTuru === 'platform' && (
