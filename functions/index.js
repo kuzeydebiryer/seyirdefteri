@@ -670,6 +670,52 @@ exports.odulTahminHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: '
   }
 })
 
+// Dizi Bölüm Hatırlatması — her gün 09:00'da, "izliyorum"/"izleyeceğim"
+// işaretlenmiş dizilerin bir sonraki bölümü bugün ya da yarınsa hatırlatma
+// gönderiyor. TMDB isteklerini boşa harcamamak için her dizi (disId) için
+// TEK sorgu yapılıyor — o diziyi izleyen/izleyecek olan HERKESE aynı
+// sonuçla bildirim gönderiliyor, kullanıcı başına ayrı TMDB isteği yok.
+exports.diziBolumHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Europe/Istanbul', secrets: [TMDB_API_KEY] }, async () => {
+  const apiKey = TMDB_API_KEY.value()
+  const snap = await db.collection('izlenecekler').where('tur', '==', 'dizi').where('durum', 'in', ['okunuyor', 'planlanan']).get()
+
+  const diziBasinaKullanicilar = new Map()
+  snap.docs.forEach((d) => {
+    const veri = d.data()
+    if (!diziBasinaKullanicilar.has(veri.disId)) diziBasinaKullanicilar.set(veri.disId, { baslik: veri.baslik, kullaniciIdler: [] })
+    diziBasinaKullanicilar.get(veri.disId).kullaniciIdler.push(veri.kullaniciId)
+  })
+
+  const bugunISO = new Date().toISOString().slice(0, 10)
+  const yarin = new Date()
+  yarin.setDate(yarin.getDate() + 1)
+  const yarinISO = yarin.toISOString().slice(0, 10)
+
+  for (const [disId, bilgi] of diziBasinaKullanicilar) {
+    try {
+      const res = await fetch(`https://api.themoviedb.org/3/tv/${disId}?api_key=${apiKey}&language=tr-TR`)
+      if (!res.ok) continue
+      const data = await res.json()
+      const bolum = data.next_episode_to_air
+      if (!bolum?.air_date) continue
+
+      let zamanIfadesi = null
+      if (bolum.air_date === bugunISO) zamanIfadesi = 'bugün'
+      else if (bolum.air_date === yarinISO) zamanIfadesi = 'yarın'
+      if (!zamanIfadesi) continue
+
+      await bildirimleriYazVeGonder([...new Set(bilgi.kullaniciIdler)], {
+        tur: 'dizi_bolum_hatirlatma',
+        baslik: '📺 Yeni bölüm geliyor',
+        govde: `${bilgi.baslik} — S${bolum.season_number}B${bolum.episode_number} ${zamanIfadesi} yayınlanıyor`,
+        url: `/dizi/${disId}`,
+      })
+    } catch {
+      // Tek bir dizinin TMDB isteği başarısız olursa diğerlerini etkilemesin.
+    }
+  }
+})
+
 // --- Instagram Gömme --------------------------------------------------
 // 15 Haziran 2026'dan beri Meta'nın oEmbed uç noktası TOKEN GEREKTİRMİYOR
 // (2020-2026 arası zorunluydu, kaldırıldı) — yine de tarayıcıdan doğrudan

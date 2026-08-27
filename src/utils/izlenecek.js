@@ -158,9 +158,19 @@ export async function topluluktaSuankiOkunanlariGetir(tur, limitSayisi = 6) {
 // "Yaklaşan Bölümler" widget'ı için — kullanıcının durum:'okunuyor' olan TÜM
 // dizilerini getirir (suankiOkunanKitabiGetir'den farkı: tek değil, hepsi —
 // biri aynı anda birkaç diziyi takip ediyor olabilir).
+// "İzliyorum" (okunuyor) + "İzleyeceklerim" (planlanan) — sadece o an
+// izlenen değil, takip edilen her dizi dahil. Sadece "okunuyor" ile
+// sınırlıyken liste çoğu zaman boş kalıyordu (widget'ın "hiç görünmüyor"
+// sorununun kaynağı buydu) — henüz başlamadığın ama takip ettiğin bir
+// dizinin yeni bölümü geldiğinde bilmek de değerli.
 export async function kullanicininIzlemekteOlduguDizileriGetir(uid) {
   if (!uid) return []
-  const q = query(collection(db, 'izlenecekler'), where('kullaniciId', '==', uid), where('tur', '==', 'dizi'), where('durum', '==', 'okunuyor'))
+  const q = query(
+    collection(db, 'izlenecekler'),
+    where('kullaniciId', '==', uid),
+    where('tur', '==', 'dizi'),
+    where('durum', 'in', ['okunuyor', 'planlanan'])
+  )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
