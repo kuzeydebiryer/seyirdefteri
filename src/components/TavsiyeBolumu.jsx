@@ -81,7 +81,7 @@ export default function TavsiyeBolumu({
     if (!secili || !kullanici) return
     setKaydediliyor(true)
     try {
-      await tavsiyeEkle({ tur, ...secili, not: not_, kullanici, koleksiyon })
+      await tavsiyeEkle({ tur, ...secili, not: not_, kullanici, koleksiyon, platformEtiketi: rozetMetni })
       setSecili(null)
       setNot_('')
       setFormuAcik(false)
@@ -274,9 +274,9 @@ export default function TavsiyeBolumu({
                   <Link to={esereLink(t.disId)} className="block">
                     <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                       {t.posterUrl && <img src={t.posterUrl} alt={t.baslik} className="h-full w-full object-cover" />}
-                      {rozetMetni && (
+                      {(t.platformEtiketi || rozetMetni) && (
                         <span className="absolute bottom-1 left-1 rounded-full bg-murekkep/85 px-1.5 py-0.5 text-[9px] text-kagit">
-                          {rozetMetni}
+                          {t.platformEtiketi || rozetMetni}
                         </span>
                       )}
                     </div>

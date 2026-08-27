@@ -16,6 +16,13 @@ function gunSayisi(cikisTarihi) {
 // ızgarasındaki "💻 Dijital" karosu buraya yönleniyor.
 export default function DijitalSayfasi() {
   const { tavsiyeler: dijitalYeniCikanlar, yenidenYukle } = useTavsiyeler('sinema', 'dijitalYeniCikanlar')
+  // Bu sayfa SADECE hiçbir platforma bağlı olmayan ("💻 Dijital" etiketli)
+  // kayıtları gösteriyor — MUBI/HBO gibi belirli bir platforma eklenip
+  // buraya otomatik çapraz kaydolanlar burada TEKRAR gösterilmiyor, onlar
+  // zaten kendi platform sayfalarında duruyor. Eski (platformEtiketi alanı
+  // hiç olmayan) kayıtlar da "Dijital" sayılıyor — bu sayfa zaten var olma
+  // amaçları oydu.
+  const dijitalEtiketliler = dijitalYeniCikanlar.filter((t) => !t.platformEtiketi || t.platformEtiketi === '💻 Dijital')
   const [yakindaDijital, setYakindaDijital] = useState(null)
 
   useEffect(() => {
@@ -60,7 +67,7 @@ export default function DijitalSayfasi() {
       <TavsiyeBolumu
         tur="sinema"
         koleksiyon="dijitalYeniCikanlar"
-        tavsiyeler={dijitalYeniCikanlar}
+        tavsiyeler={dijitalEtiketliler}
         yenidenYukle={yenidenYukle}
         baslik="Dijitalde Yeni Çıkanlar"
         ekleButonuMetni="+ Film Ekle"

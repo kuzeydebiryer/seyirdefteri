@@ -72,6 +72,12 @@ export async function platformYeniEklentiEkle({ platformId, platformAdi, tur, di
       alt: '',
       posterUrl: posterUrl || '',
       not: '',
+      // Genel "💻 Dijital" etiketi DEĞİL — bu kayıt belirli bir platforma
+      // (MUBI, HBO Max, Netflix...) eklendiği için, "Dijitalde Yeni
+      // Çıkanlar"daki kartı da o platformun adını taşıyor. "💻 Dijital"
+      // etiketi sadece hiçbir platforma bağlı olmayan, doğrudan bu listeye
+      // eklenen kayıtlar için kullanılıyor (bkz. TavsiyeBolumu.jsx).
+      platformEtiketi: platformAdi,
       ekleyenId: kullanici.uid,
       ekleyenAdi: kullanici.displayName || 'İsimsiz',
       tarih: serverTimestamp(),
