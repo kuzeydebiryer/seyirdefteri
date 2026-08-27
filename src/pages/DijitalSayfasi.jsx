@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
-import YatayKaydirma from '../components/YatayKaydirma.jsx'
 import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
 import { yakindaGelecekleriGetir } from '../utils/yakindaGelecek.js'
 
@@ -48,11 +47,11 @@ export default function DijitalSayfasi() {
       {yakindaDijital && yakindaDijital.length > 0 && (
         <div className="mb-8">
           <h2 className="mb-3 font-baslik text-lg text-murekkep">📅 Yakında Geliyor</h2>
-          <YatayKaydirma>
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
             {yakindaDijital.map((k) => {
               const gun = gunSayisi(k.cikisTarihi)
               return (
-                <Link key={k.id} to={`/${k.tur === 'sinema' ? 'film' : 'dizi'}/${k.disId}`} className="shrink-0" style={{ width: 110 }}>
+                <Link key={k.id} to={`/${k.tur === 'sinema' ? 'film' : 'dizi'}/${k.disId}`}>
                   <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                     {k.posterUrl ? (
                       <img src={k.posterUrl} alt={k.baslik} className="h-full w-full object-cover" />
@@ -65,36 +64,37 @@ export default function DijitalSayfasi() {
                 </Link>
               )
             })}
-          </YatayKaydirma>
+          </div>
         </div>
       )}
 
-      <h2 className="mb-3 font-baslik text-lg text-murekkep">Dijitalde Yeni Çıkanlar</h2>
-      <div className="mb-4 flex flex-wrap gap-2">
-        {[
-          { id: 'dijital', etiket: '💻 Dijital' },
-          { id: 'platform', etiket: '📡 Platform' },
-          { id: 'tumu', etiket: 'Tümü' },
-        ].map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFiltre(f.id)}
-            className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
-              filtre === f.id ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagitKoyu text-kraft ring-cizgi'
-            }`}
-          >
-            {f.etiket}
-          </button>
-        ))}
-      </div>
       <TavsiyeBolumu
         tur="sinema"
         koleksiyon="dijitalYeniCikanlar"
         tavsiyeler={gosterilecekler}
         yenidenYukle={yenidenYukle}
-        baslik={null}
+        baslik="Dijitalde Yeni Çıkanlar"
         ekleButonuMetni="+ Film Ekle"
         rozetMetni="💻 Dijital"
+        araIcerik={
+          <div className="mb-3 flex flex-wrap gap-2">
+            {[
+              { id: 'dijital', etiket: '💻 Dijital' },
+              { id: 'platform', etiket: '📡 Platform' },
+              { id: 'tumu', etiket: 'Tümü' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFiltre(f.id)}
+                className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
+                  filtre === f.id ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagitKoyu text-kraft ring-cizgi'
+                }`}
+              >
+                {f.etiket}
+              </button>
+            ))}
+          </div>
+        }
       />
     </div>
   )

@@ -50,7 +50,7 @@ export default function YakindaGeliyorSayfasi() {
       </Link>
       <h1 className="mt-1 mb-6 font-baslik text-2xl text-murekkep">📅 Yakında Geliyor</h1>
 
-      <YakindaGelecekler yenilemeTetik={yenile} />
+      <YakindaGelecekler yenilemeTetik={yenile} izgara baslikGoster={false} />
       {platformlar && <YakindaGelecekFormu platformlar={platformlar} onEklendi={() => setYenile((n) => n + 1)} />}
     </div>
   )

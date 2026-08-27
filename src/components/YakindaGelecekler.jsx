@@ -9,12 +9,15 @@ function gunSayisi(cikisTarihi) {
   return Math.round(fark / (1000 * 60 * 60 * 24))
 }
 
-// Platformlar sayfasının en üstünde — geleceğe dönük duyurular, en yakın
+// Platformlar sayfasının en üstünde (yatay şerit, kısa önizleme) ve kendi
+// bağımsız sayfasında (/yakinda-geliyor, izgara=true — yukarıdan aşağıya
+// uzanan tam bir poster ızgarası, "Tümünü Gör" sayfası bu şekilde olmalı,
+// kayan şerit değil) kullanılıyor. Geleceğe dönük duyurular, en yakın
 // tarihten en uzağa sıralı. Çıkış tarihi geldiğinde bir Cloud Function
 // (yakindaGelenleriGecisYap) bunu otomatik olarak ilgili listeye
 // (platformYeniEklenenler ya da dijitalYeniCikanlar) taşıyıp buradan
 // kaldırıyor — elle silmeye gerek kalmıyor.
-export default function YakindaGelecekler({ yenilemeTetik, tumunuGorLink }) {
+export default function YakindaGelecekler({ yenilemeTetik, tumunuGorLink, izgara = false, baslikGoster = true }) {
   const { kullanici } = useAuth()
   const [liste, setListe] = useState(null)
   const [filtre, setFiltre] = useState('tumu')
@@ -44,16 +47,45 @@ export default function YakindaGelecekler({ yenilemeTetik, tumunuGorLink }) {
       return true
     }) || []
 
-  return (
-    <div className="mb-8">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-baslik text-lg text-murekkep">📅 Yakında Geliyor</h2>
-        {tumunuGorLink && (
-          <Link to={tumunuGorLink} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
-            Tümünü Gör ›
-          </Link>
+  const kartlar = gosterilecekler.map((k) => {
+    const gun = gunSayisi(k.cikisTarihi)
+    return (
+      <div key={k.id} className={izgara ? '' : 'shrink-0'} style={izgara ? {} : { width: 110 }}>
+        <Link to={`/${k.tur === 'sinema' ? 'film' : 'dizi'}/${k.disId}`}>
+          <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+            {k.posterUrl ? (
+              <img src={k.posterUrl} alt={k.baslik} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">🎬</div>
+            )}
+            <span className="absolute bottom-1 left-1 rounded-full bg-murekkep/85 px-1.5 py-0.5 text-[9px] text-kagit">
+              {k.hedefTuru === 'platform' ? k.platformAdi : k.hedefTuru === 'sinema' ? '🎥 Sinema' : '💻 Dijital'}
+            </span>
+          </div>
+          <p className="mt-1 truncate text-[11px] text-murekkep">{k.baslik}</p>
+        </Link>
+        <p className="text-[10px] text-gise">{gun === 0 ? 'Bugün! 🎉' : gun === 1 ? 'Yarın' : `${gun} gün sonra`}</p>
+        {kullanici?.uid === k.ekleyenId && (
+          <button onClick={() => silTiklandi(k.id)} className="text-[10px] text-kraft hover:text-muhur">
+            Sil
+          </button>
         )}
       </div>
+    )
+  })
+
+  return (
+    <div className="mb-8">
+      {baslikGoster && (
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-baslik text-lg text-murekkep">📅 Yakında Geliyor</h2>
+          {tumunuGorLink && (
+            <Link to={tumunuGorLink} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
+              Tümünü Gör ›
+            </Link>
+          )}
+        </div>
+      )}
       <div className="mb-3 flex flex-wrap gap-2">
         {[
           { id: 'tumu', etiket: 'Tümü' },
@@ -74,35 +106,10 @@ export default function YakindaGelecekler({ yenilemeTetik, tumunuGorLink }) {
       </div>
       {gosterilecekler.length === 0 ? (
         <p className="text-sm text-kraft">Bu kategoride yakında gelecek bir şey yok.</p>
+      ) : izgara ? (
+        <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">{kartlar}</div>
       ) : (
-        <YatayKaydirma>
-          {gosterilecekler.map((k) => {
-            const gun = gunSayisi(k.cikisTarihi)
-            return (
-              <div key={k.id} className="shrink-0" style={{ width: 110 }}>
-                <Link to={`/${k.tur === 'sinema' ? 'film' : 'dizi'}/${k.disId}`}>
-                  <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                    {k.posterUrl ? (
-                      <img src={k.posterUrl} alt={k.baslik} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">🎬</div>
-                    )}
-                    <span className="absolute bottom-1 left-1 rounded-full bg-murekkep/85 px-1.5 py-0.5 text-[9px] text-kagit">
-                      {k.hedefTuru === 'platform' ? k.platformAdi : k.hedefTuru === 'sinema' ? '🎥 Sinema' : '💻 Dijital'}
-                    </span>
-                  </div>
-                  <p className="mt-1 truncate text-[11px] text-murekkep">{k.baslik}</p>
-                </Link>
-                <p className="text-[10px] text-gise">{gun === 0 ? 'Bugün! 🎉' : gun === 1 ? 'Yarın' : `${gun} gün sonra`}</p>
-                {kullanici?.uid === k.ekleyenId && (
-                  <button onClick={() => silTiklandi(k.id)} className="text-[10px] text-kraft hover:text-muhur">
-                    Sil
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </YatayKaydirma>
+        <YatayKaydirma>{kartlar}</YatayKaydirma>
       )}
     </div>
   )

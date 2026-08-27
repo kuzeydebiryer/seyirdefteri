@@ -26,6 +26,10 @@ export default function TavsiyeBolumu({
   // Diğer TavsiyeBolumu kullanımlarını (Film/Kitap Tavsiyeleri, Yeni Gelen
   // Filmler) etkilemesin diye varsayılan boş.
   rozetMetni = null,
+  // Sadece "Dijitalde Yeni Çıkanlar" gibi filtre şeridi gerektiren
+  // kullanımlar için: başlık satırı ile liste arasına keyfi içerik
+  // (filtre butonları gibi) yerleştirmeyi sağlıyor. Diğer kullanımlarda boş.
+  araIcerik = null,
 }) {
   const { kullanici } = useAuth()
   const [formuAcik, setFormuAcik] = useState(false)
@@ -154,6 +158,8 @@ export default function TavsiyeBolumu({
           </div>
         </div>
       )}
+
+      {araIcerik}
 
       {formuAcik && (
         <div className="mb-4 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">

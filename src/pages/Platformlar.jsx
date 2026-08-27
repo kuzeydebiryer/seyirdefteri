@@ -30,7 +30,17 @@ const TANIDIK_PLATFORMLAR = [
 export default function Platformlar() {
   const [platformlar, setPlatformlar] = useState(null)
   const [yakindaYenile, setYakindaYenile] = useState(0)
+  const [dijitalFiltre, setDijitalFiltre] = useState('tumu')
   const { tavsiyeler: dijitalYeniCikanlar, yenidenYukle: dijitalYeniCikanlarYenile } = useTavsiyeler('sinema', 'dijitalYeniCikanlar')
+
+  // DijitalSayfasi.jsx'teki (/platform/dijital) filtreyle birebir aynı
+  // mantık — burası sadece kısa bir önizleme olduğu için varsayılan "Tümü",
+  // orada varsayılan "Dijital" (karodan geldiği için).
+  const dijitalGosterilecekler = dijitalYeniCikanlar.filter((t) => {
+    if (dijitalFiltre === 'tumu') return true
+    if (dijitalFiltre === 'dijital') return !t.platformEtiketi || t.platformEtiketi === '💻 Dijital'
+    return t.platformEtiketi && t.platformEtiketi !== '💻 Dijital'
+  })
 
   useEffect(() => {
     if (!TMDB_API_KEY) return
@@ -63,7 +73,7 @@ export default function Platformlar() {
       <TavsiyeBolumu
         tur="sinema"
         koleksiyon="dijitalYeniCikanlar"
-        tavsiyeler={dijitalYeniCikanlar}
+        tavsiyeler={dijitalGosterilecekler}
         yenidenYukle={dijitalYeniCikanlarYenile}
         yatay
         sade
@@ -71,6 +81,25 @@ export default function Platformlar() {
         ekleButonuMetni="+ Film Ekle"
         rozetMetni="💻 Dijital"
         tumunuGorLink="/platform/dijital"
+        araIcerik={
+          <div className="mb-3 flex flex-wrap gap-2">
+            {[
+              { id: 'tumu', etiket: 'Tümü' },
+              { id: 'dijital', etiket: '💻 Dijital' },
+              { id: 'platform', etiket: '📡 Platform' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setDijitalFiltre(f.id)}
+                className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
+                  dijitalFiltre === f.id ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagitKoyu text-kraft ring-cizgi'
+                }`}
+              >
+                {f.etiket}
+              </button>
+            ))}
+          </div>
+        }
       />
 
       {platformlar && <PlatformYeniEklentiFormu platformlar={platformlar} />}
