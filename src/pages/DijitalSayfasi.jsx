@@ -15,7 +15,7 @@ function gunSayisi(cikisTarihi) {
 // ızgarasındaki "💻 Dijital" karosu buraya yönleniyor.
 export default function DijitalSayfasi() {
   const { tavsiyeler: dijitalYeniCikanlar, yenidenYukle } = useTavsiyeler('sinema', 'dijitalYeniCikanlar')
-  const [filtre, setFiltre] = useState('dijital') // Karodan gelindiği için varsayılan "Dijital" — sayfanın asıl amacı buydu.
+  const [filtre, setFiltre] = useState('tumu')
   const [yakindaDijital, setYakindaDijital] = useState(null)
 
   useEffect(() => {
@@ -79,9 +79,9 @@ export default function DijitalSayfasi() {
         araIcerik={
           <div className="mb-3 flex flex-wrap gap-2">
             {[
+              { id: 'tumu', etiket: 'Tümü' },
               { id: 'dijital', etiket: '💻 Dijital' },
               { id: 'platform', etiket: '📡 Platform' },
-              { id: 'tumu', etiket: 'Tümü' },
             ].map((f) => (
               <button
                 key={f.id}
