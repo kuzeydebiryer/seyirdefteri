@@ -69,6 +69,7 @@ export default function Platformlar() {
         sade
         baslik="Dijitalde Yeni Çıkanlar"
         ekleButonuMetni="+ Film Ekle"
+        rozetMetni="💻 Dijital"
       />
 
       {platformlar && <PlatformYeniEklentiFormu platformlar={platformlar} />}
@@ -90,6 +91,17 @@ export default function Platformlar() {
             <p className="text-center text-xs text-murekkep">{p.provider_name}</p>
           </Link>
         ))}
+        {/* Gerçek bir TMDB platformu değil — "belirli bir platformda değil
+            ama dijital VOD ile evde izlenebilir" anlamına gelen, kendi
+            oluşturduğumuz özel bir kategori. Aynı görsel dilde, ızgaranın
+            sonunda. */}
+        <Link
+          to="/platform/dijital"
+          className="flex flex-col items-center gap-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi transition hover:ring-deniz/50"
+        >
+          <span className="flex h-14 w-14 items-center justify-center rounded-sm bg-kagit text-2xl">💻</span>
+          <p className="text-center text-xs text-murekkep">Dijital</p>
+        </Link>
       </div>
     </div>
   )

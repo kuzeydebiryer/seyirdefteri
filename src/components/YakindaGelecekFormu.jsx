@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { yakindaGelenEkle } from '../utils/yakindaGelecek.js'
+import { dijitalTarihGetir } from '../utils/dijitalTarih.js'
 import EserSecici from './EserSecici.jsx'
 
 const yarin = () => {
@@ -18,6 +19,35 @@ export default function YakindaGelecekFormu({ platformlar, onEklendi }) {
   const [platformId, setPlatformId] = useState('')
   const [cikisTarihi, setCikisTarihi] = useState(yarin())
   const [gonderiliyor, setGonderiliyor] = useState(false)
+  const [tmdbAraniyor, setTmdbAraniyor] = useState(false)
+  const [tmdbBulunanNot, setTmdbBulunanNot] = useState('')
+
+  // Film seçilince TMDB'de dijital çıkış tarihi var mı diye otomatik bakılıyor
+  // — bu, topluluk tarafından isteğe bağlı girilen, çoğu filmde boş olabilen
+  // bir veri (bkz. utils/dijitalTarih.js). Bulunursa tarihi otomatik
+  // dolduruyor (elle değiştirilebilir), bulunamazsa sessizce hiçbir şey
+  // yapmıyor — kullanıcı zaten elle girmeye devam ediyordu.
+  useEffect(() => {
+    setTmdbBulunanNot('')
+    if (tur !== 'sinema' || !secili) return
+    let iptal = false
+    setTmdbAraniyor(true)
+    dijitalTarihGetir(secili.disId).then((sonuc) => {
+      if (iptal) return
+      setTmdbAraniyor(false)
+      // TMDB'nin bulduğu tarih bugün ya da geçmişse (film zaten dijitale
+      // çıkmış demektir) doldurmuyoruz — bu form "yakında" içindir, "yarin()"
+      // alt sınırına takılıp form hata verirdi. Böyle bir durumda kullanıcı
+      // muhtemelen doğrudan "Dijitalde Yeni Çıkanlar"a eklemeli.
+      if (sonuc && sonuc.tarih > new Date().toISOString().slice(0, 10)) {
+        setCikisTarihi(sonuc.tarih)
+        setTmdbBulunanNot(sonuc.platformNotu ? `TMDB'de bulundu (${sonuc.platformNotu})` : "TMDB'de bulundu")
+      }
+    })
+    return () => {
+      iptal = true
+    }
+  }, [secili, tur])
 
   if (!kullanici) return null
 
@@ -131,6 +161,8 @@ export default function YakindaGelecekFormu({ platformlar, onEklendi }) {
               required
               className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
             />
+            {tmdbAraniyor && <p className="mt-1 text-[11px] text-kraft">TMDB'de dijital tarih aranıyor...</p>}
+            {tmdbBulunanNot && <p className="mt-1 text-[11px] text-gise">✓ {tmdbBulunanNot} — tarih otomatik dolduruldu, dilersen değiştir.</p>}
           </div>
 
           <button

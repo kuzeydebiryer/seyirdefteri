@@ -3,14 +3,22 @@ import { Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { topluluktaSuankiOkunanlariGetir } from '../utils/izlenecek.js'
+import { sonrakiBolumBilgisiGetir } from '../utils/diziBolum.js'
 import Avatar from './Avatar.jsx'
+
+function gunSayisi(tarih) {
+  const fark = new Date(tarih) - new Date(new Date().toISOString().slice(0, 10))
+  return Math.round(fark / (1000 * 60 * 60 * 24))
+}
 
 // Kitap Dünyası widget'ının dizi karşılığı — topluluğun o an "izliyorum"
 // (durum: 'okunuyor') olarak işaretlediği dizileri, kim izlediği ve hangi
 // sezon/bölümde olduğu bilgisiyle gösterir. Toplam bölüm sayısı izlenecek
 // kaydında tutulmadığı için (sadece mevcutSezon/mevcutBolum) yüzdelik bir
-// ilerleme çubuğu yerine sade "Sezon X · Bölüm Y" metni kullanılıyor — bu,
-// her kart için ayrı bir TMDB isteği atmaktan kaçınıyor.
+// ilerleme çubuğu yerine sade "Sezon X · Bölüm Y" metni kullanılıyor.
+// Liste en fazla 6 kayıt olduğu için (topluluktaSuankiOkunanlariGetir'in
+// limiti), her karta bir sonraki bölüm tarihini de (next_episode_to_air)
+// ayrıca çekmek — devam eden dizi ise — makul bir maliyet.
 const VURGU_RENKLERI = [
   { arka: 'bg-muhur/10', dolu: 'bg-muhur' },
   { arka: 'bg-deniz/10', dolu: 'bg-deniz' },
@@ -34,7 +42,8 @@ export default function DiziDunyasiWidget() {
             profilOnbellek[k.kullaniciId] = snap.exists() ? snap.data() : {}
           }
           const profil = profilOnbellek[k.kullaniciId]
-          return { ...k, kullaniciAdi: profil.adSoyad || 'Biri', kullaniciAvatarUrl: profil.avatarUrl || '' }
+          const sonrakiBolum = await sonrakiBolumBilgisiGetir(k.disId)
+          return { ...k, kullaniciAdi: profil.adSoyad || 'Biri', kullaniciAvatarUrl: profil.avatarUrl || '', sonrakiBolum }
         })
       )
 
@@ -76,6 +85,15 @@ export default function DiziDunyasiWidget() {
                 {d.mevcutSezon != null && (
                   <p className="text-xs text-kraft">
                     Sezon {d.mevcutSezon} · Bölüm {d.mevcutBolum || 0}
+                  </p>
+                )}
+                {d.sonrakiBolum && (
+                  <p className="text-[11px] text-gise">
+                    📅 S{d.sonrakiBolum.sezonNo}B{d.sonrakiBolum.bolumNo}:{' '}
+                    {(() => {
+                      const gun = gunSayisi(d.sonrakiBolum.tarih)
+                      return gun === 0 ? 'bugün!' : gun === 1 ? 'yarın' : gun > 0 ? `${gun} gün sonra` : 'yayınlandı'
+                    })()}
                   </p>
                 )}
               </div>

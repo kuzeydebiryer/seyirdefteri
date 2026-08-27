@@ -20,6 +20,12 @@ export default function TavsiyeBolumu({
   // başlık + ince bir "Tümünü Gör" oku, renkli buton/ekleme formu yok.
   // Ekleme işlevi artık kendi bağımsız sayfasında (bkz. TavsiyelerSayfasi.jsx).
   sade = false,
+  // Sadece "Dijitalde Yeni Çıkanlar" için: posterin üstüne küçük bir rozet
+  // bindiriyor (platform kartlarındaki rozetlerle aynı görsel dil) — "bu,
+  // belirli bir platforma değil, genel dijital VOD'a ait" anlamını taşıyor.
+  // Diğer TavsiyeBolumu kullanımlarını (Film/Kitap Tavsiyeleri, Yeni Gelen
+  // Filmler) etkilemesin diye varsayılan boş.
+  rozetMetni = null,
 }) {
   const { kullanici } = useAuth()
   const [formuAcik, setFormuAcik] = useState(false)
@@ -268,6 +274,11 @@ export default function TavsiyeBolumu({
                   <Link to={esereLink(t.disId)} className="block">
                     <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                       {t.posterUrl && <img src={t.posterUrl} alt={t.baslik} className="h-full w-full object-cover" />}
+                      {rozetMetni && (
+                        <span className="absolute bottom-1 left-1 rounded-full bg-murekkep/85 px-1.5 py-0.5 text-[9px] text-kagit">
+                          {rozetMetni}
+                        </span>
+                      )}
                     </div>
                     <p className="mt-1 truncate text-xs text-murekkep">{t.baslik}</p>
                     {t.alt && <p className="truncate text-[11px] text-kraft">{t.alt}</p>}

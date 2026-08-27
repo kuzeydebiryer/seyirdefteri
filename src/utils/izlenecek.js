@@ -154,3 +154,13 @@ export async function topluluktaSuankiOkunanlariGetir(tur, limitSayisi = 6) {
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
+
+// "Yaklaşan Bölümler" widget'ı için — kullanıcının durum:'okunuyor' olan TÜM
+// dizilerini getirir (suankiOkunanKitabiGetir'den farkı: tek değil, hepsi —
+// biri aynı anda birkaç diziyi takip ediyor olabilir).
+export async function kullanicininIzlemekteOlduguDizileriGetir(uid) {
+  if (!uid) return []
+  const q = query(collection(db, 'izlenecekler'), where('kullaniciId', '==', uid), where('tur', '==', 'dizi'), where('durum', '==', 'okunuyor'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
