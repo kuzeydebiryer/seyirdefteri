@@ -441,6 +441,29 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
     }
 
+    // Dijitalde Yeni Çıkanlar: Platformlar bölümünde elle eklenen, "artık
+    // dijitalde/VOD'da izlenebilir" film şeridi — Yeni Gelen Filmler'den
+    // (vizyona giriş) kavramsal olarak farklı bir aşama (dijitale düşüş),
+    // bu yüzden ayrı bir koleksiyonda. Yapı birebir aynı.
+    match /dijitalYeniCikanlar/{filmId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
+    // Yakında Gelecekler: "X filmi Y tarihinde Z platformuna/dijitale
+    // geliyor" — geleceğe dönük duyuru. Çıkış tarihi geldiğinde bir Cloud
+    // Function (yakindaGelenleriGecisYap) bunu otomatik olarak
+    // platformYeniEklenenler ya da dijitalYeniCikanlar'a taşıyıp buradan
+    // siliyor — admin SDK ile, kurallara tabi değil.
+    match /yakindaGelecekler/{belgeId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
     // Haberler: Film/Dizi/Oyuncu bölümlerindeki kısa duyurular.
     match /haberler/{haberId} {
       allow read: if true;

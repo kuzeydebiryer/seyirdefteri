@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PlatformYeniEklentiFormu from '../components/PlatformYeniEklentiFormu.jsx'
+import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
+import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
+import YakindaGelecekler from '../components/YakindaGelecekler.jsx'
+import YakindaGelecekFormu from '../components/YakindaGelecekFormu.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_LOGO = 'https://image.tmdb.org/t/p/w200'
@@ -25,6 +29,8 @@ const TANIDIK_PLATFORMLAR = [
 
 export default function Platformlar() {
   const [platformlar, setPlatformlar] = useState(null)
+  const [yakindaYenile, setYakindaYenile] = useState(0)
+  const { tavsiyeler: dijitalYeniCikanlar, yenidenYukle: dijitalYeniCikanlarYenile } = useTavsiyeler('sinema', 'dijitalYeniCikanlar')
 
   useEffect(() => {
     if (!TMDB_API_KEY) return
@@ -50,6 +56,20 @@ export default function Platformlar() {
     <div>
       <h1 className="mb-1 font-baslik text-2xl text-murekkep">📡 Platformlar</h1>
       <p className="mb-6 text-sm text-kraft">Bir platform seç, o an abonelikle izlenebilen film ve dizileri keşfet.</p>
+
+      <YakindaGelecekler yenilemeTetik={yakindaYenile} />
+      {platformlar && <YakindaGelecekFormu platformlar={platformlar} onEklendi={() => setYakindaYenile((n) => n + 1)} />}
+
+      <TavsiyeBolumu
+        tur="sinema"
+        koleksiyon="dijitalYeniCikanlar"
+        tavsiyeler={dijitalYeniCikanlar}
+        yenidenYukle={dijitalYeniCikanlarYenile}
+        yatay
+        sade
+        baslik="Dijitalde Yeni Çıkanlar"
+        ekleButonuMetni="+ Film Ekle"
+      />
 
       {platformlar && <PlatformYeniEklentiFormu platformlar={platformlar} />}
 

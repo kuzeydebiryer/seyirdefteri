@@ -482,6 +482,46 @@ exports.platformYeniEklenenleriTespitEt = onSchedule({ schedule: '0 6 * * *', ti
   }
 })
 
+// Yakında Gelecekler → otomatik geçiş. Her gün 06:00'da (platform tespitiyle
+// aynı saatte), çıkış tarihi bugüne gelmiş ya da geçmiş duyuruları bulup,
+// hedefTuru'ye göre doğru listeye (platformYeniEklenenler ya da
+// dijitalYeniCikanlar) TAŞIYOR — aynı verileri yeni bir dokümana yazıp
+// eskisini siliyor. Kullanıcı elle silmek zorunda kalmıyor, "Yakında
+// Geliyor" listesi kendiliğinden temizleniyor ve içerik doğru yerde
+// (platform sayfası / Dijitalde Yeni Çıkanlar) belirmeye devam ediyor.
+exports.yakindaGelenleriGecisYap = onSchedule({ schedule: '10 6 * * *', timeZone: 'Europe/Istanbul' }, async () => {
+  const bugunISO = new Date().toISOString().slice(0, 10)
+  const snap = await db.collection('yakindaGelecekler').where('cikisTarihi', '<=', bugunISO).get()
+
+  for (const belge of snap.docs) {
+    const k = belge.data()
+    if (k.hedefTuru === 'platform') {
+      await db.collection('platformYeniEklenenler').add({
+        platformId: k.platformId,
+        platformAdi: k.platformAdi,
+        tur: k.tur,
+        disId: k.disId,
+        baslik: k.baslik,
+        posterUrl: k.posterUrl,
+        tespitTarihi: FieldValue.serverTimestamp(),
+      })
+    } else {
+      await db.collection('dijitalYeniCikanlar').add({
+        tur: k.tur,
+        disId: k.disId,
+        baslik: k.baslik,
+        alt: '',
+        posterUrl: k.posterUrl,
+        not: '',
+        ekleyenId: k.ekleyenId,
+        ekleyenAdi: k.ekleyenAdi,
+        tarih: FieldValue.serverTimestamp(),
+      })
+    }
+    await belge.ref.delete()
+  }
+})
+
 exports.geziUcusCheckInHatirlatmasi = onSchedule({ schedule: '0 9 * * *', timeZone: 'Europe/Istanbul' }, async () => {
   const hedefGunBaslangic = new Date()
   hedefGunBaslangic.setDate(hedefGunBaslangic.getDate() + 7)
