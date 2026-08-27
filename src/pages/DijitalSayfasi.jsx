@@ -16,18 +16,23 @@ function gunSayisi(cikisTarihi) {
 // ızgarasındaki "💻 Dijital" karosu buraya yönleniyor.
 export default function DijitalSayfasi() {
   const { tavsiyeler: dijitalYeniCikanlar, yenidenYukle } = useTavsiyeler('sinema', 'dijitalYeniCikanlar')
-  // Bu sayfa SADECE hiçbir platforma bağlı olmayan ("💻 Dijital" etiketli)
-  // kayıtları gösteriyor — MUBI/HBO gibi belirli bir platforma eklenip
-  // buraya otomatik çapraz kaydolanlar burada TEKRAR gösterilmiyor, onlar
-  // zaten kendi platform sayfalarında duruyor. Eski (platformEtiketi alanı
-  // hiç olmayan) kayıtlar da "Dijital" sayılıyor — bu sayfa zaten var olma
-  // amaçları oydu.
-  const dijitalEtiketliler = dijitalYeniCikanlar.filter((t) => !t.platformEtiketi || t.platformEtiketi === '💻 Dijital')
+  const [filtre, setFiltre] = useState('dijital') // Karodan gelindiği için varsayılan "Dijital" — sayfanın asıl amacı buydu.
   const [yakindaDijital, setYakindaDijital] = useState(null)
 
   useEffect(() => {
     yakindaGelecekleriGetir().then((liste) => setYakindaDijital(liste.filter((k) => k.hedefTuru === 'dijital')))
   }, [])
+
+  // Tümü: hepsi. Dijital: platformEtiketi yok ya da "💻 Dijital" (eski
+  // kayıtlar da buraya sayılıyor). Platform: MUBI/HBO gibi belirli bir
+  // platforma eklenip buraya çapraz kaydolanlar — bu sekmede görmek
+  // isteyen, "hangi filmler hem platformda hem burada" diye merak edenler
+  // için.
+  const gosterilecekler = dijitalYeniCikanlar.filter((t) => {
+    if (filtre === 'tumu') return true
+    if (filtre === 'dijital') return !t.platformEtiketi || t.platformEtiketi === '💻 Dijital'
+    return t.platformEtiketi && t.platformEtiketi !== '💻 Dijital'
+  })
 
   return (
     <div>
@@ -64,12 +69,30 @@ export default function DijitalSayfasi() {
         </div>
       )}
 
+      <h2 className="mb-3 font-baslik text-lg text-murekkep">Dijitalde Yeni Çıkanlar</h2>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {[
+          { id: 'dijital', etiket: '💻 Dijital' },
+          { id: 'platform', etiket: '📡 Platform' },
+          { id: 'tumu', etiket: 'Tümü' },
+        ].map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setFiltre(f.id)}
+            className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
+              filtre === f.id ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagitKoyu text-kraft ring-cizgi'
+            }`}
+          >
+            {f.etiket}
+          </button>
+        ))}
+      </div>
       <TavsiyeBolumu
         tur="sinema"
         koleksiyon="dijitalYeniCikanlar"
-        tavsiyeler={dijitalEtiketliler}
+        tavsiyeler={gosterilecekler}
         yenidenYukle={yenidenYukle}
-        baslik="Dijitalde Yeni Çıkanlar"
+        baslik={null}
         ekleButonuMetni="+ Film Ekle"
         rozetMetni="💻 Dijital"
       />

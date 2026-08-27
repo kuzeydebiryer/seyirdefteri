@@ -39,6 +39,7 @@ const Diziler = lazy(() => import('./pages/Diziler.jsx'))
 const Platformlar = lazy(() => import('./pages/Platformlar.jsx'))
 const PlatformDetay = lazy(() => import('./pages/PlatformDetay.jsx'))
 const DijitalSayfasi = lazy(() => import('./pages/DijitalSayfasi.jsx'))
+const YakindaGeliyorSayfasi = lazy(() => import('./pages/YakindaGeliyorSayfasi.jsx'))
 const KitaplarKesfet = lazy(() => import('./pages/KitaplarKesfet.jsx'))
 const KitapIstekleri = lazy(() => import('./pages/KitapIstekleri.jsx'))
 const KitapKatalogBakimi = lazy(() => import('./pages/KitapKatalogBakimi.jsx'))
@@ -135,6 +136,7 @@ export default function App() {
             <Route path="/diziler" element={<OzelRota><Diziler /></OzelRota>} />
             <Route path="/platformlar" element={<OzelRota><Platformlar /></OzelRota>} />
             <Route path="/platform/dijital" element={<OzelRota><DijitalSayfasi /></OzelRota>} />
+            <Route path="/yakinda-geliyor" element={<OzelRota><YakindaGeliyorSayfasi /></OzelRota>} />
             <Route path="/platform/:id" element={<OzelRota><PlatformDetay /></OzelRota>} />
             <Route path="/kitaplar" element={<OzelRota><KitaplarKesfet /></OzelRota>} />
             <Route path="/kitap-istekleri" element={<OzelRota><KitapIstekleri /></OzelRota>} />

@@ -57,7 +57,7 @@ export default function Platformlar() {
       <h1 className="mb-1 font-baslik text-2xl text-murekkep">📡 Platformlar</h1>
       <p className="mb-6 text-sm text-kraft">Bir platform seç, o an abonelikle izlenebilen film ve dizileri keşfet.</p>
 
-      <YakindaGelecekler yenilemeTetik={yakindaYenile} />
+      <YakindaGelecekler yenilemeTetik={yakindaYenile} tumunuGorLink="/yakinda-geliyor" />
       {platformlar && <YakindaGelecekFormu platformlar={platformlar} onEklendi={() => setYakindaYenile((n) => n + 1)} />}
 
       <TavsiyeBolumu
@@ -70,6 +70,7 @@ export default function Platformlar() {
         baslik="Dijitalde Yeni Çıkanlar"
         ekleButonuMetni="+ Film Ekle"
         rozetMetni="💻 Dijital"
+        tumunuGorLink="/platform/dijital"
       />
 
       {platformlar && <PlatformYeniEklentiFormu platformlar={platformlar} />}

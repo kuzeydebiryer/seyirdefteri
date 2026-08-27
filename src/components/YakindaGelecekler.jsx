@@ -14,7 +14,7 @@ function gunSayisi(cikisTarihi) {
 // (yakindaGelenleriGecisYap) bunu otomatik olarak ilgili listeye
 // (platformYeniEklenenler ya da dijitalYeniCikanlar) taşıyıp buradan
 // kaldırıyor — elle silmeye gerek kalmıyor.
-export default function YakindaGelecekler({ yenilemeTetik }) {
+export default function YakindaGelecekler({ yenilemeTetik, tumunuGorLink }) {
   const { kullanici } = useAuth()
   const [liste, setListe] = useState(null)
   const [filtre, setFiltre] = useState('tumu')
@@ -46,7 +46,14 @@ export default function YakindaGelecekler({ yenilemeTetik }) {
 
   return (
     <div className="mb-8">
-      <h2 className="mb-3 font-baslik text-lg text-murekkep">📅 Yakında Geliyor</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="font-baslik text-lg text-murekkep">📅 Yakında Geliyor</h2>
+        {tumunuGorLink && (
+          <Link to={tumunuGorLink} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
+            Tümünü Gör ›
+          </Link>
+        )}
+      </div>
       <div className="mb-3 flex flex-wrap gap-2">
         {[
           { id: 'tumu', etiket: 'Tümü' },
