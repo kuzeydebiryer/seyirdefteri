@@ -80,6 +80,8 @@ export default function TavsiyeBolumu({
       setNot_('')
       setFormuAcik(false)
       yenidenYukle()
+    } catch (err) {
+      window.alert(`Eklenemedi: ${err.message || 'Bilinmeyen bir hata oluştu.'}`)
     } finally {
       setKaydediliyor(false)
     }

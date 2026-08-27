@@ -40,6 +40,8 @@ export default function YakindaGelecekFormu({ platformlar, onEklendi }) {
       setSecili(null)
       setAcik(false)
       onEklendi?.()
+    } catch (err) {
+      window.alert(`Eklenemedi: ${err.message || 'Bilinmeyen bir hata oluştu.'}`)
     } finally {
       setGonderiliyor(false)
     }

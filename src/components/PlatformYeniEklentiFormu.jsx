@@ -39,6 +39,8 @@ export default function PlatformYeniEklentiFormu({ platformlar }) {
       })
       setSecili(null)
       setBasariMesaji(`"${secili.baslik}" eklendi.`)
+    } catch (err) {
+      window.alert(`Eklenemedi: ${err.message || 'Bilinmeyen bir hata oluştu.'}`)
     } finally {
       setGonderiliyor(false)
     }
