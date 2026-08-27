@@ -29,6 +29,7 @@ import Logo from '../components/Logo.jsx'
 export default function Anasayfa() {
   const { kullanici } = useAuth()
   const [takipEdilenler, setTakipEdilenler] = useState(null) // null = henüz yüklenmedi
+  const [gunceFormAcik, setGunceFormAcik] = useState(false)
 
   const { tavsiyeler: filmTavsiyeleri, yenidenYukle: filmTavsiyeleriYenile } = useTavsiyeler('sinema')
   const { tavsiyeler: kitapTavsiyeleri, yenidenYukle: kitapTavsiyeleriYenile } = useTavsiyeler('kitap')
@@ -75,8 +76,25 @@ export default function Anasayfa() {
       </div>
 
       {kullanici && (
-        <div className="mb-10 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-          <GonderiEkle kompaktMod />
+        <div className="mb-10">
+          {gunceFormAcik ? (
+            <div className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+              <div className="mb-2 flex items-center justify-between">
+                <h1 className="font-baslik text-2xl text-murekkep">Günce Ekle</h1>
+                <button onClick={() => setGunceFormAcik(false)} className="text-xs text-kraft hover:text-murekkep">
+                  ✕ Kapat
+                </button>
+              </div>
+              <GonderiEkle kompaktMod baslikGizli onBasariylaEklendi={() => setGunceFormAcik(false)} />
+            </div>
+          ) : (
+            <button
+              onClick={() => setGunceFormAcik(true)}
+              className="flex items-center gap-2 rounded-full bg-kagitKoyu px-4 py-2 font-govde text-sm text-murekkep ring-1 ring-cizgi transition hover:ring-deniz/50"
+            >
+              🪶 Günce Ekle
+            </button>
+          )}
         </div>
       )}
 

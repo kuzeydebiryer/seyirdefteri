@@ -51,7 +51,7 @@ const API_KATEGORILERI = ['sinema', 'dizi', 'kitap']
 // eser-bağlantılı yazı) ya da arama adımı olmayan türlerde (Gezi/Etkinlik/
 // eser bağlamayan yazı alt türleri) kategori seçilir seçilmez açılır.
 // /gonderi-ekle sayfasında (kompaktMod=false) davranış hiç değişmiyor.
-export default function GonderiEkle({ kompaktMod = false } = {}) {
+export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, onBasariylaEklendi } = {}) {
   const { kullanici, profil } = useAuth()
   const navigate = useNavigate()
   const [aramaParametreleri] = useSearchParams()
@@ -650,6 +650,7 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
       }
 
       navigate('/')
+      onBasariylaEklendi?.()
     } catch (err) {
       setAramaHatasi('Kaydedilemedi: ' + err.message)
     } finally {
@@ -659,7 +660,7 @@ export default function GonderiEkle({ kompaktMod = false } = {}) {
 
   return (
     <div className={kategori === 'yazi' ? 'max-w-2xl' : 'max-w-xl'}>
-      <h1 className="font-baslik text-2xl text-murekkep mb-4">Günce Ekle</h1>
+      {!baslikGizli && <h1 className="font-baslik text-2xl text-murekkep mb-4">Günce Ekle</h1>}
 
       <div className="mb-4 flex flex-wrap gap-2">
         {KATEGORILER.map((k) => (
