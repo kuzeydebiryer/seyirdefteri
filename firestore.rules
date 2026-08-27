@@ -82,7 +82,11 @@ service cloud.firestore {
     // gösteriliyor), sadece Cloud Function yazabilir.
     match /platformYeniEklenenler/{belgeId} {
       allow read: if true;
-      allow write: if false;
+      // Otomatik tespitler Cloud Function üzerinden (admin SDK, kurallara
+      // tabi değil) yazılıyor. Elle ekleme için giriş yapmış herkese
+      // create izni verildi — Haber Ekle ile aynı açıklık düzeyi.
+      allow create: if request.auth != null;
+      allow update, delete: if false;
     }
 
     // Film müziği beğenileri — kullanıcı kendi beğenisini ekleyip

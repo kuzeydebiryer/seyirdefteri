@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import PlatformYeniEklentiFormu from '../components/PlatformYeniEklentiFormu.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_LOGO = 'https://image.tmdb.org/t/p/w200'
@@ -49,6 +50,8 @@ export default function Platformlar() {
     <div>
       <h1 className="mb-1 font-baslik text-2xl text-murekkep">📡 Platformlar</h1>
       <p className="mb-6 text-sm text-kraft">Bir platform seç, o an abonelikle izlenebilen film ve dizileri keşfet.</p>
+
+      {platformlar && <PlatformYeniEklentiFormu platformlar={platformlar} />}
 
       {platformlar === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
 

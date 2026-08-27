@@ -1,4 +1,4 @@
-import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
+import { addDoc, collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // Cloud Function (platformYeniEklenenleriTespitEt) tarafından günlük
@@ -24,4 +24,23 @@ export async function platformdaYeniEklenenleriGetir(platformId, tur, limitGun =
   )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// Otomatik tespitin kaçırdığı ya da henüz sıraya girmemiş bir eklemeyi elle
+// girmek için — Cloud Function'ın yazdığı doküman şeklinin AYNISI, sadece
+// tespitTarihi sunucu saati yerine kullanıcının seçtiği tarih (Timestamp'e
+// çevrilerek). Böylece bu kayıt, otomatik tespit edilenlerle aynı şekilde
+// hem platform sayfasındaki "Son 30 Gün" şeridinde hem anasayfadaki
+// "Platformlarda Yeni" widget'ında görünüyor — ayrı bir gösterim yolu
+// gerekmiyor.
+export async function platformYeniEklentiEkle({ platformId, platformAdi, tur, disId, baslik, posterUrl, tarih }) {
+  await addDoc(collection(db, 'platformYeniEklenenler'), {
+    platformId: String(platformId),
+    platformAdi,
+    tur,
+    disId: Number(disId),
+    baslik,
+    posterUrl: posterUrl || '',
+    tespitTarihi: Timestamp.fromDate(new Date(tarih)),
+  })
 }

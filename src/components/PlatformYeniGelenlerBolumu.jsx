@@ -1,19 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore'
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // platformYeniEklenenleriTespitEt Cloud Function'ının (functions/index.js)
-// günlük doldurduğu koleksiyondan besleniyor — kullanıcı girdisi yok, sadece
-// otomatik gösterim. Tüm takip edilen platformlar karışık, en yeni tespit
-// edilenden başlayarak. Veri henüz yeterince birikmemişse (koleksiyon yeni)
-// hiçbir şey göstermiyor, boş bir kutu olarak sayfada yer kaplamasın.
+// günlük doldurduğu koleksiyondan besleniyor. Film ve dizi ayrı sorgularla
+// çekiliyor (film önce, dizi sonra) — tek bir tespitTarihi'ne göre sıralı
+// sorgu, günün akışına göre ikisini rastgele karıştırıyordu, film önce
+// gelsin isteniyor. Her ikisi de kendi içinde en yeni tespit edilenden
+// başlıyor.
 export default function PlatformYeniGelenlerBolumu() {
   const [gelenler, setGelenler] = useState(null)
 
   useEffect(() => {
-    const q = query(collection(db, 'platformYeniEklenenler'), orderBy('tespitTarihi', 'desc'), limit(15))
-    getDocs(q).then((snap) => setGelenler(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    const filmSorgu = query(collection(db, 'platformYeniEklenenler'), where('tur', '==', 'sinema'), orderBy('tespitTarihi', 'desc'), limit(15))
+    const diziSorgu = query(collection(db, 'platformYeniEklenenler'), where('tur', '==', 'dizi'), orderBy('tespitTarihi', 'desc'), limit(15))
+    Promise.all([getDocs(filmSorgu), getDocs(diziSorgu)]).then(([filmSnap, diziSnap]) => {
+      const filmler = filmSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      const diziler = diziSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      setGelenler([...filmler, ...diziler].slice(0, 15))
+    })
   }, [])
 
   if (gelenler !== null && gelenler.length === 0) return null
@@ -21,7 +27,7 @@ export default function PlatformYeniGelenlerBolumu() {
   return (
     <div className="mb-10">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-baslik text-lg text-murekkep">🆕 Platformlara Yeni Gelenler</h2>
+        <h2 className="font-baslik text-lg text-murekkep">🆕 Platformlarda Yeni</h2>
         <Link to="/platformlar" className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
           Tümünü Gör ›
         </Link>
