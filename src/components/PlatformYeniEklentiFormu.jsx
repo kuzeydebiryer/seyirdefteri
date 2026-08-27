@@ -38,6 +38,7 @@ export default function PlatformYeniEklentiFormu({ platformlar }) {
         baslik: secili.baslik,
         posterUrl: secili.posterUrl,
         tarih,
+        kullanici,
       })
       setSecili(null)
       setBasariMesaji(`"${secili.baslik}" eklendi.`)
@@ -59,7 +60,8 @@ export default function PlatformYeniEklentiFormu({ platformlar }) {
         <form onSubmit={eklemeYap} className="mt-2 max-w-md space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
           <p className="text-[11px] text-kraft">
             Eklenen kayıt burada değil, seçtiğin platformun kendi sayfasında ("Son 30 Günde Eklenenler") ve anasayfadaki
-            "Platformlarda Yeni" widget'ında görünür.
+            "Platformlarda Yeni" widget'ında görünür. Film seçersen ayrıca otomatik olarak "Dijitalde Yeni Çıkanlar"a da
+            eklenir.
           </p>
           <div className="flex gap-1">
             {[

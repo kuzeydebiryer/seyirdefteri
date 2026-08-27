@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import YatayKaydirma from './YatayKaydirma.jsx'
 import { yakindaGelecekleriGetir, yakindaGelenSil } from '../utils/yakindaGelecek.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -32,7 +33,7 @@ export default function YakindaGelecekler({ yenilemeTetik }) {
   return (
     <div className="mb-8">
       <h2 className="mb-3 font-baslik text-lg text-murekkep">📅 Yakında Geliyor</h2>
-      <div className="flex gap-3 overflow-x-auto pb-1">
+      <YatayKaydirma>
         {liste?.map((k) => {
           const gun = gunSayisi(k.cikisTarihi)
           return (
@@ -59,7 +60,7 @@ export default function YakindaGelecekler({ yenilemeTetik }) {
             </div>
           )
         })}
-      </div>
+      </YatayKaydirma>
     </div>
   )
 }

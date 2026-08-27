@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, Timestamp, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // Cloud Function (platformYeniEklenenleriTespitEt) tarafından günlük
@@ -26,14 +26,33 @@ export async function platformdaYeniEklenenleriGetir(platformId, tur, limitGun =
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
-// Otomatik tespitin kaçırdığı ya da henüz sıraya girmemiş bir eklemeyi elle
-// girmek için — Cloud Function'ın yazdığı doküman şeklinin AYNISI, sadece
-// tespitTarihi sunucu saati yerine kullanıcının seçtiği tarih (Timestamp'e
-// çevrilerek). Böylece bu kayıt, otomatik tespit edilenlerle aynı şekilde
-// hem platform sayfasındaki "Son 30 Gün" şeridinde hem anasayfadaki
-// "Platformlarda Yeni" widget'ında görünüyor — ayrı bir gösterim yolu
-// gerekmiyor.
-export async function platformYeniEklentiEkle({ platformId, platformAdi, tur, disId, baslik, posterUrl, tarih }) {
+// Aynı film/dizi aynı platforma birden fazla eklenebiliyordu (form arka
+// arkaya tıklanınca ya da "kaydedildi ama görünmüyor" sanılıp tekrar
+// denenince) — şimdi eklemeden önce aynı platformId+tur+disId ile mevcut
+// bir kayıt var mı diye bakılıyor, varsa YENİ kayıt açmak yerine hata
+// fırlatılıyor.
+//
+// elleEklendiMi: true — otomatik tespitlerden ayırt etmek için (bu alan
+// Cloud Function'ın yazdığı kayıtlarda hiç yok, oradaki eksiklik "false"
+// gibi davranıyor). Anasayfa widget'ı bunu, elle eklenenleri öne çıkarmak
+// için kullanıyor.
+//
+// tur film ise (sinema), AYNI ANDA "Dijitalde Yeni Çıkanlar"a da yazılıyor
+// — bir filmin belirli bir platforma yeni geldiğini biliyorsak, bu zaten
+// "dijitalde yeni çıktı" anlamına da geliyor, ayrıca ikinci bir form
+// doldurmaya gerek yok. Dizi için bu yapılmıyor çünkü "Dijitalde Yeni
+// Çıkanlar" şu an sadece film gösteriyor (bkz. Platformlar.jsx).
+export async function platformYeniEklentiEkle({ platformId, platformAdi, tur, disId, baslik, posterUrl, tarih, kullanici }) {
+  const mevcutSorgu = query(
+    collection(db, 'platformYeniEklenenler'),
+    where('platformId', '==', String(platformId)),
+    where('tur', '==', tur),
+    where('disId', '==', Number(disId))
+  )
+  const mevcutSnap = await getDocs(mevcutSorgu)
+  if (!mevcutSnap.empty) {
+    throw new Error(`"${baslik}" zaten ${platformAdi} listesinde var — mükerrer eklenmedi.`)
+  }
   await addDoc(collection(db, 'platformYeniEklenenler'), {
     platformId: String(platformId),
     platformAdi,
@@ -42,5 +61,24 @@ export async function platformYeniEklentiEkle({ platformId, platformAdi, tur, di
     baslik,
     posterUrl: posterUrl || '',
     tespitTarihi: Timestamp.fromDate(new Date(tarih)),
+    elleEklendiMi: true,
   })
+
+  if (tur === 'sinema' && kullanici) {
+    await addDoc(collection(db, 'dijitalYeniCikanlar'), {
+      tur: 'sinema',
+      disId: Number(disId),
+      baslik,
+      alt: '',
+      posterUrl: posterUrl || '',
+      not: '',
+      ekleyenId: kullanici.uid,
+      ekleyenAdi: kullanici.displayName || 'İsimsiz',
+      tarih: serverTimestamp(),
+    })
+  }
+}
+
+export async function platformYeniEklentiSil(id) {
+  await deleteDoc(doc(db, 'platformYeniEklenenler', id))
 }
