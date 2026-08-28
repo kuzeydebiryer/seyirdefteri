@@ -34,6 +34,7 @@ const EserSayfasi = lazy(() => import('./pages/EserSayfasi.jsx'))
 const KisiSayfasi = lazy(() => import('./pages/KisiSayfasi.jsx'))
 const HaberDetay = lazy(() => import('./pages/HaberDetay.jsx'))
 const Haberler = lazy(() => import('./pages/Haberler.jsx'))
+const SonYorumlar = lazy(() => import('./pages/SonYorumlar.jsx'))
 const Filmler = lazy(() => import('./pages/Filmler.jsx'))
 const Diziler = lazy(() => import('./pages/Diziler.jsx'))
 const Platformlar = lazy(() => import('./pages/Platformlar.jsx'))
@@ -205,6 +206,7 @@ export default function App() {
             <Route path="/kisi/:id" element={<KisiSayfasi />} />
             <Route path="/haber/:id" element={<HaberDetay />} />
             <Route path="/haberler" element={<Haberler />} />
+            <Route path="/son-yorumlar" element={<OzelRota><SonYorumlar /></OzelRota>} />
           </Routes>
         </Suspense>
       </main>

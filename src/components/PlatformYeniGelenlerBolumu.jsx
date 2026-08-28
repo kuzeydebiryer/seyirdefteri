@@ -39,7 +39,7 @@ export default function PlatformYeniGelenlerBolumu({ siki = false }) {
   return (
     <div className={siki ? "mb-6" : "mb-10"}>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-baslik text-lg text-murekkep">📡 Platformlarda Yeni</h2>
+        <h2 className="font-baslik text-lg text-murekkep">Platformlarda Yeni</h2>
         <Link to="/platformlar" className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
           Tümünü Gör ›
         </Link>

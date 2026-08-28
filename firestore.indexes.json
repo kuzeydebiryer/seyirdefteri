@@ -561,6 +561,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "yorumlar",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "eserTur",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

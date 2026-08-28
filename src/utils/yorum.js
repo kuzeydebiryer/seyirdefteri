@@ -1,4 +1,4 @@
-import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
+import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // "yorumlar" koleksiyonu iki farklı bağlama hizmet ediyor: ya gonderiId
@@ -48,7 +48,17 @@ export async function yorumBegenDegistir(yorumId, uid, suAnBegeniyorMu) {
   })
 }
 
-// Takip ettiklerinin en son yorumları — "Yeni Günceler" akışına, günlük
+// Anasayfadaki "Son Yorumlar" widget'ı + /son-yorumlar sayfası için — sadece
+// eser (film/dizi/kitap) yorumları, "haber" ya da "kitap-istek" gibi diğer
+// eserYorumEkle kullanıcıları HARİÇ. Burada (eserYorumlariGetir'in aksine)
+// orderBy KULLANIYORUZ çünkü tek bir esere değil, TÜM eserlere ait yorumları
+// tarihe göre sıralı çekiyoruz — bileşik indeks gerekiyor (bkz.
+// firestore.indexes.json: eserTur + tarih).
+export async function sonYorumlariGetir(turler, limitSayisi = 10) {
+  const q = query(collection(db, 'yorumlar'), where('eserTur', 'in', turler), orderBy('tarih', 'desc'), limit(limitSayisi))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
 // (puanlama) kayıtlarıyla AYNI KART tasarımıyla karışsın diye, doğrudan bir
 // günlük-kaydı-benzeri objeye dönüştürülerek dönüyor. "tur"/"disId" bilerek
 // yorumun kendi ID'si değil, yorumun YAPILDIĞI eserin tür/ID'si — bu sayede

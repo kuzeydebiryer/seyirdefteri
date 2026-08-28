@@ -18,6 +18,7 @@ import EtkinlikHabercisiOnizleme from '../components/EtkinlikHabercisiOnizleme.j
 import EtkinlikOneCikanlar from '../components/EtkinlikOneCikanlar.jsx'
 import BugununDusuncesiWidget from '../components/BugununDusuncesiWidget.jsx'
 import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
+import SonYorumlarBolumu from '../components/SonYorumlarBolumu.jsx'
 
 // Anasayfa artık sitenin temel mantığını (günlük tutma) en üstte, doğrudan
 // karşılıyor — "Günce Ekle" formu /gonderi-ekle sayfasından AYNEN (kod
@@ -148,6 +149,8 @@ export default function Anasayfa() {
         tumunuGorLink="/kitap-tavsiyeleri"
       />
 
+      <SonYorumlarBolumu />
+
       <SonAlintilarBolumu limitSayisi={3} />
 
       <KitapDunyasiWidget />
@@ -157,8 +160,6 @@ export default function Anasayfa() {
       <GunlukKesif />
 
       <BugununDusuncesiWidget />
-
-      <BugunAktifOlanlarBolumu />
 
       <AcilirKapanirBolum etiket="🏆 Yaklaşan Ödül Törenleri">
         <OdullerVitrini />
@@ -174,6 +175,8 @@ export default function Anasayfa() {
         <h2 className="font-baslik text-lg text-murekkep">⭐ Öne Çıkan Etkinlikler</h2>
       </div>
       <EtkinlikOneCikanlar />
+
+      <BugunAktifOlanlarBolumu />
     </div>
   )
 }
