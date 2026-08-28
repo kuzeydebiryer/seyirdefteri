@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { gununKitabiGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import { gununKitabiGetir, kapakOnizlemeGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { rastgeleEserGetir } from '../utils/sanatEserleri.js'
 
 // Anasayfaya "bugün seni bekleyen" hissi katan küçük bir keşif kutusu.
 // Kitap Dünyası'ndaki Günün Kitabı ve Sanat Eserleri Keşfet'teki Günün
 // Eseri altyapısını olduğu gibi yeniden kullanıyor — her açılışta ikisinden
-// biri rastgele seçiliyor, yeni bir veri kaynağı gerekmiyor.
+// biri rastgele seçiliyor, yeni bir veri kaynağı gerekmiyor. Anasayfada
+// zaten kitapla bağlantılı çok fazla bölüm olduğu için (Kitap Tavsiyeleri,
+// Kitap Dünyası, Alıntı Duvarı) burada ikisi de tek, tutarlı "Günün Eseri"
+// markası altında gösteriliyor — "Günün Kitabı" diye ayrı bir etiket yok.
 export default function GunlukKesif() {
   const navigate = useNavigate()
   const [tur, setTur] = useState(null) // 'kitap' | 'eser'
@@ -32,7 +35,15 @@ export default function GunlukKesif() {
     setTur(secilenTur)
     if (secilenTur === 'kitap') {
       const kitap = await gununKitabiGetir().catch(() => null)
-      setIcerik(kitap)
+      if (kitap) {
+        // Kapak, ham veri setinde hiç yok (sadece ISBN var) — önceden hiç
+        // aranmıyordu, bu yüzden kitap her seçildiğinde kapaksız
+        // görünüyordu. Şimdi hafif bir önizleme sorgusuyla tamamlanıyor.
+        const kapakUrl = await kapakOnizlemeGetir(kitap.isbn)
+        setIcerik({ ...kitap, kapakUrl })
+      } else {
+        setIcerik(null)
+      }
     } else {
       await eserGetirVeAyarla()
     }
@@ -44,8 +55,8 @@ export default function GunlukKesif() {
       const yeni = n + 1
       if (yeni > 2) {
         // 3 denemeden sonra pes et, görsel olmadan göstermeye devam et
-        setIcerik((i) => (i ? { ...i, imageUrl: '' } : i))
-      } else {
+        setIcerik((i) => (i ? { ...i, imageUrl: '', kapakUrl: '' } : i))
+      } else if (tur === 'eser') {
         eserGetirVeAyarla()
       }
       return yeni
@@ -74,22 +85,25 @@ export default function GunlukKesif() {
 
   if (yukleniyor || !icerik) return null
 
+  const gorselUrl = tur === 'kitap' ? icerik.kapakUrl : icerik.imageUrl
+
   return (
     <div className="mb-10 flex items-center gap-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-      {tur === 'eser' &&
-        (icerik.imageUrl ? (
-          <img
-            src={icerik.imageUrl}
-            alt={icerik.title}
-            onError={resimYuklenemedi}
-            className="h-20 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi"
-          />
-        ) : (
-          <div className="flex h-20 w-16 shrink-0 items-center justify-center rounded-sm bg-kagit text-xl ring-1 ring-cizgi">🖼️</div>
-        ))}
+      {gorselUrl ? (
+        <img
+          src={gorselUrl}
+          alt={tur === 'kitap' ? icerik.baslik : icerik.title}
+          onError={resimYuklenemedi}
+          className="h-20 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi"
+        />
+      ) : (
+        <div className="flex h-20 w-16 shrink-0 items-center justify-center rounded-sm bg-kagit text-xl ring-1 ring-cizgi">
+          {tur === 'kitap' ? '📖' : '🖼️'}
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         <p className="text-[11px] uppercase tracking-widest text-gise">
-          {tur === 'kitap' ? '📖 Günün Kitabı' : `🖼️ Günün Eseri · ${icerik.kaynakAdi}`}
+          {tur === 'kitap' ? '🖼️ Günün Eseri · Kitap' : `🖼️ Günün Eseri · ${icerik.kaynakAdi}`}
         </p>
         {tur === 'kitap' ? (
           <>

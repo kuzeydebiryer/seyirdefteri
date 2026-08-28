@@ -18,7 +18,6 @@ import EtkinlikHabercisiOnizleme from '../components/EtkinlikHabercisiOnizleme.j
 import EtkinlikOneCikanlar from '../components/EtkinlikOneCikanlar.jsx'
 import BugununDusuncesiWidget from '../components/BugununDusuncesiWidget.jsx'
 import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
-import Logo from '../components/Logo.jsx'
 
 // Anasayfa artık sitenin temel mantığını (günlük tutma) en üstte, doğrudan
 // karşılıyor — "Günce Ekle" formu /gonderi-ekle sayfasından AYNEN (kod
@@ -26,6 +25,34 @@ import Logo from '../components/Logo.jsx'
 // seçilince (Film/Dizi/Kitap/Yazı/Gezi/Etkinlik) tam formu burada açılıyor,
 // başka bir sayfaya gitmeye gerek yok. Sıralama bilinçli: önce "ekle" (temel
 // eylem), sonra "keşfet" (tavsiyeler, günceler, vitrin widget'ları).
+// Günce Ekle'deki kalıbı iki widget'ta daha kullanmak için — Yaklaşan Ödül
+// Törenleri ve Film & Kitap Kulübü, "Uygula"lık bir eylem olmasalar da
+// (bunlar içerik önizlemesi) sık sık boş/az veriyle gelebiliyorlar ve
+// öncelik sırası "Yeni Güncemler"in altında — kapalı başlayıp isteyince
+// açılmaları hem yer kazandırıyor hem de tutarlı bir görsel dil kuruyor.
+function AcilirKapanirBolum({ etiket, children }) {
+  const [acik, setAcik] = useState(false)
+  return (
+    <div className="mb-10">
+      {acik ? (
+        <>
+          <button onClick={() => setAcik(false)} className="mb-2 text-xs text-kraft hover:text-murekkep">
+            ✕ Kapat
+          </button>
+          {children}
+        </>
+      ) : (
+        <button
+          onClick={() => setAcik(true)}
+          className="flex items-center gap-2 rounded-full bg-kagitKoyu px-4 py-2 font-govde text-sm text-murekkep ring-1 ring-cizgi transition hover:ring-deniz/50"
+        >
+          {etiket}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function Anasayfa() {
   const { kullanici } = useAuth()
   const [takipEdilenler, setTakipEdilenler] = useState(null) // null = henüz yüklenmedi
@@ -68,13 +95,6 @@ export default function Anasayfa() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-2">
-        <Logo sadeceIkon boyut={22} />
-        <p className="font-baslik text-sm text-murekkep">
-          Seyirdefteri <span className="font-govde italic text-kraft">— Kültür ve sanat hayatının ortak günlüğü.</span>
-        </p>
-      </div>
-
       {kullanici && (
         <div className="mb-10">
           {gunceFormAcik ? (
@@ -88,21 +108,22 @@ export default function Anasayfa() {
               <GonderiEkle kompaktMod baslikGizli onBasariylaEklendi={() => setGunceFormAcik(false)} />
             </div>
           ) : (
-            <button
-              onClick={() => setGunceFormAcik(true)}
-              className="flex items-center gap-2 rounded-full bg-kagitKoyu px-4 py-2 font-govde text-sm text-murekkep ring-1 ring-cizgi transition hover:ring-deniz/50"
-            >
-              🪶 Günce Ekle
-            </button>
+            <div>
+              <p className="mb-2 font-govde text-sm italic text-kraft">Kültür ve sanat hayatının ortak günlüğü.</p>
+              <button
+                onClick={() => setGunceFormAcik(true)}
+                className="flex items-center gap-2 rounded-full bg-kagitKoyu px-4 py-2 font-govde text-sm text-murekkep ring-1 ring-cizgi transition hover:ring-deniz/50"
+              >
+                🪶 Günce Ekle
+              </button>
+            </div>
           )}
         </div>
       )}
 
       <TopluluklarBildirimSeridi />
 
-      <SeyirPanosuOnizleme />
-
-      <YeniGunlukGridi kayitlar={takipGunlukKayitlari} tumunuGorLink="/akis" />
+      <YeniGunlukGridi kayitlar={takipGunlukKayitlari} tumunuGorLink="/akis" siki />
 
       <TavsiyeBolumu
         tur="sinema"
@@ -112,9 +133,10 @@ export default function Anasayfa() {
         sade
         baslik="Film Tavsiyeleri"
         tumunuGorLink="/film-tavsiyeleri"
+        siki
       />
 
-      <PlatformYeniGelenlerBolumu />
+      <PlatformYeniGelenlerBolumu siki />
 
       <TavsiyeBolumu
         tur="kitap"
@@ -130,15 +152,21 @@ export default function Anasayfa() {
 
       <KitapDunyasiWidget />
 
+      <SeyirPanosuOnizleme />
+
       <GunlukKesif />
 
       <BugununDusuncesiWidget />
 
       <BugunAktifOlanlarBolumu />
 
-      <OdullerVitrini />
+      <AcilirKapanirBolum etiket="🏆 Yaklaşan Ödül Törenleri">
+        <OdullerVitrini />
+      </AcilirKapanirBolum>
 
-      <KulupEtkinlikleriOnizleme />
+      <AcilirKapanirBolum etiket="🎬📖 Film & Kitap Kulübü">
+        <KulupEtkinlikleriOnizleme />
+      </AcilirKapanirBolum>
 
       <EtkinlikHabercisiOnizleme />
 

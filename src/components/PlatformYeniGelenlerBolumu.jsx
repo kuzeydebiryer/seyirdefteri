@@ -11,7 +11,7 @@ import YatayKaydirma from './YatayKaydirma.jsx'
 // buluşmuyordu, dijitale elle eklenen bir film burada hiç görünmüyordu.
 // Öncelik sırası: dijitale elle eklenenler > platforma elle eklenenler >
 // otomatik tespit edilenler — en çok emek/özen gösterilenler en önde.
-export default function PlatformYeniGelenlerBolumu() {
+export default function PlatformYeniGelenlerBolumu({ siki = false }) {
   const [gelenler, setGelenler] = useState(null)
 
   useEffect(() => {
@@ -37,9 +37,9 @@ export default function PlatformYeniGelenlerBolumu() {
   if (gelenler !== null && gelenler.length === 0) return null
 
   return (
-    <div className="mb-10">
+    <div className={siki ? "mb-6" : "mb-10"}>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-baslik text-lg text-murekkep">🆕 Platformlarda Yeni</h2>
+        <h2 className="font-baslik text-lg text-murekkep">📡 Platformlarda Yeni</h2>
         <Link to="/platformlar" className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
           Tümünü Gör ›
         </Link>

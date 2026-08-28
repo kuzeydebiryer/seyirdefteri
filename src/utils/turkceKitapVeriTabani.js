@@ -161,6 +161,25 @@ export async function gununKitabiGetir() {
   return satiriNesneyeGevir(veri[0], 0)
 }
 
+// GunlukKesif.jsx'teki "Günün Eseri" önizlemesi için — turkceKitaptanKaydet
+// ile AYNI Google Books ISBN sorgusu, ama Firestore'a hiç yazmadan. Sadece
+// bir önizleme kapağı göstermek için her ziyarette kitaplar koleksiyonuna
+// yazmak (ve kimse hiç "İncele"ye basmasa bile kalıcı bir kayıt açmak)
+// israf olurdu — kullanıcı gerçekten "İncele"ye basınca zaten
+// turkceKitaptanKaydet kendi kapağını (bu fonksiyondan bağımsız) çekip
+// kalıcı kaydı oluşturuyor.
+export async function kapakOnizlemeGetir(isbn) {
+  if (!isbn) return ''
+  try {
+    const anahtarParcasi = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY ? `&key=${import.meta.env.VITE_GOOGLE_BOOKS_API_KEY}` : ''
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}${anahtarParcasi}`)
+    const data = await res.json()
+    return (data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
+  } catch {
+    return ''
+  }
+}
+
 // Sayfa Sayısına Göre Meydan Okuma — birkaç hazır meydan okuma türünden
 // rastgele biri seçilip ona uyan gerçek bir kitap öneriliyor. Bu bir "takip
 // sistemi" değil (kimin tamamladığını kaydetmiyoruz), sadece keşif/ilham

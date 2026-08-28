@@ -30,6 +30,12 @@ export default function TavsiyeBolumu({
   // kullanımlar için: başlık satırı ile liste arasına keyfi içerik
   // (filtre butonları gibi) yerleştirmeyi sağlıyor. Diğer kullanımlarda boş.
   araIcerik = null,
+  // Anasayfadaki art arda gelen poster şeritlerini (Yeni Günceler → Film
+  // Tavsiyeleri → Platformlarda Yeni → Kitap Tavsiyeleri) birbirine
+  // yakınlaştırıp "aynı aile" hissi vermek için — diğer sayfalardaki
+  // (Filmler.jsx, Platformlar.jsx vb.) kullanımları etkilemesin diye
+  // varsayılan kapalı.
+  siki = false,
 }) {
   const { kullanici } = useAuth()
   const [formuAcik, setFormuAcik] = useState(false)
@@ -117,7 +123,7 @@ export default function TavsiyeBolumu({
   const esereLink = (disId) => (tur === 'dizi' ? `/dizi/${disId}` : tur === 'kitap' ? `/kitap/${disId}` : `/film/${disId}`)
 
   return (
-    <div className="mb-10">
+    <div className={siki ? 'mb-6' : 'mb-10'}>
       {sade ? (
         <div className="mb-3 flex items-center justify-between">
           {tumunuGorLink ? (
