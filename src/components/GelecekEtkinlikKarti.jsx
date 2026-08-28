@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { katilacagimDegistir, kaynakEkle, gelecekEtkinlikGuncelle } from '../utils/gelecekEtkinlik.js'
 import { useKaynaklar } from '../hooks/useKaynaklar.js'
@@ -400,8 +401,8 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
               <div className="mt-1.5 flex items-center gap-1.5">
                 <div className="flex -space-x-2">
                   {katilimciProfilleri.map((p) => (
-                    <Link key={p.id} to={`/profil/${p.id}`} title={p.adSoyad}>
-                      <Avatar adSoyad={p.adSoyad} avatarUrl={p.avatarUrl} boyut="h-6 w-6" />
+                    <Link key={p.id} to={`/profil/${p.id}`} title={gorunenAdGetir(p)}>
+                      <Avatar adSoyad={gorunenAdGetir(p)} avatarUrl={p.avatarUrl} boyut="h-6 w-6" />
                     </Link>
                   ))}
                 </div>

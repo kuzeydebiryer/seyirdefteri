@@ -1,6 +1,7 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useTema } from '../context/TemaContext.jsx'
 import { bildirimDurumu, bildirimleriEtkinlestir, bildirimleriKapat } from '../utils/bildirim.js'
 import BildirimZili from './BildirimZili.jsx'
@@ -93,7 +94,7 @@ export default function Nav() {
               ))}
               <NavLink to={`/profil/${kullanici.uid}`} className={linkSinifi}>
                 <span className="flex items-center gap-2">
-                  <Avatar adSoyad={profil?.adSoyad} avatarUrl={profil?.avatarUrl} boyut="h-6 w-6" />
+                  <Avatar adSoyad={gorunenAdGetir(profil)} avatarUrl={profil?.avatarUrl} boyut="h-6 w-6" />
                   {profil?.kullaniciAdi || 'Profil'}
                 </span>
               </NavLink>
@@ -173,7 +174,7 @@ export default function Nav() {
               onClick={() => setMenuAcik(false)}
               className={({ isActive }) => `flex items-center gap-2 rounded-sm px-2 py-2.5 ${isActive ? 'text-muhur' : 'text-murekkep'}`}
             >
-              <Avatar adSoyad={profil?.adSoyad} avatarUrl={profil?.avatarUrl} boyut="h-7 w-7" />
+              <Avatar adSoyad={gorunenAdGetir(profil)} avatarUrl={profil?.avatarUrl} boyut="h-7 w-7" />
               <span className="font-medium">{profil?.kullaniciAdi || 'Profil'}</span>
             </NavLink>
 

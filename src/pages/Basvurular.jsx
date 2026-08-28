@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { bekleyenBasvurulariGetir, basvuruOnayla, basvuruReddet } from '../utils/uyelikBasvuru.js'
 
 // Ayrı bir "yönetici" rolü yok — herhangi bir üye, kendi davet hakkı varsa
@@ -19,7 +20,7 @@ export default function Basvurular() {
     if (!kullanici) return
     setIslenenId(basvuru.id)
     try {
-      const kod = await basvuruOnayla(basvuru, kullanici.uid, profil?.adSoyad || kullanici.displayName)
+      const kod = await basvuruOnayla(basvuru, kullanici.uid, gorunenAdGetir(profil, kullanici.displayName))
       setUretilenKodlar((onceki) => ({ ...onceki, [basvuru.id]: kod }))
       setBasvurular((liste) => liste.filter((b) => b.id !== basvuru.id))
     } catch (err) {

@@ -1,3 +1,4 @@
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -43,7 +44,7 @@ export default function KitapIstekKarti({ istek, onDegisti }) {
     if (!yeniYorum.trim() || !kullanici) return
     setGonderiliyor(true)
     try {
-      await eserYorumEkle('kitap-istek', istek.id, kullanici, profil?.adSoyad, yeniYorum, {
+      await eserYorumEkle('kitap-istek', istek.id, kullanici, gorunenAdGetir(profil, kullanici.displayName), yeniYorum, {
         eserBaslik: istek.baslik,
         eserPosterUrl: istek.posterUrl,
       })

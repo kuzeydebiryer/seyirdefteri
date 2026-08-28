@@ -1,5 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, startAfter, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from './gorunenAd.js'
 
 export const ILHAM_KATEGORILERI = ['Film', 'Dizi', 'Kitap', 'Oyuncu', 'Gezi', 'Etkinlik', 'Sanat', 'Felsefe', 'Psikoloji']
 
@@ -43,7 +44,7 @@ export async function ilhamEkle(
     geziBoylem: kategori === 'Gezi' ? geziBoylem ?? null : null,
     geziKampanya: kategori === 'Gezi' ? geziKampanya || '' : '',
     paylasanId: kullanici.uid,
-    paylasanAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+    paylasanAdi: gorunenAdGetir(profil, kullanici.displayName),
     eklemeTarihi: serverTimestamp(),
   })
 }

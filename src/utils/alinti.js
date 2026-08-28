@@ -6,11 +6,12 @@
 
 import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, limit, orderBy, query, updateDoc, where, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from './gorunenAd.js'
 
 export async function alintiEkle(kullanici, profil, { kitapId, kitapBaslik, kitapYazar, kitapPosterUrl, metin, sayfa }) {
   await addDoc(collection(db, 'alintilar'), {
     kullaniciId: kullanici.uid,
-    kullaniciAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+    kullaniciAdi: gorunenAdGetir(profil, kullanici.displayName),
     kullaniciKullaniciAdi: profil?.kullaniciAdi || '',
     kullaniciAvatarUrl: profil?.avatarUrl || '',
     kitapId,

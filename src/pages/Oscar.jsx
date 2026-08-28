@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import SohbetPaneli from '../components/SohbetPaneli.jsx'
 import WikidataIceAktar from '../components/WikidataIceAktar.jsx'
@@ -479,7 +480,7 @@ export default function Oscar({
       await tahminVer(sezon.id, kategoriId, kullanici, profil, adayId)
       setTahminler((onceki) => {
         const digerleri = onceki.filter((t) => !(t.kategoriId === kategoriId && t.kullaniciId === kullanici.uid))
-        return [...digerleri, { kategoriId, kullaniciId: kullanici.uid, kullaniciAdi: profil?.adSoyad || 'Sen', adayId }]
+        return [...digerleri, { kategoriId, kullaniciId: kullanici.uid, kullaniciAdi: gorunenAdGetir(profil, 'Sen'), adayId }]
       })
     } catch (e) {
       window.alert('Tahmin kaydedilemedi: ' + (e?.message || 'bilinmeyen bir hata oluştu.'))

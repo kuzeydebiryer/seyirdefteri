@@ -19,6 +19,7 @@ import { listeOlustur } from '../utils/liste.js'
 import { useGelecekEtkinlikler } from '../hooks/useGelecekEtkinlikler.js'
 import { gelecekEtkinlikOlustur } from '../utils/gelecekEtkinlik.js'
 import Avatar from '../components/Avatar.jsx'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import GelecekEtkinlikKarti from '../components/GelecekEtkinlikKarti.jsx'
 import EtkinlikOnerileriBolumu from '../components/EtkinlikOnerileriBolumu.jsx'
 import ListeOnizleme from '../components/ListeOnizleme.jsx'
@@ -212,7 +213,7 @@ export default function TopluluklarDetay() {
       await katilmaIstegiOnayla(id, istekUid)
       const istek = istekler.find((i) => i.id === istekUid)
       setIstekler((onceki) => onceki.filter((i) => i.id !== istekUid))
-      setUyeler((onceki) => [...onceki, { id: istekUid, adSoyad: istek?.adSoyad || 'Bilinmeyen' }])
+      setUyeler((onceki) => [...onceki, { id: istekUid, adSoyad: gorunenAdGetir(istek, 'Bilinmeyen') }])
       setTopluluk((onceki) => ({ ...onceki, uyeSayisi: (onceki.uyeSayisi || 0) + 1 }))
     } finally {
       setIstekIsleniyor(null)
@@ -492,7 +493,7 @@ export default function TopluluklarDetay() {
           <ul className="space-y-2">
             {istekler.map((i) => (
               <li key={i.id} className="flex items-center justify-between gap-2">
-                <span className="text-sm text-murekkep">{i.adSoyad}</span>
+                <span className="text-sm text-murekkep">{gorunenAdGetir(i)}</span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => istegiOnayla(i.id)}
@@ -834,10 +835,10 @@ export default function TopluluklarDetay() {
           return (
             <li key={u.id} className="flex items-center gap-3 rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
               <Link to={`/profil/${u.id}`} className="flex flex-1 items-center gap-3 min-w-0">
-                <Avatar adSoyad={u.adSoyad} avatarUrl={u.avatarUrl} boyut="h-8 w-8" />
+                <Avatar adSoyad={gorunenAdGetir(u)} avatarUrl={u.avatarUrl} boyut="h-8 w-8" />
                 <div className="min-w-0">
                   <p className="text-sm text-murekkep">
-                    {u.adSoyad}
+                    {gorunenAdGetir(u)}
                     {uRol === 'kurucu' && <span className="ml-1.5 text-[10px] text-gise">👑 Kurucu</span>}
                     {uRol === 'moderator' && <span className="ml-1.5 text-[10px] text-deniz">🛡️ Moderatör</span>}
                   </p>

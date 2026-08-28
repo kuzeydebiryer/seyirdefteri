@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { addDoc, arrayUnion, collection, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useTopluluklar } from '../hooks/useTopluluklar.js'
 
@@ -34,7 +35,7 @@ export default function Topluluklar() {
         kapakUrl,
         gizli,
         kurucuId: kullanici.uid,
-        kurucuAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+        kurucuAdi: gorunenAdGetir(profil, kullanici.displayName),
         kurulmaTarihi: serverTimestamp(),
         uyeSayisi: 1,
       })

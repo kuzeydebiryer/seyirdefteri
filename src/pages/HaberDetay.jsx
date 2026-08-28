@@ -1,3 +1,4 @@
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -67,7 +68,7 @@ export default function HaberDetay() {
     if (!yeniYorum.trim() || !kullanici) return
     setGonderiliyor(true)
     try {
-      await eserYorumEkle('haber', id, kullanici, profil?.adSoyad, yeniYorum, {
+      await eserYorumEkle('haber', id, kullanici, gorunenAdGetir(profil, kullanici.displayName), yeniYorum, {
         eserBaslik: haber.baslik,
         eserPosterUrl: haber.gorselUrl || haber.ilgiliPosterUrl,
       })

@@ -17,6 +17,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from './gorunenAd.js'
 
 function planRef(id) {
   return doc(db, 'geziPlanlari', id)
@@ -25,7 +26,7 @@ function planRef(id) {
 export async function geziPlaniOlustur(kullanici, profil, { baslik, baslangicTarihi, bitisTarihi }) {
   const belge = await addDoc(collection(db, 'geziPlanlari'), {
     sahipId: kullanici.uid,
-    sahipAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+    sahipAdi: gorunenAdGetir(profil, kullanici.displayName),
     sahipAvatarUrl: profil?.avatarUrl || '',
     ortakDuzenleyenler: [],
     ortakDuzenleyenlerBilgi: {},
@@ -96,7 +97,7 @@ export async function planaOrtakDuzenleyenEkle(planId, eklenecekKullanici) {
   await updateDoc(planRef(planId), {
     ortakDuzenleyenler: arrayUnion(eklenecekKullanici.id),
     [`ortakDuzenleyenlerBilgi.${eklenecekKullanici.id}`]: {
-      adSoyad: eklenecekKullanici.adSoyad || 'İsimsiz',
+      adSoyad: gorunenAdGetir(eklenecekKullanici, 'İsimsiz'),
       avatarUrl: eklenecekKullanici.avatarUrl || '',
     },
   })

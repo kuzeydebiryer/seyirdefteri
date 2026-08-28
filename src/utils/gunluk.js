@@ -1,6 +1,7 @@
 import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { takipEdilenlerinYorumlariniGetir } from './yorum.js'
+import { gorunenAdGetir } from './gorunenAd.js'
 
 // "eserPuanlarim" (bkz. eserPuani.js) bir eserin GÜNCEL/tekil puanını tutuyor
 // — "ne zaman puanladım" değil "şu an ne puan veriyorum" sorusuna cevap.
@@ -14,11 +15,11 @@ import { takipEdilenlerinYorumlariniGetir } from './yorum.js'
 // gerçek tarih.
 export async function gunlukKaydiEkle(
   kullanici,
-  { tur, disId, baslik, alt, posterUrl, yil, izlemeTarihiISO, puan, tekrarMi, not: notMetni, olayTuru }
+  { tur, disId, baslik, alt, posterUrl, yil, izlemeTarihiISO, puan, tekrarMi, not: notMetni, olayTuru, profil }
 ) {
   await addDoc(collection(db, 'gunlukKayitlari'), {
     kullaniciId: kullanici.uid,
-    kullaniciAdi: kullanici.displayName || 'İsimsiz',
+    kullaniciAdi: gorunenAdGetir(profil, kullanici.displayName),
     tur, // 'sinema' | 'dizi' | 'kitap' | 'gezi' | 'etkinlik'
     disId,
     baslik,

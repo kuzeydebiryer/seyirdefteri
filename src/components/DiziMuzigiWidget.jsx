@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../firebase.js'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { diziMuzikBegeniliMi, diziMuzikBegen, diziMuzikBegeniKaldir } from '../utils/diziMuzigiBegeni.js'
 
@@ -63,7 +64,7 @@ export default function DiziMuzigiWidget({ tmdbId, diziAdi, yil, posterUrl, best
         await diziMuzikBegeniKaldir(kullanici.uid, tmdbId)
       } else {
         await diziMuzikBegen(kullanici.uid, {
-          kullaniciAdi: profil?.adSoyad || kullanici.displayName,
+          kullaniciAdi: gorunenAdGetir(profil, kullanici.displayName),
           tmdbId,
           diziBaslik: diziAdi,
           diziYil: yil,

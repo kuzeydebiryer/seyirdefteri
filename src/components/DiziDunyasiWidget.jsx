@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { topluluktaSuankiOkunanlariGetir } from '../utils/izlenecek.js'
 import { sonrakiBolumBilgisiGetir } from '../utils/diziBolum.js'
 import Avatar from './Avatar.jsx'
@@ -43,7 +44,7 @@ export default function DiziDunyasiWidget() {
           }
           const profil = profilOnbellek[k.kullaniciId]
           const sonrakiBolum = await sonrakiBolumBilgisiGetir(k.disId)
-          return { ...k, kullaniciAdi: profil.adSoyad || 'Biri', kullaniciAvatarUrl: profil.avatarUrl || '', sonrakiBolum }
+          return { ...k, kullaniciAdi: gorunenAdGetir(profil, 'Biri'), kullaniciAvatarUrl: profil.avatarUrl || '', sonrakiBolum }
         })
       )
 

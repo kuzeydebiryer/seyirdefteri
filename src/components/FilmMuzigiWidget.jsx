@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../firebase.js'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { muzikBegeniliMi, muzikBegen, muzikBegeniKaldir } from '../utils/filmMuzigiBegeni.js'
 
@@ -74,7 +75,7 @@ export default function FilmMuzigiWidget({ tmdbId, filmAdi, yil, posterUrl, best
         await muzikBegeniKaldir(kullanici.uid, tmdbId)
       } else {
         await muzikBegen(kullanici.uid, {
-          kullaniciAdi: profil?.adSoyad || kullanici.displayName,
+          kullaniciAdi: gorunenAdGetir(profil, kullanici.displayName),
           tmdbId,
           filmBaslik: filmAdi,
           filmYil: yil,

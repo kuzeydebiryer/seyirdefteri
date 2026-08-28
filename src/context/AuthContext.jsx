@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
   updateProfile,
 } from 'firebase/auth'
-import { doc, getDoc, runTransaction, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, updateDoc, where } from 'firebase/firestore'
 import { auth, db } from '../firebase.js'
 
 const AuthContext = createContext(null)
@@ -78,6 +78,16 @@ export function AuthSaglayici({ children }) {
     if (!kodSnap.exists()) throw new Error('Davet kodu bulunamadı.')
     if (kodSnap.data().kullanildiMi) throw new Error('Bu davet kodu zaten kullanılmış.')
 
+    // Kullanıcı adı benzersizliği — hesap oluşturulmadan ÖNCE kontrol
+    // ediliyor, aksi halde kullanıcı adı çakışması durumunda yarım kalmış
+    // bir hesap (auth var ama kullanicilar belgesi yok) oluşabilirdi.
+    // Artık kullanıcı adı sadece profildeki küçük bir "@" etiketi değil,
+    // isteğe bağlı olarak sitede birincil görünen isim de olabildiği için
+    // (bkz. gorunumTercihi) çakışma daha önemli hale geldi.
+    const kullaniciAdiTemiz = kullaniciAdi.trim().toLowerCase()
+    const mevcutSnap = await getDocs(query(collection(db, 'kullanicilar'), where('kullaniciAdi', '==', kullaniciAdiTemiz)))
+    if (!mevcutSnap.empty) throw new Error('Bu kullanıcı adı zaten alınmış, başka bir tane dene.')
+
     const cred = await createUserWithEmailAndPassword(auth, eposta, sifre)
     await updateProfile(cred.user, { displayName: adSoyad })
 
@@ -93,7 +103,7 @@ export function AuthSaglayici({ children }) {
       })
       tx.set(doc(db, 'kullanicilar', cred.user.uid), {
         adSoyad,
-        kullaniciAdi,
+        kullaniciAdi: kullaniciAdiTemiz,
         bio: '',
         avatarUrl: '',
         davetEden: guncelKodSnap.data().olusturanId || null,

@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useTakip } from '../hooks/useTakip.js'
 import { takipEt, takipBirak } from '../utils/takip.js'
 import Avatar from '../components/Avatar.jsx'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 
 function KullaniciSatiri({ kullaniciData, benUid }) {
   const { takipEdiyorMu, setTakipEdiyorMu } = useTakip(kullaniciData.id, benUid)
@@ -25,10 +26,13 @@ function KullaniciSatiri({ kullaniciData, benUid }) {
   return (
     <li className="flex items-center justify-between rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
       <Link to={`/profil/${kullaniciData.id}`} className="flex items-center gap-3">
-        <Avatar adSoyad={kullaniciData.adSoyad} avatarUrl={kullaniciData.avatarUrl} boyut="h-9 w-9" />
+        <Avatar adSoyad={gorunenAdGetir(kullaniciData)} avatarUrl={kullaniciData.avatarUrl} boyut="h-9 w-9" />
         <div>
-          <p className="text-sm font-medium text-murekkep">{kullaniciData.adSoyad}</p>
-          <p className="text-xs text-kraft">@{kullaniciData.kullaniciAdi}</p>
+          <p className="text-sm font-medium text-murekkep">{gorunenAdGetir(kullaniciData)}</p>
+          {/* Kullanıcı adıyla görünmeyi seçtiyse gerçek adı ikinci satırda da
+              sızdırılmasın diye burada tekrar gösterilmiyor (bkz. Profil.jsx'teki
+              aynı mantık). */}
+          {kullaniciData.gorunumTercihi !== 'kullaniciAdi' && <p className="text-xs text-kraft">@{kullaniciData.kullaniciAdi}</p>}
         </div>
       </Link>
       {kullaniciData.id !== benUid && (

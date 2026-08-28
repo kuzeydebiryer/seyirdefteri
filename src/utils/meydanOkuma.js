@@ -1,5 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from './gorunenAd.js'
 import { izlenecekGetir } from './izlenecek.js'
 
 function meydanOkumaRef(id) {
@@ -9,7 +10,7 @@ function meydanOkumaRef(id) {
 export async function meydanOkumaOlustur(kullanici, profil, veri) {
   const belge = await addDoc(collection(db, 'meydanOkumalar'), {
     sahipId: kullanici.uid,
-    sahipAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+    sahipAdi: gorunenAdGetir(profil, kullanici.displayName),
     sahipAvatarUrl: profil?.avatarUrl || '',
     herkeseAcik: false,
     gunlukKayitlar: {},

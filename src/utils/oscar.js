@@ -8,6 +8,7 @@
 
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from './gorunenAd.js'
 
 export async function sezonOlustur(kullanici, { ad, torenTarihi, torenTuru }) {
   const ref = await addDoc(collection(db, 'oscarSezonlari'), {
@@ -127,7 +128,7 @@ export async function tahminVer(sezonId, kategoriId, kullanici, profil, adayId) 
       sezonId,
       kategoriId,
       kullaniciId: kullanici.uid,
-      kullaniciAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+      kullaniciAdi: gorunenAdGetir(profil, kullanici.displayName),
       adayId,
       tarih: serverTimestamp(),
     },

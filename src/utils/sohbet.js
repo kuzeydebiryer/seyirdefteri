@@ -6,6 +6,7 @@
 
 import { addDoc, collection, limit, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from './gorunenAd.js'
 
 const SON_MESAJ_SAYISI = 50
 
@@ -14,7 +15,7 @@ export async function mesajGonder(konumId, kullanici, profil, mesaj) {
   await addDoc(collection(db, 'sohbetMesajlari'), {
     konumId,
     kullaniciId: kullanici.uid,
-    kullaniciAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+    kullaniciAdi: gorunenAdGetir(profil, kullanici.displayName),
     mesaj: mesaj.trim().slice(0, 500),
     tarih: serverTimestamp(),
   })

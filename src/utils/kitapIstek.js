@@ -1,11 +1,12 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from './gorunenAd.js'
 import { kitabinSahipleriniBul } from './raf.js'
 
 export async function kitapIstegiOlustur(kullanici, profil, { disId, baslik, alt, posterUrl, not: notMetni }) {
   const ref = await addDoc(collection(db, 'kitapIstekleri'), {
     isteyenId: kullanici.uid,
-    isteyenAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+    isteyenAdi: gorunenAdGetir(profil, kullanici.displayName),
     isteyenSehir: profil?.sehir || '',
     disId,
     baslik,
@@ -33,7 +34,7 @@ export async function kitapOduncVer(istekId, kullanici, profil, iadeTarihiISO) {
   await updateDoc(doc(db, 'kitapIstekleri', istekId), {
     durum: 'oduncte',
     oduncVerenId: kullanici.uid,
-    oduncVerenAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+    oduncVerenAdi: gorunenAdGetir(profil, kullanici.displayName),
     iadeTarihi: iadeTarihiISO,
     oduncVerildigiTarihi: serverTimestamp(),
     iadeHatirlatmaGonderildi: false,

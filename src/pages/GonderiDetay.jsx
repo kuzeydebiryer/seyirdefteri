@@ -15,6 +15,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { begeniDegistir } from '../utils/begeni.js'
 import { useTartismaEtkinlikleri } from '../hooks/useTartismaEtkinlikleri.js'
@@ -94,12 +95,12 @@ export default function GonderiDetay() {
         gonderiId: id,
         gonderiBasligi: gonderi?.baslik || '',
         yazarId: kullanici.uid,
-        yazarAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+        yazarAdi: gorunenAdGetir(profil, kullanici.displayName),
         metin: yeniYorum.trim(),
         tarih: serverTimestamp(),
       })
       await updateDoc(doc(db, 'gonderiler', id), { yorumSayisi: increment(1) })
-      setYorumlar((onceki) => [...onceki, { id: yeniYorumRef.id, yazarAdi: profil?.adSoyad, metin: yeniYorum.trim() }])
+      setYorumlar((onceki) => [...onceki, { id: yeniYorumRef.id, yazarAdi: gorunenAdGetir(profil, kullanici.displayName), metin: yeniYorum.trim() }])
       setYeniYorum('')
     } finally {
       setGonderiliyor(false)
@@ -130,7 +131,7 @@ export default function GonderiDetay() {
         gonderiTuru: gonderi.tur,
         topluluklId: null,
         olusturanId: kullanici.uid,
-        olusturanAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+        olusturanAdi: gorunenAdGetir(profil, kullanici.displayName),
         tarih: etkinlikTarihi,
         aciklama: etkinlikAciklama,
         olusturmaTarihi: serverTimestamp(),

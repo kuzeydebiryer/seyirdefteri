@@ -62,6 +62,7 @@ export async function platformYeniEklentiEkle({ platformId, platformAdi, tur, di
     posterUrl: posterUrl || '',
     tespitTarihi: Timestamp.fromDate(new Date(tarih)),
     elleEklendiMi: true,
+    ekleyenId: kullanici?.uid || null,
   })
 
   if (tur === 'sinema' && kullanici) {

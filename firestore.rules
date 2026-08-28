@@ -16,6 +16,16 @@ service cloud.firestore {
       );
     }
 
+    // Site geneli yönetici kontrolü — dusunceHavuzu'ndaki tek seferlik
+    // kontrolle aynı mantık, artık birden fazla yerde (platform verisi,
+    // favori/yönetmen silme gibi paylaşılan/yıkıcı işlemler) kullanıldığı
+    // için tek bir fonksiyona çıkarıldı. Genel bir rol sistemi değil,
+    // sadece kullanicilar/{uid} belgesinde "yonetici: true" alanı olanlar.
+    function yoneticiMi() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/kullanicilar/$(request.auth.uid)).data.get('yonetici', false) == true;
+    }
+
     // Uygulama içi bildirim merkezi — SADECE Cloud Functions (Admin SDK, bu
     // kurallara hiç tabi değil) yazabilir, bu yüzden "create" istemciden
     // tamamen kapalı (sahte bildirim oluşturmayı engellemek için). Sahibi
@@ -84,11 +94,17 @@ service cloud.firestore {
       allow read: if true;
       // Otomatik tespitler Cloud Function üzerinden (admin SDK, kurallara
       // tabi değil) yazılıyor. Elle ekleme için giriş yapmış herkese
-      // create izni verildi — Haber Ekle ile aynı açıklık düzeyi. Delete de
-      // aynı düzeyde açıldı — mükerrer/yanlış elle eklenen kayıtları
-      // kullanıcı kendi kendine temizleyebilsin diye.
+      // create izni verildi — Haber Ekle ile aynı açıklık düzeyi.
       allow create: if request.auth != null;
-      allow delete: if request.auth != null;
+      //
+      // Delete önceden herkese açıktı — giriş yapmış HERHANGİ biri, otomatik
+      // tespit edilenler dahil, TÜM veriyi silebilirdi. Şimdi: elle
+      // ekleyen kendi kendi eklediğini silebilir (mükerrer/yanlış girişi
+      // temizlemek için), otomatik tespit edilenleri (ekleyenId yok) ya da
+      // başkasının eklediğini sadece yönetici silebilir.
+      allow delete: if request.auth != null && (
+        resource.data.ekleyenId == request.auth.uid || yoneticiMi()
+      );
       allow update: if false;
     }
 
@@ -180,7 +196,17 @@ service cloud.firestore {
       allow get: if true;
       allow list: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.olusturanId == request.auth.uid;
-      allow update: if request.auth != null;
+      // Önceden herhangi bir giriş yapmış kullanıcı BAŞKASININ davet kodunu
+      // (hatta toplu şekilde tüm kullanılmamış kodları) "kullanıldı" diye
+      // işaretleyebilirdi — daveti sistemini kilitleyebilirdi. Şimdi sadece
+      // kayıt akışındaki (kayitOl, AuthContext.jsx) tam olarak yaptığı şeye
+      // izin veriliyor: kullanılmamış bir kodu, SADECE bu üç alanı
+      // değiştirerek, kendi adına "kullanıldı" yapmak.
+      allow update: if request.auth != null &&
+        resource.data.kullanildiMi == false &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kullanildiMi', 'kullananId', 'kullanilmaTarihi']) &&
+        request.resource.data.kullanildiMi == true &&
+        request.resource.data.kullananId == request.auth.uid;
     }
 
     // Üyelik başvuruları: kimlik doğrulaması olmayan biri de başvurabilir
@@ -202,11 +228,9 @@ service cloud.firestore {
     match /dusunceHavuzu/{konuId} {
       allow read: if true;
       allow create: if request.auth != null;
-      // Sadece kendi kullanıcı dokümanında "yonetici: true" alanı olanlar
-      // uygunsuz/hatalı bir konuyu silebilir — genel bir yönetici rolü
-      // sistemi değil, sadece bu tek hassas işlem için.
-      allow delete: if request.auth != null &&
-        get(/databases/$(database)/documents/kullanicilar/$(request.auth.uid)).data.yonetici == true;
+      // Sadece yönetici uygunsuz/hatalı bir konuyu silebilir — genel bir
+      // yönetici rolü sistemi değil, sadece bu tek hassas işlem için.
+      allow delete: if yoneticiMi();
     }
 
     // Bir dönemin (gununKonulari) hangi konuya denk geldiğinin kalıcı
@@ -222,6 +246,10 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.paylasanId == request.auth.uid;
       allow delete: if request.auth != null && resource.data.paylasanId == request.auth.uid;
+      // Sahibi SADECE "paylasanAdi" alanını değiştirebilir — "Geçmişimi de
+      // Güncelle" özelliği için (bkz. gecmisPaylasimlariGuncelle).
+      allow update: if request.auth != null && resource.data.paylasanId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paylasanAdi']);
     }
 
     // Gezi Planları — sahip veya ortak düzenleyenler okuyup düzenleyebilir
@@ -246,7 +274,15 @@ service cloud.firestore {
     match /gonderiler/{gonderiId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;
-      allow update: if request.auth != null;
+      // Sahibi her alanı güncelleyebilir (düzenleme). Başka bir giriş yapmış
+      // kullanıcı ise SADECE beğeni (begenenler) ve yorum sayacı
+      // (yorumSayisi) alanlarını değiştirebilir — önceden bu kural
+      // hiçbir kısıtlama içermiyordu, herkes başkasının paylaşımının
+      // İÇERİĞİNİ değiştirebilirdi.
+      allow update: if request.auth != null && (
+        resource.data.yazarId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['begenenler', 'yorumSayisi'])
+      );
       allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
     }
 
@@ -259,17 +295,26 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
       // Beğeni butonu için — herhangi bir giriş yapmış kullanıcı SADECE
       // "begenenler" alanını değiştirebilir (bildirimler/günlük
-      // kayıtlarındaki aynı desen).
-      allow update: if request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['begenenler']);
+      // kayıtlarındaki aynı desen). Yazarın kendisi de SADECE "yazarAdi"
+      // alanını değiştirebilir — "Geçmişimi de Güncelle" özelliği için
+      // (bkz. gecmisPaylasimlariGuncelle), başka bir alanı değiştiremez.
+      allow update: if request.auth != null && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['begenenler']) ||
+        (resource.data.yazarId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['yazarAdi']))
+      );
     }
 
     // Alıntı Duvarı: bir kitaptan beğenilen bir alıntının paylaşılması.
-    // "update" beğeni sayacı (begenenler dizisi) için serbest bırakıldı — diğer
-    // beğeni/katılım alanlarıyla aynı pragmatik desen.
+    // Sahibi her alanı güncelleyebilir. Başkası SADECE "begenenler" alanını
+    // değiştirebilir — önceden hiçbir kısıtlama yoktu, herkes başkasının
+    // paylaştığı alıntının metnini değiştirebilirdi.
     match /alintilar/{alintiId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
-      allow update: if request.auth != null;
+      allow update: if request.auth != null && (
+        resource.data.kullaniciId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['begenenler'])
+      );
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
@@ -281,13 +326,16 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Etkinlik Habercisi: ileriye dönük etkinlik duyuru panosu. "katilacaklar"
-    // dizisi herkes tarafından güncellenebilir (katılım işareti); diğer alanlar
-    // sadece ekleyen tarafından silinebilir.
+    // Etkinlik Habercisi: ileriye dönük etkinlik duyuru panosu. Sahibi her
+    // alanı güncelleyebilir. Başkası SADECE "katilacaklar" dizisini
+    // değiştirebilir (katılım işareti) — önceden hiçbir kısıtlama yoktu.
     match /etkinlikHabercileri/{habercId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
-      allow update: if request.auth != null;
+      allow update: if request.auth != null && (
+        resource.data.ekleyenId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['katilacaklar'])
+      );
       allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
     }
 
@@ -396,7 +444,9 @@ service cloud.firestore {
     match /favoriler/{favoriId} {
       allow read: if true;
       allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
-      allow delete: if request.auth != null;
+      // Önceden herkese açıktı — giriş yapmış herhangi biri başkasının
+      // favorisini silebilirdi.
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
     match /izlenecekler/{izlenecekId} {
@@ -478,7 +528,10 @@ service cloud.firestore {
     match /raflar/{rafId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
-      allow update: if request.auth != null; // ogeSayisi güncellemesi için serbest
+      // ogeSayisi güncellemesi de dahil, raflar kişisel olduğu için (başkası
+      // asla bir başkasının rafına öge eklemiyor) sahiplik yeterli — önceden
+      // herkese açıktı, herkes başkasının raf adını/açıklamasını değiştirebilirdi.
+      allow update: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
@@ -509,7 +562,10 @@ service cloud.firestore {
     match /yonetmenler/{tmdbId} {
       allow read: if true;
       allow write: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
-      allow delete: if request.auth != null;
+      // Önceden herkese açıktı — giriş yapmış herhangi biri, kim eklemiş
+      // olursa olsun, küratörlü listeden silebilirdi. Şimdi: ekleyen kendi
+      // eklediğini silebilir, başkasınınkini sadece yönetici silebilir.
+      allow delete: if request.auth != null && (resource.data.ekleyenId == request.auth.uid || yoneticiMi());
 
       match /ilgiliKitaplar/{kitapId} {
         allow read: if true;
@@ -647,7 +703,12 @@ service cloud.firestore {
     match /tartismaEtkinlikleri/{etkinlikId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.olusturanId == request.auth.uid;
-      allow update: if request.auth != null; // katılımcı listesi güncellemesi için serbest
+      // Sahibi her alanı güncelleyebilir. Başkası SADECE "katilimcilar"
+      // dizisini değiştirebilir (katıl/ayrıl) — önceden hiçbir kısıtlama yoktu.
+      allow update: if request.auth != null && (
+        resource.data.olusturanId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['katilimcilar'])
+      );
       allow delete: if request.auth != null && resource.data.olusturanId == request.auth.uid;
     }
   }

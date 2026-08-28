@@ -1,3 +1,4 @@
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useEserGonderileri, useKitapIncelemeleri } from '../hooks/useEser.js'
@@ -404,13 +405,13 @@ export default function EserSayfasi({ tur }) {
     setYorumGonderiliyor(true)
     try {
       const disIdTipli = tur === 'kitap' ? id : Number(id)
-      const yeniId = await eserYorumEkle(tur, disIdTipli, kullanici, profil?.adSoyad, yeniYorum, {
+      const yeniId = await eserYorumEkle(tur, disIdTipli, kullanici, gorunenAdGetir(profil, kullanici.displayName), yeniYorum, {
         eserBaslik: detay?.baslik,
         eserPosterUrl: detay?.posterUrl,
       })
       setYorumlar((onceki) => [
         ...onceki,
-        { id: yeniId, yazarId: kullanici.uid, yazarAdi: profil?.adSoyad || kullanici.displayName, metin: yeniYorum.trim(), begenenler: [] },
+        { id: yeniId, yazarId: kullanici.uid, yazarAdi: gorunenAdGetir(profil, kullanici.displayName), metin: yeniYorum.trim(), begenenler: [] },
       ])
       setYeniYorum('')
     } finally {
@@ -423,14 +424,14 @@ export default function EserSayfasi({ tur }) {
     setYanitGonderiliyor(true)
     try {
       const disIdTipli = tur === 'kitap' ? id : Number(id)
-      const yeniId = await eserYorumEkle(tur, disIdTipli, kullanici, profil?.adSoyad, yaniMetni, {
+      const yeniId = await eserYorumEkle(tur, disIdTipli, kullanici, gorunenAdGetir(profil, kullanici.displayName), yaniMetni, {
         eserBaslik: detay?.baslik,
         eserPosterUrl: detay?.posterUrl,
         ustYorumId,
       })
       setYorumlar((onceki) => [
         ...onceki,
-        { id: yeniId, yazarId: kullanici.uid, yazarAdi: profil?.adSoyad || kullanici.displayName, metin: yaniMetni.trim(), ustYorumId, begenenler: [] },
+        { id: yeniId, yazarId: kullanici.uid, yazarAdi: gorunenAdGetir(profil, kullanici.displayName), metin: yaniMetni.trim(), ustYorumId, begenenler: [] },
       ])
       setYaniMetni('')
       setYanitVerilenYorumId(null)
@@ -540,6 +541,7 @@ export default function EserSayfasi({ tur }) {
         await gunlukKaydiGuncelle(mevcutGunlukKaydi.id, { izlemeTarihiISO: gunlukTarihi })
       } else {
         await gunlukKaydiEkle(kullanici, {
+          profil,
           tur,
           disId: id,
           baslik: detay.baslik,
@@ -950,6 +952,7 @@ export default function EserSayfasi({ tur }) {
     setIzlenecekIsleniyor(true)
     try {
       await gunlukKaydiEkle(kullanici, {
+          profil,
         tur,
         disId: id,
         baslik: detay.baslik,
@@ -984,6 +987,7 @@ export default function EserSayfasi({ tur }) {
       // kart/profil sayfalarında "izleniyor" ile "tamamlandı" ayrımı
       // güvenilir şekilde gösterilebiliyor.
       await gunlukKaydiEkle(kullanici, {
+          profil,
         tur,
         disId: id,
         baslik: detay.baslik,
@@ -1016,6 +1020,7 @@ export default function EserSayfasi({ tur }) {
     try {
       // "Başladım" da bir olay — günlüğe düşüyor.
       await gunlukKaydiEkle(kullanici, {
+          profil,
         tur,
         disId: id,
         baslik: detay.baslik,
@@ -1066,6 +1071,7 @@ export default function EserSayfasi({ tur }) {
       const ms = izlenecekKaydi.baslangicTarihi?.toMillis?.()
       const tarihISO = ms ? new Date(ms).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)
       await gunlukKaydiEkle(kullanici, {
+          profil,
         tur,
         disId: id,
         baslik: detay.baslik,
@@ -1118,6 +1124,7 @@ export default function EserSayfasi({ tur }) {
         await gunlukKaydiGuncelle(mevcutKayit.id, { puan, tekrarMi: gunlukTekrar })
       } else {
         await gunlukKaydiEkle(kullanici, {
+          profil,
           tur,
           disId: id,
           baslik: detay.baslik,

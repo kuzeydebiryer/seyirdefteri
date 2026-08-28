@@ -11,6 +11,7 @@ import { useYorumlarim } from '../hooks/useYorumlarim.js'
 import { useRaflar } from '../hooks/useRaflar.js'
 import { useEserPuanlarim } from '../hooks/useEserPuanlarim.js'
 import { rafOlustur, rafSil } from '../utils/raf.js'
+import { gorunenAdGetir, gecmisPaylasimlariGuncelle } from '../utils/gorunenAd.js'
 import { takipEt, takipBirak } from '../utils/takip.js'
 import { favoriKaldir } from '../utils/favori.js'
 import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
@@ -236,6 +237,10 @@ export default function Profil() {
   const [letterboxdTaslak, setLetterboxdTaslak] = useState('')
   const [binKitapTaslak, setBinKitapTaslak] = useState('')
   const [hedefTaslak, setHedefTaslak] = useState(0)
+  const [gorunumTercihiTaslak, setGorunumTercihiTaslak] = useState('adSoyad')
+  const [gecmisGuncellemeTeklifi, setGecmisGuncellemeTeklifi] = useState(false)
+  const [gecmisGuncelleniyor, setGecmisGuncelleniyor] = useState(false)
+  const [gecmisSonucMesaji, setGecmisSonucMesaji] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   useEffect(() => {
@@ -267,6 +272,7 @@ export default function Profil() {
       setLetterboxdTaslak(hedefProfil.letterboxdUrl || '')
       setBinKitapTaslak(hedefProfil.binKitapUrl || '')
       setHedefTaslak(hedefProfil.yillikOkumaHedefi || 0)
+      setGorunumTercihiTaslak(hedefProfil.gorunumTercihi || 'adSoyad')
     }
   }, [hedefProfil, benimProfilimMi])
 
@@ -274,6 +280,7 @@ export default function Profil() {
     e.preventDefault()
     setKaydediliyor(true)
     try {
+      const tercihDegistiMi = gorunumTercihiTaslak !== (hedefProfil.gorunumTercihi || 'adSoyad')
       const guncelVeri = {
         bio: bioTaslak,
         sehir: sehirTaslak,
@@ -282,12 +289,29 @@ export default function Profil() {
         letterboxdUrl: letterboxdTaslak,
         binKitapUrl: binKitapTaslak,
         yillikOkumaHedefi: Number(hedefTaslak) || 0,
+        gorunumTercihi: gorunumTercihiTaslak,
       }
       await profilGuncelle(guncelVeri)
       setHedefProfil((onceki) => ({ ...onceki, ...guncelVeri }))
       setDuzenlemeAcik(false)
+      // Tercih gerçekten değiştiyse, geçmiş paylaşımları da güncellemek
+      // isteyip istemediğini soruyoruz — otomatik yapmıyoruz, bu kullanıcının
+      // bilinçli bir kararı olmalı (bkz. gecmisPaylasimlariGuncelle).
+      if (tercihDegistiMi) setGecmisGuncellemeTeklifi(true)
     } finally {
       setKaydediliyor(false)
+    }
+  }
+
+  async function gecmisiDeGuncelle() {
+    setGecmisGuncelleniyor(true)
+    try {
+      const yeniAd = gorunenAdGetir(hedefProfil)
+      const sayi = await gecmisPaylasimlariGuncelle(uid, yeniAd)
+      setGecmisSonucMesaji(sayi === 0 ? 'Güncellenecek bir şey yoktu, zaten günceldi.' : `${sayi} kayıt güncellendi.`)
+      setGecmisGuncellemeTeklifi(false)
+    } finally {
+      setGecmisGuncelleniyor(false)
     }
   }
 
@@ -387,11 +411,11 @@ export default function Profil() {
       )}
 
       <div className="mb-6 flex items-start gap-4">
-        <Avatar adSoyad={hedefProfil.adSoyad} avatarUrl={hedefProfil.avatarUrl} boyut="h-16 w-16" />
+        <Avatar adSoyad={gorunenAdGetir(hedefProfil)} avatarUrl={hedefProfil.avatarUrl} boyut="h-16 w-16" />
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="font-baslik text-2xl text-murekkep">{hedefProfil.adSoyad}</h1>
-            <PaylasButonu baslik={`${hedefProfil.adSoyad} — Seyirdefteri`} url={`/profil/${uid}`} boyut="kucuk" />
+            <h1 className="font-baslik text-2xl text-murekkep">{gorunenAdGetir(hedefProfil)}</h1>
+            <PaylasButonu baslik={`${gorunenAdGetir(hedefProfil)} — Seyirdefteri`} url={`/profil/${uid}`} boyut="kucuk" />
             {benimProfilimMi && (
               <button
                 onClick={() => setDuzenlemeAcik((a) => !a)}
@@ -401,7 +425,42 @@ export default function Profil() {
               </button>
             )}
           </div>
-          <p className="text-sm text-kraft">@{hedefProfil.kullaniciAdi}</p>
+          {/* Kullanıcı adıyla görünmeyi seçmişse, gerçek adı sadece profilin
+              SAHİBİNE gösteriliyor — ziyaretçilere hiç sızdırılmıyor. Bu,
+              tercihin gizlilik amacıyla kullanılabilmesi için gerekli;
+              tersi (adSoyad seçiliyken @kullaniciAdi'nın görünmesi) sorun
+              değil, çünkü kullanıcı adı zaten kayıt sırasında herkese açık
+              bir etiket olarak belirleniyor. */}
+          {hedefProfil.gorunumTercihi === 'kullaniciAdi' ? (
+            benimProfilimMi && <p className="text-sm text-kraft">{hedefProfil.adSoyad}</p>
+          ) : (
+            <p className="text-sm text-kraft">@{hedefProfil.kullaniciAdi}</p>
+          )}
+
+          {gecmisGuncellemeTeklifi && (
+            <div className="mt-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="text-xs text-murekkep">
+                Görünüm tercihin kaydedildi. Daha önce yazdığın yorum/günce/paylaşımları da bu isimle güncellemek ister
+                misin? (Bu, sadece senin kendi kayıtlarını etkiler.)
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={gecmisiDeGuncelle}
+                  disabled={gecmisGuncelleniyor}
+                  className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                >
+                  {gecmisGuncelleniyor ? 'Güncelleniyor...' : 'Evet, geçmişimi de güncelle'}
+                </button>
+                <button
+                  onClick={() => setGecmisGuncellemeTeklifi(false)}
+                  className="rounded-sm bg-kagit px-3 py-1.5 text-xs text-kraft ring-1 ring-cizgi"
+                >
+                  Hayır, sadece bundan sonrası
+                </button>
+              </div>
+            </div>
+          )}
+          {gecmisSonucMesaji && <p className="mt-2 text-xs text-gise">✓ {gecmisSonucMesaji}</p>}
 
           <Link
             to="/kullanicilar"
@@ -470,6 +529,30 @@ export default function Profil() {
 
           {duzenlemeAcik && (
             <form onSubmit={profiliKaydet} className="mt-3 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Sitede Nasıl Görüneyim?</label>
+                <div className="flex gap-1">
+                  {[
+                    { id: 'adSoyad', etiket: hedefProfil?.adSoyad || 'Ad Soyad' },
+                    { id: 'kullaniciAdi', etiket: `@${hedefProfil?.kullaniciAdi || 'kullaniciadi'}` },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setGorunumTercihiTaslak(s.id)}
+                      className={`rounded-sm px-3 py-1.5 text-xs font-govde ${
+                        gorunumTercihiTaslak === s.id ? 'bg-murekkep text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
+                      }`}
+                    >
+                      {s.etiket}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-[11px] text-kraft">
+                  Bu tercih, bundan sonra yazacağın yorum/günce/paylaşımlarda geçerli olur. Değiştirirsen, kaydettikten
+                  sonra geçmiş paylaşımlarını da güncellemek isteyip istemediğin sorulacak.
+                </p>
+              </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Kapak Görsel URL (profilin en üstünde)</label>
                 <input

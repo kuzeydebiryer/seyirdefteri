@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { topluluktaSuankiOkunanlariGetir } from '../utils/izlenecek.js'
 import Avatar from './Avatar.jsx'
 
@@ -32,7 +33,7 @@ export default function KitapDunyasiWidget() {
             profilOnbellek[k.kullaniciId] = snap.exists() ? snap.data() : {}
           }
           const profil = profilOnbellek[k.kullaniciId]
-          return { ...k, kullaniciAdi: profil.adSoyad || 'Bir okur', kullaniciAvatarUrl: profil.avatarUrl || '' }
+          return { ...k, kullaniciAdi: gorunenAdGetir(profil, 'Bir okur'), kullaniciAvatarUrl: profil.avatarUrl || '' }
         })
       )
 

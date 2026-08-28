@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { kullaniciAraKullaniciAdiIle, planaOrtakDuzenleyenEkle, plandanOrtakDuzenleyenCikar } from '../utils/geziPlanlari.js'
 import Avatar from './Avatar.jsx'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 
 // Gezi planı detay sayfasında — sadece sahip görür. Kullanıcı adına göre
 // arayıp plana ekliyor (eklenen kişiye Cloud Function otomatik bildirim
@@ -62,8 +63,8 @@ export default function GeziPlaniPaylasim({ planId, sahipId, ortakDuzenleyenler,
                 return (
                   <div key={uid} className="flex items-center justify-between gap-2">
                     <Link to={`/profil/${uid}`} className="flex items-center gap-2">
-                      <Avatar adSoyad={bilgi?.adSoyad} avatarUrl={bilgi?.avatarUrl} boyut="h-6 w-6" />
-                      <span className="text-xs text-murekkep">{bilgi?.adSoyad || 'İsimsiz'}</span>
+                      <Avatar adSoyad={gorunenAdGetir(bilgi)} avatarUrl={bilgi?.avatarUrl} boyut="h-6 w-6" />
+                      <span className="text-xs text-murekkep">{bilgi ? gorunenAdGetir(bilgi) : 'İsimsiz'}</span>
                     </Link>
                     <button onClick={() => cikar(uid)} className="text-[11px] text-kraft hover:text-muhur">
                       Çıkar
@@ -92,8 +93,8 @@ export default function GeziPlaniPaylasim({ planId, sahipId, ortakDuzenleyenler,
               {sonuclar.map((k) => (
                 <div key={k.id} className="flex items-center justify-between gap-2 rounded-sm bg-kagitKoyu px-2 py-1.5">
                   <div className="flex items-center gap-2">
-                    <Avatar adSoyad={k.adSoyad} avatarUrl={k.avatarUrl} boyut="h-6 w-6" />
-                    <span className="text-xs text-murekkep">{k.adSoyad} <span className="text-kraft">@{k.kullaniciAdi}</span></span>
+                    <Avatar adSoyad={gorunenAdGetir(k)} avatarUrl={k.avatarUrl} boyut="h-6 w-6" />
+                    <span className="text-xs text-murekkep">{gorunenAdGetir(k)}</span>
                   </div>
                   <button
                     onClick={() => ekle(k)}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ULKELER } from '../data/ulkeler.js'
@@ -553,7 +554,7 @@ export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, o
         tur: kategori,
         altTur: kategori === 'yazi' ? yaziAltTur : kategori === 'etkinlik' ? altTur : null,
         yazarId: kullanici.uid,
-        yazarAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+        yazarAdi: gorunenAdGetir(profil, kullanici.displayName),
         yazarKullaniciAdi: profil?.kullaniciAdi || '',
         yazarAvatarUrl: profil?.avatarUrl || '',
         baslik: baslik.trim(),
@@ -613,6 +614,7 @@ export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, o
         // Gerçek izleme/okuma tarihiyle bir günlük kaydı da düşüyoruz (bkz.
         // utils/gunluk.js) — Yılın Özeti ve Günlük sekmesi bunu kullanıyor.
         await gunlukKaydiEkle(kullanici, {
+          profil,
           tur: kategori,
           disId,
           baslik: baslik.trim(),
@@ -639,6 +641,7 @@ export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, o
         const olayTarihi = kategori === 'etkinlik' ? etkinlikTarihi : baslangicTarihi
         if (olayTarihi) {
           await gunlukKaydiEkle(kullanici, {
+          profil,
             tur: kategori,
             disId: gonderiRef.id,
             baslik: baslik.trim(),
