@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../firebase.js'
+import { gomulmeOnbellektenOku, gomulmeOnbellegeYaz } from '../utils/gomulmeOnbellek.js'
 
 const instagramGomCallable = httpsCallable(functions, 'instagramGom')
 
@@ -69,11 +70,18 @@ export default function InstagramGomulusu({ url, paylasanAdi, kompakt = false })
 
   useEffect(() => {
     if (!url || !gorunumeGeldiMi) return
+    const onbellekteki = gomulmeOnbellektenOku(url)
+    if (onbellekteki !== undefined) {
+      setHtml(onbellekteki)
+      return
+    }
     let iptal = false
     setHtml(undefined)
     instagramGomCallable({ url })
       .then((sonuc) => {
-        if (!iptal) setHtml(sonuc.data?.html || null)
+        const gelenHtml = sonuc.data?.html || null
+        if (!iptal) setHtml(gelenHtml)
+        gomulmeOnbellegeYaz(url, gelenHtml)
       })
       .catch(() => {
         if (!iptal) setHtml(null)

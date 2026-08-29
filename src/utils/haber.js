@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, startAfter, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export async function haberEkle({
@@ -43,15 +43,26 @@ export async function haberDuzenle(haberId, { baslik, icerik, gorselUrl, fragman
   await updateDoc(doc(db, 'haberler', haberId), { baslik, icerik, gorselUrl: gorselUrl || '', fragmanId: fragmanId || '' })
 }
 
-// Haberler hub sayfası (/haberler) için — kategori verilmezse hepsini
-// getirir, verilirse sadece o kategoriyi. useHaberler hook'undaki mantığın
-// aynısı, tek fark opsiyonel kategori filtresi.
-export async function tumHaberleriGetir(kategori) {
-  const q = kategori ? query(collection(db, 'haberler'), where('kategori', '==', kategori)) : query(collection(db, 'haberler'))
-  const snap = await getDocs(q)
-  const liste = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-  liste.sort((a, b) => (b.tarih?.toMillis?.() || 0) - (a.tarih?.toMillis?.() || 0))
-  return liste
+// Haberler hub sayfası (/haberler) için — önceden tüm koleksiyonu (ya da
+// tüm kategoriyi) TEK seferde, hiç sınır olmadan çekiyordu. Haber sayısı
+// arttıkça her sayfa ziyaretinin okuma maliyeti de artacaktı. Şimdi gerçek
+// Firestore sayfalaması var — 20'şer 20'şer, "Daha Fazla Yükle" ile devam
+// ediyor. sonBelge: bir önceki sayfanın son dokümanı (startAfter için).
+const HABER_SAYFA_BOYUTU = 20
+
+export async function haberSayfasiGetir(kategori, sonBelge = null) {
+  const kisitlar = []
+  if (kategori) kisitlar.push(where('kategori', '==', kategori))
+  kisitlar.push(orderBy('tarih', 'desc'))
+  if (sonBelge) kisitlar.push(startAfter(sonBelge))
+  kisitlar.push(limit(HABER_SAYFA_BOYUTU))
+
+  const snap = await getDocs(query(collection(db, 'haberler'), ...kisitlar))
+  return {
+    liste: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    sonBelge: snap.docs.length > 0 ? snap.docs[snap.docs.length - 1] : null,
+    hepsiYuklendiMi: snap.docs.length < HABER_SAYFA_BOYUTU,
+  }
 }
 
 // Haber detay sayfasındaki "İlgili Haberler" şeridi için — aynı kategoriden,

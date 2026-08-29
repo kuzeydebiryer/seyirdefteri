@@ -1,4 +1,5 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
+import { omdbOnbellektenOku, omdbOnbellegeYaz } from '../utils/omdbOnbellek.js'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useEserGonderileri, useKitapIncelemeleri } from '../hooks/useEser.js'
@@ -698,18 +699,28 @@ export default function EserSayfasi({ tur }) {
           // dizisi), IMDb ID'si TMDB'nin external_ids'inden geliyor,
           // ekstra bir arama/eşleştirme gerekmiyor.
           if (OMDB_API_KEY && data.external_ids?.imdb_id) {
-            fetch(`https://www.omdbapi.com/?i=${data.external_ids.imdb_id}&apikey=${OMDB_API_KEY}`)
-              .then((r) => r.json())
-              .then((omdb) => {
-                if (iptal || omdb.Response === 'False') return
-                const bul = (kaynak) => omdb.Ratings?.find((r) => r.Source === kaynak)?.Value || null
-                setDisPuanlar({
-                  imdb: omdb.imdbRating && omdb.imdbRating !== 'N/A' ? omdb.imdbRating : null,
-                  rottenTomatoes: bul('Rotten Tomatoes'),
-                  metacritic: bul('Metacritic') || (omdb.Metascore !== 'N/A' ? `${omdb.Metascore}/100` : null),
-                })
+            const imdbId = data.external_ids.imdb_id
+            const onbellekteki = omdbOnbellektenOku(imdbId)
+            const isle = (omdb) => {
+              if (iptal || omdb.Response === 'False') return
+              const bul = (kaynak) => omdb.Ratings?.find((r) => r.Source === kaynak)?.Value || null
+              setDisPuanlar({
+                imdb: omdb.imdbRating && omdb.imdbRating !== 'N/A' ? omdb.imdbRating : null,
+                rottenTomatoes: bul('Rotten Tomatoes'),
+                metacritic: bul('Metacritic') || (omdb.Metascore !== 'N/A' ? `${omdb.Metascore}/100` : null),
               })
-              .catch(() => {}) // sessizce geç — dış puanlar opsiyonel bir ek, sayfayı bloklamasın
+            }
+            if (onbellekteki !== undefined) {
+              isle(onbellekteki)
+            } else {
+              fetch(`https://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_API_KEY}`)
+                .then((r) => r.json())
+                .then((omdb) => {
+                  omdbOnbellegeYaz(imdbId, omdb)
+                  isle(omdb)
+                })
+                .catch(() => {}) // sessizce geç — dış puanlar opsiyonel bir ek, sayfayı bloklamasın
+            }
           }
 
           // Nerede İzlenebilir (Türkiye) — TMDB'nin JustWatch verisi üzerinden sağladığı uç nokta

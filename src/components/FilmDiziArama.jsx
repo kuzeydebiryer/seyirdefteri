@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { omdbOnbellektenOku, omdbOnbellegeYaz } from '../utils/omdbOnbellek.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342'
@@ -134,8 +135,12 @@ export default function FilmDiziArama({ tur, sabitPlatformId }) {
             const extRes = await fetch(`https://api.themoviedb.org/3/${uc}/${item.id}/external_ids?api_key=${TMDB_API_KEY}`)
             const ext = await extRes.json()
             if (!ext.imdb_id) return { ...item, imdbPuan: null }
-            const omdbRes = await fetch(`https://www.omdbapi.com/?i=${ext.imdb_id}&apikey=${OMDB_API_KEY}`)
-            const omdb = await omdbRes.json()
+            let omdb = omdbOnbellektenOku(ext.imdb_id)
+            if (omdb === undefined) {
+              const omdbRes = await fetch(`https://www.omdbapi.com/?i=${ext.imdb_id}&apikey=${OMDB_API_KEY}`)
+              omdb = await omdbRes.json()
+              omdbOnbellegeYaz(ext.imdb_id, omdb)
+            }
             const puan = omdb.imdbRating && omdb.imdbRating !== 'N/A' ? parseFloat(omdb.imdbRating) : null
             return { ...item, imdbPuan: puan }
           } catch {

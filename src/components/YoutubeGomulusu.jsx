@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { httpsCallable } from 'firebase/functions'
 import { functions } from '../firebase.js'
+import { gomulmeOnbellektenOku, gomulmeOnbellegeYaz } from '../utils/gomulmeOnbellek.js'
 
 const youtubeGomCallable = httpsCallable(functions, 'youtubeGom')
 
 // InstagramGomulusu ile BİREBİR aynı kalıp — tembel yükleme
 // (IntersectionObserver) + kompakt mod (tıkla-genişlet), sadece kaynak
-// YouTube'un oEmbed uç noktası. YouTube oEmbed API anahtarı gerektirmiyor,
-// kotasız/sınırsız (arama gibi kotalı bir YouTube Data API v3 işlemi
-// DEĞİL) — bu yüzden Instagram'daki gibi bir önbellek koleksiyonuna bile
-// gerek yok, her seferinde doğrudan isteniyor.
+// YouTube'un oEmbed uç noktası. YouTube'un kendi API'si kotasız olsa da,
+// önbellekleme yine de değerli — her çağrı Firebase Cloud Functions
+// invocation sayacını (kendi kotası/faturası olan bir metrik) artırıyordu,
+// aynı video tekrar tekrar görüntülendiğinde bu boşuna tekrarlanıyordu.
 export default function YoutubeGomulusu({ url, paylasanAdi, kompakt = false }) {
   const [genisletildiMi, setGenisletildiMi] = useState(!kompakt)
   const [gorunumeGeldiMi, setGorunumeGeldiMi] = useState(false)
@@ -35,11 +36,18 @@ export default function YoutubeGomulusu({ url, paylasanAdi, kompakt = false }) {
 
   useEffect(() => {
     if (!url || !gorunumeGeldiMi) return
+    const onbellekteki = gomulmeOnbellektenOku(url)
+    if (onbellekteki !== undefined) {
+      setVeri(onbellekteki)
+      return
+    }
     let iptal = false
     setVeri(undefined)
     youtubeGomCallable({ url })
       .then((sonuc) => {
-        if (!iptal) setVeri(sonuc.data || null)
+        const gelenVeri = sonuc.data || null
+        if (!iptal) setVeri(gelenVeri)
+        gomulmeOnbellegeYaz(url, gelenVeri)
       })
       .catch(() => {
         if (!iptal) setVeri(null)

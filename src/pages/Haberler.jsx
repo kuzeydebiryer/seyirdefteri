@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { tumHaberleriGetir } from '../utils/haber.js'
+import { haberSayfasiGetir } from '../utils/haber.js'
 
 const KATEGORILER = [
   { id: '', etiket: 'Tümü', ikon: '📰' },
@@ -22,16 +22,35 @@ function tarihGoster(deger) {
 // Film/Dizi/Kitap/Oyuncu sayfalarındaki HaberBolumu'nun "Tümünü Gör"
 // linklerinin gittiği yer — üst menüye eklenmedi (kasıtlı), sadece oradan
 // erişiliyor. Kategoriler arası filtre burada, sayfa başına bölünmeden
-// tüm listeyi kategoriye göre süzüyor.
+// tüm listeyi kategoriye göre süzüyor. 20'şer sayfalanıyor (bkz. haber.js).
 export default function Haberler() {
   const [aramaParametreleri, setAramaParametreleri] = useSearchParams()
   const kategori = aramaParametreleri.get('kategori') || ''
   const [haberler, setHaberler] = useState(null)
+  const [sonBelge, setSonBelge] = useState(null)
+  const [hepsiYuklendiMi, setHepsiYuklendiMi] = useState(false)
+  const [dahaFazlaYukleniyor, setDahaFazlaYukleniyor] = useState(false)
 
   useEffect(() => {
     setHaberler(null)
-    tumHaberleriGetir(kategori || undefined).then(setHaberler)
+    haberSayfasiGetir(kategori || undefined).then(({ liste, sonBelge, hepsiYuklendiMi }) => {
+      setHaberler(liste)
+      setSonBelge(sonBelge)
+      setHepsiYuklendiMi(hepsiYuklendiMi)
+    })
   }, [kategori])
+
+  async function dahaFazlaYukle() {
+    setDahaFazlaYukleniyor(true)
+    try {
+      const sonuc = await haberSayfasiGetir(kategori || undefined, sonBelge)
+      setHaberler((onceki) => [...onceki, ...sonuc.liste])
+      setSonBelge(sonuc.sonBelge)
+      setHepsiYuklendiMi(sonuc.hepsiYuklendiMi)
+    } finally {
+      setDahaFazlaYukleniyor(false)
+    }
+  }
 
   function kategoriSec(id) {
     const yeni = new URLSearchParams()
@@ -87,6 +106,16 @@ export default function Haberler() {
           )
         })}
       </div>
+
+      {haberler && haberler.length > 0 && !hepsiYuklendiMi && (
+        <button
+          onClick={dahaFazlaYukle}
+          disabled={dahaFazlaYukleniyor}
+          className="mt-4 rounded-sm bg-kagitKoyu px-4 py-2 font-govde text-xs text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:opacity-40"
+        >
+          {dahaFazlaYukleniyor ? 'Yükleniyor...' : 'Daha Fazla Yükle'}
+        </button>
+      )}
     </div>
   )
 }
