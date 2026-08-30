@@ -1274,6 +1274,16 @@ export default function EserSayfasi({ tur }) {
                 )}
                 {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
                 {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
+                {detay.ulkeler?.map((u) => (
+                  <Link key={u.kod} to={`/kesfet-filtre/${tur}?ulke=${u.kod}&ad=${encodeURIComponent(u.ad)}`} className="hover:underline">
+                    🌍 {u.ad}
+                  </Link>
+                ))}
+                {detay.diller?.map((d) => (
+                  <Link key={d.kod} to={`/kesfet-filtre/${tur}?dil=${d.kod}&ad=${encodeURIComponent(d.ad)}`} className="hover:underline">
+                    🗣️ {d.ad}
+                  </Link>
+                ))}
               </div>
               {detay.fragmanId && (
                 <button
