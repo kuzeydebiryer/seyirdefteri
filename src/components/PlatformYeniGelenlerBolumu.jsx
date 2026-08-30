@@ -21,8 +21,8 @@ export default function PlatformYeniGelenlerBolumu({ siki = false }) {
     const diziSorgu = query(collection(db, 'platformYeniEklenenler'), where('tur', '==', 'dizi'), orderBy('tespitTarihi', 'desc'), limit(15))
     const dijitalSorgu = query(collection(db, 'dijitalYeniCikanlar'), orderBy('tarih', 'desc'), limit(15))
     Promise.all([getDocs(filmSorgu), getDocs(diziSorgu), getDocs(dijitalSorgu)]).then(([filmSnap, diziSnap, dijitalSnap]) => {
-      const filmler = filmSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
-      const diziler = diziSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      const filmler = filmSnap.docs.map((d) => ({ id: d.id, ...d.data(), siralamaTarihi: d.data().tespitTarihi?.toMillis?.() || 0 }))
+      const diziler = diziSnap.docs.map((d) => ({ id: d.id, ...d.data(), siralamaTarihi: d.data().tespitTarihi?.toMillis?.() || 0 }))
       // Sadece gerçekten "belirli bir platforma bağlı olmayan" (💻 Dijital
       // etiketli) kayıtlar dahil ediliyor — MUBI/HBO gibi bir platforma
       // eklenip buraya çapraz kaydolan filmler zaten "filmler" listesinde
@@ -40,9 +40,21 @@ export default function PlatformYeniGelenlerBolumu({ siki = false }) {
           posterUrl: t.posterUrl,
           platformAdi: '💻 Dijital',
           elleEklendiMi: true,
+          siralamaTarihi: t.tarih?.toMillis?.() || 0,
         }))
       const hepsi = [...dijitalFilmler, ...filmler, ...diziler]
-      hepsi.sort((a, b) => (b.elleEklendiMi ? 1 : 0) - (a.elleEklendiMi ? 1 : 0))
+      // Önce "elle eklendi mi" (öncelik), sonra gerçek tarih (en yeni önde).
+      // Sadece elleEklendiMi'ye göre sıralamak YETERSİZDİ — JavaScript'in
+      // sort()'u "stabil" olduğu için, eşit önceliğe sahip öğeler dizideki
+      // İLK SIRALARINI koruyor. dijitalFilmler diziye en başta eklendiği
+      // için, elle eklenen platform kayıtları (MUBI, Apple TV Store vb.)
+      // aynı önceliğe sahip olsalar bile hep dijitallerin ARKASINDA
+      // kalıyordu — dijital sayısı 15'i geçince onlar hiç görünmüyordu.
+      hepsi.sort((a, b) => {
+        const oncelikFarki = (b.elleEklendiMi ? 1 : 0) - (a.elleEklendiMi ? 1 : 0)
+        if (oncelikFarki !== 0) return oncelikFarki
+        return b.siralamaTarihi - a.siralamaTarihi
+      })
       setGelenler(hepsi.slice(0, 15))
     })
   }, [])
