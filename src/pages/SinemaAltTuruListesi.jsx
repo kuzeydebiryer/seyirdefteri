@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { altTurBul } from '../data/sinemaAltTurleri.js'
+import { anaTurGetir, altTurleriGetir } from '../utils/sinemaTurleri.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w300'
@@ -22,12 +22,19 @@ async function sayfaGetir({ uc, tmdbTurId, anahtarKelimeIdleri, sayfa }) {
 // Bir alt türün ("Folk Horror" gibi) "Tümünü Gör" linkinin gittiği sayfa —
 // SinemaAnaTuruDetay'daki yatay şerit sadece ilk 12'yi gösteriyordu; burada
 // TMDB'nin gerçekten kaç sonucu olduğu görülüyor, "Daha Fazla Yükle" ile
-// sayfa sayfa devam ediliyor (diğer keşif sayfalarındaki aynı desen).
+// sayfa sayfa devam ediliyor. Artık Firestore'dan okunuyor.
 export default function SinemaAltTuruListesi() {
   const { anaTurId, altTurId } = useParams()
   const [aramaParametreleri, setAramaParametreleri] = useSearchParams()
   const mod = aramaParametreleri.get('mod') || 'sinema'
-  const bulunan = altTurBul(anaTurId, altTurId)
+
+  const [anaTur, setAnaTur] = useState(undefined)
+  const [altTur, setAltTur] = useState(undefined)
+
+  useEffect(() => {
+    anaTurGetir(anaTurId).then(setAnaTur)
+    altTurleriGetir(anaTurId).then((liste) => setAltTur(liste.find((a) => a.id === altTurId) || null))
+  }, [anaTurId, altTurId])
 
   const [sonuclar, setSonuclar] = useState(null)
   const [sayfa, setSayfa] = useState(1)
@@ -35,32 +42,27 @@ export default function SinemaAltTuruListesi() {
   const [toplamSonuc, setToplamSonuc] = useState(0)
   const [dahaFazlaYukleniyor, setDahaFazlaYukleniyor] = useState(false)
 
-  const tmdbTurId = bulunan ? (mod === 'sinema' ? bulunan.anaTur.tmdbFilmTurId : bulunan.anaTur.tmdbDiziTurId) : null
+  const tmdbTurId = anaTur ? (mod === 'sinema' ? anaTur.tmdbFilmTurId : anaTur.tmdbDiziTurId) : null
 
   useEffect(() => {
-    if (!bulunan || !TMDB_API_KEY) return
+    if (!altTur || !TMDB_API_KEY) return
     setSonuclar(null)
     setSayfa(1)
-    sayfaGetir({ uc: mod === 'sinema' ? 'movie' : 'tv', tmdbTurId, anahtarKelimeIdleri: bulunan.altTur.anahtarKelimeIdleri, sayfa: 1 }).then(
-      ({ sonuclar, toplamSayfa, toplamSonuc }) => {
-        setSonuclar(sonuclar)
-        setToplamSayfa(toplamSayfa)
-        setToplamSonuc(toplamSonuc)
-      }
-    )
+    const anahtarKelimeIdleri = altTur.anahtarKelimeler.map((k) => k.id)
+    sayfaGetir({ uc: mod === 'sinema' ? 'movie' : 'tv', tmdbTurId, anahtarKelimeIdleri, sayfa: 1 }).then(({ sonuclar, toplamSayfa, toplamSonuc }) => {
+      setSonuclar(sonuclar)
+      setToplamSayfa(toplamSayfa)
+      setToplamSonuc(toplamSonuc)
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anaTurId, altTurId, mod])
+  }, [anaTurId, altTurId, mod, altTur])
 
   async function dahaFazlaYukle() {
     setDahaFazlaYukleniyor(true)
     try {
       const yeniSayfa = sayfa + 1
-      const { sonuclar: yeniSonuclar } = await sayfaGetir({
-        uc: mod === 'sinema' ? 'movie' : 'tv',
-        tmdbTurId,
-        anahtarKelimeIdleri: bulunan.altTur.anahtarKelimeIdleri,
-        sayfa: yeniSayfa,
-      })
+      const anahtarKelimeIdleri = altTur.anahtarKelimeler.map((k) => k.id)
+      const { sonuclar: yeniSonuclar } = await sayfaGetir({ uc: mod === 'sinema' ? 'movie' : 'tv', tmdbTurId, anahtarKelimeIdleri, sayfa: yeniSayfa })
       setSonuclar((onceki) => [...onceki, ...yeniSonuclar])
       setSayfa(yeniSayfa)
     } finally {
@@ -68,7 +70,9 @@ export default function SinemaAltTuruListesi() {
     }
   }
 
-  if (!bulunan) {
+  if (anaTur === undefined || altTur === undefined) return <p className="text-sm text-kraft">Yükleniyor...</p>
+
+  if (!anaTur || !altTur) {
     return (
       <div>
         <Link to="/sinema-turleri" className="text-xs text-kraft hover:text-deniz">
@@ -78,8 +82,6 @@ export default function SinemaAltTuruListesi() {
       </div>
     )
   }
-
-  const { anaTur, altTur } = bulunan
 
   return (
     <div>

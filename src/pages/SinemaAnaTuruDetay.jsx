@@ -1,24 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { SINEMA_ALT_TURLERI } from '../data/sinemaAltTurleri.js'
+import { anaTurGetir, altTurleriGetir } from '../utils/sinemaTurleri.js'
 import YatayKaydirma from '../components/YatayKaydirma.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w300'
 
 // Tek bir alt türün (ör. "Folk Horror") sonuçlarını çeken ve yatay bir
-// şerit olarak gösteren alt bileşen — SinemaAnaTuruDetay bunu her alt tür
-// için bir kez render ediyor. tmdbTurId null ise (dizi türlerinde Korku diye
-// bir TMDB kategorisi olmadığı için) tür kısıtı hiç eklenmiyor, sadece
-// anahtar kelime yeterli oluyor.
+// şerit olarak gösteren alt bileşen. tmdbTurId null ise (dizi türlerinde
+// Korku diye bir TMDB kategorisi olmadığı için) tür kısıtı hiç eklenmiyor,
+// sadece anahtar kelime yeterli oluyor. anahtarKelimeIdleri artık Firestore
+// belgesindeki anahtarKelimeler dizisinden (her biri {id, ad}) çıkarılıyor.
 function AltTurSeridi({ anaTurId, altTur, tmdbTurId, mod }) {
   const [sonuclar, setSonuclar] = useState(null)
+  const anahtarKelimeIdleri = altTur.anahtarKelimeler.map((k) => k.id)
 
   useEffect(() => {
     if (!TMDB_API_KEY) return
     setSonuclar(null)
     const uc = mod === 'sinema' ? 'movie' : 'tv'
-    const parcalar = [`api_key=${TMDB_API_KEY}`, 'language=tr-TR', 'sort_by=popularity.desc', `with_keywords=${altTur.anahtarKelimeIdleri.join('|')}`]
+    const parcalar = [`api_key=${TMDB_API_KEY}`, 'language=tr-TR', 'sort_by=popularity.desc', `with_keywords=${anahtarKelimeIdleri.join('|')}`]
     if (tmdbTurId) parcalar.push(`with_genres=${tmdbTurId}`)
     fetch(`https://api.themoviedb.org/3/discover/${uc}?${parcalar.join('&')}`)
       .then((r) => r.json())
@@ -66,12 +67,20 @@ function AltTurSeridi({ anaTurId, altTur, tmdbTurId, mod }) {
 // Platformlar/PlatformDetay ile aynı desen — hub'dan (SinemaAltTurleri.jsx)
 // gelinen, tek bir ana türün (ör. Korku Sineması) tüm alt türlerini yatay
 // şeritler halinde gösteren sayfa. Film/Dizi sekmesi tüm şeritleri birden
-// etkiliyor.
+// etkiliyor. Artık Firestore'dan okunuyor (bkz. utils/sinemaTurleri.js).
 export default function SinemaAnaTuruDetay() {
   const { anaTurId } = useParams()
   const [aramaParametreleri, setAramaParametreleri] = useSearchParams()
   const mod = aramaParametreleri.get('mod') || 'sinema'
-  const anaTur = SINEMA_ALT_TURLERI[anaTurId]
+  const [anaTur, setAnaTur] = useState(undefined) // undefined: yükleniyor, null: bulunamadı
+  const [altTurler, setAltTurler] = useState(null)
+
+  useEffect(() => {
+    anaTurGetir(anaTurId).then(setAnaTur)
+    altTurleriGetir(anaTurId).then(setAltTurler)
+  }, [anaTurId])
+
+  if (anaTur === undefined) return <p className="text-sm text-kraft">Yükleniyor...</p>
 
   if (!anaTur) {
     return (
@@ -114,7 +123,9 @@ export default function SinemaAnaTuruDetay() {
         </button>
       </div>
 
-      {anaTur.altTurler.map((altTur) => (
+      {altTurler === null && <p className="text-sm text-kraft">Alt türler yükleniyor...</p>}
+      {altTurler !== null && altTurler.length === 0 && <p className="text-sm text-kraft">Bu ana türe henüz alt tür eklenmemiş.</p>}
+      {altTurler?.map((altTur) => (
         <AltTurSeridi key={altTur.id} anaTurId={anaTurId} altTur={altTur} tmdbTurId={tmdbTurId} mod={mod} />
       ))}
     </div>
