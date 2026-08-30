@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { topluluktaPopulerEserler } from '../hooks/useEser.js'
 import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
 import { useHaberler } from '../hooks/useHaberler.js'
@@ -77,6 +78,17 @@ export default function Filmler() {
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-6">Film</h1>
+
+      <Link
+        to="/sinema-turleri"
+        className="mb-6 flex items-center gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi transition hover:ring-deniz/50"
+      >
+        <span className="text-xl">🎭</span>
+        <div>
+          <p className="text-sm text-murekkep">Sinemasal Alt Türler</p>
+          <p className="text-xs text-kraft">Folk Horror, Giallo, Buluntu Film ve daha fazlası →</p>
+        </div>
+      </Link>
 
       <FilmDiziArama tur="sinema" />
 
