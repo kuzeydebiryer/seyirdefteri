@@ -11,7 +11,7 @@ const TMDB_POSTER = 'https://image.tmdb.org/t/p/w300'
 // için bir kez render ediyor. tmdbTurId null ise (dizi türlerinde Korku diye
 // bir TMDB kategorisi olmadığı için) tür kısıtı hiç eklenmiyor, sadece
 // anahtar kelime yeterli oluyor.
-function AltTurSeridi({ altTur, tmdbTurId, mod }) {
+function AltTurSeridi({ anaTurId, altTur, tmdbTurId, mod }) {
   const [sonuclar, setSonuclar] = useState(null)
 
   useEffect(() => {
@@ -30,9 +30,17 @@ function AltTurSeridi({ altTur, tmdbTurId, mod }) {
 
   return (
     <div className="mb-8">
-      <h2 className="mb-3 font-baslik text-lg text-murekkep">
-        {altTur.ikon} {altTur.ad}
-      </h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="font-baslik text-lg text-murekkep">
+          {altTur.ikon} {altTur.ad}
+        </h2>
+        <Link
+          to={`/sinema-turu/${anaTurId}/${altTur.id}?mod=${mod}`}
+          className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz"
+        >
+          Tümünü Gör ›
+        </Link>
+      </div>
       {sonuclar === null ? (
         <p className="text-sm text-kraft">Yükleniyor...</p>
       ) : (
@@ -107,7 +115,7 @@ export default function SinemaAnaTuruDetay() {
       </div>
 
       {anaTur.altTurler.map((altTur) => (
-        <AltTurSeridi key={altTur.id} altTur={altTur} tmdbTurId={tmdbTurId} mod={mod} />
+        <AltTurSeridi key={altTur.id} anaTurId={anaTurId} altTur={altTur} tmdbTurId={tmdbTurId} mod={mod} />
       ))}
     </div>
   )
