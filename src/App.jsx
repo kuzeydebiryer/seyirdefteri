@@ -57,6 +57,7 @@ const Sag = lazy(() => import('./pages/Sag.jsx'))
 const CriticsChoice = lazy(() => import('./pages/CriticsChoice.jsx'))
 const Festivaller = lazy(() => import('./pages/Festivaller.jsx'))
 const TurSayfasi = lazy(() => import('./pages/TurSayfasi.jsx'))
+const KesfetFiltre = lazy(() => import('./pages/KesfetFiltre.jsx'))
 const KisiselListeDetay = lazy(() => import('./pages/KisiselListeDetay.jsx'))
 const AlintiDuvari = lazy(() => import('./pages/AlintiDuvari.jsx'))
 const Oyuncular = lazy(() => import('./pages/Oyuncular.jsx'))
@@ -159,6 +160,7 @@ export default function App() {
             <Route path="/odul-toreni/critics-choice" element={<OzelRota><CriticsChoice /></OzelRota>} />
             <Route path="/festival" element={<OzelRota><Festivaller /></OzelRota>} />
             <Route path="/tur/:tur/:turId" element={<OzelRota><TurSayfasi /></OzelRota>} />
+            <Route path="/kesfet-filtre/:tur" element={<OzelRota><KesfetFiltre /></OzelRota>} />
             <Route path="/liste/:listeId" element={<OzelRota><KisiselListeDetay /></OzelRota>} />
             <Route path="/alintilar" element={<OzelRota><AlintiDuvari /></OzelRota>} />
             <Route path="/oyuncular" element={<OzelRota><Oyuncular /></OzelRota>} />

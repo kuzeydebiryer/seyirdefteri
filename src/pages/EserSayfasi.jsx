@@ -698,6 +698,19 @@ export default function EserSayfasi({ tur }) {
             // (bkz. altTurRozetleriHesapla) tek bir düz diziye normalize
             // ediliyor.
             anahtarKelimeIdleri: ((tur === 'sinema' ? data.keywords?.keywords : data.keywords?.results) || []).map((k) => k.id),
+            // Ülke/dil bilgisi — ekstra bir istek gerekmiyor, zaten çektiğimiz
+            // detay isteğinde geliyor, sadece şimdiye kadar okumuyorduk.
+            // TMDB, language=tr-TR ile ülke adlarını Türkçeleştiriyor; dil
+            // adları için (spoken_languages) kendi native adını (ör.
+            // "English") döndürüyor, o yüzden english_name kullanılıyor.
+            // Hem kod (US, en — TMDB'nin discover filtresi bunu istiyor)
+            // hem ad birlikte saklanıyor ki rozetler tıklanabilir olsun.
+            ulkeler: (data.production_countries || []).map((u) => ({ kod: u.iso_3166_1, ad: u.name })),
+            diller: [
+              ...new Map(
+                (data.spoken_languages || []).map((d) => [d.iso_639_1, { kod: d.iso_639_1, ad: d.english_name || d.name }])
+              ).values(),
+            ],
             sureDk: tur === 'sinema' ? data.runtime : null,
             sezonSayisi: tur === 'dizi' ? data.number_of_seasons : null,
             bolumSayisi: tur === 'dizi' ? data.number_of_episodes : null,
@@ -1234,7 +1247,15 @@ export default function EserSayfasi({ tur }) {
             )}
             <div className="min-w-0 flex-1 pb-1">
               <h1 className="font-baslik text-lg text-white drop-shadow-md sm:text-2xl">
-                {detay.baslik} {detay.yil && <span className="text-white/70 text-sm sm:text-lg">({detay.yil})</span>}
+                {detay.baslik}{' '}
+                {detay.yil &&
+                  ((tur === 'sinema' || tur === 'dizi') ? (
+                    <Link to={`/kesfet-filtre/${tur}?yil=${detay.yil}`} className="text-sm text-white/70 hover:text-white hover:underline sm:text-lg">
+                      ({detay.yil})
+                    </Link>
+                  ) : (
+                    <span className="text-white/70 text-sm sm:text-lg">({detay.yil})</span>
+                  ))}
               </h1>
               <KisiListesi kisiler={detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} acikRenk />
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/80">
@@ -1297,7 +1318,15 @@ export default function EserSayfasi({ tur }) {
         <div className="min-w-0 flex-1">
           {!heroAktifMi && (
             <h1 className="font-baslik text-3xl text-murekkep">
-              {detay.baslik} {detay.yil && <span className="text-kraft text-xl">({detay.yil})</span>}
+              {detay.baslik}{' '}
+              {detay.yil &&
+                ((tur === 'sinema' || tur === 'dizi') ? (
+                  <Link to={`/kesfet-filtre/${tur}?yil=${detay.yil}`} className="text-xl text-kraft hover:text-deniz hover:underline">
+                    ({detay.yil})
+                  </Link>
+                ) : (
+                  <span className="text-kraft text-xl">({detay.yil})</span>
+                ))}
             </h1>
           )}
           {detay.tagline && <p className="mt-0.5 text-sm italic text-kraft">"{detay.tagline}"</p>}
@@ -1336,6 +1365,16 @@ export default function EserSayfasi({ tur }) {
                 )}
                 {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
                 {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
+                {detay.ulkeler?.map((u) => (
+                  <Link key={u.kod} to={`/kesfet-filtre/${tur}?ulke=${u.kod}&ad=${encodeURIComponent(u.ad)}`} className="hover:text-deniz hover:underline">
+                    🌍 {u.ad}
+                  </Link>
+                ))}
+                {detay.diller?.map((d) => (
+                  <Link key={d.kod} to={`/kesfet-filtre/${tur}?dil=${d.kod}&ad=${encodeURIComponent(d.ad)}`} className="hover:text-deniz hover:underline">
+                    🗣️ {d.ad}
+                  </Link>
+                ))}
               </>
             )}
             {detay.sayfaSayisi && <span>📄 {detay.sayfaSayisi} sayfa</span>}
