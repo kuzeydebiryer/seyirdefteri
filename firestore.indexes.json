@@ -589,6 +589,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "sinemaAltTurleri",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "anaTurId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sira",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
