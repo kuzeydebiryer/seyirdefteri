@@ -5,12 +5,14 @@ import { db } from '../firebase.js'
 import YatayKaydirma from './YatayKaydirma.jsx'
 
 // platformYeniEklenenleriTespitEt Cloud Function'ının (functions/index.js)
-// günlük doldurduğu koleksiyondan besleniyor, ARTIK "Dijitalde Yeni
-// Çıkanlar"a elle eklenen (herhangi bir platforma bağlı olmayan, "💻
-// Dijital" etiketli) filmlerle de birleştiriliyor — önceden bu ikisi hiç
-// buluşmuyordu, dijitale elle eklenen bir film burada hiç görünmüyordu.
-// Öncelik sırası: dijitale elle eklenenler > platforma elle eklenenler >
-// otomatik tespit edilenler — en çok emek/özen gösterilenler en önde.
+// günlük doldurduğu koleksiyondan besleniyor, "Dijitalde Yeni Çıkanlar"a
+// elle eklenen (herhangi bir platforma bağlı olmayan, "💻 Dijital" etiketli)
+// filmlerle de birleştiriliyor. Öncelik sırası: TÜM elle eklenenler (dijital
+// ya da platform fark etmez) > otomatik tespit edilenler. Önceden "önce tüm
+// dijitaller, sonra filmler/diziler" şeklindeydi — dijital sayısı 15'i
+// geçince platforma elle eklenenler slice(0,15) ile tamamen kırpılıyordu,
+// hiç görünmüyorlardı. Şimdi tek bir havuzda, sadece "elle eklendi mi"
+// kriterine göre sıralanıyor.
 export default function PlatformYeniGelenlerBolumu({ siki = false }) {
   const [gelenler, setGelenler] = useState(null)
 
@@ -19,18 +21,29 @@ export default function PlatformYeniGelenlerBolumu({ siki = false }) {
     const diziSorgu = query(collection(db, 'platformYeniEklenenler'), where('tur', '==', 'dizi'), orderBy('tespitTarihi', 'desc'), limit(15))
     const dijitalSorgu = query(collection(db, 'dijitalYeniCikanlar'), orderBy('tarih', 'desc'), limit(15))
     Promise.all([getDocs(filmSorgu), getDocs(diziSorgu), getDocs(dijitalSorgu)]).then(([filmSnap, diziSnap, dijitalSnap]) => {
-      const oncelikSirala = (liste) => [...liste].sort((a, b) => (b.elleEklendiMi ? 1 : 0) - (a.elleEklendiMi ? 1 : 0))
-      const filmler = oncelikSirala(filmSnap.docs.map((d) => ({ id: d.id, ...d.data() })))
-      const diziler = oncelikSirala(diziSnap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      const filmler = filmSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      const diziler = diziSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
       // Sadece gerçekten "belirli bir platforma bağlı olmayan" (💻 Dijital
       // etiketli) kayıtlar dahil ediliyor — MUBI/HBO gibi bir platforma
       // eklenip buraya çapraz kaydolan filmler zaten "filmler" listesinde
       // kendi platform adıyla var, burada tekrar sayılmasın diye elendi.
+      // dijitalYeniCikanlar'a otomatik tespit YOK — buradaki her kayıt
+      // zaten elle eklenmiş demektir, elleEklendiMi burada hep true.
       const dijitalFilmler = dijitalSnap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter((t) => !t.platformEtiketi || t.platformEtiketi === '💻 Dijital')
-        .map((t) => ({ id: `dijital_${t.id}`, tur: 'sinema', disId: t.disId, baslik: t.baslik, posterUrl: t.posterUrl, platformAdi: '💻 Dijital' }))
-      setGelenler([...dijitalFilmler, ...filmler, ...diziler].slice(0, 15))
+        .map((t) => ({
+          id: `dijital_${t.id}`,
+          tur: 'sinema',
+          disId: t.disId,
+          baslik: t.baslik,
+          posterUrl: t.posterUrl,
+          platformAdi: '💻 Dijital',
+          elleEklendiMi: true,
+        }))
+      const hepsi = [...dijitalFilmler, ...filmler, ...diziler]
+      hepsi.sort((a, b) => (b.elleEklendiMi ? 1 : 0) - (a.elleEklendiMi ? 1 : 0))
+      setGelenler(hepsi.slice(0, 15))
     })
   }, [])
 
