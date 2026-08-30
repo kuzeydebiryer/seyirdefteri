@@ -1,4 +1,5 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
+import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { omdbOnbellektenOku, omdbOnbellegeYaz } from '../utils/omdbOnbellek.js'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -490,6 +491,28 @@ export default function EserSayfasi({ tur }) {
   }
 
   const [detay, setDetay] = useState(null)
+  const [eslesenAltTurler, setEslesenAltTurler] = useState([])
+
+  // Bu film/dizi "Sinemasal Alt Türler"den hangilerine ait? — filmin kendi
+  // TMDB anahtar kelimeleri (yukarıda detay.anahtarKelimeIdleri'ne
+  // toplanmıştı) ile Firestore'daki TÜM alt türlerin anahtar kelimeleri
+  // kesişiyor mu diye bakılıyor. Sadece film/dizi için anlamlı (kitap/kişi
+  // sayfalarında bu kavram yok).
+  useEffect(() => {
+    if ((tur !== 'sinema' && tur !== 'dizi') || !detay?.anahtarKelimeIdleri) {
+      setEslesenAltTurler([])
+      return
+    }
+    let iptal = false
+    tumAltTurleriGetir().then((hepsi) => {
+      if (iptal) return
+      const eslesenler = hepsi.filter((altTur) => altTur.anahtarKelimeler.some((k) => detay.anahtarKelimeIdleri.includes(k.id)))
+      setEslesenAltTurler(eslesenler)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [tur, detay?.anahtarKelimeIdleri])
   const [disPuanlar, setDisPuanlar] = useState(null) // { imdb, rottenTomatoes, metacritic }
   const [saglayicilar, setSaglayicilar] = useState(null)
   const [detayYukleniyor, setDetayYukleniyor] = useState(true)
@@ -575,7 +598,7 @@ export default function EserSayfasi({ tur }) {
           if (!TMDB_API_KEY) throw new Error('TMDB API anahtarı tanımlı değil.')
           const uc = tur === 'sinema' ? 'movie' : 'tv'
           const sertifikaAlanAdi = tur === 'sinema' ? 'release_dates' : 'content_ratings'
-          const url = `https://api.themoviedb.org/3/${uc}/${id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits,videos,similar,images,external_ids,${sertifikaAlanAdi}&include_image_language=null,tr,en`
+          const url = `https://api.themoviedb.org/3/${uc}/${id}?api_key=${TMDB_API_KEY}&language=tr-TR&append_to_response=credits,videos,similar,images,external_ids,keywords,${sertifikaAlanAdi}&include_image_language=null,tr,en`
           const res = await fetch(url)
           const data = await res.json()
           if (!res.ok) throw new Error(data.status_message || `HTTP ${res.status}`)
@@ -669,6 +692,12 @@ export default function EserSayfasi({ tur }) {
             ozet: data.overview,
             turler: (data.genres || []).map((g) => g.name).join(', '),
             turListesi: (data.genres || []).map((g) => ({ id: g.id, ad: g.name })),
+            // TMDB'nin movie/tv uç noktaları anahtar kelimeleri farklı
+            // alanda döndürüyor (movie: keywords.keywords, tv:
+            // keywords.results) — "Sinemasal Alt Türler" rozetleri için
+            // (bkz. altTurRozetleriHesapla) tek bir düz diziye normalize
+            // ediliyor.
+            anahtarKelimeIdleri: ((tur === 'sinema' ? data.keywords?.keywords : data.keywords?.results) || []).map((k) => k.id),
             sureDk: tur === 'sinema' ? data.runtime : null,
             sezonSayisi: tur === 'dizi' ? data.number_of_seasons : null,
             bolumSayisi: tur === 'dizi' ? data.number_of_episodes : null,
@@ -1320,6 +1349,23 @@ export default function EserSayfasi({ tur }) {
               ))}
             {detay.dbPuan && !disPuanlar && <span>{tur === 'kitap' ? 'Google' : 'TMDB'} {detay.dbPuan}</span>}
           </div>
+
+          {/* Sinemasal Alt Türler rozetleri — bu eser hangi alt türlere ait
+              (bkz. eslesenAltTurler hesaplaması). Eşleşme yoksa hiçbir şey
+              göstermiyoruz, boş bir satır kalmasın. */}
+          {eslesenAltTurler.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {eslesenAltTurler.map((altTur) => (
+                <Link
+                  key={altTur.id}
+                  to={`/sinema-turu/${altTur.anaTurId}/${altTur.id}?mod=${tur}`}
+                  className="rounded-full bg-kagitKoyu px-2.5 py-1 text-[11px] text-kraft ring-1 ring-cizgi hover:text-deniz hover:ring-deniz/50"
+                >
+                  {altTur.ikon} {altTur.ad}
+                </Link>
+              ))}
+            </div>
+          )}
 
           {/* Dış puanlar — ayrı bir satırda, kendi görsel ağırlıklarıyla.
               Öncelik sırası: IMDb > Rotten Tomatoes > Metacritic > TMDB/Google

@@ -36,6 +36,19 @@ export async function altTurleriGetir(anaTurId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
+// Film/dizi sayfasındaki "bu eser hangi alt türlere ait" rozetleri için —
+// TÜM alt türleri (hangi ana türe ait olduklarıyla birlikte) tek seferde
+// çekiyor. Veri seti küçük (küratörlü alt türler, kullanıcı üretimi
+// binlerce kayıt değil) olduğu için sayfalamaya gerek yok.
+export async function tumAltTurleriGetir() {
+  const [altTurSnap, anaTurler] = await Promise.all([getDocs(collection(db, 'sinemaAltTurleri')), anaTurleriGetir()])
+  const anaTurHaritasi = Object.fromEntries(anaTurler.map((a) => [a.id, a]))
+  return altTurSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .map((altTur) => ({ ...altTur, anaTur: anaTurHaritasi[altTur.anaTurId] }))
+    .filter((altTur) => altTur.anaTur) // ana türü silinmiş yetim bir alt tür varsa göstermeyelim
+}
+
 // anahtarKelimeler: [{ id, ad }] — TMDB'deki gerçek anahtar kelime ID'si VE
 // okunabilir adı birlikte saklanıyor (yönetim ekranında "hangi kelimeleri
 // seçmiştim" diye tekrar TMDB'ye sormaya gerek kalmasın diye).
