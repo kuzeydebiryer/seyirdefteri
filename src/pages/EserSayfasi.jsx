@@ -1274,16 +1274,6 @@ export default function EserSayfasi({ tur }) {
                 )}
                 {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
                 {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
-                {detay.ulkeler?.map((u) => (
-                  <Link key={u.kod} to={`/kesfet-filtre/${tur}?ulke=${u.kod}&ad=${encodeURIComponent(u.ad)}`} className="hover:underline">
-                    🌍 {u.ad}
-                  </Link>
-                ))}
-                {detay.diller?.map((d) => (
-                  <Link key={d.kod} to={`/kesfet-filtre/${tur}?dil=${d.kod}&ad=${encodeURIComponent(d.ad)}`} className="hover:underline">
-                    🗣️ {d.ad}
-                  </Link>
-                ))}
               </div>
               {detay.fragmanId && (
                 <button
@@ -1375,16 +1365,6 @@ export default function EserSayfasi({ tur }) {
                 )}
                 {detay.sezonSayisi && <span>📺 {detay.sezonSayisi} sezon</span>}
                 {detay.bolumSayisi && <span>{detay.bolumSayisi} bölüm</span>}
-                {detay.ulkeler?.map((u) => (
-                  <Link key={u.kod} to={`/kesfet-filtre/${tur}?ulke=${u.kod}&ad=${encodeURIComponent(u.ad)}`} className="hover:text-deniz hover:underline">
-                    🌍 {u.ad}
-                  </Link>
-                ))}
-                {detay.diller?.map((d) => (
-                  <Link key={d.kod} to={`/kesfet-filtre/${tur}?dil=${d.kod}&ad=${encodeURIComponent(d.ad)}`} className="hover:text-deniz hover:underline">
-                    🗣️ {d.ad}
-                  </Link>
-                ))}
               </>
             )}
             {detay.sayfaSayisi && <span>📄 {detay.sayfaSayisi} sayfa</span>}
@@ -1461,6 +1441,37 @@ export default function EserSayfasi({ tur }) {
           <KisiListesi kisiler={heroAktifMi ? null : detay.yonetmenler} etiket={tur === 'dizi' ? 'Yaratıcı' : 'Yönetmen'} />
           {tur === 'sinema' && <KisiListesi kisiler={detay.senaristler} etiket="Senarist" />}
           {tur === 'sinema' && <KisiListesi kisiler={detay.bestekarlar} etiket="Müzik" />}
+          {(detay.ulkeler?.length > 0 || detay.diller?.length > 0) && (tur === 'sinema' || tur === 'dizi') && (
+            <p className="mt-1 text-xs text-kraft">
+              {detay.ulkeler?.length > 0 && (
+                <>
+                  🌍{' '}
+                  {detay.ulkeler.map((u, i) => (
+                    <span key={u.kod}>
+                      <Link to={`/kesfet-filtre/${tur}?ulke=${u.kod}&ad=${encodeURIComponent(u.ad)}`} className="hover:text-deniz hover:underline">
+                        {u.ad}
+                      </Link>
+                      {i < detay.ulkeler.length - 1 && ', '}
+                    </span>
+                  ))}
+                </>
+              )}
+              {detay.ulkeler?.length > 0 && detay.diller?.length > 0 && '  ·  '}
+              {detay.diller?.length > 0 && (
+                <>
+                  🗣️{' '}
+                  {detay.diller.map((d, i) => (
+                    <span key={d.kod}>
+                      <Link to={`/kesfet-filtre/${tur}?dil=${d.kod}&ad=${encodeURIComponent(d.ad)}`} className="hover:text-deniz hover:underline">
+                        {d.ad}
+                      </Link>
+                      {i < detay.diller.length - 1 && ', '}
+                    </span>
+                  ))}
+                </>
+              )}
+            </p>
+          )}
 
           {tur === 'kitap' && kullanici && !duzenleModuAcik && (
             <button onClick={duzenlemeyiAc} className="mt-2 text-[11px] text-kraft hover:text-deniz hover:underline">

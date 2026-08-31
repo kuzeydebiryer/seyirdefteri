@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { anaTurGetir, altTurleriGetir } from '../utils/sinemaTurleri.js'
+import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
+import { anaTurGetir, altTurleriGetir, altTurSil, anaTurSil } from '../utils/sinemaTurleri.js'
 import YatayKaydirma from '../components/YatayKaydirma.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -11,7 +12,7 @@ const TMDB_POSTER = 'https://image.tmdb.org/t/p/w300'
 // Korku diye bir TMDB kategorisi olmadığı için) tür kısıtı hiç eklenmiyor,
 // sadece anahtar kelime yeterli oluyor. anahtarKelimeIdleri artık Firestore
 // belgesindeki anahtarKelimeler dizisinden (her biri {id, ad}) çıkarılıyor.
-function AltTurSeridi({ anaTurId, altTur, tmdbTurId, mod }) {
+function AltTurSeridi({ anaTurId, altTur, tmdbTurId, mod, yoneticiMi, onSil }) {
   const [sonuclar, setSonuclar] = useState(null)
   const anahtarKelimeIdleri = altTur.anahtarKelimeler.map((k) => k.id)
 
@@ -35,12 +36,16 @@ function AltTurSeridi({ anaTurId, altTur, tmdbTurId, mod }) {
         <h2 className="font-baslik text-lg text-murekkep">
           {altTur.ikon} {altTur.ad}
         </h2>
-        <Link
-          to={`/sinema-turu/${anaTurId}/${altTur.id}?mod=${mod}`}
-          className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz"
-        >
-          Tümünü Gör ›
-        </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          {yoneticiMi && (
+            <button onClick={() => onSil(altTur)} className="whitespace-nowrap text-xs text-kraft hover:text-muhur">
+              🗑️ Sil
+            </button>
+          )}
+          <Link to={`/sinema-turu/${anaTurId}/${altTur.id}?mod=${mod}`} className="whitespace-nowrap text-sm text-kraft hover:text-deniz">
+            Tümünü Gör ›
+          </Link>
+        </div>
       </div>
       {sonuclar === null ? (
         <p className="text-sm text-kraft">Yükleniyor...</p>
@@ -68,8 +73,13 @@ function AltTurSeridi({ anaTurId, altTur, tmdbTurId, mod }) {
 // gelinen, tek bir ana türün (ör. Korku Sineması) tüm alt türlerini yatay
 // şeritler halinde gösteren sayfa. Film/Dizi sekmesi tüm şeritleri birden
 // etkiliyor. Artık Firestore'dan okunuyor (bkz. utils/sinemaTurleri.js).
+// Yönetici için silme butonları da burada — önceden hiç yoktu, yanlış
+// eklenmiş bir alt türü (ör. yanlış ana türün altına) düzeltmenin tek yolu
+// silip doğru yerden yeniden eklemekti, ama silme arayüzü hiç kurulmamıştı.
 export default function SinemaAnaTuruDetay() {
   const { anaTurId } = useParams()
+  const { profil } = useAuth()
+  const navigate = useNavigate()
   const [aramaParametreleri, setAramaParametreleri] = useSearchParams()
   const mod = aramaParametreleri.get('mod') || 'sinema'
   const [anaTur, setAnaTur] = useState(undefined) // undefined: yükleniyor, null: bulunamadı
@@ -79,6 +89,21 @@ export default function SinemaAnaTuruDetay() {
     anaTurGetir(anaTurId).then(setAnaTur)
     altTurleriGetir(anaTurId).then(setAltTurler)
   }, [anaTurId])
+
+  async function altTurSilTiklandi(altTur) {
+    if (!window.confirm(`"${altTur.ad}" alt türünü silmek istediğine emin misin?`)) return
+    await altTurSil(altTur.id)
+    setAltTurler((onceki) => onceki.filter((a) => a.id !== altTur.id))
+  }
+
+  async function anaTurSilTiklandi() {
+    if (!window.confirm(`"${anaTur.ad}" ana türünü silmek istediğine emin misin? Altındaki tüm alt türler de silinecek.`)) return
+    for (const altTur of altTurler || []) {
+      await altTurSil(altTur.id)
+    }
+    await anaTurSil(anaTurId)
+    navigate('/sinema-turleri')
+  }
 
   if (anaTur === undefined) return <p className="text-sm text-kraft">Yükleniyor...</p>
 
@@ -100,9 +125,16 @@ export default function SinemaAnaTuruDetay() {
       <Link to="/sinema-turleri" className="text-xs text-kraft hover:text-deniz">
         ← Sinemasal Alt Türler
       </Link>
-      <h1 className="mt-1 mb-6 font-baslik text-2xl text-murekkep">
-        {anaTur.ikon} {anaTur.ad}
-      </h1>
+      <div className="mt-1 mb-6 flex items-center justify-between">
+        <h1 className="font-baslik text-2xl text-murekkep">
+          {anaTur.ikon} {anaTur.ad}
+        </h1>
+        {profil?.yonetici && (
+          <button onClick={anaTurSilTiklandi} className="text-xs text-kraft hover:text-muhur">
+            🗑️ Ana Türü Sil
+          </button>
+        )}
+      </div>
 
       <div className="mb-6 flex gap-2">
         <button
@@ -126,7 +158,15 @@ export default function SinemaAnaTuruDetay() {
       {altTurler === null && <p className="text-sm text-kraft">Alt türler yükleniyor...</p>}
       {altTurler !== null && altTurler.length === 0 && <p className="text-sm text-kraft">Bu ana türe henüz alt tür eklenmemiş.</p>}
       {altTurler?.map((altTur) => (
-        <AltTurSeridi key={altTur.id} anaTurId={anaTurId} altTur={altTur} tmdbTurId={tmdbTurId} mod={mod} />
+        <AltTurSeridi
+          key={altTur.id}
+          anaTurId={anaTurId}
+          altTur={altTur}
+          tmdbTurId={tmdbTurId}
+          mod={mod}
+          yoneticiMi={!!profil?.yonetici}
+          onSil={altTurSilTiklandi}
+        />
       ))}
     </div>
   )
