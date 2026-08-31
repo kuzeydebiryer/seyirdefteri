@@ -6,57 +6,67 @@ import YatayKaydirma from './YatayKaydirma.jsx'
 
 // platformYeniEklenenleriTespitEt Cloud Function'ının (functions/index.js)
 // günlük doldurduğu koleksiyondan besleniyor, "Dijitalde Yeni Çıkanlar"a
-// elle eklenen (herhangi bir platforma bağlı olmayan, "💻 Dijital" etiketli)
-// filmlerle de birleştiriliyor. Öncelik sırası: TÜM elle eklenenler (dijital
-// ya da platform fark etmez) > otomatik tespit edilenler. Önceden "önce tüm
-// dijitaller, sonra filmler/diziler" şeklindeydi — dijital sayısı 15'i
-// geçince platforma elle eklenenler slice(0,15) ile tamamen kırpılıyordu,
-// hiç görünmüyorlardı. Şimdi tek bir havuzda, sadece "elle eklendi mi"
-// kriterine göre sıralanıyor.
+// elle eklenen filmlerle de birleştiriliyor. Öncelik sırası: TÜM elle
+// eklenenler (dijital ya da platform fark etmez) > otomatik tespit edilenler.
+//
+// ÖNEMLİ: Asıl "filmSorgu"/"diziSorgu" (en son tespitTarihi'ne göre limit 15)
+// otomatik tespit YOĞUNSA elle eklenenleri Firestore'dan HİÇ ÇEKMEYEBİLİR —
+// sorgu zaten en son 15 kaydı getiriyor, elle eklenen daha eski bir
+// tespitTarihi'ne sahipse bu 15'in dışında kalıp hiç gelmez. Client
+// tarafında ne kadar iyi sıralarsak sıralayalım, gelmeyen veriyi
+// kurtaramayız. Bu yüzden elle eklenenler AYRI, GARANTİLİ bir sorguyla
+// (elleEklendiMi == true, limit ayrı) çekilip birleştiriliyor — böylece
+// otomatik tespit hacmi ne kadar büyük olursa olsun, elle eklenenler asla
+// dışarıda kalmıyor.
 export default function PlatformYeniGelenlerBolumu({ siki = false }) {
   const [gelenler, setGelenler] = useState(null)
 
   useEffect(() => {
     const filmSorgu = query(collection(db, 'platformYeniEklenenler'), where('tur', '==', 'sinema'), orderBy('tespitTarihi', 'desc'), limit(15))
     const diziSorgu = query(collection(db, 'platformYeniEklenenler'), where('tur', '==', 'dizi'), orderBy('tespitTarihi', 'desc'), limit(15))
+    const filmElleSorgu = query(collection(db, 'platformYeniEklenenler'), where('tur', '==', 'sinema'), where('elleEklendiMi', '==', true), limit(20))
+    const diziElleSorgu = query(collection(db, 'platformYeniEklenenler'), where('tur', '==', 'dizi'), where('elleEklendiMi', '==', true), limit(20))
     const dijitalSorgu = query(collection(db, 'dijitalYeniCikanlar'), orderBy('tarih', 'desc'), limit(15))
-    Promise.all([getDocs(filmSorgu), getDocs(diziSorgu), getDocs(dijitalSorgu)]).then(([filmSnap, diziSnap, dijitalSnap]) => {
-      const filmler = filmSnap.docs.map((d) => ({ id: d.id, ...d.data(), siralamaTarihi: d.data().tespitTarihi?.toMillis?.() || 0 }))
-      const diziler = diziSnap.docs.map((d) => ({ id: d.id, ...d.data(), siralamaTarihi: d.data().tespitTarihi?.toMillis?.() || 0 }))
-      // Sadece gerçekten "belirli bir platforma bağlı olmayan" (💻 Dijital
-      // etiketli) kayıtlar dahil ediliyor — MUBI/HBO gibi bir platforma
-      // eklenip buraya çapraz kaydolan filmler zaten "filmler" listesinde
-      // kendi platform adıyla var, burada tekrar sayılmasın diye elendi.
-      // dijitalYeniCikanlar'a otomatik tespit YOK — buradaki her kayıt
-      // zaten elle eklenmiş demektir, elleEklendiMi burada hep true.
-      const dijitalFilmler = dijitalSnap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((t) => !t.platformEtiketi || t.platformEtiketi === '💻 Dijital')
-        .map((t) => ({
-          id: `dijital_${t.id}`,
-          tur: 'sinema',
-          disId: t.disId,
-          baslik: t.baslik,
-          posterUrl: t.posterUrl,
-          platformAdi: '💻 Dijital',
-          elleEklendiMi: true,
-          siralamaTarihi: t.tarih?.toMillis?.() || 0,
-        }))
-      const hepsi = [...dijitalFilmler, ...filmler, ...diziler]
-      // Önce "elle eklendi mi" (öncelik), sonra gerçek tarih (en yeni önde).
-      // Sadece elleEklendiMi'ye göre sıralamak YETERSİZDİ — JavaScript'in
-      // sort()'u "stabil" olduğu için, eşit önceliğe sahip öğeler dizideki
-      // İLK SIRALARINI koruyor. dijitalFilmler diziye en başta eklendiği
-      // için, elle eklenen platform kayıtları (MUBI, Apple TV Store vb.)
-      // aynı önceliğe sahip olsalar bile hep dijitallerin ARKASINDA
-      // kalıyordu — dijital sayısı 15'i geçince onlar hiç görünmüyordu.
-      hepsi.sort((a, b) => {
-        const oncelikFarki = (b.elleEklendiMi ? 1 : 0) - (a.elleEklendiMi ? 1 : 0)
-        if (oncelikFarki !== 0) return oncelikFarki
-        return b.siralamaTarihi - a.siralamaTarihi
-      })
-      setGelenler(hepsi.slice(0, 15))
-    })
+    Promise.all([getDocs(filmSorgu), getDocs(diziSorgu), getDocs(filmElleSorgu), getDocs(diziElleSorgu), getDocs(dijitalSorgu)]).then(
+      ([filmSnap, diziSnap, filmElleSnap, diziElleSnap, dijitalSnap]) => {
+        const belgeyeCevir = (d) => ({ id: d.id, ...d.data(), siralamaTarihi: d.data().tespitTarihi?.toMillis?.() || 0 })
+        // Aynı kayıt hem "son 15" hem "elle eklenen" sorgusundan gelebilir —
+        // Map ile doküman ID'sine göre tekilleştiriliyor.
+        const platformHavuzu = new Map()
+        ;[...filmSnap.docs, ...diziSnap.docs, ...filmElleSnap.docs, ...diziElleSnap.docs].forEach((d) => {
+          platformHavuzu.set(d.id, belgeyeCevir(d))
+        })
+
+        // Sadece gerçekten "belirli bir platforma bağlı olmayan" (💻 Dijital
+        // etiketli) kayıtlar dahil ediliyor — MUBI/HBO gibi bir platforma
+        // eklenip buraya çapraz kaydolan filmler zaten platformHavuzu'nda
+        // kendi platform adıyla var, burada tekrar sayılmasın diye elendi.
+        // dijitalYeniCikanlar'a otomatik tespit YOK — buradaki her kayıt
+        // zaten elle eklenmiş demektir, elleEklendiMi burada hep true.
+        const dijitalFilmler = dijitalSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((t) => !t.platformEtiketi || t.platformEtiketi === '💻 Dijital')
+          .map((t) => ({
+            id: `dijital_${t.id}`,
+            tur: 'sinema',
+            disId: t.disId,
+            baslik: t.baslik,
+            posterUrl: t.posterUrl,
+            platformAdi: '💻 Dijital',
+            elleEklendiMi: true,
+            siralamaTarihi: t.tarih?.toMillis?.() || 0,
+          }))
+
+        const hepsi = [...dijitalFilmler, ...platformHavuzu.values()]
+        // Önce "elle eklendi mi" (öncelik), sonra gerçek tarih (en yeni önde).
+        hepsi.sort((a, b) => {
+          const oncelikFarki = (b.elleEklendiMi ? 1 : 0) - (a.elleEklendiMi ? 1 : 0)
+          if (oncelikFarki !== 0) return oncelikFarki
+          return b.siralamaTarihi - a.siralamaTarihi
+        })
+        setGelenler(hepsi.slice(0, 15))
+      }
+    )
   }, [])
 
   if (gelenler !== null && gelenler.length === 0) return null
