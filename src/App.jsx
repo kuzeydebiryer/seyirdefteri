@@ -41,6 +41,7 @@ const Platformlar = lazy(() => import('./pages/Platformlar.jsx'))
 const SinemaAltTurleri = lazy(() => import('./pages/SinemaAltTurleri.jsx'))
 const SinemaAnaTuruDetay = lazy(() => import('./pages/SinemaAnaTuruDetay.jsx'))
 const SinemaAltTuruListesi = lazy(() => import('./pages/SinemaAltTuruListesi.jsx'))
+const Letterboxd500 = lazy(() => import('./pages/Letterboxd500.jsx'))
 const PlatformDetay = lazy(() => import('./pages/PlatformDetay.jsx'))
 const DijitalSayfasi = lazy(() => import('./pages/DijitalSayfasi.jsx'))
 const YakindaGeliyorSayfasi = lazy(() => import('./pages/YakindaGeliyorSayfasi.jsx'))
@@ -143,6 +144,7 @@ export default function App() {
             <Route path="/sinema-turleri" element={<OzelRota><SinemaAltTurleri /></OzelRota>} />
             <Route path="/sinema-turu/:anaTurId" element={<OzelRota><SinemaAnaTuruDetay /></OzelRota>} />
             <Route path="/sinema-turu/:anaTurId/:altTurId" element={<OzelRota><SinemaAltTuruListesi /></OzelRota>} />
+            <Route path="/letterboxd-500" element={<OzelRota><Letterboxd500 /></OzelRota>} />
             <Route path="/platform/dijital" element={<OzelRota><DijitalSayfasi /></OzelRota>} />
             <Route path="/yakinda-geliyor" element={<OzelRota><YakindaGeliyorSayfasi /></OzelRota>} />
             <Route path="/platform/:id" element={<OzelRota><PlatformDetay /></OzelRota>} />

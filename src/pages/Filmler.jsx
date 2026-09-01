@@ -81,12 +81,23 @@ export default function Filmler() {
 
       <Link
         to="/sinema-turleri"
-        className="mb-6 flex items-center gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi transition hover:ring-deniz/50"
+        className="mb-3 flex items-center gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi transition hover:ring-deniz/50"
       >
         <span className="text-xl">🎭</span>
         <div>
           <p className="text-sm text-murekkep">Sinemasal Alt Türler</p>
           <p className="text-xs text-kraft">Folk Horror, Giallo, Buluntu Film ve daha fazlası →</p>
+        </div>
+      </Link>
+
+      <Link
+        to="/letterboxd-500"
+        className="mb-6 flex items-center gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi transition hover:ring-deniz/50"
+      >
+        <span className="text-xl">🎞️</span>
+        <div>
+          <p className="text-sm text-murekkep">Letterboxd En İyi 500 Film</p>
+          <p className="text-xs text-kraft">Letterboxd topluluğunun resmi sıralaması →</p>
         </div>
       </Link>
 

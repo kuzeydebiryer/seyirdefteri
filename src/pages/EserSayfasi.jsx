@@ -1,5 +1,6 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
+import { letterboxd500SiraNoGetir } from '../utils/letterboxd500.js'
 import { omdbOnbellektenOku, omdbOnbellegeYaz } from '../utils/omdbOnbellek.js'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -513,6 +514,24 @@ export default function EserSayfasi({ tur }) {
       iptal = true
     }
   }, [tur, detay?.anahtarKelimeIdleri])
+
+  // Letterboxd "En İyi 500 Film" listesindeki sırası — sadece film sayfası
+  // için anlamlı (liste sadece film içeriyor), tek bir getDoc (bkz.
+  // letterboxd500SiraNoGetir) ile kontrol ediliyor.
+  const [letterboxd500Sira, setLetterboxd500Sira] = useState(null)
+  useEffect(() => {
+    if (tur !== 'sinema' || !id) {
+      setLetterboxd500Sira(null)
+      return
+    }
+    let iptal = false
+    letterboxd500SiraNoGetir(id).then((sira) => {
+      if (!iptal) setLetterboxd500Sira(sira)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [tur, id])
   const [disPuanlar, setDisPuanlar] = useState(null) // { imdb, rottenTomatoes, metacritic }
   const [saglayicilar, setSaglayicilar] = useState(null)
   const [detayYukleniyor, setDetayYukleniyor] = useState(true)
@@ -1382,8 +1401,17 @@ export default function EserSayfasi({ tur }) {
           {/* Sinemasal Alt Türler rozetleri — bu eser hangi alt türlere ait
               (bkz. eslesenAltTurler hesaplaması). Eşleşme yoksa hiçbir şey
               göstermiyoruz, boş bir satır kalmasın. */}
-          {eslesenAltTurler.length > 0 && (
+          {(eslesenAltTurler.length > 0 || letterboxd500Sira) && (
             <div className="mt-2 flex flex-wrap gap-1.5">
+              {letterboxd500Sira && (
+                <Link
+                  to="/letterboxd-500"
+                  className="flex items-center gap-1 rounded-full bg-[#00e054]/15 px-2.5 py-1 text-[11px] text-[#00e054] ring-1 ring-[#00e054]/40 hover:bg-[#00e054]/25"
+                  title="Letterboxd En İyi 500 Film listesi"
+                >
+                  🎞️ Letterboxd 500 · #{letterboxd500Sira}
+                </Link>
+              )}
               {eslesenAltTurler.map((altTur) => (
                 <Link
                   key={altTur.id}
