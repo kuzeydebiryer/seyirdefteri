@@ -110,7 +110,12 @@ export default function DisListeIceAktar({ listeId, listeAdi, onEklendi }) {
   const [eslesenler, setEslesenler] = useState([])
   const [eslesmeyenler, setEslesmeyenler] = useState([])
   const [kaydediliyor, setKaydediliyor] = useState(false)
-  const [tamamlandi, setTamamlandi] = useState(false)
+  // Tek seferde HEPSİNİ çözmek zorunda değilsin — "Kaydet" her an
+  // basılabilir, o ana kadar eşleşenler Firestore'a yazılır, kalanları
+  // istediğin zaman (aynı ya da başka bir oturumda) sürdürebilirsin.
+  // toplamKaydedilen, bu oturumda şu ana kadar kaydedilen TOPLAM sayıyı
+  // gösteriyor (kaç kez "Kaydet"e basarsan bassın).
+  const [toplamKaydedilen, setToplamKaydedilen] = useState(0)
 
   if (!kullanici || !profil?.yonetici) return null
 
@@ -181,15 +186,19 @@ export default function DisListeIceAktar({ listeId, listeAdi, onEklendi }) {
   }
 
   async function kaydet() {
+    if (eslesenler.length === 0) return
     setKaydediliyor(true)
     try {
       await listeyeTopluKaydet(kullanici, listeId, eslesenler)
-      setTamamlandi(true)
+      setToplamKaydedilen((n) => n + eslesenler.length)
+      setEslesenler([]) // az önce kaydedilenler artık Firestore'da, tekrar göndermeye gerek yok
       onEklendi?.()
     } finally {
       setKaydediliyor(false)
     }
   }
+
+  const isFullyDone = eslesenler.length === 0 && eslesmeyenler.length === 0 && toplamKaydedilen > 0
 
   return (
     <div className="mb-6">
@@ -199,19 +208,23 @@ export default function DisListeIceAktar({ listeId, listeAdi, onEklendi }) {
 
       {acik && (
         <div className="mt-2 max-w-xl space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
-          {tamamlandi ? (
-            <p className="text-sm text-gise">✓ {eslesenler.length} film kaydedildi.</p>
-          ) : (
+          {toplamKaydedilen > 0 && (
+            <p className="text-sm text-gise">
+              ✓ Şu ana kadar {toplamKaydedilen} film kaydedildi{isFullyDone ? ' — hepsi tamamlandı!' : '.'}
+            </p>
+          )}
+          {!isFullyDone && (
             <>
               <p className="text-xs text-kraft">
                 Letterboxd'da listenin sağ altındaki "Export list" ile indirdiğin CSV dosyasının İÇERİĞİNİ (tamamını,
-                olduğu gibi) aşağıya yapıştır.
+                olduğu gibi) aşağıya yapıştır. Daha önce kaydettiklerini tekrar yapıştırsan da sorun olmaz — aynı film
+                tekrar üzerine yazılır, çoğalmaz.
               </p>
               <textarea
                 value={csvMetni}
                 onChange={(e) => setCsvMetni(e.target.value)}
                 rows={6}
-                disabled={isleniyor || eslesenler.length > 0}
+                disabled={isleniyor || eslesenler.length > 0 || eslesmeyenler.length > 0}
                 placeholder="Letterboxd list export v7&#10;Date,Name,Tags,URL,Description&#10;..."
                 className="w-full rounded-sm bg-kagit px-3 py-2 text-xs text-murekkep ring-1 ring-cizgi"
               />
@@ -227,9 +240,22 @@ export default function DisListeIceAktar({ listeId, listeAdi, onEklendi }) {
 
               {(eslesenler.length > 0 || eslesmeyenler.length > 0) && !isleniyor && (
                 <div className="space-y-3">
-                  <p className="text-xs text-murekkep">
-                    ✓ {eslesenler.length} film otomatik eşleşti.{' '}
-                    {eslesmeyenler.length > 0 && <span className="text-muhur">{eslesmeyenler.length} film elle çözülmeli.</span>}
+                  <div className="flex items-center justify-between gap-3 rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
+                    <p className="text-xs text-murekkep">
+                      {eslesenler.length} film kaydedilmeyi bekliyor.{' '}
+                      {eslesmeyenler.length > 0 && <span className="text-muhur">{eslesmeyenler.length} film hâlâ elle çözülmeli.</span>}
+                    </p>
+                    <button
+                      onClick={kaydet}
+                      disabled={kaydediliyor || eslesenler.length === 0}
+                      className="shrink-0 rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                    >
+                      {kaydediliyor ? 'Kaydediliyor...' : `${eslesenler.length} Filmi Şimdi Kaydet`}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-kraft">
+                    Yorulursan buradan istediğin an "Kaydet"e basıp bırakabilirsin — kalan {eslesmeyenler.length} film
+                    kaybolmaz, sadece bekler. Daha sonra CSV'yi tekrar yapıştırıp devam edebilirsin.
                   </p>
 
                   {eslesmeyenler.map((satir) => (
@@ -256,12 +282,6 @@ export default function DisListeIceAktar({ listeId, listeAdi, onEklendi }) {
                       <ElleAramaKutusu onSecildi={(aday) => elleSecTiklandi(satir, aday)} />
                     </div>
                   ))}
-
-                  {eslesmeyenler.length === 0 && (
-                    <button onClick={kaydet} disabled={kaydediliyor} className="rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40">
-                      {kaydediliyor ? 'Kaydediliyor...' : `${eslesenler.length} Filmi Kaydet`}
-                    </button>
-                  )}
                 </div>
               )}
             </>
