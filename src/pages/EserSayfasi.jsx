@@ -1,6 +1,6 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
-import { letterboxd500SiraNoGetir } from '../utils/letterboxd500.js'
+import { filminListeSiralariGetir } from '../utils/disariListeler.js'
 import { omdbOnbellektenOku, omdbOnbellegeYaz } from '../utils/omdbOnbellek.js'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -515,18 +515,19 @@ export default function EserSayfasi({ tur }) {
     }
   }, [tur, detay?.anahtarKelimeIdleri])
 
-  // Letterboxd "En İyi 500 Film" listesindeki sırası — sadece film sayfası
-  // için anlamlı (liste sadece film içeriyor), tek bir getDoc (bkz.
-  // letterboxd500SiraNoGetir) ile kontrol ediliyor.
-  const [letterboxd500Sira, setLetterboxd500Sira] = useState(null)
+  // Dış listelerdeki (Letterboxd 500, IMDb 250 vb.) sırası — sadece film
+  // sayfası için anlamlı (bu listeler sadece film içeriyor). Liste sayısı
+  // az olduğu için filminListeSiralariGetir tüm listeleri tarayıp bu filmin
+  // hangilerinde olduğunu döndürüyor (bkz. utils/disariListeler.js).
+  const [disListeSiralari, setDisListeSiralari] = useState([])
   useEffect(() => {
     if (tur !== 'sinema' || !id) {
-      setLetterboxd500Sira(null)
+      setDisListeSiralari([])
       return
     }
     let iptal = false
-    letterboxd500SiraNoGetir(id).then((sira) => {
-      if (!iptal) setLetterboxd500Sira(sira)
+    filminListeSiralariGetir(id).then((sonuclar) => {
+      if (!iptal) setDisListeSiralari(sonuclar)
     })
     return () => {
       iptal = true
@@ -1398,20 +1399,31 @@ export default function EserSayfasi({ tur }) {
             {detay.dbPuan && !disPuanlar && <span>{tur === 'kitap' ? 'Google' : 'TMDB'} {detay.dbPuan}</span>}
           </div>
 
-          {/* Sinemasal Alt Türler rozetleri — bu eser hangi alt türlere ait
-              (bkz. eslesenAltTurler hesaplaması). Eşleşme yoksa hiçbir şey
-              göstermiyoruz, boş bir satır kalmasın. */}
-          {(eslesenAltTurler.length > 0 || letterboxd500Sira) && (
+          {/* Sinemasal Alt Türler + Dış Liste rozetleri — bu eser hangi alt
+              türlere ait (eslesenAltTurler) ve hangi dış listelerde, kaçıncı
+              sırada (disListeSiralari) yer alıyor. Rozet rengi listenin
+              kendi stiline göre değişiyor (bkz. utils/disariListeler.js'teki
+              'stil' alanı — 'imdb' seçilirse sitede zaten kullanılan
+              sarı-siyah IMDb rengiyle BİREBİR aynı görünür). Eşleşme yoksa
+              hiçbir şey göstermiyoruz, boş bir satır kalmasın. */}
+          {(eslesenAltTurler.length > 0 || disListeSiralari.length > 0) && (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {letterboxd500Sira && (
+              {disListeSiralari.map((liste) => (
                 <Link
-                  to="/letterboxd-500"
-                  className="flex items-center gap-1 rounded-full bg-[#00e054]/15 px-2.5 py-1 text-[11px] text-[#00e054] ring-1 ring-[#00e054]/40 hover:bg-[#00e054]/25"
-                  title="Letterboxd En İyi 500 Film listesi"
+                  key={liste.listeId}
+                  to={`/dis-liste/${liste.listeId}`}
+                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                    liste.stil === 'imdb'
+                      ? 'bg-[#F5C518] text-black hover:opacity-90'
+                      : liste.stil === 'letterboxd'
+                        ? 'bg-[#00e054]/15 text-[#00e054] ring-1 ring-[#00e054]/40 hover:bg-[#00e054]/25'
+                        : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:text-deniz'
+                  }`}
+                  title={liste.ad}
                 >
-                  🎞️ Letterboxd 500 · #{letterboxd500Sira}
+                  {liste.kisaAd} · #{liste.siraNo}
                 </Link>
-              )}
+              ))}
               {eslesenAltTurler.map((altTur) => (
                 <Link
                   key={altTur.id}

@@ -91,13 +91,13 @@ export default function Filmler() {
       </Link>
 
       <Link
-        to="/letterboxd-500"
+        to="/dis-listeler"
         className="mb-6 flex items-center gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi transition hover:ring-deniz/50"
       >
         <span className="text-xl">🎞️</span>
         <div>
-          <p className="text-sm text-murekkep">Letterboxd En İyi 500 Film</p>
-          <p className="text-xs text-kraft">Letterboxd topluluğunun resmi sıralaması →</p>
+          <p className="text-sm text-murekkep">Dış Listeler</p>
+          <p className="text-xs text-kraft">Letterboxd 500, IMDb 250 gibi resmî sıralamalar →</p>
         </div>
       </Link>
 

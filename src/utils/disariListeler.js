@@ -1,0 +1,89 @@
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, writeBatch } from 'firebase/firestore'
+import { db } from '../firebase.js'
+
+// Önceden "Letterboxd 500" tek başına, sabit kodlanmış bir koleksiyondu
+// (letterboxd500.js). "IMDb 250'yi de aynı şekilde eklemek istiyorum"
+// denince, ikinci bir kopya kurmak yerine (Sinemasal Alt Türler'de
+// yaptığımız hatayı tekrarlamamak için) genelleştirildi — artık kaç tane
+// dış liste olursa olsun (Letterboxd 500, IMDb 250, Sight & Sound...) aynı
+// yapıyı paylaşıyor.
+//
+// Veri modeli:
+//   disariListeler/{listeId}                     — liste TANIMI (ad, stil)
+//   disariListeler/{listeId}/filmler/{tmdbId}     — o listedeki her film
+
+export async function listeleriGetir() {
+  const snap = await getDocs(query(collection(db, 'disariListeler'), orderBy('sira', 'asc')))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+export async function listeGetir(listeId) {
+  const snap = await getDoc(doc(db, 'disariListeler', listeId))
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null
+}
+
+// stil: 'letterboxd' | 'imdb' | 'genel' — film sayfasındaki rozetin görsel
+// dilini belirliyor (bkz. DisListeRozetleri.jsx). 'imdb' seçilirse sitede
+// zaten kullanılan sarı-siyah IMDb rozetiyle BİREBİR aynı görünür.
+export async function listeEkle(kullanici, { ad, kisaAd, stil }) {
+  const mevcutSayisi = (await listeleriGetir()).length
+  const belge = await addDoc(collection(db, 'disariListeler'), {
+    ad,
+    kisaAd,
+    stil,
+    sira: mevcutSayisi,
+    ekleyenId: kullanici.uid,
+    tarih: serverTimestamp(),
+  })
+  return belge.id
+}
+
+export async function listeSil(listeId) {
+  const filmler = await listeFilmleriGetir(listeId)
+  for (let i = 0; i < filmler.length; i += 400) {
+    const parca = filmler.slice(i, i + 400)
+    const batch = writeBatch(db)
+    parca.forEach((f) => batch.delete(doc(db, 'disariListeler', listeId, 'filmler', f.id)))
+    await batch.commit()
+  }
+  await deleteDoc(doc(db, 'disariListeler', listeId))
+}
+
+export async function listeFilmleriGetir(listeId) {
+  const snap = await getDocs(query(collection(db, 'disariListeler', listeId, 'filmler'), orderBy('siraNo', 'asc')))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// kayitlar: [{ tmdbId, siraNo, baslik, yil, posterUrl }]
+export async function listeyeTopluKaydet(kullanici, listeId, kayitlar) {
+  for (let i = 0; i < kayitlar.length; i += 400) {
+    const parca = kayitlar.slice(i, i + 400)
+    const batch = writeBatch(db)
+    parca.forEach((k) => {
+      batch.set(doc(db, 'disariListeler', listeId, 'filmler', String(k.tmdbId)), {
+        siraNo: k.siraNo,
+        baslik: k.baslik,
+        yil: k.yil,
+        posterUrl: k.posterUrl || '',
+        ekleyenId: kullanici.uid,
+        tarih: serverTimestamp(),
+      })
+    })
+    await batch.commit()
+  }
+}
+
+// Film sayfasındaki rozetler için — bu film HANGİ dış listelerde, kaçıncı
+// sırada? Liste sayısı küçük olduğu için (birkaç tane), her liste için tek
+// bir getDoc yeterli — koleksiyon grubu sorgusuna gerek yok.
+export async function filminListeSiralariGetir(tmdbId) {
+  const listeler = await listeleriGetir()
+  const sonuclar = await Promise.all(
+    listeler.map(async (liste) => {
+      const snap = await getDoc(doc(db, 'disariListeler', liste.id, 'filmler', String(tmdbId)))
+      if (!snap.exists()) return null
+      return { listeId: liste.id, ad: liste.ad, kisaAd: liste.kisaAd, stil: liste.stil, siraNo: snap.data().siraNo }
+    })
+  )
+  return sonuclar.filter(Boolean)
+}

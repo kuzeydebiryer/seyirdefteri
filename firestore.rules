@@ -581,9 +581,18 @@ service cloud.firestore {
     // yöneticiye açık — aynı filmi (aynı doküman ID'si) tekrar
     // kaydetmek (batch.set) yarım kalan bir içe aktarmayı güvenle
     // sürdürebilmek için "create" değil "update" sayılıyor.
-    match /letterboxd500/{tmdbId} {
+    // Dış film listeleri (Letterboxd 500, IMDb 250 vb.) — liste tanımı ve
+    // alt koleksiyondaki her film sadece yönetici tarafından
+    // eklenip/silinebiliyor (bkz. utils/disariListeler.js). Alt koleksiyon
+    // kuralı üst belgenin match bloğunun İÇİNDE tanımlanıyor.
+    match /disariListeler/{listeId} {
       allow read: if true;
       allow create, update, delete: if yoneticiMi();
+
+      match /filmler/{tmdbId} {
+        allow read: if true;
+        allow create, update, delete: if yoneticiMi();
+      }
     }
 
     match /yonetmenler/{tmdbId} {
