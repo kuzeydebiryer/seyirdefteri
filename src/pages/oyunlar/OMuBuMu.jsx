@@ -103,15 +103,15 @@ export default function OMuBuMu() {
           <p className="mb-3 text-center text-xs text-kraft">
             Tur {tur} / {TOPLAM_TUR}
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="mx-auto flex max-w-md items-center justify-center">
             {[sampiyon, meydanOkuyan].map((film, i) => (
               <button
                 key={film.id}
                 onClick={() => seciliyor(film, i === 0 ? meydanOkuyan : sampiyon)}
                 disabled={!kullanici || secimYapiliyor}
-                className="group text-left disabled:cursor-not-allowed disabled:opacity-60"
+                className="group w-32 shrink-0 text-left disabled:cursor-not-allowed disabled:opacity-60 sm:w-40"
               >
-                <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi transition group-hover:ring-deniz/60 group-active:scale-[0.98]">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu shadow-lg ring-1 ring-cizgi transition group-hover:ring-deniz/60 group-active:scale-[0.98]">
                   {film.posterUrl ? (
                     <img src={film.posterUrl} alt={film.baslik} className="h-full w-full object-cover" />
                   ) : (
@@ -123,9 +123,15 @@ export default function OMuBuMu() {
                     </span>
                   )}
                 </div>
-                <p className="mt-2 text-center text-sm font-medium text-murekkep">{film.baslik}</p>
+                <p className="mt-2 line-clamp-2 text-center text-xs font-medium text-murekkep sm:text-sm">{film.baslik}</p>
               </button>
             ))}
+            {/* İki afişin arasında, tur numarasıyla nabız gibi büyüyüp küçülen
+                dramatik bir "VS" rozeti — sinematik afiş/fragman dilindeki
+                klasik "çarpışma" motifini taklit ediyor. */}
+            <div className="relative z-10 -mx-4 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muhur font-baslik text-sm font-black italic text-kagit shadow-xl ring-4 ring-kagitKoyu sm:h-14 sm:w-14 sm:text-lg">
+              VS
+            </div>
           </div>
           <p className="mt-4 text-center text-xs text-kraft">
             {sampiyon.baslik} <span className="italic">mi</span>, {meydanOkuyan.baslik} <span className="italic">mi?</span>
