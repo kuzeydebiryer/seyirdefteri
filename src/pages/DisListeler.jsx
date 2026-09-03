@@ -127,7 +127,7 @@ export default function DisListeler() {
           <div key={liste.id} className="flex items-center justify-between rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
             <Link to={`/dis-liste/${liste.id}`} className="flex-1 hover:text-deniz">
               <p className="flex items-center gap-1.5 font-baslik text-base text-murekkep">
-                {liste.stil === 'letterboxd' && <LetterboxdNoktalarIkon className="h-4 w-6 shrink-0" />}
+                {liste.stil === 'letterboxd' && <LetterboxdNoktalarIkon className="h-4 w-9 shrink-0" />}
                 {liste.ad}
               </p>
               <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] ${STIL_ORNEKLERI[liste.stil]?.sinif || ''}`}>

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { listeGetir, listeFilmleriGetir, listedenFilmSil, listeGuncelle } from '../utils/disariListeler.js'
 import DisListeIceAktar from '../components/DisListeIceAktar.jsx'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
+import IMDbIkon from '../components/ikonlar/IMDbIkon.jsx'
 
 const STIL_ROZET_RENGI = {
   imdb: 'bg-[#F5C518] text-black',
@@ -72,7 +73,13 @@ export default function DisListeDetay() {
         ← En İyi Film Listeleri
       </Link>
       <div className="mt-1 mb-1 flex items-center gap-2">
-        {liste.stil === 'letterboxd' ? <LetterboxdNoktalarIkon className="h-6 w-9" /> : <span className="text-2xl">🎞️</span>}
+        {liste.stil === 'letterboxd' ? (
+          <LetterboxdNoktalarIkon className="h-6 w-[3.4rem]" />
+        ) : liste.stil === 'imdb' ? (
+          <IMDbIkon className="px-2 py-1 text-sm" />
+        ) : (
+          <span className="text-2xl">🎞️</span>
+        )}
         <h1 className="font-baslik text-2xl text-murekkep">{liste.ad}</h1>
       </div>
       <div className="mb-6 flex items-center gap-3">
