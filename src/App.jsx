@@ -79,6 +79,7 @@ const Sinemadle = lazy(() => import('./pages/oyunlar/Sinemadle.jsx'))
 const SloganTahmin = lazy(() => import('./pages/oyunlar/SloganTahmin.jsx'))
 const SahneTahmin = lazy(() => import('./pages/oyunlar/SahneTahmin.jsx'))
 const OyuncuTahmin = lazy(() => import('./pages/oyunlar/OyuncuTahmin.jsx'))
+const OMuBuMu = lazy(() => import('./pages/oyunlar/OMuBuMu.jsx'))
 const PosterTahmin = lazy(() => import('./pages/oyunlar/PosterTahmin.jsx'))
 const FilmKoprusu = lazy(() => import('./pages/oyunlar/FilmKoprusu.jsx'))
 const AlintiTahmin = lazy(() => import('./pages/oyunlar/AlintiTahmin.jsx'))
@@ -208,6 +209,7 @@ export default function App() {
             <Route path="/oyunlar/slogan" element={<OzelRota><SloganTahmin /></OzelRota>} />
             <Route path="/oyunlar/sahne" element={<OzelRota><SahneTahmin /></OzelRota>} />
             <Route path="/oyunlar/oyuncu" element={<OzelRota><OyuncuTahmin /></OzelRota>} />
+            <Route path="/oyunlar/omubumu" element={<OzelRota><OMuBuMu /></OzelRota>} />
             <Route path="/oyunlar/poster" element={<OzelRota><PosterTahmin /></OzelRota>} />
             <Route path="/oyunlar/kopru" element={<OzelRota><FilmKoprusu /></OzelRota>} />
             <Route path="/oyunlar/alinti" element={<OzelRota><AlintiTahmin /></OzelRota>} />

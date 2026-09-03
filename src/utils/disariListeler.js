@@ -92,6 +92,21 @@ export async function listeyeTopluKaydet(kullanici, listeId, kayitlar) {
   }
 }
 
+// "O mu Bu mu" oyunu (bkz. oyunlar/OMuBuMu.jsx) gibi TÜM listelerin
+// filmlerini tek bir havuzda karıştırmak isteyen özellikler için — her
+// listenin filmlerini çekip, aynı film birden fazla listede olabileceği
+// için (ör. hem Letterboxd 500 hem IMDb 250'de) tmdbId'ye göre tekilleştirip
+// döndürüyor.
+export async function tumListeFilmleriGetir() {
+  const listeler = await listeleriGetir()
+  const hepsi = await Promise.all(listeler.map((liste) => listeFilmleriGetir(liste.id)))
+  const havuz = new Map()
+  hepsi.flat().forEach((film) => {
+    if (!havuz.has(film.id)) havuz.set(film.id, film)
+  })
+  return [...havuz.values()]
+}
+
 // Film sayfasındaki rozetler için — bu film HANGİ dış listelerde, kaçıncı
 // sırada? Liste sayısı küçük olduğu için (birkaç tane), her liste için tek
 // bir getDoc yeterli — koleksiyon grubu sorgusuna gerek yok.

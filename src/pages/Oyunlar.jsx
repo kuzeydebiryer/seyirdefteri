@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 
 const OYUNLAR = [
+  { yol: '/oyunlar/omubumu', ikon: '🆚', baslik: 'O mu Bu mu', aciklama: 'En İyi Film Listeleri\'nden iki film karşı karşıya — hangisini daha çok seversin?' },
   { yol: '/oyunlar/sinemadle', ikon: '🎯', baslik: 'Sinemadle', aciklama: 'Günün gizli filmini ipuçlarıyla tahmin et — her gün yeni bir film.' },
   { yol: '/oyunlar/slogan', ikon: '💬', baslik: 'Bu Slogan Hangi Filme Ait?', aciklama: 'Afişteki o vurucu cümleyi hangi film taşıyordu?' },
   { yol: '/oyunlar/sahne', ikon: '🎬', baslik: 'Bu Sahne Hangi Filmden?', aciklama: 'Bir kare gösteriyoruz, filmi bulabilecek misin?' },
