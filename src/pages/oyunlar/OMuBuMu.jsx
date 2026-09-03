@@ -4,6 +4,7 @@ import { stildeListeFilmleriGetir } from '../../utils/disariListeler.js'
 import { turnuvaGalibiKaydet, enCokTercihEdilenleriGetir } from '../../utils/filmTercih.js'
 import { karistir } from '../../utils/oyunHavuzu.js'
 import { useAuth } from '../../context/AuthContext.jsx'
+import YatayKaydirma from '../../components/YatayKaydirma.jsx'
 
 const TOPLAM_TUR = 15
 // Sadece SIRALI, tanınmış listeler — "1001 Film" ve "Criterion" bilerek
@@ -179,18 +180,24 @@ export default function OMuBuMu() {
         <div className="mt-4">
           {enCokTercihEdilenler === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
           {enCokTercihEdilenler?.length === 0 && <p className="text-sm text-kraft">Henüz kimse 15 turu tamamlamamış — ilk sen ol.</p>}
-          <ol className="space-y-2">
-            {enCokTercihEdilenler?.map((film, i) => (
-              <li key={film.id} className="flex items-center gap-3">
-                <span className="w-5 shrink-0 text-right text-xs text-kraft">{i + 1}</span>
-                <div className="h-14 w-10 shrink-0 overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                  {film.posterUrl && <img src={film.posterUrl} alt={film.baslik} className="h-full w-full object-cover" />}
-                </div>
-                <p className="flex-1 truncate text-sm text-murekkep">{film.baslik}</p>
-                <span className="shrink-0 text-xs text-kraft">{film.kazanma || 0} kez galip</span>
-              </li>
-            ))}
-          </ol>
+          {enCokTercihEdilenler?.length > 0 && (
+            <YatayKaydirma>
+              {enCokTercihEdilenler.map((film, i) => (
+                <Link key={film.id} to={`/film/${film.id}`} className="shrink-0" style={{ width: 120 }}>
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                    {film.posterUrl ? (
+                      <img src={film.posterUrl} alt={film.baslik} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">🎬</div>
+                    )}
+                    <span className="absolute left-1 top-1 rounded-full bg-gise px-1.5 py-0.5 text-[10px] font-medium text-kagit">#{i + 1}</span>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-murekkep">{film.baslik}</p>
+                  <p className="truncate text-[10px] text-kraft">🏆 {film.kazanma || 0} kez galip</p>
+                </Link>
+              ))}
+            </YatayKaydirma>
+          )}
         </div>
       )}
     </div>
