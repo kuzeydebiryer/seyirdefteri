@@ -51,7 +51,7 @@ import { filmOscarBilgisiGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
 import { kitaptanFilmOner, filmdenKitapOner, filmTriviaGetir, paraFormatla } from '../utils/wikidata.js'
-import { eserYorumlariGetir, eserYorumEkle, yorumSil, yorumBegenDegistir } from '../utils/yorum.js'
+import { eserYorumlariGetir, eserYorumEkle, yorumSil, yorumBegenDegistir, yorumDuzenle } from '../utils/yorum.js'
 import AlintiKarti from '../components/AlintiKarti.jsx'
 import EserKarti from '../components/EserKarti.jsx'
 
@@ -184,6 +184,9 @@ export default function EserSayfasi({ tur }) {
   const [yanitVerilenYorumId, setYanitVerilenYorumId] = useState(null)
   const [yaniMetni, setYaniMetni] = useState('')
   const [yanitGonderiliyor, setYanitGonderiliyor] = useState(false)
+  const [duzenlenenYorumId, setDuzenlenenYorumId] = useState(null)
+  const [duzenlemeMetni, setDuzenlemeMetni] = useState('')
+  const [duzenlemeGonderiliyor, setDuzenlemeGonderiliyor] = useState(false)
   const [triviaAcik, setTriviaAcik] = useState(false)
 
   const ilgiliHedefTur = tur === 'kitap' ? ilgiliKategori : 'kitap'
@@ -464,6 +467,40 @@ export default function EserSayfasi({ tur }) {
     if (!window.confirm('Bu yorumu silmek istediğine emin misin?')) return
     await yorumSil(yorumId)
     setYorumlar((onceki) => onceki.filter((y) => y.id !== yorumId && y.ustYorumId !== yorumId))
+  }
+
+  function duzenlemeyeBasla(yorum) {
+    setDuzenlenenYorumId(yorum.id)
+    setDuzenlemeMetni(yorum.metin)
+  }
+
+  async function duzenlemeyiKaydet(yorumId) {
+    if (!duzenlemeMetni.trim()) return
+    setDuzenlemeGonderiliyor(true)
+    try {
+      await yorumDuzenle(yorumId, duzenlemeMetni.trim())
+      setYorumlar((onceki) =>
+        onceki.map((y) => (y.id === yorumId ? { ...y, metin: duzenlemeMetni.trim(), duzenlendiMi: true } : y))
+      )
+      setDuzenlenenYorumId(null)
+    } finally {
+      setDuzenlemeGonderiliyor(false)
+    }
+  }
+
+  // Yorumlarda "3 saat önce", "2 gün önce" gibi göreli tarih — tam tarihi
+  // (title özniteliği ile) üzerine gelince görebiliyorsun, ama listede göz
+  // yormasın diye kısa/göreli gösteriliyor.
+  function yorumTarihiGoster(deger) {
+    if (!deger) return ''
+    const d = typeof deger?.toDate === 'function' ? deger.toDate() : new Date(deger)
+    if (isNaN(d.getTime())) return ''
+    const farkSaniye = (Date.now() - d.getTime()) / 1000
+    if (farkSaniye < 60) return 'az önce'
+    if (farkSaniye < 3600) return `${Math.floor(farkSaniye / 60)} dk önce`
+    if (farkSaniye < 86400) return `${Math.floor(farkSaniye / 3600)} sa önce`
+    if (farkSaniye < 86400 * 30) return `${Math.floor(farkSaniye / 86400)} gün önce`
+    return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
 
@@ -2620,10 +2657,39 @@ export default function EserSayfasi({ tur }) {
                 <div className="group flex items-start gap-2 text-sm">
                   <Avatar adSoyad={y.yazarAdi} avatarUrl={y.yazarAvatarUrl} boyut="h-6 w-6" />
                   <div className="min-w-0 flex-1">
-                    <Link to={`/profil/${y.yazarId}`} className="font-medium text-murekkep hover:underline">
-                      {y.yazarAdi}
-                    </Link>{' '}
-                    <span className="whitespace-pre-wrap text-murekkep/90">{y.metin}</span>
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <Link to={`/profil/${y.yazarId}`} className="font-medium text-murekkep hover:underline">
+                        {y.yazarAdi}
+                      </Link>
+                      <span className="text-[11px] text-kraft" title={y.tarih?.toDate?.().toLocaleString('tr-TR')}>
+                        {yorumTarihiGoster(y.tarih)}
+                        {y.duzenlendiMi && ' · düzenlendi'}
+                      </span>
+                    </div>
+                    {duzenlenenYorumId === y.id ? (
+                      <div className="mt-1">
+                        <textarea
+                          value={duzenlemeMetni}
+                          onChange={(e) => setDuzenlemeMetni(e.target.value)}
+                          rows={2}
+                          className="w-full rounded-sm bg-kagitKoyu px-2 py-1.5 text-sm text-murekkep ring-1 ring-cizgi"
+                        />
+                        <div className="mt-1 flex items-center gap-3 text-xs">
+                          <button
+                            onClick={() => duzenlemeyiKaydet(y.id)}
+                            disabled={duzenlemeGonderiliyor}
+                            className="font-medium text-deniz hover:underline disabled:opacity-40"
+                          >
+                            {duzenlemeGonderiliyor ? 'Kaydediliyor...' : 'Kaydet'}
+                          </button>
+                          <button onClick={() => setDuzenlenenYorumId(null)} className="text-kraft hover:text-murekkep">
+                            Vazgeç
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-0.5 whitespace-pre-wrap text-murekkep/90">{y.metin}</p>
+                    )}
                     <div className="mt-1 flex items-center gap-3 text-xs text-kraft">
                       <button
                         onClick={() => yorumBegenTiklandi(y)}
@@ -2641,6 +2707,11 @@ export default function EserSayfasi({ tur }) {
                           className="hover:text-murekkep"
                         >
                           Yanıtla
+                        </button>
+                      )}
+                      {kullanici?.uid === y.yazarId && duzenlenenYorumId !== y.id && (
+                        <button onClick={() => duzenlemeyeBasla(y)} className="opacity-0 transition-opacity hover:text-murekkep group-hover:opacity-100">
+                          Düzenle
                         </button>
                       )}
                     </div>
@@ -2663,18 +2734,55 @@ export default function EserSayfasi({ tur }) {
                         <li key={r.id} className="group flex items-start gap-2 text-sm">
                           <Avatar adSoyad={r.yazarAdi} avatarUrl={r.yazarAvatarUrl} boyut="h-5 w-5" />
                           <div className="min-w-0 flex-1">
-                            <Link to={`/profil/${r.yazarId}`} className="font-medium text-murekkep hover:underline">
-                              {r.yazarAdi}
-                            </Link>{' '}
-                            <span className="whitespace-pre-wrap text-murekkep/90">{r.metin}</span>
-                            <div className="mt-1">
+                            <div className="flex flex-wrap items-baseline gap-x-2">
+                              <Link to={`/profil/${r.yazarId}`} className="font-medium text-murekkep hover:underline">
+                                {r.yazarAdi}
+                              </Link>
+                              <span className="text-[11px] text-kraft" title={r.tarih?.toDate?.().toLocaleString('tr-TR')}>
+                                {yorumTarihiGoster(r.tarih)}
+                                {r.duzenlendiMi && ' · düzenlendi'}
+                              </span>
+                            </div>
+                            {duzenlenenYorumId === r.id ? (
+                              <div className="mt-1">
+                                <textarea
+                                  value={duzenlemeMetni}
+                                  onChange={(e) => setDuzenlemeMetni(e.target.value)}
+                                  rows={2}
+                                  className="w-full rounded-sm bg-kagitKoyu px-2 py-1.5 text-sm text-murekkep ring-1 ring-cizgi"
+                                />
+                                <div className="mt-1 flex items-center gap-3 text-xs">
+                                  <button
+                                    onClick={() => duzenlemeyiKaydet(r.id)}
+                                    disabled={duzenlemeGonderiliyor}
+                                    className="font-medium text-deniz hover:underline disabled:opacity-40"
+                                  >
+                                    {duzenlemeGonderiliyor ? 'Kaydediliyor...' : 'Kaydet'}
+                                  </button>
+                                  <button onClick={() => setDuzenlenenYorumId(null)} className="text-kraft hover:text-murekkep">
+                                    Vazgeç
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-0.5 whitespace-pre-wrap text-murekkep/90">{r.metin}</p>
+                            )}
+                            <div className="mt-1 flex items-center gap-3 text-xs">
                               <button
                                 onClick={() => yorumBegenTiklandi(r)}
                                 disabled={!kullanici}
-                                className={`text-xs transition ${rBenBegendimMi ? 'text-muhur font-medium' : 'text-kraft hover:text-murekkep'}`}
+                                className={`transition ${rBenBegendimMi ? 'text-muhur font-medium' : 'text-kraft hover:text-murekkep'}`}
                               >
                                 {rBenBegendimMi ? '♥' : '♡'} {r.begenenler?.length > 0 && r.begenenler.length}
                               </button>
+                              {kullanici?.uid === r.yazarId && duzenlenenYorumId !== r.id && (
+                                <button
+                                  onClick={() => duzenlemeyeBasla(r)}
+                                  className="text-kraft opacity-0 transition-opacity hover:text-murekkep group-hover:opacity-100"
+                                >
+                                  Düzenle
+                                </button>
+                              )}
                             </div>
                           </div>
                           {kullanici?.uid === r.yazarId && (

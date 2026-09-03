@@ -295,12 +295,15 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
       // Beğeni butonu için — herhangi bir giriş yapmış kullanıcı SADECE
       // "begenenler" alanını değiştirebilir (bildirimler/günlük
-      // kayıtlarındaki aynı desen). Yazarın kendisi de SADECE "yazarAdi"
-      // alanını değiştirebilir — "Geçmişimi de Güncelle" özelliği için
-      // (bkz. gecmisPaylasimlariGuncelle), başka bir alanı değiştiremez.
+      // kayıtlarındaki aynı desen). Yazarın kendisi "yazarAdi" alanını
+      // ("Geçmişimi de Güncelle" için) YA DA kendi yorumunun metnini
+      // (düzenleme özelliği, duzenlendiMi/duzenlemeTarihi ile birlikte)
+      // değiştirebilir — başka bir alanı değiştiremez.
       allow update: if request.auth != null && (
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['begenenler']) ||
-        (resource.data.yazarId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['yazarAdi']))
+        (resource.data.yazarId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['yazarAdi'])) ||
+        (resource.data.yazarId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['metin', 'duzenlendiMi', 'duzenlemeTarihi']))
       );
     }
 

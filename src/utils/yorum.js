@@ -42,6 +42,18 @@ export async function yorumSil(yorumId) {
   await deleteDoc(doc(db, 'yorumlar', yorumId))
 }
 
+// Yazım hatası ya da fikir değişikliği için — sadece yorumun SAHİBİ
+// çağırabilir (bkz. firestore.rules). duzenlendiMi/duzenlemeTarihi,
+// arayüzde "(düzenlendi)" etiketi göstermek için — bir yorumun sessizce
+// değişmiş gibi durmaması, okuyanın bunu bilmesi önemli.
+export async function yorumDuzenle(yorumId, yeniMetin) {
+  await updateDoc(doc(db, 'yorumlar', yorumId), {
+    metin: yeniMetin,
+    duzenlendiMi: true,
+    duzenlemeTarihi: serverTimestamp(),
+  })
+}
+
 export async function yorumBegenDegistir(yorumId, uid, suAnBegeniyorMu) {
   await updateDoc(doc(db, 'yorumlar', yorumId), {
     begenenler: suAnBegeniyorMu ? arrayRemove(uid) : arrayUnion(uid),
