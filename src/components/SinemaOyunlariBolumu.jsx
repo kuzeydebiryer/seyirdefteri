@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 
 const SINEMA_OYUNLARI = [
+  { yol: '/oyunlar/omubumu', ikon: '🆚', baslik: 'O mu Bu mu' },
   { yol: '/oyunlar/sinemadle', ikon: '🎯', baslik: 'Sinemadle' },
   { yol: '/oyunlar/slogan', ikon: '💬', baslik: 'Slogan Tahmin' },
   { yol: '/oyunlar/sahne', ikon: '🎬', baslik: 'Sahne Tahmin' },

@@ -598,17 +598,14 @@ service cloud.firestore {
       }
     }
 
-    // "O mu Bu mu" oyunu — kazanma/kaybetme sayaçları. Ham oy kaydı
-    // tutulmuyor (bkz. utils/filmTercih.js), sadece bu alanlar
-    // değişebiliyor — giriş yapmış herkes oy kullanabilir. create/update
-    // ayrı tutuldu çünkü bir filmin ilk kez kazanması/kaybetmesi anında
-    // belge henüz yok, "resource.data" ile diff almak hata verir.
+    // "O mu Bu mu" oyunu — turnuva galibi sayacı (bkz. utils/filmTercih.js).
+    // Her tur için değil, 15 turluk oyunun SONUNDAKİ tek galip için yazılıyor.
     match /filmTercihPuanlari/{tmdbId} {
       allow read: if true;
       allow create: if request.auth != null &&
-        request.resource.data.keys().hasOnly(['baslik', 'posterUrl', 'kazanma', 'kaybetme', 'sonGuncelleme']);
+        request.resource.data.keys().hasOnly(['baslik', 'posterUrl', 'kazanma', 'sonGuncelleme']);
       allow update: if request.auth != null &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['baslik', 'posterUrl', 'kazanma', 'kaybetme', 'sonGuncelleme']);
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['baslik', 'posterUrl', 'kazanma', 'sonGuncelleme']);
     }
 
     match /yonetmenler/{tmdbId} {

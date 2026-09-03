@@ -107,6 +107,21 @@ export async function tumListeFilmleriGetir() {
   return [...havuz.values()]
 }
 
+// "O mu Bu mu" oyunu gibi SADECE belirli stildeki (ör. sadece sıralı,
+// tanınmış listeler — Letterboxd 500, IMDb 250) listelerin filmlerini
+// isteyen özellikler için — tumListeFilmleriGetir'in filtreli hali. "1001
+// Film" ve "Criterion" gibi daha az bilinen filmler içerebilen listeler
+// bilerek dışarıda tutulabiliyor.
+export async function stildeListeFilmleriGetir(izinVerilenStiller) {
+  const listeler = (await listeleriGetir()).filter((l) => izinVerilenStiller.includes(l.stil))
+  const hepsi = await Promise.all(listeler.map((liste) => listeFilmleriGetir(liste.id)))
+  const havuz = new Map()
+  hepsi.flat().forEach((film) => {
+    if (!havuz.has(film.id)) havuz.set(film.id, film)
+  })
+  return [...havuz.values()]
+}
+
 // Film sayfasındaki rozetler için — bu film HANGİ dış listelerde, kaçıncı
 // sırada? Liste sayısı küçük olduğu için (birkaç tane), her liste için tek
 // bir getDoc yeterli — koleksiyon grubu sorgusuna gerek yok.

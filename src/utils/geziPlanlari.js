@@ -80,17 +80,26 @@ export async function geziPlaniSil(id) {
 
 // Kullanıcı adına göre (baştan eşleşen) arama — plana ortak düzenleyen
 // eklerken kullanılıyor. Kullanicilar.jsx'teki keşfet aramasıyla aynı desen.
+// Önceden SADECE kullaniciAdi alanının BAŞLANGICINI (prefix) eşleştiriyordu
+// — kişinin gerçek adını soyadını yazan biri (ki insanların doğal
+// içgüdüsü bu, kullanıcı adını ezbere bilmek değil) hiçbir sonuç
+// alamıyordu. Site küçük, davetle büyüyen bir topluluk olduğu için (binlerce
+// değil, onlarca/yüzlerce kullanıcı) tüm kullanıcıları çekip istemci
+// tarafında hem adSoyad HEM kullaniciAdi üzerinde, büyük/küçük harf
+// duyarsız bir "içeriyor" (prefix değil) araması yapmak çok daha
+// kullanışlı ve hâlâ performanslı.
 export async function kullaniciAraKullaniciAdiIle(terim) {
-  if (!terim.trim()) return []
-  const q = query(
-    collection(db, 'kullanicilar'),
-    orderBy('kullaniciAdi'),
-    startAt(terim.trim().toLowerCase()),
-    endAt(terim.trim().toLowerCase() + '\uf8ff'),
-    limit(8)
-  )
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+  const temizTerim = terim.trim().toLocaleLowerCase('tr-TR')
+  if (!temizTerim) return []
+  const snap = await getDocs(query(collection(db, 'kullanicilar'), limit(500)))
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter(
+      (k) =>
+        k.kullaniciAdi?.toLocaleLowerCase('tr-TR').includes(temizTerim) ||
+        k.adSoyad?.toLocaleLowerCase('tr-TR').includes(temizTerim)
+    )
+    .slice(0, 8)
 }
 
 export async function planaOrtakDuzenleyenEkle(planId, eklenecekKullanici) {
