@@ -1,7 +1,7 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { filminListeSiralariGetir } from '../utils/disariListeler.js'
-import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
+import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 import { omdbOnbellektenOku, omdbOnbellegeYaz } from '../utils/omdbOnbellek.js'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -1413,16 +1413,16 @@ export default function EserSayfasi({ tur }) {
                 <Link
                   key={liste.listeId}
                   to={`/dis-liste/${liste.listeId}`}
-                  className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
                     liste.stil === 'imdb'
                       ? 'bg-[#F5C518] text-black hover:opacity-90'
                       : liste.stil === 'letterboxd'
-                        ? 'bg-[#00e054]/15 text-[#00e054] ring-1 ring-[#00e054]/40 hover:bg-[#00e054]/25'
+                        ? 'bg-[#14181c] text-white ring-1 ring-white/10 hover:ring-white/25'
                         : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:text-deniz'
                   }`}
                   title={liste.ad}
                 >
-                  {liste.stil === 'letterboxd' && <LetterboxdIkon className="h-3 w-3" />}
+                  {liste.stil === 'letterboxd' && <LetterboxdNoktalarIkon className="h-3.5 w-5" />}
                   {liste.kisaAd}
                   {liste.siraliMi && ` · #${liste.siraNo}`}
                 </Link>

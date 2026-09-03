@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { listeGetir, listeFilmleriGetir, listedenFilmSil, listeGuncelle } from '../utils/disariListeler.js'
 import DisListeIceAktar from '../components/DisListeIceAktar.jsx'
-import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
+import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 
 const STIL_ROZET_RENGI = {
   imdb: 'bg-[#F5C518] text-black',
@@ -56,7 +56,7 @@ export default function DisListeDetay() {
     return (
       <div>
         <Link to="/dis-listeler" className="text-xs text-kraft hover:text-deniz">
-          ← Dış Listeler
+          ← En İyi Film Listeleri
         </Link>
         <p className="mt-4 text-sm text-kraft">Bu liste bulunamadı.</p>
       </div>
@@ -69,10 +69,10 @@ export default function DisListeDetay() {
   return (
     <div>
       <Link to="/dis-listeler" className="text-xs text-kraft hover:text-deniz">
-        ← Dış Listeler
+        ← En İyi Film Listeleri
       </Link>
       <div className="mt-1 mb-1 flex items-center gap-2">
-        {liste.stil === 'letterboxd' ? <LetterboxdIkon className="h-6 w-6 text-[#00e054]" /> : <span className="text-2xl">🎞️</span>}
+        {liste.stil === 'letterboxd' ? <LetterboxdNoktalarIkon className="h-6 w-9" /> : <span className="text-2xl">🎞️</span>}
         <h1 className="font-baslik text-2xl text-murekkep">{liste.ad}</h1>
       </div>
       <div className="mb-6 flex items-center gap-3">

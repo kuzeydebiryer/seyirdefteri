@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { listeleriGetir, listeEkle, listeSil } from '../utils/disariListeler.js'
-import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
+import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 
 const STIL_ORNEKLERI = {
   imdb: { etiket: 'IMDb (sarı-siyah)', sinif: 'bg-[#F5C518] text-black' },
@@ -57,9 +57,10 @@ export default function DisListeler() {
       <Link to="/filmler" className="text-xs text-kraft hover:text-deniz">
         ← Filmler
       </Link>
-      <h1 className="mt-1 mb-1 font-baslik text-2xl text-murekkep">🎞️ Dış Listeler</h1>
+      <h1 className="mt-1 mb-1 font-baslik text-2xl text-murekkep">🎞️ En İyi Film Listeleri</h1>
       <p className="mb-6 text-sm text-kraft">
-        Letterboxd, IMDb gibi dış kaynaklardan içe aktarılan, resmî sıralamalarıyla birlikte tutulan film listeleri.
+        Sinema tarihinin zirvesine çıkan filmler — dünyanın en saygın topluluklarının oylarıyla şekillenen, kuşaktan
+        kuşağa aktarılan başyapıt listeleri.
       </p>
 
       {profil?.yonetici && (
@@ -126,7 +127,7 @@ export default function DisListeler() {
           <div key={liste.id} className="flex items-center justify-between rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
             <Link to={`/dis-liste/${liste.id}`} className="flex-1 hover:text-deniz">
               <p className="flex items-center gap-1.5 font-baslik text-base text-murekkep">
-                {liste.stil === 'letterboxd' && <LetterboxdIkon className="h-4 w-4 shrink-0 text-[#00e054]" />}
+                {liste.stil === 'letterboxd' && <LetterboxdNoktalarIkon className="h-4 w-6 shrink-0" />}
                 {liste.ad}
               </p>
               <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] ${STIL_ORNEKLERI[liste.stil]?.sinif || ''}`}>
