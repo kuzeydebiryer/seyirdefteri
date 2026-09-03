@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { listeleriGetir, listeEkle, listeSil } from '../utils/disariListeler.js'
+import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
 
 const STIL_ORNEKLERI = {
   imdb: { etiket: 'IMDb (sarı-siyah)', sinif: 'bg-[#F5C518] text-black' },
@@ -22,6 +23,7 @@ export default function DisListeler() {
   const [ad, setAd] = useState('')
   const [kisaAd, setKisaAd] = useState('')
   const [stil, setStil] = useState('genel')
+  const [siraliMi, setSiraliMi] = useState(true)
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   useEffect(() => {
@@ -32,10 +34,11 @@ export default function DisListeler() {
     e.preventDefault()
     setKaydediliyor(true)
     try {
-      await listeEkle(kullanici, { ad: ad.trim(), kisaAd: kisaAd.trim(), stil })
+      await listeEkle(kullanici, { ad: ad.trim(), kisaAd: kisaAd.trim(), stil, siraliMi })
       setAd('')
       setKisaAd('')
       setStil('genel')
+      setSiraliMi(true)
       setFormAcik(false)
       setYenile((n) => n + 1)
     } finally {
@@ -103,6 +106,10 @@ export default function DisListeler() {
                   ))}
                 </div>
               </div>
+              <label className="flex items-center gap-2 text-xs text-murekkep">
+                <input type="checkbox" checked={siraliMi} onChange={(e) => setSiraliMi(e.target.checked)} />
+                Bu liste sıralı (Letterboxd 500 gibi sıra numarası önemli — "1001 Film" gibi sadece üyelik listesiyse kapat)
+              </label>
               <button type="submit" disabled={kaydediliyor} className="rounded-sm bg-muhur px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40">
                 {kaydediliyor ? 'Kaydediliyor...' : 'Listeyi Tanımla'}
               </button>
@@ -118,7 +125,10 @@ export default function DisListeler() {
         {listeler?.map((liste) => (
           <div key={liste.id} className="flex items-center justify-between rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
             <Link to={`/dis-liste/${liste.id}`} className="flex-1 hover:text-deniz">
-              <p className="font-baslik text-base text-murekkep">{liste.ad}</p>
+              <p className="flex items-center gap-1.5 font-baslik text-base text-murekkep">
+                {liste.stil === 'letterboxd' && <LetterboxdIkon className="h-4 w-4 shrink-0 text-[#00e054]" />}
+                {liste.ad}
+              </p>
               <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] ${STIL_ORNEKLERI[liste.stil]?.sinif || ''}`}>
                 {liste.kisaAd}
               </span>

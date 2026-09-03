@@ -1,6 +1,7 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { filminListeSiralariGetir } from '../utils/disariListeler.js'
+import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
 import { omdbOnbellektenOku, omdbOnbellegeYaz } from '../utils/omdbOnbellek.js'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -1421,7 +1422,9 @@ export default function EserSayfasi({ tur }) {
                   }`}
                   title={liste.ad}
                 >
-                  {liste.kisaAd} · #{liste.siraNo}
+                  {liste.stil === 'letterboxd' && <LetterboxdIkon className="h-3 w-3" />}
+                  {liste.kisaAd}
+                  {liste.siraliMi && ` · #${liste.siraNo}`}
                 </Link>
               ))}
               {eslesenAltTurler.map((altTur) => (

@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, writeBatch } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // Önceden "Letterboxd 500" tek başına, sabit kodlanmış bir koleksiyondu
@@ -25,17 +25,29 @@ export async function listeGetir(listeId) {
 // stil: 'letterboxd' | 'imdb' | 'genel' — film sayfasındaki rozetin görsel
 // dilini belirliyor (bkz. DisListeRozetleri.jsx). 'imdb' seçilirse sitede
 // zaten kullanılan sarı-siyah IMDb rozetiyle BİREBİR aynı görünür.
-export async function listeEkle(kullanici, { ad, kisaAd, stil }) {
+// siraliMi: bazı listeler (Letterboxd 500, IMDb 250) gerçekten SIRALI, ama
+// bazıları (ör. "Ölmeden Önce Görmeniz Gereken 1001 Film") sadece bir
+// ÜYELİK listesi — sıra numarası anlamsız/yanıltıcı olur ("1001 Film ·
+// #567" gibi). false ise rozette/poster üzerinde sıra numarası hiç
+// gösterilmiyor.
+export async function listeEkle(kullanici, { ad, kisaAd, stil, siraliMi = true }) {
   const mevcutSayisi = (await listeleriGetir()).length
   const belge = await addDoc(collection(db, 'disariListeler'), {
     ad,
     kisaAd,
     stil,
+    siraliMi,
     sira: mevcutSayisi,
     ekleyenId: kullanici.uid,
     tarih: serverTimestamp(),
   })
   return belge.id
+}
+
+// Mevcut bir listenin tanımını (ad/kısaAd/stil/siraliMi) düzenlemek için —
+// filmleri etkilemiyor, sadece liste TANIMINI günceller.
+export async function listeGuncelle(listeId, degisiklikler) {
+  await updateDoc(doc(db, 'disariListeler', listeId), degisiklikler)
 }
 
 export async function listeSil(listeId) {
@@ -89,7 +101,7 @@ export async function filminListeSiralariGetir(tmdbId) {
     listeler.map(async (liste) => {
       const snap = await getDoc(doc(db, 'disariListeler', liste.id, 'filmler', String(tmdbId)))
       if (!snap.exists()) return null
-      return { listeId: liste.id, ad: liste.ad, kisaAd: liste.kisaAd, stil: liste.stil, siraNo: snap.data().siraNo }
+      return { listeId: liste.id, ad: liste.ad, kisaAd: liste.kisaAd, stil: liste.stil, siraliMi: liste.siraliMi !== false, siraNo: snap.data().siraNo }
     })
   )
   return sonuclar.filter(Boolean)
