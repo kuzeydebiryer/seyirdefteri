@@ -103,34 +103,43 @@ export default function OMuBuMu() {
           <p className="mb-3 text-center text-xs text-kraft">
             Tur {tur} / {TOPLAM_TUR}
           </p>
-          <div className="mx-auto flex max-w-md items-center justify-center">
-            {[sampiyon, meydanOkuyan].map((film, i) => (
-              <button
-                key={film.id}
-                onClick={() => seciliyor(film, i === 0 ? meydanOkuyan : sampiyon)}
-                disabled={!kullanici || secimYapiliyor}
-                className="group w-32 shrink-0 text-left disabled:cursor-not-allowed disabled:opacity-60 sm:w-40"
-              >
-                <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu shadow-lg ring-1 ring-cizgi transition group-hover:ring-deniz/60 group-active:scale-[0.98]">
-                  {film.posterUrl ? (
-                    <img src={film.posterUrl} alt={film.baslik} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-3xl opacity-40">🎬</div>
-                  )}
-                  {i === 0 && tur > 1 && (
-                    <span className="absolute left-1 top-1 rounded-full bg-gise px-2 py-0.5 text-[10px] font-medium text-kagit">
-                      🏆 {tur - 1} tur galibi
-                    </span>
-                  )}
-                </div>
-                <p className="mt-2 line-clamp-2 text-center text-xs font-medium text-murekkep sm:text-sm">{film.baslik}</p>
-              </button>
-            ))}
-            {/* İki afişin arasında, tur numarasıyla nabız gibi büyüyüp küçülen
-                dramatik bir "VS" rozeti — sinematik afiş/fragman dilindeki
-                klasik "çarpışma" motifini taklit ediyor. */}
-            <div className="relative z-10 -mx-4 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muhur font-baslik text-sm font-black italic text-kagit shadow-xl ring-4 ring-kagitKoyu sm:h-14 sm:w-14 sm:text-lg">
-              VS
+          <div className="mx-auto max-w-md">
+            <div className="relative flex items-center justify-center gap-3">
+              {[sampiyon, meydanOkuyan].map((film, i) => (
+                <button
+                  key={film.id}
+                  onClick={() => seciliyor(film, i === 0 ? meydanOkuyan : sampiyon)}
+                  disabled={!kullanici || secimYapiliyor}
+                  className="group w-36 shrink-0 text-left disabled:cursor-not-allowed disabled:opacity-60 sm:w-44"
+                >
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu shadow-lg ring-1 ring-cizgi transition group-hover:ring-deniz/60 group-active:scale-[0.98]">
+                    {film.posterUrl ? (
+                      <img src={film.posterUrl} alt={film.baslik} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-3xl opacity-40">🎬</div>
+                    )}
+                    {i === 0 && tur > 1 && (
+                      <span className="absolute left-1 top-1 rounded-full bg-gise px-2 py-0.5 text-[10px] font-medium text-kagit">
+                        🏆 {tur - 1} tur galibi
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+              {/* İki afişin GERÇEK ortasında dursun diye mutlak konumlandırma
+                  kullanılıyor (negatif margin ile itmek posterlerin
+                  yüksekliği/genişliği değiştikçe simetriyi bozuyordu) —
+                  sinematik afiş/fragman dilindeki klasik "çarpışma" motifi. */}
+              <div className="absolute left-1/2 top-1/2 z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-muhur font-baslik text-sm font-black italic text-kagit shadow-xl ring-4 ring-kagitKoyu sm:h-16 sm:w-16 sm:text-lg">
+                VS
+              </div>
+            </div>
+            <div className="mt-2 flex justify-center gap-3">
+              {[sampiyon, meydanOkuyan].map((film) => (
+                <p key={film.id} className="w-36 shrink-0 line-clamp-2 text-center text-xs font-medium text-murekkep sm:w-44 sm:text-sm">
+                  {film.baslik}
+                </p>
+              ))}
             </div>
           </div>
           <p className="mt-4 text-center text-xs text-kraft">
