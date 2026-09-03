@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { listeleriGetir, listeEkle, listeSil } from '../utils/disariListeler.js'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
+import CriterionIkon from '../components/ikonlar/CriterionIkon.jsx'
 
 const STIL_ORNEKLERI = {
   imdb: { etiket: 'IMDb (sarı-siyah)', sinif: 'bg-[#F5C518] text-black' },
   letterboxd: { etiket: 'Letterboxd (yeşil)', sinif: 'bg-[#00e054]/15 text-[#00e054] ring-1 ring-[#00e054]/40' },
+  criterion: { etiket: 'Criterion (siyah-beyaz)', sinif: 'bg-black text-white ring-1 ring-white/20' },
   genel: { etiket: 'Genel (nötr)', sinif: 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' },
 }
 
@@ -128,6 +130,7 @@ export default function DisListeler() {
             <Link to={`/dis-liste/${liste.id}`} className="flex-1 hover:text-deniz">
               <p className="flex items-center gap-1.5 font-baslik text-base text-murekkep">
                 {liste.stil === 'letterboxd' && <LetterboxdNoktalarIkon className="h-4 w-9 shrink-0" />}
+                {liste.stil === 'criterion' && <CriterionIkon className="h-4 w-4 shrink-0" />}
                 {liste.ad}
               </p>
               <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] ${STIL_ORNEKLERI[liste.stil]?.sinif || ''}`}>

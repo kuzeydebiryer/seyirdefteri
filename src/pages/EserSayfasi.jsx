@@ -3,6 +3,7 @@ import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { filminListeSiralariGetir } from '../utils/disariListeler.js'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 import IMDbIkon from '../components/ikonlar/IMDbIkon.jsx'
+import CriterionIkon from '../components/ikonlar/CriterionIkon.jsx'
 import { omdbOnbellektenOku, omdbOnbellegeYaz } from '../utils/omdbOnbellek.js'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
@@ -1415,7 +1416,7 @@ export default function EserSayfasi({ tur }) {
                   key={liste.listeId}
                   to={`/dis-liste/${liste.listeId}`}
                   className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                    liste.stil === 'imdb' || liste.stil === 'letterboxd'
+                    liste.stil === 'imdb' || liste.stil === 'letterboxd' || liste.stil === 'criterion'
                       ? 'bg-[#14181c] text-white ring-1 ring-white/10 hover:ring-white/25'
                       : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:text-deniz'
                   }`}
@@ -1423,7 +1424,8 @@ export default function EserSayfasi({ tur }) {
                 >
                   {liste.stil === 'letterboxd' && <LetterboxdNoktalarIkon className="h-3.5 w-8" />}
                   {liste.stil === 'imdb' && <IMDbIkon className="px-1 py-0.5 text-[9px]" />}
-                  {liste.kisaAd}
+                  {liste.stil === 'criterion' && <CriterionIkon className="h-3 w-3" />}
+                  {liste.stil !== 'imdb' && liste.kisaAd}
                   {liste.siraliMi && ` · #${liste.siraNo}`}
                 </Link>
               ))}

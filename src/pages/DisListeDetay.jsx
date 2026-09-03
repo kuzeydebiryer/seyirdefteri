@@ -5,10 +5,12 @@ import { listeGetir, listeFilmleriGetir, listedenFilmSil, listeGuncelle } from '
 import DisListeIceAktar from '../components/DisListeIceAktar.jsx'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 import IMDbIkon from '../components/ikonlar/IMDbIkon.jsx'
+import CriterionIkon from '../components/ikonlar/CriterionIkon.jsx'
 
 const STIL_ROZET_RENGI = {
   imdb: 'bg-[#F5C518] text-black',
   letterboxd: 'bg-[#00e054]/90 text-black',
+  criterion: 'bg-black text-white ring-1 ring-white/30',
   genel: 'bg-kagitKoyu text-kraft ring-1 ring-cizgi',
 }
 
@@ -77,6 +79,8 @@ export default function DisListeDetay() {
           <LetterboxdNoktalarIkon className="h-6 w-[3.4rem]" />
         ) : liste.stil === 'imdb' ? (
           <IMDbIkon className="px-2 py-1 text-sm" />
+        ) : liste.stil === 'criterion' ? (
+          <CriterionIkon className="h-6 w-6 text-murekkep" />
         ) : (
           <span className="text-2xl">🎞️</span>
         )}
