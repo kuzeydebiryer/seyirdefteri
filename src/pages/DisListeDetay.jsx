@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { listeGetir, listeFilmleriGetir } from '../utils/disariListeler.js'
+import { useAuth } from '../context/AuthContext.jsx'
+import { listeGetir, listeFilmleriGetir, listedenFilmSil } from '../utils/disariListeler.js'
 import DisListeIceAktar from '../components/DisListeIceAktar.jsx'
 
 const STIL_ROZET_RENGI = {
@@ -14,6 +15,7 @@ const STIL_ROZET_RENGI = {
 // DisListeler.jsx (hub) üzerinden erişiliyor, üst menüye eklenmedi.
 export default function DisListeDetay() {
   const { listeId } = useParams()
+  const { profil } = useAuth()
   const [liste, setListe] = useState(undefined)
   const [filmler, setFilmler] = useState(null)
   const [yenile, setYenile] = useState(0)
@@ -22,6 +24,12 @@ export default function DisListeDetay() {
     listeGetir(listeId).then(setListe)
     listeFilmleriGetir(listeId).then(setFilmler)
   }, [listeId, yenile])
+
+  async function filmSilTiklandi(film) {
+    if (!window.confirm(`"${film.baslik}" filmini bu listeden çıkarmak istediğine emin misin?`)) return
+    await listedenFilmSil(listeId, film.id)
+    setFilmler((onceki) => onceki.filter((f) => f.id !== film.id))
+  }
 
   if (liste === undefined) return <p className="text-sm text-kraft">Yükleniyor...</p>
 
@@ -53,17 +61,28 @@ export default function DisListeDetay() {
 
       <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
         {filmler?.map((film) => (
-          <Link key={film.id} to={`/film/${film.id}`} className="block">
-            <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-              {film.posterUrl ? (
-                <img src={film.posterUrl} alt={film.baslik} loading="lazy" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">🎬</div>
-              )}
-              <span className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${rozetSinifi}`}>#{film.siraNo}</span>
-            </div>
-            <p className="mt-1 truncate text-xs text-murekkep">{film.baslik}</p>
-          </Link>
+          <div key={film.id} className="group relative">
+            <Link to={`/film/${film.id}`} className="block">
+              <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                {film.posterUrl ? (
+                  <img src={film.posterUrl} alt={film.baslik} loading="lazy" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">🎬</div>
+                )}
+                <span className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${rozetSinifi}`}>#{film.siraNo}</span>
+              </div>
+              <p className="mt-1 truncate text-xs text-murekkep">{film.baslik}</p>
+            </Link>
+            {profil?.yonetici && (
+              <button
+                onClick={() => filmSilTiklandi(film)}
+                title="Bu filmi listeden çıkar (yanlış eşleşme)"
+                className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-kagit opacity-0 transition group-hover:opacity-100 hover:bg-muhur"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         ))}
       </div>
     </div>

@@ -27,21 +27,28 @@ function csvSatirlariniAyikla(metin) {
   })
 }
 
-// TMDB'nin arama uç noktasına HEM yıl filtresiyle HEM filtresiz arıyoruz ve
-// birleştiriyoruz — sadece yıl filtresiyle aramak bazı filmlerde ("Yi Yi"
-// gibi kısa/alışılmadık başlıklı ya da bölgesel çıkış tarihi farklı
-// kaydedilmiş filmlerde) doğru sonucu TAMAMEN dışarıda bırakabiliyordu,
-// kullanıcıya gösterilen aday listesi baştan yanlış geliyordu.
+// TMDB'nin yıl filtreli aramasında, İLK sonuç neredeyse her zaman doğru
+// film oluyor (kullanıcı gözlemi: ~%90) — TMDB zaten alaka düzeyine göre
+// sıralıyor. Önceki mantık, TMDB'nin TÜRKÇE çevrilmiş başlığını
+// (language=tr-TR ile) CSV'deki İNGİLİZCE başlıkla harfi harfine
+// karşılaştırıyordu ("Batı Cephesinde Yeni Bir Şey Yok" ≠ "All Quiet on
+// the Western Front") — film doğru bulunmuş olsa bile asla "tam eşleşme"
+// sayılmıyordu, gereksiz yere elle çözüm listesine düşüyordu. Şimdi: yıl
+// filtreli aramanın İLK sonucunun GERÇEK yılı, CSV'deki yılla eşleşiyorsa
+// (dil farkı önemli değil), doğrudan güveniliyor.
 async function tmdbdeAra(ad, yil) {
-  const [yillaSonuc, yilsizSonuc] = await Promise.all([
-    fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(ad)}&year=${yil}`).then((r) =>
-      r.json()
-    ),
-    fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(ad)}`).then((r) => r.json()),
-  ])
-  const birlesik = new Map()
-  ;[...(yillaSonuc.results || []), ...(yilsizSonuc.results || [])].forEach((f) => birlesik.set(f.id, f))
-  return [...birlesik.values()]
+  const yillaRes = await fetch(
+    `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(ad)}&year=${yil}`
+  ).then((r) => r.json())
+  const yillaSonuclar = yillaRes.results || []
+  if (yillaSonuclar.length > 0) return yillaSonuclar
+
+  // Yıllı arama hiç sonuç vermediyse (bazı filmlerde bölgesel çıkış tarihi
+  // TMDB'de farklı kaydedilmiş olabiliyor), yılsız dene.
+  const yilsizRes = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=tr-TR&query=${encodeURIComponent(ad)}`).then(
+    (r) => r.json()
+  )
+  return yilsizRes.results || []
 }
 
 // Otomatik eşleştirmenin sunduğu adaylar arasında doğru film yoksa (bkz.
@@ -135,30 +142,26 @@ export default function DisListeIceAktar({ listeId, listeAdi, onEklendi }) {
       await Promise.all(
         grup.map(async (satir) => {
           const sonuclar = await tmdbdeAra(satir.ad, satir.yil)
-          if (sonuclar.length === 1) {
-            const f = sonuclar[0]
+          if (sonuclar.length === 0) {
+            yeniEslesmeyenler.push({ ...satir, adaylar: [] })
+            return
+          }
+          const ilk = sonuclar[0]
+          const ilkYil = (ilk.release_date || '').slice(0, 4)
+          if (ilkYil === satir.yil) {
+            // TMDB'nin en alakalı (ilk) sonucu, gerçek yılı da CSV'deki
+            // yılla eşleşiyor — dil farkı önemli değil, güveniyoruz.
             yeniEslesenler.push({
               siraNo: satir.siraNo,
-              tmdbId: f.id,
-              baslik: f.title,
+              tmdbId: ilk.id,
+              baslik: ilk.title,
               yil: satir.yil,
-              posterUrl: f.poster_path ? `${TMDB_POSTER}${f.poster_path}` : '',
+              posterUrl: ilk.poster_path ? `${TMDB_POSTER}${ilk.poster_path}` : '',
             })
-          } else if (sonuclar.length > 1) {
-            const tamEslesen = sonuclar.find((f) => f.title === satir.ad && (f.release_date || '').slice(0, 4) === satir.yil)
-            if (tamEslesen) {
-              yeniEslesenler.push({
-                siraNo: satir.siraNo,
-                tmdbId: tamEslesen.id,
-                baslik: tamEslesen.title,
-                yil: satir.yil,
-                posterUrl: tamEslesen.poster_path ? `${TMDB_POSTER}${tamEslesen.poster_path}` : '',
-              })
-            } else {
-              yeniEslesmeyenler.push({ ...satir, adaylar: sonuclar })
-            }
           } else {
-            yeniEslesmeyenler.push({ ...satir, adaylar: [] })
+            // İlk sonucun yılı uymuyor — burada otomatik seçim riskli,
+            // yönetici elle baksın.
+            yeniEslesmeyenler.push({ ...satir, adaylar: sonuclar })
           }
         })
       )

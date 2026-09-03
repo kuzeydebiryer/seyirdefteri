@@ -49,6 +49,13 @@ export async function listeSil(listeId) {
   await deleteDoc(doc(db, 'disariListeler', listeId))
 }
 
+// Daha agresif otomatik eşleştirme (bkz. DisListeIceAktar.jsx — TMDB'nin
+// ilk/en alakalı sonucuna güveniliyor) nadiren yanlış bir filmi listeye
+// sokabilir. Bu, tek bir filmi (tüm listeyi silmeden) çıkarmak için.
+export async function listedenFilmSil(listeId, tmdbId) {
+  await deleteDoc(doc(db, 'disariListeler', listeId, 'filmler', String(tmdbId)))
+}
+
 export async function listeFilmleriGetir(listeId) {
   const snap = await getDocs(query(collection(db, 'disariListeler', listeId, 'filmler'), orderBy('siraNo', 'asc')))
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
