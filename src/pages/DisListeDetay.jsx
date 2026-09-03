@@ -6,12 +6,25 @@ import DisListeIceAktar from '../components/DisListeIceAktar.jsx'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 import IMDbIkon from '../components/ikonlar/IMDbIkon.jsx'
 import CriterionIkon from '../components/ikonlar/CriterionIkon.jsx'
+import BinBirFilmIkon from '../components/ikonlar/BinBirFilmIkon.jsx'
 
 const STIL_ROZET_RENGI = {
   imdb: 'bg-[#F5C518] text-black',
   letterboxd: 'bg-[#00e054]/90 text-black',
   criterion: 'bg-black text-white ring-1 ring-white/30',
+  binbirfilm: 'bg-white text-black ring-1 ring-cizgi',
   genel: 'bg-kagitKoyu text-kraft ring-1 ring-cizgi',
+}
+
+// DisListeler.jsx'teki (hub) stil seçici ile aynı seçenekler — burada da
+// mevcut bir listenin stilini sonradan değiştirebilmek için (bkz.
+// "✏️ Ayarları Düzenle").
+const STIL_ORNEKLERI = {
+  imdb: { etiket: 'IMDb (sarı-siyah)', sinif: 'bg-[#F5C518] text-black' },
+  letterboxd: { etiket: 'Letterboxd (yeşil)', sinif: 'bg-[#00e054]/15 text-[#00e054] ring-1 ring-[#00e054]/40' },
+  criterion: { etiket: 'Criterion (siyah-beyaz)', sinif: 'bg-black text-white ring-1 ring-white/20' },
+  binbirfilm: { etiket: '1001 Film (beyaz-siyah)', sinif: 'bg-white text-black ring-1 ring-cizgi' },
+  genel: { etiket: 'Genel (nötr)', sinif: 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' },
 }
 
 // Film sayfalarındaki dış liste rozetlerinin ("🎞️ Letterboxd 500 · #7" gibi)
@@ -26,12 +39,16 @@ export default function DisListeDetay() {
 
   const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
   const [taslakSiraliMi, setTaslakSiraliMi] = useState(true)
+  const [taslakStil, setTaslakStil] = useState('genel')
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   useEffect(() => {
     listeGetir(listeId).then((l) => {
       setListe(l)
-      if (l) setTaslakSiraliMi(l.siraliMi !== false)
+      if (l) {
+        setTaslakSiraliMi(l.siraliMi !== false)
+        setTaslakStil(l.stil || 'genel')
+      }
     })
     listeFilmleriGetir(listeId).then(setFilmler)
   }, [listeId, yenile])
@@ -45,7 +62,7 @@ export default function DisListeDetay() {
   async function ayarlariKaydet() {
     setKaydediliyor(true)
     try {
-      await listeGuncelle(listeId, { siraliMi: taslakSiraliMi })
+      await listeGuncelle(listeId, { siraliMi: taslakSiraliMi, stil: taslakStil })
       setYenile((n) => n + 1)
       setDuzenlemeAcik(false)
     } finally {
@@ -81,6 +98,8 @@ export default function DisListeDetay() {
           <IMDbIkon className="px-2 py-1 text-sm" />
         ) : liste.stil === 'criterion' ? (
           <CriterionIkon className="h-6 w-6 text-murekkep" />
+        ) : liste.stil === 'binbirfilm' ? (
+          <BinBirFilmIkon className="px-2 py-1 text-sm" />
         ) : (
           <span className="text-2xl">🎞️</span>
         )}
@@ -98,7 +117,22 @@ export default function DisListeDetay() {
       </div>
 
       {duzenlemeAcik && (
-        <div className="mb-6 max-w-md space-y-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+        <div className="mb-6 max-w-md space-y-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+          <div>
+            <label className="mb-1 block text-[11px] text-kraft">Rozet Stili</label>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(STIL_ORNEKLERI).map(([id, ornek]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTaslakStil(id)}
+                  className={`rounded-full px-2.5 py-1 text-[11px] ${ornek.sinif} ${taslakStil === id ? 'ring-2 ring-offset-1 ring-offset-kagitKoyu' : ''}`}
+                >
+                  {ornek.etiket}
+                </button>
+              ))}
+            </div>
+          </div>
           <label className="flex items-center gap-2 text-xs text-murekkep">
             <input type="checkbox" checked={taslakSiraliMi} onChange={(e) => setTaslakSiraliMi(e.target.checked)} />
             Bu liste sıralı (Letterboxd 500, IMDb 250 gibi — kapalıysa "1001 Film" gibi sadece üyelik listesi sayılır,
