@@ -48,6 +48,7 @@ const DijitalSayfasi = lazy(() => import('./pages/DijitalSayfasi.jsx'))
 const YakindaGeliyorSayfasi = lazy(() => import('./pages/YakindaGeliyorSayfasi.jsx'))
 const KitaplarKesfet = lazy(() => import('./pages/KitaplarKesfet.jsx'))
 const KitapIstekleri = lazy(() => import('./pages/KitapIstekleri.jsx'))
+const StorytelKitaplari = lazy(() => import('./pages/StorytelKitaplari.jsx'))
 const KitapKatalogBakimi = lazy(() => import('./pages/KitapKatalogBakimi.jsx'))
 const Listelerim = lazy(() => import('./pages/Listelerim.jsx'))
 const Oscar = lazy(() => import('./pages/Oscar.jsx'))
@@ -153,6 +154,7 @@ export default function App() {
             <Route path="/platform/:id" element={<OzelRota><PlatformDetay /></OzelRota>} />
             <Route path="/kitaplar" element={<OzelRota><KitaplarKesfet /></OzelRota>} />
             <Route path="/kitap-istekleri" element={<OzelRota><KitapIstekleri /></OzelRota>} />
+            <Route path="/storytel-kitaplari" element={<OzelRota><StorytelKitaplari /></OzelRota>} />
             <Route path="/kitaplar/bakim" element={<OzelRota><KitapKatalogBakimi /></OzelRota>} />
             <Route path="/listelerim" element={<OzelRota><Listelerim /></OzelRota>} />
             <Route path="/oscar" element={<OscarYonlendirme />} />

@@ -588,6 +588,15 @@ service cloud.firestore {
     // alt koleksiyondaki her film sadece yönetici tarafından
     // eklenip/silinebiliyor (bkz. utils/disariListeler.js). Alt koleksiyon
     // kuralı üst belgenin match bloğunun İÇİNDE tanımlanıyor.
+    // Storytel'de mevcut kitap işaretleme — Yeni Gelen Filmler ile aynı
+    // açıklık düzeyi: sadece yönetici değil, giriş yapmış herkes
+    // ekleyip/kaldırabiliyor.
+    match /storytelKitaplari/{kitapId} {
+      allow read: if true;
+      allow create, delete: if request.auth != null;
+      allow update: if false;
+    }
+
     match /disariListeler/{listeId} {
       allow read: if true;
       allow create, update, delete: if yoneticiMi();

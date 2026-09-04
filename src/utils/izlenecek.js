@@ -87,6 +87,38 @@ export async function ilerlemeGuncelle(uid, tur, disId, suankiSayfa) {
   await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), { suankiSayfa })
 }
 
+// "Dinliyorum" (Storytel gibi sesli kitap kaynakları için) — "okuyorum" ile
+// AYNI izlenecekler kaydını paylaşıyor, sadece durum değeri farklı
+// ('dinleniyor') ve sayfa yerine DAKİKA bazlı ilerleme tutuluyor
+// (toplamDakika/suankiDakika). setDoc+merge kullanılıyor çünkü hem "hiç
+// kaydı yok" hem "kaydı var ama farklı durumda" durumlarını TEK bir
+// fonksiyonla, iki ayrı yol yazmadan kapsıyor. Storytel'in gerçek çalma
+// konumunu senkronize etmemiz mümkün değil (API yok) — bu yüzden ilerleme
+// tamamen ELLE güncelleniyor, otomatik değil.
+export async function dinlemeyeBasla(kullanici, tur, disId, { baslik, alt, posterUrl, toplamDakika }) {
+  const id = izlenecekDokId(kullanici.uid, tur, disId)
+  await setDoc(
+    doc(db, 'izlenecekler', id),
+    {
+      kullaniciId: kullanici.uid,
+      tur,
+      disId,
+      baslik,
+      alt: alt || '',
+      posterUrl: posterUrl || '',
+      durum: 'dinleniyor',
+      toplamDakika: toplamDakika || null,
+      suankiDakika: 0,
+      baslangicTarihi: serverTimestamp(),
+    },
+    { merge: true }
+  )
+}
+
+export async function dinlemeIlerlemeGuncelle(uid, tur, disId, suankiDakika) {
+  await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), { suankiDakika })
+}
+
 // Dizi ilerlemesi kitaptaki "sayfa" yerine "sezon + bölüm" ile tutuluyor —
 // tek bir sayı yerine ikisi birlikte, çünkü bir dizinin kaçıncı bölümde
 // olduğun sezon bilgisi olmadan anlamsız (her sezonun bölüm sayısı farklı).
@@ -143,11 +175,15 @@ export async function suankiOkunanKitabiGetir(uid) {
 // Anasayfa'daki "Kitap Dünyası" ve Diziler sayfasındaki "Şu An İzlenenler"
 // widget'ları için ortak fonksiyon — TÜM topluluğun o an okuduğu/izlediği
 // eserleri getirir (herkese görünür, kişisel değil). En son başlayanlar önce.
-export async function topluluktaSuankiOkunanlariGetir(tur, limitSayisi = 6) {
+// durumlar: varsayılan sadece 'okunuyor', ama Kitap Dünyası gibi "dinleniyor"
+// durumunu da göstermek isteyen çağrılar bir dizi geçebilir (ör.
+// ['okunuyor', 'dinleniyor']) — aynı bileşik indeks 'in' sorgusunu da
+// karşılıyor, yeni bir indekse gerek yok.
+export async function topluluktaSuankiOkunanlariGetir(tur, limitSayisi = 6, durumlar = ['okunuyor']) {
   const q = query(
     collection(db, 'izlenecekler'),
     where('tur', '==', tur),
-    where('durum', '==', 'okunuyor'),
+    where('durum', 'in', durumlar),
     orderBy('eklemeTarihi', 'desc'),
     limit(limitSayisi)
   )

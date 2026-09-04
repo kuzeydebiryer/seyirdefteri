@@ -1,6 +1,7 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { filminListeSiralariGetir } from '../utils/disariListeler.js'
+import { storytelKitabiMi, storytelKitabiIsaretle, storytelKitabiKaldir } from '../utils/storytelKitaplari.js'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 import IMDbIkon from '../components/ikonlar/IMDbIkon.jsx'
 import CriterionIkon from '../components/ikonlar/CriterionIkon.jsx'
@@ -20,6 +21,8 @@ import {
   toplamSayfaTamamla,
   okumayaBasla,
   ilerlemeGuncelle,
+  dinlemeyeBasla,
+  dinlemeIlerlemeGuncelle,
   baslangicTarihiTamamla,
   dizideIlerlemeGuncelle,
   baslangicTarihiniDuzelt,
@@ -574,7 +577,74 @@ export default function EserSayfasi({ tur }) {
       iptal = true
     }
   }, [tur, id])
+
+  // Bu kitap "Storytel'de mevcut" diye işaretlenmiş mi? — sadece kitap
+  // sayfasında anlamlı, film/diziye hiç sorulmuyor.
+  useEffect(() => {
+    if (tur !== 'kitap' || !id) {
+      setStorytelMi(false)
+      return
+    }
+    let iptal = false
+    storytelKitabiMi(id).then((sonuc) => {
+      if (!iptal) setStorytelMi(sonuc)
+    })
+    return () => {
+      iptal = true
+    }
+  }, [tur, id])
+
+  async function storytelIsaretiDegistir() {
+    if (!kullanici || !detay) return
+    setStorytelIsleniyor(true)
+    try {
+      if (storytelMi) {
+        await storytelKitabiKaldir(id)
+        setStorytelMi(false)
+      } else {
+        await storytelKitabiIsaretle(kullanici, { disId: id, baslik: detay.baslik, alt: detay.yazar || '', posterUrl: detay.posterUrl })
+        setStorytelMi(true)
+      }
+    } finally {
+      setStorytelIsleniyor(false)
+    }
+  }
+
+  async function dinlemeyeBaslaTiklandi(e) {
+    e.preventDefault()
+    if (!kullanici || !detay) return
+    const toplamDakika = (Number(toplamSaatGirisi) || 0) * 60 + (Number(toplamDakikaGirisi) || 0)
+    setIzlenecekIsleniyor(true)
+    try {
+      await dinlemeyeBasla(kullanici, tur, id, {
+        baslik: detay.baslik,
+        alt: detay.yazar || '',
+        posterUrl: detay.posterUrl,
+        toplamDakika: toplamDakika || null,
+      })
+      setIzlenecekKaydi((onceki) => ({ ...(onceki || {}), durum: 'dinleniyor', toplamDakika: toplamDakika || null, suankiDakika: 0 }))
+      setDinlemeFormAcik(false)
+      setToplamSaatGirisi('')
+      setToplamDakikaGirisi('')
+    } finally {
+      setIzlenecekIsleniyor(false)
+    }
+  }
+
+  async function dinlemeIlerlemesiniKaydet(e) {
+    e.preventDefault()
+    if (!kullanici) return
+    setIzlenecekIsleniyor(true)
+    try {
+      await dinlemeIlerlemeGuncelle(kullanici.uid, tur, id, dakikaTaslak)
+      setIzlenecekKaydi((onceki) => ({ ...onceki, suankiDakika: dakikaTaslak }))
+    } finally {
+      setIzlenecekIsleniyor(false)
+    }
+  }
+
   const [disPuanlar, setDisPuanlar] = useState(null) // { imdb, rottenTomatoes, metacritic }
+
   const [saglayicilar, setSaglayicilar] = useState(null)
   const [detayYukleniyor, setDetayYukleniyor] = useState(true)
   const [hata, setHata] = useState('')
@@ -582,6 +652,12 @@ export default function EserSayfasi({ tur }) {
   const [favoriMi_, setFavoriMi_] = useState(false)
   const [izlenecekKaydi, setIzlenecekKaydi] = useState(null)
   const [sayfaTaslak, setSayfaTaslak] = useState(0)
+  const [dakikaTaslak, setDakikaTaslak] = useState(0)
+  const [dinlemeFormAcik, setDinlemeFormAcik] = useState(false)
+  const [toplamSaatGirisi, setToplamSaatGirisi] = useState('')
+  const [toplamDakikaGirisi, setToplamDakikaGirisi] = useState('')
+  const [storytelMi, setStorytelMi] = useState(false)
+  const [storytelIsleniyor, setStorytelIsleniyor] = useState(false)
   const [sezonTaslak, setSezonTaslak] = useState(1)
   const [bolumTaslak, setBolumTaslak] = useState(0)
   const [baslangicDuzenleAcik, setBaslangicDuzenleAcik] = useState(false)
@@ -877,6 +953,7 @@ export default function EserSayfasi({ tur }) {
         setFavoriMi_(fav)
         setIzlenecekKaydi(izl)
         if (izl?.suankiSayfa != null) setSayfaTaslak(izl.suankiSayfa)
+        if (izl?.suankiDakika != null) setDakikaTaslak(izl.suankiDakika)
         if (izl?.mevcutSezon != null) setSezonTaslak(izl.mevcutSezon)
         if (izl?.mevcutBolum != null) setBolumTaslak(izl.mevcutBolum)
       }
@@ -1739,6 +1816,18 @@ export default function EserSayfasi({ tur }) {
                 <span className="text-[10px] uppercase tracking-wide text-kraft">Yorum</span>
               </button>
 
+              {tur === 'kitap' && kullanici && (
+                <button
+                  onClick={storytelIsaretiDegistir}
+                  disabled={storytelIsleniyor}
+                  className="flex flex-col items-center gap-1 disabled:opacity-40"
+                  title={storytelMi ? "Storytel'den kaldır" : "Bu kitap Storytel'de mevcut, işaretle"}
+                >
+                  <span className={`text-2xl ${storytelMi ? '' : 'opacity-40 grayscale'}`}>🎧</span>
+                  <span className="text-[10px] uppercase tracking-wide text-kraft">Storytel</span>
+                </button>
+              )}
+
               {(tur === 'kitap' || tur === 'dizi') && !izlenecekKaydi && (
                 <button
                   onClick={dogrudanOkumayaBasla}
@@ -1757,7 +1846,44 @@ export default function EserSayfasi({ tur }) {
                   {tur === 'kitap' ? 'Okumaya Başla' : 'İzlemeye Başla'}
                 </button>
               )}
+              {tur === 'kitap' && izlenecekKaydi?.durum !== 'dinleniyor' && izlenecekKaydi?.durum !== 'tamamlandi' && kullanici && (
+                <button
+                  onClick={() => setDinlemeFormAcik((a) => !a)}
+                  disabled={izlenecekIsleniyor}
+                  className="self-center rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-murekkep ring-1 ring-cizgi disabled:opacity-40"
+                >
+                  🎧 {dinlemeFormAcik ? 'Vazgeç' : 'Dinlemeye Başla'}
+                </button>
+              )}
             </div>
+          )}
+
+          {tur === 'kitap' && dinlemeFormAcik && (
+            <form onSubmit={dinlemeyeBaslaTiklandi} className="mt-2 flex flex-wrap items-center gap-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <span className="text-xs text-kraft">Toplam süre (Storytel'deki gibi):</span>
+              <input
+                type="number"
+                min="0"
+                placeholder="sa"
+                value={toplamSaatGirisi}
+                onChange={(e) => setToplamSaatGirisi(e.target.value)}
+                className="w-14 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+              />
+              <span className="text-xs text-kraft">sa</span>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                placeholder="dk"
+                value={toplamDakikaGirisi}
+                onChange={(e) => setToplamDakikaGirisi(e.target.value)}
+                className="w-14 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+              />
+              <span className="text-xs text-kraft">dk</span>
+              <button type="submit" disabled={izlenecekIsleniyor} className="rounded-sm bg-muhur px-3 py-1 font-govde text-[11px] text-kagit disabled:opacity-40">
+                🎧 Dinlemeye Başla
+              </button>
+            </form>
           )}
 
           {/* Tek yıldız satırı: giriş yapmışsan kendi (tıklanabilir) puanın, yanında
@@ -2216,7 +2342,45 @@ export default function EserSayfasi({ tur }) {
                 </form>
               )}
 
-              {tur === 'kitap' && izlenecekKaydi.toplamSayfa ? (
+              {tur === 'kitap' && izlenecekKaydi.durum === 'dinleniyor' && izlenecekKaydi.toplamDakika ? (
+                <>
+                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-kagit ring-1 ring-cizgi">
+                    <div
+                      className="h-full bg-gise"
+                      style={{
+                        width: `${Math.min(100, Math.round(((izlenecekKaydi.suankiDakika || 0) / izlenecekKaydi.toplamDakika) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-xs text-kraft">
+                    🎧 {Math.floor((izlenecekKaydi.suankiDakika || 0) / 60)} sa {(izlenecekKaydi.suankiDakika || 0) % 60} dk dinledin
+                  </p>
+                  <form onSubmit={dinlemeIlerlemesiniKaydet} className="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max={izlenecekKaydi.toplamDakika}
+                      value={dakikaTaslak}
+                      onChange={(e) => setDakikaTaslak(Number(e.target.value))}
+                      className="w-20 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                    />
+                    <span className="text-xs text-kraft">
+                      dk / {Math.floor(izlenecekKaydi.toplamDakika / 60)} sa {izlenecekKaydi.toplamDakika % 60} dk toplam
+                    </span>
+                    <button
+                      type="submit"
+                      disabled={izlenecekIsleniyor}
+                      className="rounded-sm bg-muhur px-2 py-1 font-govde text-[11px] text-kagit disabled:opacity-40"
+                    >
+                      Güncelle
+                    </button>
+                  </form>
+                  {/* Storytel'in gerçek çalma konumunu senkronize etmemiz mümkün
+                      değil (resmi API yok) — bu yüzden ilerleme tamamen elle
+                      girilen bir dakika sayısı, otomatik değil. */}
+                  <p className="mt-1 text-[11px] italic text-kraft">Storytel'den otomatik senkronize edilmiyor, elle güncelliyorsun.</p>
+                </>
+              ) : tur === 'kitap' && izlenecekKaydi.toplamSayfa ? (
                 <>
                   <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-kagit ring-1 ring-cizgi">
                     <div

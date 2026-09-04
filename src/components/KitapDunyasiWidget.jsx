@@ -21,7 +21,7 @@ export default function KitapDunyasiWidget() {
   useEffect(() => {
     let iptal = false
     async function getir() {
-      const liste = await topluluktaSuankiOkunanlariGetir('kitap', 6)
+      const liste = await topluluktaSuankiOkunanlariGetir('kitap', 6, ['okunuyor', 'dinleniyor'])
 
       // Her kayıt sadece kullaniciId taşıyor; isim/avatar için kullanıcı
       // profillerini tek tek (tekrar edenler hariç) çekip eşliyoruz.
@@ -62,7 +62,17 @@ export default function KitapDunyasiWidget() {
       <div className="space-y-3">
         {kitaplar.map((k, i) => {
           const renk = VURGU_RENKLERI[i % VURGU_RENKLERI.length]
-          const yuzde = k.toplamSayfa ? Math.min(100, Math.round(((k.suankiSayfa || 0) / k.toplamSayfa) * 100)) : null
+          // "Dinliyorum" (Storytel gibi kaynaklardan, dakika bazlı) ile
+          // "Okuyorum" (sayfa bazlı) aynı listede karışık geliyor —
+          // durum:'dinleniyor' olanlar kulaklık ikonuyla ayırt ediliyor.
+          const dinliyorMu = k.durum === 'dinleniyor'
+          const yuzde = dinliyorMu
+            ? k.toplamDakika
+              ? Math.min(100, Math.round(((k.suankiDakika || 0) / k.toplamDakika) * 100))
+              : null
+            : k.toplamSayfa
+              ? Math.min(100, Math.round(((k.suankiSayfa || 0) / k.toplamSayfa) * 100))
+              : null
 
           return (
             <Link
@@ -74,11 +84,14 @@ export default function KitapDunyasiWidget() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <Avatar adSoyad={k.kullaniciAdi} avatarUrl={k.kullaniciAvatarUrl} boyut="h-4 w-4" />
-                  <span className="truncate text-[11px] text-kraft">{k.kullaniciAdi} okuyor</span>
+                  <span className="truncate text-[11px] text-kraft">
+                    {dinliyorMu && '🎧 '}
+                    {k.kullaniciAdi} {dinliyorMu ? 'dinliyor' : 'okuyor'}
+                  </span>
                 </div>
                 <p className="truncate text-sm font-medium text-murekkep">{k.baslik}</p>
                 {k.alt && <p className="truncate text-xs text-kraft">{k.alt}</p>}
-                {k.toplamSayfa && (
+                {(dinliyorMu ? k.toplamDakika : k.toplamSayfa) && (
                   <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-kagit">
                     <div className={`h-full ${renk.dolu}`} style={{ width: `${yuzde}%` }} />
                   </div>
