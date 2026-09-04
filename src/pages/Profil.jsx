@@ -86,7 +86,13 @@ export default function Profil() {
   useEffect(() => {
     kullaniciKoleksiyonuGetir(uid).then(setSanatKoleksiyonu)
     begenilenMuzikleriGetir(uid).then(setBegenilenMuzikler)
-  }, [uid])
+    // Önceden bu ikisi sadece ilgili sekme tıklanınca çekiliyordu — artık
+    // "Profil" sekmesindeki sayaç listesi için baştan hazır olmaları
+    // gerekiyor.
+    ;(benimProfilimMi ? meydanOkumalariGetir(uid) : herkeseAcikMeydanOkumalariGetir(uid)).then(setMeydanOkumalar)
+    oduncVerdiklerimiGetir(uid).then(setOduncVerdiklerim)
+    oduncAldiklarimiGetir(uid).then(setOduncAldiklarim)
+  }, [uid, benimProfilimMi])
   const { gonderiler, hata: gonderilerHatasi } = useGonderiler({ yazarId: uid, sayfaBoyutu: 500 })
   const { takipEdiyorMu, setTakipEdiyorMu, takipciSayisi, takipEdilenSayisi } = useTakip(uid, kullanici?.uid)
   const [takipEdilenProfilleri, setTakipEdilenProfilleri] = useState([])
@@ -102,21 +108,7 @@ export default function Profil() {
   }, [uid])
   const [takipIsleniyor, setTakipIsleniyor] = useState(false)
 
-  const [sekme, setSekme] = useState('yilozeti')
-
-  useEffect(() => {
-    if (sekme !== 'meydanokumalar' || !uid) return
-    setMeydanOkumalar(null)
-    ;(benimProfilimMi ? meydanOkumalariGetir(uid) : herkeseAcikMeydanOkumalariGetir(uid)).then(setMeydanOkumalar)
-  }, [sekme, uid, benimProfilimMi])
-
-  useEffect(() => {
-    if (sekme !== 'oduncKitaplar' || !uid) return
-    setOduncVerdiklerim(null)
-    setOduncAldiklarim(null)
-    oduncVerdiklerimiGetir(uid).then(setOduncVerdiklerim)
-    oduncAldiklarimiGetir(uid).then(setOduncAldiklarim)
-  }, [sekme, uid])
+  const [sekme, setSekme] = useState('profil')
 
   useEffect(() => {
     if (!uid) return
@@ -362,23 +354,67 @@ export default function Profil() {
 
   if (!hedefProfil) return <p className="text-kraft text-sm">Yükleniyor...</p>
 
-  const SEKMELER = [
-    { id: 'yilozeti', etiket: '📊 Yılın Özeti' },
+  // Önceden 16 sekmenin hepsi düz bir buton yığını halindeydi (Letterboxd'un
+  // aksine — orada sadece 4 üst sekme var, geri kalanı sayı+link satırları).
+  // Şimdi sadece 4 üst sekme var, geri kalan 13'ü "Profil" sekmesindeki
+  // gruplu sayaç listesinde (bkz. aşağıdaki PROFIL_GRUPLARI) — her satır
+  // hem sayıyı gösteriyor hem gezinme sağlıyor, ayrı bir tıklama olmadan da
+  // bilgi taşıyor.
+  const ANA_SEKMELER = [
+    { id: 'profil', etiket: 'Profil' },
     { id: 'gunluk', etiket: '📔 Günlük' },
-    { id: 'izlediklerim', etiket: '🎬 İzlediklerim' },
-    { id: 'okuduklarim', etiket: '📖 Okuduklarım' },
-    { id: 'yazigezi', etiket: '✍️ Yazı & Gezi' },
     { id: 'suanda', etiket: '⏳ Şu An' },
-    { id: 'tamamladiklarim', etiket: '✓ Tamamladıklarım' },
-    { id: 'meydanokumalar', etiket: '🏆 Meydan Okumalarım' },
-    { id: 'oduncKitaplar', etiket: '🤝 Ödünç Kitaplar' },
-    { id: 'izleyecegim', etiket: '📋 İzleyecek/Okuyacaklarım' },
-    { id: 'favoriler', etiket: '♥ Favoriler' },
-    { id: 'raflarim', etiket: '📚 Raflarım' },
-    { id: 'yorumlarim', etiket: '💬 Yorumlarım' },
-    { id: 'listelerim', etiket: '📋 Listelerim' },
-    { id: 'sanatKoleksiyonum', etiket: '🖼️ Sanat Koleksiyonlarım' },
-    { id: 'filmMuzikleri', etiket: '🎵 Film Müzikleri' },
+    { id: 'listelerim', etiket: '📋 Listeler' },
+  ]
+
+  // Not: bu sayılar "gonderiler" (yazılı yorumlu paylaşımlar) üzerinden
+  // yaklaşık hesaplanıyor — bazı sekmeler ayrıca eserPuanlarim'daki (yorum
+  // yazılmadan sadece puanlanmış) kayıtları da ekliyor, bu yüzden gerçek
+  // sekmeye girince görünen sayı burada gösterilenden bir miktar YÜKSEK
+  // çıkabilir. "Tamamladıklarım" farklı bir kaynaktan (izlenecekler'in
+  // durum:'tamamlandi' alanı) geldiği için o kesin/doğru.
+  const izlediklerimSayisi = gonderiler.filter((g) => g.tur === 'sinema' || g.tur === 'dizi').length
+  const tamamladiklarimSayisi = izlenecekler?.filter((i) => i.durum === 'tamamlandi').length
+  const okuduklarimSayisi = gonderiler.filter((g) => g.tur === 'kitap').length
+  const yaziGeziSayisi = gonderiler.filter((g) => g.tur === 'yazi' || g.tur === 'gezi').length
+
+  const PROFIL_GRUPLARI = [
+    {
+      baslik: '🎬 Film & Dizi',
+      satirlar: [
+        { id: 'izlediklerim', etiket: 'İzlediklerim', sayi: izlediklerimSayisi },
+        { id: 'tamamladiklarim', etiket: 'Tamamladıklarım', sayi: tamamladiklarimSayisi },
+        { id: 'izleyecegim', etiket: 'İzleyecek/Okuyacaklarım', sayi: izlenecekler?.length },
+      ],
+    },
+    {
+      baslik: '📖 Kitap',
+      satirlar: [
+        { id: 'okuduklarim', etiket: 'Okuduklarım', sayi: okuduklarimSayisi },
+        { id: 'oduncKitaplar', etiket: 'Ödünç Kitaplar', sayi: (oduncVerdiklerim?.length || 0) + (oduncAldiklarim?.length || 0) },
+      ],
+    },
+    {
+      baslik: '✍️ Yaratıcı',
+      satirlar: [
+        { id: 'yazigezi', etiket: 'Yazı & Gezi', sayi: yaziGeziSayisi },
+        { id: 'sanatKoleksiyonum', etiket: 'Sanat Koleksiyonlarım', sayi: sanatKoleksiyonu?.length },
+        { id: 'filmMuzikleri', etiket: 'Film Müzikleri', sayi: begenilenMuzikler?.length },
+      ],
+    },
+    {
+      baslik: '💬 Topluluk',
+      satirlar: [
+        { id: 'yorumlarim', etiket: 'Yorumlarım', sayi: yorumlarim?.length },
+        { id: 'favoriler', etiket: 'Favoriler', sayi: tumFavoriler?.length },
+        { id: 'meydanokumalar', etiket: 'Meydan Okumalarım', sayi: meydanOkumalar?.length },
+        { id: 'raflarim', etiket: 'Raflarım', sayi: raflar?.length },
+      ],
+    },
+    {
+      baslik: '📊 Diğer',
+      satirlar: [{ id: 'yilozeti', etiket: 'Yılın Özeti', sayi: null }],
+    },
   ]
 
   async function rafOlusturTiklandi(e) {
@@ -745,22 +781,69 @@ export default function Profil() {
         </div>
       )}
 
-      {/* Sekmeler */}
+      {/* Üst sekmeler — sadece 4 tane (Letterboxd'daki gibi). Geri kalan 13
+          eski sekme, "Profil" sekmesindeki gruplu sayaç listesinde — o
+          yüzden "Profil" sekmesi, sekme 'gunluk'/'suanda'/'listelerim'
+          DIŞINDA herhangi bir değerdeyken (13 alt görünümden biri dahil)
+          aktif görünüyor. */}
       <div className="mb-6 flex flex-wrap gap-2">
-        {SEKMELER.filter((s) => s.id !== 'listelerim' || benimProfilimMi).map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setSekme(s.id)}
-            className={`rounded-sm px-3 py-1.5 font-govde text-sm transition ${
-              sekme === s.id
-                ? 'bg-murekkep text-kagit font-medium ring-2 ring-murekkep'
-                : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:ring-murekkep/50'
-            }`}
-          >
-            {s.etiket}
-          </button>
-        ))}
+        {ANA_SEKMELER.filter((s) => s.id !== 'listelerim' || benimProfilimMi).map((s) => {
+          const digerUstSekmeler = ['gunluk', 'suanda', 'listelerim']
+          const aktifMi = s.id === 'profil' ? !digerUstSekmeler.includes(sekme) : sekme === s.id
+          return (
+            <button
+              key={s.id}
+              onClick={() => setSekme(s.id)}
+              className={`rounded-sm px-3 py-1.5 font-govde text-sm transition ${
+                aktifMi
+                  ? 'bg-murekkep text-kagit font-medium ring-2 ring-murekkep'
+                  : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:ring-murekkep/50'
+              }`}
+            >
+              {s.etiket}
+            </button>
+          )
+        })}
       </div>
+
+      {/* "Profil" sekmesinin ana hâli — bio/favoriler zaten yukarıda,
+          burada sadece gruplu sayaç listesi. Her satır Letterboxd'daki
+          "Films 3,203" satırı gibi — hem sayıyı gösteriyor hem tıklanınca
+          o alt görünüme götürüyor. */}
+      {sekme === 'profil' && (
+        <div className="mb-6 space-y-5">
+          {PROFIL_GRUPLARI.map((grup) => (
+            <div key={grup.baslik}>
+              <h3 className="mb-1.5 text-xs uppercase tracking-widest text-kraft">{grup.baslik}</h3>
+              <div className="overflow-hidden rounded-sm ring-1 ring-cizgi">
+                {grup.satirlar.map((satir, i) => (
+                  <button
+                    key={satir.id}
+                    onClick={() => setSekme(satir.id)}
+                    className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm transition hover:bg-kagitKoyu ${
+                      i > 0 ? 'border-t border-cizgi' : ''
+                    }`}
+                  >
+                    <span className="text-murekkep">{satir.etiket}</span>
+                    <span className="flex items-center gap-1.5 text-kraft">
+                      {satir.sayi != null && <span className="font-baslik text-base text-murekkep">{satir.sayi}</span>}
+                      <span className="text-xs">›</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 13 alt görünümden birindeyken (sayaç listesinden gelindiğinde)
+          "Profil"e dönmek için kısa bir yol. */}
+      {sekme !== 'profil' && !['gunluk', 'suanda', 'listelerim'].includes(sekme) && (
+        <button onClick={() => setSekme('profil')} className="mb-4 text-xs text-kraft hover:text-deniz">
+          ← Profil
+        </button>
+      )}
 
       {/* Yılın Özeti ve Günlük aynı yıl seçimini paylaşıyor — biri diğerini
           etkilemesin diye ayrı state değil, tek bir seçim. */}
