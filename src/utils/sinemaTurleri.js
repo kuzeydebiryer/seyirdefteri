@@ -1,5 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { uzunSureliOnbellektenOku, uzunSureliOnbellegeYaz, uzunSureliOnbellegiTemizle } from './uzunSureliOnbellek.js'
 
 // Önceden sinemaAltTurleri.js'de sabit kodlanmıştı (sadece Korku Sineması,
 // 4 alt tür). Yeni tür eklemek her seferinde kod değişikliği + deploy
@@ -38,15 +39,22 @@ export async function altTurleriGetir(anaTurId) {
 
 // Film/dizi sayfasındaki "bu eser hangi alt türlere ait" rozetleri için —
 // TÜM alt türleri (hangi ana türe ait olduklarıyla birlikte) tek seferde
-// çekiyor. Veri seti küçük (küratörlü alt türler, kullanıcı üretimi
-// binlerce kayıt değil) olduğu için sayfalamaya gerek yok.
+// çekiyor. "En İyi Film Listeleri" rozetiyle BİREBİR aynı sorunu taşıyordu
+// — her film/dizi sayfası ziyaretinde baştan çekiliyordu, veri ise sadece
+// yönetici yeni bir tür eklediğinde/sildiğinde değişiyor. Aynı 30 günlük
+// önbellek burada da (bkz. utils/uzunSureliOnbellek.js).
 export async function tumAltTurleriGetir() {
+  const onbellekteki = uzunSureliOnbellektenOku('sinemaTur', 'tumAltTurler')
+  if (onbellekteki !== undefined) return onbellekteki
+
   const [altTurSnap, anaTurler] = await Promise.all([getDocs(collection(db, 'sinemaAltTurleri')), anaTurleriGetir()])
   const anaTurHaritasi = Object.fromEntries(anaTurler.map((a) => [a.id, a]))
-  return altTurSnap.docs
+  const sonuc = altTurSnap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .map((altTur) => ({ ...altTur, anaTur: anaTurHaritasi[altTur.anaTurId] }))
     .filter((altTur) => altTur.anaTur) // ana türü silinmiş yetim bir alt tür varsa göstermeyelim
+  uzunSureliOnbellegeYaz('sinemaTur', 'tumAltTurler', sonuc)
+  return sonuc
 }
 
 // anahtarKelimeler: [{ id, ad }] — TMDB'deki gerçek anahtar kelime ID'si VE
@@ -63,12 +71,15 @@ export async function altTurEkle(kullanici, { anaTurId, ad, ikon, anahtarKelimel
     ekleyenId: kullanici.uid,
     tarih: serverTimestamp(),
   })
+  uzunSureliOnbellegiTemizle('sinemaTur')
 }
 
 export async function altTurSil(altTurId) {
   await deleteDoc(doc(db, 'sinemaAltTurleri', altTurId))
+  uzunSureliOnbellegiTemizle('sinemaTur')
 }
 
 export async function anaTurSil(anaTurId) {
   await deleteDoc(doc(db, 'sinemaTurleri', anaTurId))
+  uzunSureliOnbellegiTemizle('sinemaTur')
 }

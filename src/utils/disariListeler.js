@@ -1,6 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from '../firebase.js'
-import { disListeOnbellektenOku, disListeOnbellegeYaz, disListeOnbellegiTemizle } from './disListeOnbellek.js'
+import { uzunSureliOnbellektenOku, uzunSureliOnbellegeYaz, uzunSureliOnbellegiTemizle } from './uzunSureliOnbellek.js'
 
 // Önceden "Letterboxd 500" tek başına, sabit kodlanmış bir koleksiyondu
 // (letterboxd500.js). "IMDb 250'yi de aynı şekilde eklemek istiyorum"
@@ -42,7 +42,7 @@ export async function listeEkle(kullanici, { ad, kisaAd, stil, siraliMi = true }
     ekleyenId: kullanici.uid,
     tarih: serverTimestamp(),
   })
-  disListeOnbellegiTemizle()
+  uzunSureliOnbellegiTemizle('disListe')
   return belge.id
 }
 
@@ -50,7 +50,7 @@ export async function listeEkle(kullanici, { ad, kisaAd, stil, siraliMi = true }
 // filmleri etkilemiyor, sadece liste TANIMINI günceller.
 export async function listeGuncelle(listeId, degisiklikler) {
   await updateDoc(doc(db, 'disariListeler', listeId), degisiklikler)
-  disListeOnbellegiTemizle()
+  uzunSureliOnbellegiTemizle('disListe')
 }
 
 export async function listeSil(listeId) {
@@ -62,7 +62,7 @@ export async function listeSil(listeId) {
     await batch.commit()
   }
   await deleteDoc(doc(db, 'disariListeler', listeId))
-  disListeOnbellegiTemizle()
+  uzunSureliOnbellegiTemizle('disListe')
 }
 
 // Daha agresif otomatik eşleştirme (bkz. DisListeIceAktar.jsx — TMDB'nin
@@ -70,7 +70,7 @@ export async function listeSil(listeId) {
 // sokabilir. Bu, tek bir filmi (tüm listeyi silmeden) çıkarmak için.
 export async function listedenFilmSil(listeId, tmdbId) {
   await deleteDoc(doc(db, 'disariListeler', listeId, 'filmler', String(tmdbId)))
-  disListeOnbellegiTemizle()
+  uzunSureliOnbellegiTemizle('disListe')
 }
 
 export async function listeFilmleriGetir(listeId) {
@@ -95,7 +95,7 @@ export async function listeyeTopluKaydet(kullanici, listeId, kayitlar) {
     })
     await batch.commit()
   }
-  disListeOnbellegiTemizle()
+  uzunSureliOnbellegiTemizle('disListe')
 }
 
 // "O mu Bu mu" oyunu (bkz. oyunlar/OMuBuMu.jsx) gibi TÜM listelerin
@@ -123,7 +123,7 @@ export async function tumListeFilmleriGetir() {
 // tutuluyor.
 export async function stildeListeFilmleriGetir(izinVerilenStiller) {
   const onbellekAnahtari = `stil_${izinVerilenStiller.slice().sort().join('_')}`
-  const onbellekteki = disListeOnbellektenOku(onbellekAnahtari)
+  const onbellekteki = uzunSureliOnbellektenOku('disListe', onbellekAnahtari)
   if (onbellekteki !== undefined) return onbellekteki
 
   const listeler = (await listeleriGetir()).filter((l) => izinVerilenStiller.includes(l.stil))
@@ -133,22 +133,19 @@ export async function stildeListeFilmleriGetir(izinVerilenStiller) {
     if (!havuz.has(film.id)) havuz.set(film.id, film)
   })
   const sonuc = [...havuz.values()]
-  disListeOnbellegeYaz(onbellekAnahtari, sonuc)
+  uzunSureliOnbellegeYaz('disListe', onbellekAnahtari, sonuc)
   return sonuc
 }
 
-// Film sayfasındaki rozetler için — bu film HANGİ dış listelerde, kaçıncı
-// sırada? Liste sayısı küçük olduğu için (birkaç tane), her liste için tek
-// bir getDoc yeterli — koleksiyon grubu sorgusuna gerek yok.
 // Film sayfasındaki rozetler için — bu film HANGİ dış listelerde, kaçıncı
 // sırada? Önceden HER film sayfası ziyaretinde 1 (liste tanımları) + N
 // (her liste için 1 getDoc) okuma yapıyordu — liste sayısı arttıkça (şu an
 // 4) bu maliyet de artıyordu. Liste üyeliği neredeyse hiç değişmediği için
 // (sadece yönetici elle içe aktarma/düzeltme yaptığında), sonuç 30 günlük
-// bir önbellekte tutuluyor — bkz. utils/disListeOnbellek.js.
+// bir önbellekte tutuluyor — bkz. utils/uzunSureliOnbellek.js.
 export async function filminListeSiralariGetir(tmdbId) {
   const onbellekAnahtari = `film_${tmdbId}`
-  const onbellekteki = disListeOnbellektenOku(onbellekAnahtari)
+  const onbellekteki = uzunSureliOnbellektenOku('disListe', onbellekAnahtari)
   if (onbellekteki !== undefined) return onbellekteki
 
   const listeler = await listeleriGetir()
@@ -160,6 +157,6 @@ export async function filminListeSiralariGetir(tmdbId) {
     })
   )
   const temiz = sonuclar.filter(Boolean)
-  disListeOnbellegeYaz(onbellekAnahtari, temiz)
+  uzunSureliOnbellegeYaz('disListe', onbellekAnahtari, temiz)
   return temiz
 }
