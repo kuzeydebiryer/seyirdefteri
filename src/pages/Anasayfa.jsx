@@ -14,6 +14,7 @@ import SeyirPanosuOnizleme from '../components/SeyirPanosuOnizleme.jsx'
 import KulupEtkinlikleriOnizleme from '../components/KulupEtkinlikleriOnizleme.jsx'
 import GunlukKesif from '../components/GunlukKesif.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
+import KitapAriyorumWidget from '../components/KitapAriyorumWidget.jsx'
 import EtkinlikHabercisiOnizleme from '../components/EtkinlikHabercisiOnizleme.jsx'
 import EtkinlikOneCikanlar from '../components/EtkinlikOneCikanlar.jsx'
 import BugununDusuncesiWidget from '../components/BugununDusuncesiWidget.jsx'
@@ -152,6 +153,8 @@ export default function Anasayfa() {
       <SonYorumlarBolumu />
 
       <SonAlintilarBolumu limitSayisi={3} />
+
+      <KitapAriyorumWidget />
 
       <KitapDunyasiWidget />
 
