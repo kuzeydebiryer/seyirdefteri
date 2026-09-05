@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { kitapFiltrele, tumKategorileriGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import { kitapFiltrele, tumUstKategorileriGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import { KITAP_UST_KATEGORILERI, hamKategoridenUstKategoriGetir } from '../utils/kitapUstKategorileri.js'
 import { canliKataloktaBaslikIleAra } from '../utils/kitapKatalog.js'
 import KitapyurdundanKitapEkle from './KitapyurdundanKitapEkle.jsx'
 
@@ -15,7 +16,9 @@ export default function KitapArama() {
   const [inceleniyorId, setInceleniyorId] = useState(null)
 
   useEffect(() => {
-    tumKategorileriGetir().then((liste) => setKategoriler(liste.slice(0, 40)))
+    tumUstKategorileriGetir().then((sayaclar) => {
+      setKategoriler(KITAP_UST_KATEGORILERI.map((k) => ({ ...k, sayi: sayaclar.get(k.id) || 0 })))
+    })
   }, [])
 
   async function ara(e) {
@@ -90,8 +93,8 @@ export default function KitapArama() {
               >
                 <option value="">Tüm kategoriler</option>
                 {kategoriler.map((k) => (
-                  <option key={k.kategori} value={k.kategori}>
-                    {k.kategori} ({k.sayi})
+                  <option key={k.id} value={k.id}>
+                    {k.ad} ({k.sayi.toLocaleString('tr-TR')})
                   </option>
                 ))}
               </select>
@@ -165,10 +168,10 @@ export default function KitapArama() {
                 </p>
                 {k.kategori && (
                   <Link
-                    to={`/kitap-kategori/${encodeURIComponent(k.kategori)}`}
+                    to={`/kitap-kategorileri/${hamKategoridenUstKategoriGetir(k.kategori)}`}
                     className="truncate text-[11px] text-deniz hover:underline"
                   >
-                    {k.kategori}
+                    {KITAP_UST_KATEGORILERI.find((u) => u.id === hamKategoridenUstKategoriGetir(k.kategori))?.ad || k.kategori}
                   </Link>
                 )}
               </div>

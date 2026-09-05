@@ -74,6 +74,7 @@ const YazarSayfasi = lazy(() => import('./pages/YazarSayfasi.jsx'))
 const NobelYazarlari = lazy(() => import('./pages/NobelYazarlari.jsx'))
 const YayineviSayfasi = lazy(() => import('./pages/YayineviSayfasi.jsx'))
 const KitapKategoriSayfasi = lazy(() => import('./pages/KitapKategoriSayfasi.jsx'))
+const KitapUstKategorileri = lazy(() => import('./pages/KitapUstKategorileri.jsx'))
 const RafDetay = lazy(() => import('./pages/RafDetay.jsx'))
 const TavsiyelerSayfasi = lazy(() => import('./pages/TavsiyelerSayfasi.jsx'))
 const Oyunlar = lazy(() => import('./pages/Oyunlar.jsx'))
@@ -184,6 +185,8 @@ export default function App() {
             <Route path="/nobel-yazarlari" element={<OzelRota><NobelYazarlari /></OzelRota>} />
             <Route path="/yayinevi/:ad" element={<OzelRota><YayineviSayfasi /></OzelRota>} />
             <Route path="/kitap-kategori/:kategori" element={<OzelRota><KitapKategoriSayfasi /></OzelRota>} />
+            <Route path="/kitap-kategorileri" element={<OzelRota><KitapUstKategorileri /></OzelRota>} />
+            <Route path="/kitap-kategorileri/:ustKategoriId" element={<OzelRota><KitapUstKategorileri /></OzelRota>} />
             <Route path="/raf/:id" element={<OzelRota><RafDetay /></OzelRota>} />
             <Route
               path="/film-tavsiyeleri"

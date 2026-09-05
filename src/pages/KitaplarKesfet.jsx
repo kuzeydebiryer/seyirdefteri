@@ -211,6 +211,9 @@ export default function KitaplarKesfet() {
         <Link to="/kitaplar/bakim" className="text-[11px] text-kraft hover:text-deniz hover:underline">
           📋 Kitap Kataloğu Bakımı
         </Link>
+        <Link to="/kitap-kategorileri" className="text-[11px] text-kraft hover:text-deniz hover:underline">
+          🗂️ Kategoriler
+        </Link>
         <Link to="/alintilar" className="text-[11px] text-kraft hover:text-deniz hover:underline">
           💬 Alıntı Duvarı
         </Link>

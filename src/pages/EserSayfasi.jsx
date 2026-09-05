@@ -3,6 +3,7 @@ import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { filminListeSiralariGetir } from '../utils/disariListeler.js'
 import { storytelKitabiMi, storytelKitabiIsaretle, storytelKitabiKaldir } from '../utils/storytelKitaplari.js'
 import { STORYTEL_KATEGORILERI } from '../utils/storytelKategorileri.js'
+import { KITAP_UST_KATEGORILERI, hamKategoridenUstKategoriGetir } from '../utils/kitapUstKategorileri.js'
 import StorytelIkon from '../components/ikonlar/StorytelIkon.jsx'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 import IMDbIkon from '../components/ikonlar/IMDbIkon.jsx'
@@ -1513,8 +1514,8 @@ export default function EserSayfasi({ tur }) {
                     </span>
                   ))
                 ) : detay.turler && tur === 'kitap' ? (
-                  <Link to={`/kitap-kategori/${encodeURIComponent(detay.turler)}`} className="hover:text-deniz hover:underline">
-                    {detay.turler}
+                  <Link to={`/kitap-kategorileri/${hamKategoridenUstKategoriGetir(detay.turler)}`} className="hover:text-deniz hover:underline">
+                    {KITAP_UST_KATEGORILERI.find((u) => u.id === hamKategoridenUstKategoriGetir(detay.turler))?.ad || detay.turler}
                   </Link>
                 ) : (
                   detay.turler && <span>{detay.turler}</span>

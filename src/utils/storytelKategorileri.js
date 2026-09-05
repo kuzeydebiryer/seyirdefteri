@@ -2,7 +2,6 @@
 // kitap işaretlenirken bu listeden biri seçiliyor (bkz.
 // utils/storytelKitaplari.js, StorytelKitaplari.jsx).
 export const STORYTEL_KATEGORILERI = [
-  { id: 'is-kitaplari', ad: 'İş Kitapları', renk: '#f5c95c' },
   { id: 'fantastik', ad: 'Fantastik', renk: '#e8622e' },
   { id: 'bilim-kurgu', ad: 'Bilim Kurgu', renk: '#6badf0' },
   { id: 'tarih', ad: 'Tarih', renk: '#4fae82' },

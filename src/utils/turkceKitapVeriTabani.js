@@ -2,6 +2,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { aksansizKucultulmus } from './metinNormallestir.js'
 import { isbnIleMevcutKitabiBul } from './kitapIsbnEslestir.js'
+import { hamKategoridenUstKategoriGetir } from './kitapUstKategorileri.js'
 
 // Türkçe Kitap Veri Tabanı — Google Books'ta Türkçe baskıların sık sık
 // bulunamaması sorununu çözmek için, Kitapyurdu'ndan derlenmiş 67.000+ kitaplık
@@ -265,6 +266,37 @@ export async function kategorideKitaplariGetir(kategoriAdi, enFazla = 60) {
   return sonuclar
 }
 
+// Storytel'deki gibi sabit, renkli ÜST kategori yapısı (bkz.
+// kitapUstKategorileri.js) için: bir üst kategori id'sine düşen tüm ham
+// kategorilerdeki kitapları getirir. kategorideKitaplariGetir()'den farkı,
+// tek bir ham dizeyle değil, o dizeyi üst kategoriye eşleyerek (ör.
+// "roman" -> "Roman (Yerli)" + "Roman (Çeviri)" + "Tarihi Roman" + ...)
+// çok daha geniş bir eşleşme kümesi taraması.
+export async function ustKategorideKitaplariGetir(ustKategoriId, enFazla = 60) {
+  const veri = await veriyiYukle()
+  const sonuclar = []
+  for (let i = 0; i < veri.length; i++) {
+    if (hamKategoridenUstKategoriGetir(veri[i][6]) === ustKategoriId) {
+      sonuclar.push(satiriNesneyeGevir(veri[i], i))
+      if (sonuclar.length >= enFazla) break
+    }
+  }
+  return sonuclar
+}
+
+// KITAP_UST_KATEGORILERI'ndeki her üst kategoride kaç kitap olduğunu
+// getirir — kategori kartlarında sayı göstermek için (bkz. tumKategorileriGetir,
+// bu onun üst-kategori karşılığı).
+export async function tumUstKategorileriGetir() {
+  const veri = await veriyiYukle()
+  const sayaclar = new Map()
+  for (let i = 0; i < veri.length; i++) {
+    const ustId = hamKategoridenUstKategoriGetir(veri[i][6])
+    sayaclar.set(ustId, (sayaclar.get(ustId) || 0) + 1)
+  }
+  return sayaclar
+}
+
 // Tüm benzersiz kategori adlarını (ve her birinde kaç kitap olduğunu) getirir
 // — Kategori Keşfi'nin ana listeleme sayfası için.
 export async function tumKategorileriGetir() {
@@ -282,6 +314,9 @@ export async function tumKategorileriGetir() {
 
 // Gelişmiş Kitap Arama/Filtreleme için: metin + kategori + yayınevi + yıl
 // aralığı + sayfa sayısı aralığına göre filtreler. Tüm filtreler opsiyonel.
+// NOT: `kategori` artık ham Kitapyurdu dizesi değil, KITAP_UST_KATEGORILERI'ndeki
+// üst kategori id'si (ör. "roman") — Kitap Kategorileri sayfasıyla (bkz.
+// kitapUstKategorileri.js) aynı, tutarlı bir kategori dili kullansın diye.
 export async function kitapFiltrele({ metin, kategori, yayinevi, yilBaslangic, yilBitis, sayfaMin, sayfaMaks } = {}, enFazla = 60) {
   const veri = await veriyiYukle()
   const metinQ = metin?.trim().toLocaleLowerCase('tr-TR') || ''
@@ -294,7 +329,7 @@ export async function kitapFiltrele({ metin, kategori, yayinevi, yilBaslangic, y
       const eslesiyor = baslik.toLocaleLowerCase('tr-TR').includes(metinQ) || yazar.toLocaleLowerCase('tr-TR').includes(metinQ)
       if (!eslesiyor) continue
     }
-    if (kategori && kategoriAdi !== kategori) continue
+    if (kategori && hamKategoridenUstKategoriGetir(kategoriAdi) !== kategori) continue
     if (yayinevi && yayineviAdi !== yayinevi) continue
     if (yilBaslangic && (!yil || Number(yil) < Number(yilBaslangic))) continue
     if (yilBitis && (!yil || Number(yil) > Number(yilBitis))) continue
