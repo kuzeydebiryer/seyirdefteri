@@ -1,7 +1,7 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { filminListeSiralariGetir } from '../utils/disariListeler.js'
-import { storytelKitabiMi, storytelKitabiIsaretle, storytelKitabiKaldir } from '../utils/storytelKitaplari.js'
+import { storytelKitabiIsaretle, storytelKitabiKaldir, storytelKitapBilgisiGetir, storytelKitabiDetayGetir } from '../utils/storytelKitaplari.js'
 import { STORYTEL_KATEGORILERI } from '../utils/storytelKategorileri.js'
 import { KITAP_UST_KATEGORILERI, hamKategoridenUstKategoriGetir } from '../utils/kitapUstKategorileri.js'
 import StorytelIkon from '../components/ikonlar/StorytelIkon.jsx'
@@ -586,11 +586,15 @@ export default function EserSayfasi({ tur }) {
   useEffect(() => {
     if (tur !== 'kitap' || !id) {
       setStorytelMi(false)
+      setStorytelDetay(null)
       return
     }
     let iptal = false
-    storytelKitabiMi(id).then((sonuc) => {
-      if (!iptal) setStorytelMi(sonuc)
+    storytelKitabiDetayGetir(id).then((sonuc) => {
+      if (!iptal) {
+        setStorytelMi(!!sonuc)
+        setStorytelDetay(sonuc)
+      }
     })
     return () => {
       iptal = true
@@ -604,6 +608,7 @@ export default function EserSayfasi({ tur }) {
       try {
         await storytelKitabiKaldir(id)
         setStorytelMi(false)
+        setStorytelDetay(null)
       } finally {
         setStorytelIsleniyor(false)
       }
@@ -612,6 +617,21 @@ export default function EserSayfasi({ tur }) {
       // storytelKategorileri.js) — Storytel'in kendi kategori dilini
       // yansıtan, kitap sayfasında açılan küçük bir form.
       setStorytelKategoriFormAcik(true)
+    }
+  }
+
+  async function storytelLinktenBilgiCek() {
+    if (!storytelLinkGirisi.trim()) return
+    setStorytelBilgiCekiliyor(true)
+    setStorytelBilgiHatasi('')
+    try {
+      const bilgi = await storytelKitapBilgisiGetir(storytelLinkGirisi.trim())
+      setStorytelCekilenBilgi(bilgi)
+    } catch (e) {
+      setStorytelBilgiHatasi(e?.message || 'Bilgiler çekilemedi — linki kontrol et')
+      setStorytelCekilenBilgi(null)
+    } finally {
+      setStorytelBilgiCekiliyor(false)
     }
   }
 
@@ -625,9 +645,26 @@ export default function EserSayfasi({ tur }) {
         alt: detay.yazar || '',
         posterUrl: detay.posterUrl,
         kategori: secilenStorytelKategori,
+        storytelUrl: storytelLinkGirisi.trim() || '',
+        storytelSure: storytelCekilenBilgi?.sure || '',
+        storytelPuan: storytelCekilenBilgi?.puan ?? null,
+        storytelPuanlamaSayisi: storytelCekilenBilgi?.puanlamaSayisi ?? null,
+        storytelSeslendiren: storytelCekilenBilgi?.seslendiren || '',
+        storytelKategori: storytelCekilenBilgi?.kategori || '',
       })
       setStorytelMi(true)
+      setStorytelDetay({
+        kategori: secilenStorytelKategori,
+        storytelUrl: storytelLinkGirisi.trim() || '',
+        storytelSure: storytelCekilenBilgi?.sure || '',
+        storytelPuan: storytelCekilenBilgi?.puan ?? null,
+        storytelPuanlamaSayisi: storytelCekilenBilgi?.puanlamaSayisi ?? null,
+        storytelSeslendiren: storytelCekilenBilgi?.seslendiren || '',
+      })
       setStorytelKategoriFormAcik(false)
+      setStorytelLinkGirisi('')
+      setStorytelCekilenBilgi(null)
+      setStorytelBilgiHatasi('')
     } finally {
       setStorytelIsleniyor(false)
     }
@@ -680,9 +717,14 @@ export default function EserSayfasi({ tur }) {
   const [toplamSaatGirisi, setToplamSaatGirisi] = useState('')
   const [toplamDakikaGirisi, setToplamDakikaGirisi] = useState('')
   const [storytelMi, setStorytelMi] = useState(false)
+  const [storytelDetay, setStorytelDetay] = useState(null)
   const [storytelIsleniyor, setStorytelIsleniyor] = useState(false)
   const [storytelKategoriFormAcik, setStorytelKategoriFormAcik] = useState(false)
   const [secilenStorytelKategori, setSecilenStorytelKategori] = useState('')
+  const [storytelLinkGirisi, setStorytelLinkGirisi] = useState('')
+  const [storytelBilgiCekiliyor, setStorytelBilgiCekiliyor] = useState(false)
+  const [storytelBilgiHatasi, setStorytelBilgiHatasi] = useState('')
+  const [storytelCekilenBilgi, setStorytelCekilenBilgi] = useState(null)
   const [sezonTaslak, setSezonTaslak] = useState(1)
   const [bolumTaslak, setBolumTaslak] = useState(0)
   const [baslangicDuzenleAcik, setBaslangicDuzenleAcik] = useState(false)
@@ -1899,9 +1941,106 @@ export default function EserSayfasi({ tur }) {
             </div>
           )}
 
+          {tur === 'kitap' &&
+            storytelMi &&
+            (storytelDetay?.storytelSure || storytelDetay?.storytelPuan != null || storytelDetay?.storytelSeslendiren) && (
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-kraft">
+                <span className="text-[#FF5B22]">🎧</span>
+                {storytelDetay.storytelSure && <span>{storytelDetay.storytelSure}</span>}
+                {storytelDetay.storytelPuan != null && (
+                  <span>
+                    ★ {storytelDetay.storytelPuan}
+                    {storytelDetay.storytelPuanlamaSayisi != null && ` (${storytelDetay.storytelPuanlamaSayisi.toLocaleString('tr-TR')})`}
+                  </span>
+                )}
+                {storytelDetay.storytelSeslendiren && <span>Seslendiren: {storytelDetay.storytelSeslendiren}</span>}
+                {storytelDetay.storytelUrl && (
+                  <a href={storytelDetay.storytelUrl} target="_blank" rel="noopener noreferrer" className="text-[#FF5B22] hover:underline">
+                    Storytel'de aç ↗
+                  </a>
+                )}
+              </p>
+            )}
+
           {tur === 'kitap' && storytelKategoriFormAcik && (
             <div className="mt-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-              <p className="mb-2 text-xs text-kraft">Bu kitap Storytel'de hangi kategoride?</p>
+              <p className="mb-2 text-xs text-kraft">
+                İstersen kitabın Storytel sayfasının linkini yapıştır — süre, puan ve seslendiren bilgisi otomatik çekilsin (opsiyonel).
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={storytelLinkGirisi}
+                  onChange={(e) => setStorytelLinkGirisi(e.target.value)}
+                  placeholder="https://www.storytel.com/tr/books/..."
+                  className="flex-1 rounded-sm bg-kagit px-2 py-1.5 text-xs text-murekkep ring-1 ring-cizgi"
+                />
+                <button
+                  type="button"
+                  onClick={storytelLinktenBilgiCek}
+                  disabled={!storytelLinkGirisi.trim() || storytelBilgiCekiliyor}
+                  className="shrink-0 rounded-sm bg-[#FF5B22] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+                >
+                  {storytelBilgiCekiliyor ? 'Çekiliyor...' : 'Bilgileri Çek'}
+                </button>
+              </div>
+              {storytelBilgiHatasi && <p className="mt-1.5 text-[11px] text-muhur">{storytelBilgiHatasi}</p>}
+
+              {storytelCekilenBilgi && (
+                <div className="mt-2 space-y-1.5 rounded-sm bg-kagit p-2 ring-1 ring-cizgi">
+                  <p className="text-[11px] text-kraft">
+                    Çekildi — kaydetmeden önce kontrol edip düzeltebilirsin:
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <label className="text-[11px] text-kraft">
+                      Süre
+                      <input
+                        type="text"
+                        value={storytelCekilenBilgi.sure || ''}
+                        onChange={(e) => setStorytelCekilenBilgi((b) => ({ ...b, sure: e.target.value }))}
+                        placeholder="ör. 20sa 4dk"
+                        className="mt-0.5 w-full rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+                    </label>
+                    <label className="text-[11px] text-kraft">
+                      Seslendiren
+                      <input
+                        type="text"
+                        value={storytelCekilenBilgi.seslendiren || ''}
+                        onChange={(e) => setStorytelCekilenBilgi((b) => ({ ...b, seslendiren: e.target.value }))}
+                        className="mt-0.5 w-full rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+                    </label>
+                    <label className="text-[11px] text-kraft">
+                      Storytel Puanı
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="5"
+                        value={storytelCekilenBilgi.puan ?? ''}
+                        onChange={(e) => setStorytelCekilenBilgi((b) => ({ ...b, puan: e.target.value === '' ? null : Number(e.target.value) }))}
+                        className="mt-0.5 w-full rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+                    </label>
+                    <label className="text-[11px] text-kraft">
+                      Puanlama Sayısı
+                      <input
+                        type="number"
+                        min="0"
+                        value={storytelCekilenBilgi.puanlamaSayisi ?? ''}
+                        onChange={(e) => setStorytelCekilenBilgi((b) => ({ ...b, puanlamaSayisi: e.target.value === '' ? null : Number(e.target.value) }))}
+                        className="mt-0.5 w-full rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+                    </label>
+                  </div>
+                  {!storytelCekilenBilgi.sure && !storytelCekilenBilgi.seslendiren && storytelCekilenBilgi.puan == null && (
+                    <p className="text-[11px] text-kraft">Sayfadan bir şey çıkarılamadı — bilgileri elle girebilirsin.</p>
+                  )}
+                </div>
+              )}
+
+              <p className="mb-2 mt-3 text-xs text-kraft">Bu kitap Storytel'de hangi kategoride?</p>
               <div className="flex flex-wrap gap-1.5">
                 {STORYTEL_KATEGORILERI.map((k) => (
                   <button
@@ -1931,7 +2070,15 @@ export default function EserSayfasi({ tur }) {
                     </>
                   )}
                 </button>
-                <button onClick={() => setStorytelKategoriFormAcik(false)} className="text-xs text-kraft hover:text-murekkep">
+                <button
+                  onClick={() => {
+                    setStorytelKategoriFormAcik(false)
+                    setStorytelLinkGirisi('')
+                    setStorytelCekilenBilgi(null)
+                    setStorytelBilgiHatasi('')
+                  }}
+                  className="text-xs text-kraft hover:text-murekkep"
+                >
                   Vazgeç
                 </button>
               </div>

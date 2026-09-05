@@ -771,3 +771,107 @@ exports.youtubeGom = onCall(async (request) => {
   const veri = await res.json()
   return { html: veri.html, baslik: veri.title || '', kanalAdi: veri.author_name || '', thumbnailUrl: veri.thumbnail_url || '' }
 })
+
+// Storytel'in yukarıdaki gom fonksiyonlarının aksine resmi bir oEmbed uç
+// noktası YOK (araştırdık, bkz. storytelKitaplari.js başındaki not) — bu
+// yüzden bu fonksiyon gerçek bir sayfa kazıma (scraping): kullanıcının
+// elle yapıştırdığı TEK bir herkese açık kitap sayfasının HTML'ini sunucu
+// tarafında çekip (CORS'u aşmak için, tarayıcıdan direkt çekilemiyor),
+// içindeki süre/puan/seslendiren/kategori bilgisini çıkarıyor. Ne bir
+// hesaba giriş yapıyor, ne toplu tarama yapıyor, ne de indirilebilir
+// içeriğe (ses/e-kitap dosyası) dokunuyor — sadece herkesin tarayıcıda
+// zaten gördüğü metni okuyor. Storytel Next.js kullandığı için önce
+// sayfanın kendi __NEXT_DATA__ JSON'ını (varsa) okumayı deniyoruz — bu,
+// görünen metni regex'lemekten çok daha sağlam. O da yoksa/beklenen
+// alanları içermiyorsa, sayfadaki Türkçe etiketlere (Süre, Seslendiren,
+// puanlama, Kategori) dayanan bir metin taramasına düşüyoruz. İkisi de
+// Storytel sayfa yapısını değiştirirse bozulabilir — bu yüzden çekilen
+// alanlar sadece bir ÖN DOLDURMA, kullanıcı kaydetmeden önce görüp
+// düzeltebiliyor (bkz. EserSayfasi.jsx).
+exports.storytelKitapBilgisiGetir = onCall(async (request) => {
+  const { url } = request.data || {}
+  if (!url || !/^https:\/\/www\.storytel\.com\/[a-z]{2}\/books\//.test(url)) {
+    throw new HttpsError('invalid-argument', 'Geçerli bir Storytel kitap sayfası linki gerekli (storytel.com/.../books/...)')
+  }
+
+  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Seyirdefteri/1.0)' } })
+  if (!res.ok) throw new HttpsError('unavailable', 'Bu sayfa alınamadı — linki kontrol et')
+  const html = await res.text()
+
+  const sonuc = { sure: '', puan: null, puanlamaSayisi: null, seslendiren: '', kategori: '' }
+
+  // 1) __NEXT_DATA__ JSON'ı varsa, içinde muhtemel alan adlarını (Storytel
+  // bunları değiştirebilir, bu yüzden birden fazla olası isim deniyoruz)
+  // ağaçta arayarak buluyoruz — tam yol/şema bilinmediği için basit,
+  // rekürsif bir "anahtar adına göre ilk eşleşmeyi bul" taraması.
+  const nextDataEslesme = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/)
+  if (nextDataEslesme) {
+    try {
+      const veri = JSON.parse(nextDataEslesme[1])
+      const anahtarlaAra = (obj, anahtarlar, derinlik = 0) => {
+        if (!obj || typeof obj !== 'object' || derinlik > 6) return undefined
+        for (const k of Object.keys(obj)) {
+          if (anahtarlar.includes(k) && obj[k] != null && obj[k] !== '') return obj[k]
+        }
+        for (const k of Object.keys(obj)) {
+          const bulunan = anahtarlaAra(obj[k], anahtarlar, derinlik + 1)
+          if (bulunan !== undefined) return bulunan
+        }
+        return undefined
+      }
+      const uzunlukSaniye = anahtarlaAra(veri, ['length', 'lengthInSeconds', 'durationInSeconds'])
+      if (typeof uzunlukSaniye === 'number' && uzunlukSaniye > 0) {
+        const saat = Math.floor(uzunlukSaniye / 3600)
+        const dk = Math.round((uzunlukSaniye % 3600) / 60)
+        sonuc.sure = `${saat}sa ${dk}dk`
+      }
+      const puan = anahtarlaAra(veri, ['rating', 'averageRating', 'ratingAverage'])
+      if (typeof puan === 'number') sonuc.puan = puan
+      const puanSayisi = anahtarlaAra(veri, ['ratingsCount', 'numberOfRatings', 'reviewCount'])
+      if (typeof puanSayisi === 'number') sonuc.puanlamaSayisi = puanSayisi
+      const seslendirenler = anahtarlaAra(veri, ['narrators', 'narrator'])
+      if (Array.isArray(seslendirenler)) {
+        sonuc.seslendiren = seslendirenler.map((n) => (typeof n === 'string' ? n : n?.name)).filter(Boolean).join(', ')
+      } else if (typeof seslendirenler === 'string') {
+        sonuc.seslendiren = seslendirenler
+      }
+      const kategoriler = anahtarlaAra(veri, ['categories', 'category'])
+      if (Array.isArray(kategoriler)) {
+        sonuc.kategori = kategoriler.map((c) => (typeof c === 'string' ? c : c?.name)).filter(Boolean).join(', ')
+      } else if (typeof kategoriler === 'string') {
+        sonuc.kategori = kategoriler
+      }
+    } catch {
+      // JSON parse edilemedi, aşağıdaki metin taramasına düşülecek
+    }
+  }
+
+  // 2) Eksik kalan alanlar için sayfanın ham HTML'indeki yapısal ipuçlarına
+  // (href kalıpları) dayalı yedek tarama — görünen metnin tam sırasına
+  // bağımlı "şu etiketten sonraki kelime" tahminlerinden daha sağlam,
+  // çünkü Storytel'in kendi link yapısına (/narrators/, /categories/)
+  // dayanıyor, kitaba özel metne değil.
+  if (!sonuc.seslendiren) {
+    const seslendirenLinkleri = [...html.matchAll(/<a[^>]*href="[^"]*\/narrators\/[^"]*"[^>]*>([^<]+)<\/a>/gi)]
+    if (seslendirenLinkleri.length > 0) sonuc.seslendiren = [...new Set(seslendirenLinkleri.map((m) => m[1].trim()))].join(', ')
+  }
+  if (!sonuc.kategori) {
+    const kategoriLinkleri = [...html.matchAll(/<a[^>]*href="[^"]*\/categories\/[^"]*"[^>]*>([^<]+)<\/a>/gi)]
+    if (kategoriLinkleri.length > 0) sonuc.kategori = [...new Set(kategoriLinkleri.map((m) => m[1].trim()))].join(', ')
+  }
+
+  const duzMetin = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
+  if (!sonuc.sure) {
+    const sureEslesme = duzMetin.match(/Süre\s*(\d+)\s*Sa\s*(\d+)\s*dk/i)
+    if (sureEslesme) sonuc.sure = `${sureEslesme[1]}sa ${sureEslesme[2]}dk`
+  }
+  if (sonuc.puan == null || sonuc.puanlamaSayisi == null) {
+    const puanEslesme = duzMetin.match(/(\d[\d.,]*)\s*puanlama\D{0,20}?([0-5][.,]\d)/i)
+    if (puanEslesme) {
+      sonuc.puanlamaSayisi = sonuc.puanlamaSayisi ?? Number(puanEslesme[1].replace(/[.,]/g, ''))
+      sonuc.puan = sonuc.puan ?? Number(puanEslesme[2].replace(',', '.'))
+    }
+  }
+
+  return sonuc
+})

@@ -1,5 +1,6 @@
 import { deleteDoc, doc, getDoc, getDocs, collection, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
-import { db } from '../firebase.js'
+import { httpsCallable } from 'firebase/functions'
+import { db, functions } from '../firebase.js'
 
 // Storytel'in resmi bir API'si yok (bu oturumda araştırdık — sadece
 // gayrı resmi, tersine mühendislikle erişilen kaynaklar var, onlara
@@ -16,13 +17,42 @@ export async function storytelKitabiMi(kitapId) {
   return snap.exists()
 }
 
-export async function storytelKitabiIsaretle(kullanici, { disId, baslik, alt, posterUrl, kategori, populerMi = false }) {
+// storytelKitabiMi'nin aksine, varsa kaydın TAMAMINI (süre/puan/seslendiren
+// dahil) döndürüyor — kitap sayfasında zaten işaretlenmiş bir kitabın
+// çekilen bilgilerini göstermek için.
+export async function storytelKitabiDetayGetir(kitapId) {
+  const snap = await getDoc(doc(db, 'storytelKitaplari', String(kitapId)))
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null
+}
+
+// Kullanıcının işaretlerken elle yapıştırdığı bir Storytel kitap linkinden
+// (ör. storytel.com/tr/books/oblomov-1070054) süre/puan/seslendiren/kategori
+// bilgisini çekiyor — bkz. functions/index.js'teki storytelKitapBilgisiGetir.
+// Bu bir API entegrasyonu DEĞİL: tek bir herkese açık sayfayı, kullanıcı
+// verdiğinde, tek seferlik okuyor. Sonuç sadece bir ÖN DOLDURMA — kaydetmeden
+// önce EserSayfasi.jsx'te gösterilip elle düzeltilebiliyor.
+const storytelKitapBilgisiGetirCallable = httpsCallable(functions, 'storytelKitapBilgisiGetir')
+export async function storytelKitapBilgisiGetir(url) {
+  const sonuc = await storytelKitapBilgisiGetirCallable({ url })
+  return sonuc.data
+}
+
+export async function storytelKitabiIsaretle(kullanici, { disId, baslik, alt, posterUrl, kategori, populerMi = false, storytelUrl, storytelSure, storytelPuan, storytelPuanlamaSayisi, storytelSeslendiren, storytelKategori }) {
   await setDoc(doc(db, 'storytelKitaplari', String(disId)), {
     baslik,
     alt: alt || '',
     posterUrl: posterUrl || '',
     kategori: kategori || null,
     populerMi,
+    // storytelKitapBilgisiGetir Cloud Function'ından (bkz. functions/index.js)
+    // linkten çekilen bilgiler — hepsi opsiyonel, sadece kullanıcı bir link
+    // yapıştırıp "Bilgileri Çek"e bastıysa doluyor.
+    storytelUrl: storytelUrl || '',
+    storytelSure: storytelSure || '',
+    storytelPuan: storytelPuan ?? null,
+    storytelPuanlamaSayisi: storytelPuanlamaSayisi ?? null,
+    storytelSeslendiren: storytelSeslendiren || '',
+    storytelKategori: storytelKategori || '',
     ekleyenId: kullanici.uid,
     tarih: serverTimestamp(),
   })
