@@ -660,6 +660,7 @@ export default function EserSayfasi({ tur }) {
         storytelPuan: storytelCekilenBilgi?.puan ?? null,
         storytelPuanlamaSayisi: storytelCekilenBilgi?.puanlamaSayisi ?? null,
         storytelSeslendiren: storytelCekilenBilgi?.seslendiren || '',
+        storytelKategori: storytelCekilenBilgi?.kategori || '',
       })
       setStorytelKategoriFormAcik(false)
       setStorytelLinkGirisi('')
@@ -1594,6 +1595,9 @@ export default function EserSayfasi({ tur }) {
             {tur === 'kitap' && storytelMi && storytelDetay?.storytelSeslendiren && (
               <span className="text-[#FF5B22]">Seslendiren: {storytelDetay.storytelSeslendiren}</span>
             )}
+            {tur === 'kitap' && storytelMi && storytelDetay?.storytelKategori && (
+              <span className="text-[#FF5B22]">Storytel: {storytelDetay.storytelKategori}</span>
+            )}
           </div>
 
           {/* Sinemasal Alt Türler + Dış Liste rozetleri — bu eser hangi alt
@@ -2035,8 +2039,21 @@ export default function EserSayfasi({ tur }) {
                         className="mt-0.5 w-full rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
                       />
                     </label>
+                    <label className="col-span-2 text-[11px] text-kraft">
+                      Storytel'deki Kategorisi
+                      <input
+                        type="text"
+                        value={storytelCekilenBilgi.kategori || ''}
+                        onChange={(e) => setStorytelCekilenBilgi((b) => ({ ...b, kategori: e.target.value }))}
+                        placeholder="ör. Klasikler"
+                        className="mt-0.5 w-full rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+                      />
+                    </label>
                   </div>
-                  {!storytelCekilenBilgi.sure && !storytelCekilenBilgi.seslendiren && storytelCekilenBilgi.puan == null && (
+                  {!storytelCekilenBilgi.sure &&
+                    !storytelCekilenBilgi.seslendiren &&
+                    !storytelCekilenBilgi.kategori &&
+                    storytelCekilenBilgi.puan == null && (
                     <p className="text-[11px] text-kraft">Sayfadan bir şey çıkarılamadı — bilgileri elle girebilirsin.</p>
                   )}
                 </div>
