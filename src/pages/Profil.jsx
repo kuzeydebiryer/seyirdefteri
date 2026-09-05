@@ -391,15 +391,26 @@ export default function Profil() {
     { id: 'listelerim', etiket: '📋 Liste' },
   ]
 
-  // Not: bu sayılar "gonderiler" (yazılı yorumlu paylaşımlar) üzerinden
-  // yaklaşık hesaplanıyor — bazı sekmeler ayrıca eserPuanlarim'daki (yorum
-  // yazılmadan sadece puanlanmış) kayıtları da ekliyor, bu yüzden gerçek
-  // sekmeye girince görünen sayı burada gösterilenden bir miktar YÜKSEK
-  // çıkabilir. "Tamamladıklarım" farklı bir kaynaktan (izlenecekler'in
-  // durum:'tamamlandi' alanı) geldiği için o kesin/doğru.
-  const izlediklerimSayisi = gonderiler.filter((g) => g.tur === 'sinema' || g.tur === 'dizi').length
+  // KÖK SEBEP DÜZELTMESİ: Bu sayılar önceden SADECE "gonderiler" (yazılı
+  // yorumlu paylaşımlar) üzerinden hesaplanıyordu. Ama "İzlediklerim" ve
+  // "Okuduklarım" sekmelerinin GERÇEKTE gösterdiği liste (bkz. aşağıdaki
+  // "Poster Duvarı" ve "Kitaplığım" blokları) gonderiler'e EK olarak
+  // eserPuanlarim'daki (yorum yazılmadan sadece yıldızla puanlanmış)
+  // kayıtları da içeriyordu — yani bir kitabı/filmi yorum yazmadan sadece
+  // puanlayan biri için özet karodaki sayı, sekmeye girince görülenden
+  // ÇOK daha düşük çıkıyordu (ör. 4 vs. gerçek 80). Şimdi ikisi aynı
+  // birleştirme+tekilleştirme mantığını kullanıyor, sayılar yapısal olarak
+  // asla birbirinden sapamaz — yilOzeti.js'teki "hayalet kayıt" düzeltmesiyle
+  // aynı prensip.
+  const gonderiVePuanBirlesikSayisi = (tur, disIdAlani) =>
+    gonderiler.filter((g) => g.tur === tur && g.posterUrl).length +
+    eserPuanlarim.filter((e) => e.tur === tur && e.posterUrl && !gonderiler.some((g) => g.tur === tur && g[disIdAlani] === e.disId)).length
+
+  const izlediklerimSayisi = gonderiVePuanBirlesikSayisi('sinema', 'tmdbId') + gonderiVePuanBirlesikSayisi('dizi', 'tmdbId')
   const tamamladiklarimSayisi = izlenecekler?.filter((i) => i.durum === 'tamamlandi').length
-  const okuduklarimSayisi = gonderiler.filter((g) => g.tur === 'kitap').length
+  const okuduklarimSayisi =
+    gonderiler.filter((g) => g.tur === 'kitap' && (g.posterUrl || g.ilgiliPosterUrl)).length +
+    eserPuanlarim.filter((e) => e.tur === 'kitap' && e.posterUrl && !gonderiler.some((g) => g.tur === 'kitap' && g.googleBooksId === e.disId)).length
   const yaziGeziSayisi = gonderiler.filter((g) => g.tur === 'yazi' || g.tur === 'gezi').length
   // "Dinlediklerim" — toplamDakika alanı olan (yani en az bir kez
   // "Dinlemeye Başla" ile başlanmış) TÜM kitap kayıtları, hâlâ dinliyor
