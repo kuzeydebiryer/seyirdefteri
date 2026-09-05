@@ -3,6 +3,7 @@ import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { filminListeSiralariGetir } from '../utils/disariListeler.js'
 import { storytelKitabiMi, storytelKitabiIsaretle, storytelKitabiKaldir } from '../utils/storytelKitaplari.js'
 import { STORYTEL_KATEGORILERI } from '../utils/storytelKategorileri.js'
+import StorytelIkon from '../components/ikonlar/StorytelIkon.jsx'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 import IMDbIkon from '../components/ikonlar/IMDbIkon.jsx'
 import CriterionIkon from '../components/ikonlar/CriterionIkon.jsx'
@@ -1846,7 +1847,7 @@ export default function EserSayfasi({ tur }) {
                   className="flex flex-col items-center gap-1 disabled:opacity-40"
                   title={storytelMi ? "Storytel'den kaldır" : "Bu kitap Storytel'de mevcut, işaretle"}
                 >
-                  <span className={`text-2xl ${storytelMi ? '' : 'opacity-40 grayscale'}`}>🎧</span>
+                  <StorytelIkon className={`h-6 w-6 ${storytelMi ? 'text-[#FF5B22]' : 'text-kraft opacity-30'}`} />
                   <span className="text-[10px] uppercase tracking-wide text-kraft">Storytel</span>
                 </button>
               )}
@@ -1903,9 +1904,15 @@ export default function EserSayfasi({ tur }) {
                 <button
                   onClick={storytelKategoriSecildiKaydet}
                   disabled={!secilenStorytelKategori || storytelIsleniyor}
-                  className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
                 >
-                  {storytelIsleniyor ? 'Kaydediliyor...' : "🎧 Storytel'de İşaretle"}
+                  {storytelIsleniyor ? (
+                    'Kaydediliyor...'
+                  ) : (
+                    <>
+                      <StorytelIkon className="h-3.5 w-3.5" /> Storytel'de İşaretle
+                    </>
+                  )}
                 </button>
                 <button onClick={() => setStorytelKategoriFormAcik(false)} className="text-xs text-kraft hover:text-murekkep">
                   Vazgeç

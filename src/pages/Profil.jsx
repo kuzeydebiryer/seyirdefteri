@@ -561,89 +561,6 @@ export default function Profil() {
           {!duzenlemeAcik && hedefProfil.bio && <p className="mt-2 text-sm text-murekkep">{hedefProfil.bio}</p>}
           {!duzenlemeAcik && hedefProfil.sehir && <p className="mt-0.5 text-xs text-kraft">📍 {hedefProfil.sehir}</p>}
 
-          {!duzenlemeAcik && (favoriFilmler.length > 0 || benimProfilimMi) && (
-            <div className="mt-3">
-              <div className="mb-1.5 flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-widest text-kraft">🎬 Favori Filmlerim</p>
-                {benimProfilimMi && (
-                  <button onClick={() => setFilmEkleAcik((a) => !a)} className="text-[11px] text-deniz hover:underline">
-                    {filmEkleAcik ? 'Vazgeç' : '+ Ekle'}
-                  </button>
-                )}
-              </div>
-              {filmEkleAcik && (
-                <div className="mb-2">
-                  <EserSecici kategori="Film" onSecim={favoriFilmEklendi} />
-                </div>
-              )}
-              {favoriFilmler.length > 0 ? (
-                <YatayKaydirma>
-                  {favoriFilmler.map((f) => (
-                    <div key={f.id} className="group relative shrink-0" style={{ width: 90 }}>
-                      <Link to={esereLink(f.tur, f.disId)} className="block" title={f.baslik}>
-                        <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                          {f.posterUrl && <img src={f.posterUrl} alt={f.baslik} className="h-full w-full object-cover" />}
-                        </div>
-                      </Link>
-                      {benimProfilimMi && (
-                        <button
-                          onClick={() => favoriSeritindenKaldir('sinema', f.disId, filmFavorileriYenile)}
-                          title="Favorilerden çıkar"
-                          className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-kagit opacity-0 transition group-hover:opacity-100 hover:bg-muhur"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </YatayKaydirma>
-              ) : (
-                !filmEkleAcik && <p className="text-xs text-kraft">Henüz favori film eklenmemiş.</p>
-              )}
-            </div>
-          )}
-
-          {!duzenlemeAcik && (favoriKitaplar.length > 0 || benimProfilimMi) && (
-            <div className="mt-4">
-              <div className="mb-1.5 flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-widest text-kraft">📖 Favori Kitaplarım</p>
-                {benimProfilimMi && (
-                  <button onClick={() => setKitapEkleAcik((a) => !a)} className="text-[11px] text-deniz hover:underline">
-                    {kitapEkleAcik ? 'Vazgeç' : '+ Ekle'}
-                  </button>
-                )}
-              </div>
-              {kitapEkleAcik && (
-                <div className="mb-2">
-                  <EserSecici kategori="Kitap" onSecim={favoriKitapEklendi} />
-                </div>
-              )}
-              {favoriKitaplar.length > 0 ? (
-                <YatayKaydirma>
-                  {favoriKitaplar.map((k) => (
-                    <div key={k.id} className="group relative shrink-0" style={{ width: 90 }}>
-                      <Link to={esereLink(k.tur, k.disId)} className="block" title={k.baslik}>
-                        <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                          {k.posterUrl && <img src={k.posterUrl} alt={k.baslik} className="h-full w-full object-cover" />}
-                        </div>
-                      </Link>
-                      {benimProfilimMi && (
-                        <button
-                          onClick={() => favoriSeritindenKaldir('kitap', k.disId, kitapFavorileriYenile)}
-                          title="Favorilerden çıkar"
-                          className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-kagit opacity-0 transition group-hover:opacity-100 hover:bg-muhur"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </YatayKaydirma>
-              ) : (
-                !kitapEkleAcik && <p className="text-xs text-kraft">Henüz favori kitap eklenmemiş.</p>
-              )}
-            </div>
-          )}
 
           {/* Kişileri Keşfet + Takip Ettikleri — aynı yapıda, yan yana, iki
               minimal kart. Letterboxd'un koyu renk paletini (bkz. En İyi
@@ -872,6 +789,90 @@ export default function Profil() {
           </div>
         </div>
       )}
+
+        {!duzenlemeAcik && (favoriFilmler.length > 0 || benimProfilimMi) && (
+          <div className="mt-3">
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-widest text-kraft">🎬 Favori Filmlerim</p>
+              {benimProfilimMi && (
+                <button onClick={() => setFilmEkleAcik((a) => !a)} className="text-[11px] text-deniz hover:underline">
+                  {filmEkleAcik ? 'Vazgeç' : '+ Ekle'}
+                </button>
+              )}
+            </div>
+            {filmEkleAcik && (
+              <div className="mb-2">
+                <EserSecici kategori="Film" onSecim={favoriFilmEklendi} />
+              </div>
+            )}
+            {favoriFilmler.length > 0 ? (
+              <YatayKaydirma>
+                {favoriFilmler.map((f) => (
+                  <div key={f.id} className="group relative shrink-0" style={{ width: 90 }}>
+                    <Link to={esereLink(f.tur, f.disId)} className="block" title={f.baslik}>
+                      <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                        {f.posterUrl && <img src={f.posterUrl} alt={f.baslik} className="h-full w-full object-cover" />}
+                      </div>
+                    </Link>
+                    {benimProfilimMi && (
+                      <button
+                        onClick={() => favoriSeritindenKaldir('sinema', f.disId, filmFavorileriYenile)}
+                        title="Favorilerden çıkar"
+                        className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-kagit opacity-0 transition group-hover:opacity-100 hover:bg-muhur"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </YatayKaydirma>
+            ) : (
+              !filmEkleAcik && <p className="text-xs text-kraft">Henüz favori film eklenmemiş.</p>
+            )}
+          </div>
+        )}
+
+        {!duzenlemeAcik && (favoriKitaplar.length > 0 || benimProfilimMi) && (
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-widest text-kraft">📖 Favori Kitaplarım</p>
+              {benimProfilimMi && (
+                <button onClick={() => setKitapEkleAcik((a) => !a)} className="text-[11px] text-deniz hover:underline">
+                  {kitapEkleAcik ? 'Vazgeç' : '+ Ekle'}
+                </button>
+              )}
+            </div>
+            {kitapEkleAcik && (
+              <div className="mb-2">
+                <EserSecici kategori="Kitap" onSecim={favoriKitapEklendi} />
+              </div>
+            )}
+            {favoriKitaplar.length > 0 ? (
+              <YatayKaydirma>
+                {favoriKitaplar.map((k) => (
+                  <div key={k.id} className="group relative shrink-0" style={{ width: 90 }}>
+                    <Link to={esereLink(k.tur, k.disId)} className="block" title={k.baslik}>
+                      <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                        {k.posterUrl && <img src={k.posterUrl} alt={k.baslik} className="h-full w-full object-cover" />}
+                      </div>
+                    </Link>
+                    {benimProfilimMi && (
+                      <button
+                        onClick={() => favoriSeritindenKaldir('kitap', k.disId, kitapFavorileriYenile)}
+                        title="Favorilerden çıkar"
+                        className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-kagit opacity-0 transition group-hover:opacity-100 hover:bg-muhur"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </YatayKaydirma>
+            ) : (
+              !kitapEkleAcik && <p className="text-xs text-kraft">Henüz favori kitap eklenmemiş.</p>
+            )}
+          </div>
+        )}
 
       {/* Üst sekmeler — sadece 4 tane (Letterboxd'daki gibi). Geri kalan 13
           eski sekme, "Profil" sekmesindeki gruplu sayaç listesinde — o

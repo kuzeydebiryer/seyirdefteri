@@ -22,6 +22,7 @@ import AlintiOyunuKarti from '../components/AlintiOyunuKarti.jsx'
 import KitapIstekTanitimKarti from '../components/KitapIstekTanitimKarti.jsx'
 import { storytelKitaplariGetir, storytelPopulerleriGetir } from '../utils/storytelKitaplari.js'
 import YatayKaydirma from '../components/YatayKaydirma.jsx'
+import StorytelIkon from '../components/ikonlar/StorytelIkon.jsx'
 
 function SuankiKitapWidget() {
   const { kullanici } = useAuth()
@@ -225,7 +226,7 @@ export default function KitaplarKesfet() {
         <div className="mb-10">
           <div className="mb-2 flex items-center justify-between">
             <Link to="/storytel-kitaplari" className="flex items-center gap-1.5 font-baslik text-base text-murekkep hover:text-deniz">
-              🎧 Storytel'de Olanlar
+              <StorytelIkon className="h-4 w-4 text-[#FF5B22]" /> Storytel'de Olanlar
             </Link>
             <Link to="/storytel-kitaplari" className="text-xs text-kraft hover:text-deniz">
               Tümünü Gör ›
