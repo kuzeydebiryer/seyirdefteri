@@ -468,7 +468,7 @@ export default function Profil() {
 
       <div className="mb-6 flex items-start gap-4">
         <Avatar adSoyad={gorunenAdGetir(hedefProfil)} avatarUrl={hedefProfil.avatarUrl} boyut="h-16 w-16" />
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
             <h1 className="font-baslik text-2xl text-murekkep">{gorunenAdGetir(hedefProfil)}</h1>
             {benimProfilimMi && (
