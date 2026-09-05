@@ -1582,6 +1582,18 @@ export default function EserSayfasi({ tur }) {
                 <span>{detay.yayinevi}</span>
               ))}
             {detay.dbPuan && !disPuanlar && <span>{tur === 'kitap' ? 'Google' : 'TMDB'} {detay.dbPuan}</span>}
+            {tur === 'kitap' && storytelMi && storytelDetay?.storytelSure && (
+              <span className="text-[#FF5B22]">🎧 {storytelDetay.storytelSure}</span>
+            )}
+            {tur === 'kitap' && storytelMi && storytelDetay?.storytelPuan != null && (
+              <span className="text-[#FF5B22]">
+                ★ {storytelDetay.storytelPuan}
+                {storytelDetay.storytelPuanlamaSayisi != null && ` (${storytelDetay.storytelPuanlamaSayisi.toLocaleString('tr-TR')})`}
+              </span>
+            )}
+            {tur === 'kitap' && storytelMi && storytelDetay?.storytelSeslendiren && (
+              <span className="text-[#FF5B22]">Seslendiren: {storytelDetay.storytelSeslendiren}</span>
+            )}
           </div>
 
           {/* Sinemasal Alt Türler + Dış Liste rozetleri — bu eser hangi alt
@@ -1941,26 +1953,16 @@ export default function EserSayfasi({ tur }) {
             </div>
           )}
 
-          {tur === 'kitap' &&
-            storytelMi &&
-            (storytelDetay?.storytelSure || storytelDetay?.storytelPuan != null || storytelDetay?.storytelSeslendiren) && (
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-kraft">
-                <span className="text-[#FF5B22]">🎧</span>
-                {storytelDetay.storytelSure && <span>{storytelDetay.storytelSure}</span>}
-                {storytelDetay.storytelPuan != null && (
-                  <span>
-                    ★ {storytelDetay.storytelPuan}
-                    {storytelDetay.storytelPuanlamaSayisi != null && ` (${storytelDetay.storytelPuanlamaSayisi.toLocaleString('tr-TR')})`}
-                  </span>
-                )}
-                {storytelDetay.storytelSeslendiren && <span>Seslendiren: {storytelDetay.storytelSeslendiren}</span>}
-                {storytelDetay.storytelUrl && (
-                  <a href={storytelDetay.storytelUrl} target="_blank" rel="noopener noreferrer" className="text-[#FF5B22] hover:underline">
-                    Storytel'de aç ↗
-                  </a>
-                )}
-              </p>
-            )}
+          {tur === 'kitap' && storytelMi && storytelDetay?.storytelUrl && (
+            <a
+              href={storytelDetay.storytelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-[11px] text-[#FF5B22] hover:underline"
+            >
+              Storytel'de aç ↗
+            </a>
+          )}
 
           {tur === 'kitap' && storytelKategoriFormAcik && (
             <div className="mt-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
