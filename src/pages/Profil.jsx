@@ -4,7 +4,7 @@ import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updat
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGonderiler } from '../hooks/useGonderiler.js'
-import { useTakip, takipEdilenProfilleriGetir } from '../hooks/useTakip.js'
+import { useTakip } from '../hooks/useTakip.js'
 import { useFavoriler } from '../hooks/useFavoriler.js'
 import { useIzlenecekler } from '../hooks/useIzlenecekler.js'
 import { useYorumlarim } from '../hooks/useYorumlarim.js'
@@ -36,7 +36,6 @@ import { meydanOkumalariGetir, herkeseAcikMeydanOkumalariGetir, meydanOkumaOlust
 import { oduncVerdiklerimiGetir, oduncAldiklarimiGetir, itibarSayisiGetir } from '../utils/kitapIstek.js'
 import MeydanOkumaFormu from '../components/MeydanOkumaFormu.jsx'
 import MeydanOkumaKarti from '../components/MeydanOkumaKarti.jsx'
-import PaylasButonu from '../components/PaylasButonu.jsx'
 import { girisGerekiyorsaYonlendir } from '../utils/girisYonlendir.js'
 
 const FAVORI_TURLERI = [
@@ -95,17 +94,6 @@ export default function Profil() {
   }, [uid, benimProfilimMi])
   const { gonderiler, hata: gonderilerHatasi } = useGonderiler({ yazarId: uid, sayfaBoyutu: 500 })
   const { takipEdiyorMu, setTakipEdiyorMu, takipciSayisi, takipEdilenSayisi } = useTakip(uid, kullanici?.uid)
-  const [takipEdilenProfilleri, setTakipEdilenProfilleri] = useState([])
-
-  useEffect(() => {
-    let iptal = false
-    takipEdilenProfilleriGetir(uid).then((liste) => {
-      if (!iptal) setTakipEdilenProfilleri(liste)
-    })
-    return () => {
-      iptal = true
-    }
-  }, [uid])
   const [takipIsleniyor, setTakipIsleniyor] = useState(false)
 
   const [sekme, setSekme] = useState('profil')
@@ -364,7 +352,7 @@ export default function Profil() {
     { id: 'profil', etiket: 'Profil' },
     { id: 'gunluk', etiket: '📔 Günlük' },
     { id: 'suanda', etiket: '⏳ Şu An' },
-    { id: 'listelerim', etiket: '📋 Listeler' },
+    { id: 'listelerim', etiket: '📋 Liste' },
   ]
 
   // Not: bu sayılar "gonderiler" (yazılı yorumlu paylaşımlar) üzerinden
@@ -451,13 +439,13 @@ export default function Profil() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="font-baslik text-2xl text-murekkep">{gorunenAdGetir(hedefProfil)}</h1>
-            <PaylasButonu baslik={`${gorunenAdGetir(hedefProfil)} — Seyirdefteri`} url={`/profil/${uid}`} boyut="kucuk" />
             {benimProfilimMi && (
               <button
                 onClick={() => setDuzenlemeAcik((a) => !a)}
-                className="rounded-sm bg-kagitKoyu px-2 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+                title="Profili Düzenle"
+                className="rounded-full p-1.5 text-kraft ring-1 ring-cizgi hover:bg-kagitKoyu hover:text-murekkep"
               >
-                {duzenlemeAcik ? 'Vazgeç' : 'Profili Düzenle'}
+                {duzenlemeAcik ? '✕' : '⚙️'}
               </button>
             )}
           </div>
@@ -497,13 +485,6 @@ export default function Profil() {
             </div>
           )}
           {gecmisSonucMesaji && <p className="mt-2 text-xs text-gise">✓ {gecmisSonucMesaji}</p>}
-
-          <Link
-            to="/kullanicilar"
-            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gise px-3 py-1.5 font-govde text-xs text-kagit hover:opacity-90"
-          >
-            👥 Kişileri Keşfet →
-          </Link>
 
           {kahinSezonlari.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -560,6 +541,30 @@ export default function Profil() {
                   </Link>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Kişileri Keşfet + Takip Ettikleri — aynı yapıda, yan yana, iki
+              minimal kart. Letterboxd'un koyu renk paletini (bkz. En İyi
+              Film Listeleri rozetleri) burada da kullanıyoruz —
+              "Letterboxd" markasıyla bağlantılı bir bölüm olmasa da, aynı
+              sade/koyu/nötr dili sitenin geri kalanıyla tutarlı kılıyor. */}
+          {!duzenlemeAcik && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Link
+                to="/kullanicilar"
+                className="rounded-sm bg-[#14181c] p-3 text-center ring-1 ring-white/10 transition hover:ring-white/25"
+              >
+                <p className="text-lg">👥</p>
+                <p className="mt-1 text-xs text-white">Kişileri Keşfet</p>
+              </Link>
+              <Link
+                to={`/profil/${uid}/takip-edilenler`}
+                className="rounded-sm bg-[#14181c] p-3 text-center ring-1 ring-white/10 transition hover:ring-white/25"
+              >
+                <p className="text-lg">🔗</p>
+                <p className="mt-1 text-xs text-white">Takip Ettikleri ({takipEdilenSayisi})</p>
+              </Link>
             </div>
           )}
 
@@ -710,74 +715,60 @@ export default function Profil() {
             )}
           </div>
 
-          {takipEdilenProfilleri.length > 0 && (
-            <div className="mt-3">
-              <p className="mb-1.5 text-[11px] uppercase tracking-widest text-kraft">Takip Ettikleri</p>
-              <div className="flex flex-wrap gap-2">
-                {takipEdilenProfilleri.map((p) => (
-                  <Link key={p.uid} to={`/profil/${p.uid}`} title={p.adSoyad} className="block">
-                    <Avatar adSoyad={p.adSoyad} avatarUrl={p.avatarUrl} boyut="h-9 w-9" />
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {benimProfilimMi && (
-        <div className="mb-8 rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-          <button
-            onClick={() => setDavetAcik((a) => !a)}
-            className="flex w-full items-center justify-between px-4 py-2 text-sm text-murekkep"
-          >
-            <span>
-              🎟️ Davet Kodların <span className="text-kraft">(kalan: {hedefProfil.kalanDavetHakki})</span>
-            </span>
-            <span className="text-xs text-kraft">{davetAcik ? '▲ Gizle' : '▼ Göster'}</span>
-          </button>
+        <div className="mb-8 grid grid-cols-2 gap-2">
+          <div className={`rounded-sm bg-kagitKoyu ring-1 ring-cizgi ${davetAcik ? 'col-span-2' : ''}`}>
+            <button
+              onClick={() => setDavetAcik((a) => !a)}
+              className="flex w-full items-center justify-between px-3 py-2 text-xs text-murekkep"
+            >
+              <span>🎟️ Davet ({hedefProfil.kalanDavetHakki})</span>
+              <span className="text-kraft">{davetAcik ? '▲' : '▼'}</span>
+            </button>
 
-          {davetAcik && (
-            <div className="border-t border-cizgi px-4 py-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-kraft">Her kod bir kişi tarafından bir kez kullanılabilir.</p>
-                <button
-                  onClick={davetKoduOlustur}
-                  disabled={hedefProfil.kalanDavetHakki <= 0 || uretiliyor}
-                  className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
-                >
-                  {uretiliyor ? 'Oluşturuluyor...' : 'Davet Kodu Oluştur'}
-                </button>
+            {davetAcik && (
+              <div className="border-t border-cizgi px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-kraft">Her kod bir kişi tarafından bir kez kullanılabilir.</p>
+                  <button
+                    onClick={davetKoduOlustur}
+                    disabled={hedefProfil.kalanDavetHakki <= 0 || uretiliyor}
+                    className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                  >
+                    {uretiliyor ? 'Oluşturuluyor...' : 'Davet Kodu Oluştur'}
+                  </button>
+                </div>
+                {davetKodlari.length > 0 && (
+                  <ul className="mt-3 max-h-32 space-y-1 overflow-y-auto text-xs text-kraft">
+                    {davetKodlari.map((k) => (
+                      <li key={k.id} className="flex items-center justify-between">
+                        <span className="font-mono tracking-widest text-murekkep">{k.id}</span>
+                        <span>{k.kullanildiMi ? 'Kullanıldı' : 'Kullanılmadı'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              {davetKodlari.length > 0 && (
-                <ul className="mt-3 max-h-32 space-y-1 overflow-y-auto text-xs text-kraft">
-                  {davetKodlari.map((k) => (
-                    <li key={k.id} className="flex items-center justify-between">
-                      <span className="font-mono tracking-widest text-murekkep">{k.id}</span>
-                      <span>{k.kullanildiMi ? 'Kullanıldı' : 'Kullanılmadı'}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
 
-      {benimProfilimMi && (
-        <div className="mb-8 rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-          <button
-            onClick={() => setPuanIceAktarAcik((a) => !a)}
-            className="flex w-full items-center justify-between px-4 py-2 text-sm text-murekkep"
-          >
-            <span>📥 Letterboxd Puanlarını İçe Aktar</span>
-            <span className="text-xs text-kraft">{puanIceAktarAcik ? '▲ Gizle' : '▼ Göster'}</span>
-          </button>
-          {puanIceAktarAcik && (
-            <div className="border-t border-cizgi px-4 py-3">
-              <PuanIceAktar />
-            </div>
-          )}
+          <div className={`rounded-sm bg-kagitKoyu ring-1 ring-cizgi ${puanIceAktarAcik ? 'col-span-2' : ''}`}>
+            <button
+              onClick={() => setPuanIceAktarAcik((a) => !a)}
+              className="flex w-full items-center justify-between px-3 py-2 text-xs text-murekkep"
+            >
+              <span>📥 İçe Aktar</span>
+              <span className="text-kraft">{puanIceAktarAcik ? '▲' : '▼'}</span>
+            </button>
+            {puanIceAktarAcik && (
+              <div className="border-t border-cizgi px-4 py-3">
+                <PuanIceAktar />
+              </div>
+            )}
+          </div>
         </div>
       )}
 
