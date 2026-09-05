@@ -157,6 +157,7 @@ export default function App() {
             <Route path="/kitaplar" element={<OzelRota><KitaplarKesfet /></OzelRota>} />
             <Route path="/kitap-istekleri" element={<OzelRota><KitapIstekleri /></OzelRota>} />
             <Route path="/storytel-kitaplari" element={<OzelRota><StorytelKitaplari /></OzelRota>} />
+            <Route path="/storytel-kitaplari/:kategoriId" element={<OzelRota><StorytelKitaplari /></OzelRota>} />
             <Route path="/kitaplar/bakim" element={<OzelRota><KitapKatalogBakimi /></OzelRota>} />
             <Route path="/listelerim" element={<OzelRota><Listelerim /></OzelRota>} />
             <Route path="/oscar" element={<OscarYonlendirme />} />

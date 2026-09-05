@@ -13,7 +13,9 @@ import { useEserPuanlarim } from '../hooks/useEserPuanlarim.js'
 import { rafOlustur, rafSil } from '../utils/raf.js'
 import { gorunenAdGetir, gecmisPaylasimlariGuncelle } from '../utils/gorunenAd.js'
 import { takipEt, takipBirak } from '../utils/takip.js'
-import { favoriKaldir } from '../utils/favori.js'
+import { favoriEkle, favoriKaldir } from '../utils/favori.js'
+import EserSecici from '../components/EserSecici.jsx'
+import YatayKaydirma from '../components/YatayKaydirma.jsx'
 import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
 import BinKitapIkon from '../components/ikonlar/BinKitapIkon.jsx'
 import PuanIceAktar from '../components/PuanIceAktar.jsx'
@@ -113,6 +115,36 @@ export default function Profil() {
   // Profilin en üstündeki "Sabitlenmiş Favoriler" vitrini için — sekmedeki
   // gibi tek türe filtrelemeden, tüm favorilerden en yeni eklenen 4 tanesi.
   const { favoriler: tumFavoriler } = useFavoriler(uid)
+  // Letterboxd'daki "en sevdiğin 4 film" mantığından esinlendik ama farklı
+  // yaptık — sabit 4 değil, sitenin her yerinde kullandığımız yatay
+  // kaydırmalı şerit (bkz. YatayKaydirma) — istediğin kadar film/kitap
+  // favoriye alabiliyorsun, karışık değil, TÜRE göre ayrı iki şerit.
+  const { favoriler: favoriFilmler, yenidenYukle: filmFavorileriYenile } = useFavoriler(uid, 'sinema')
+  const { favoriler: favoriKitaplar, yenidenYukle: kitapFavorileriYenile } = useFavoriler(uid, 'kitap')
+  const [filmEkleAcik, setFilmEkleAcik] = useState(false)
+  const [kitapEkleAcik, setKitapEkleAcik] = useState(false)
+
+  async function favoriFilmEklendi(secilen) {
+    await favoriEkle(kullanici, { tur: 'sinema', disId: secilen.disId, baslik: secilen.baslik, alt: secilen.yil, posterUrl: secilen.posterUrl })
+    setFilmEkleAcik(false)
+    filmFavorileriYenile()
+  }
+
+  // EserSecici'nin kitap akışı zaten hem Türkçe veritabanını hem Google
+  // Books'u birlikte arayıp, seçilen kitabı turkceKitaptanKaydet /
+  // kitapAramaSonucundanKaydet ile KAYDEDİP posterini çözüyor — burada
+  // ayrıca bir "poster boş geldi" durumu yönetmemize gerek yok, seçim
+  // anında zaten çözülmüş oluyor.
+  async function favoriKitapEklendi(secilen) {
+    await favoriEkle(kullanici, { tur: 'kitap', disId: secilen.disId, baslik: secilen.baslik, alt: secilen.altBaslik, posterUrl: secilen.posterUrl })
+    setKitapEkleAcik(false)
+    kitapFavorileriYenile()
+  }
+
+  async function favoriSeritindenKaldir(tur, disId, yenile) {
+    await favoriKaldir(uid, tur, disId)
+    yenile()
+  }
   const { izlenecekler, yenidenYukle: izlenecekleriYenile } = useIzlenecekler(uid)
   const { puanlar: eserPuanlarim } = useEserPuanlarim(uid)
 
@@ -529,18 +561,87 @@ export default function Profil() {
           {!duzenlemeAcik && hedefProfil.bio && <p className="mt-2 text-sm text-murekkep">{hedefProfil.bio}</p>}
           {!duzenlemeAcik && hedefProfil.sehir && <p className="mt-0.5 text-xs text-kraft">📍 {hedefProfil.sehir}</p>}
 
-          {!duzenlemeAcik && tumFavoriler.length > 0 && (
+          {!duzenlemeAcik && (favoriFilmler.length > 0 || benimProfilimMi) && (
             <div className="mt-3">
-              <p className="mb-1.5 text-[11px] uppercase tracking-widest text-kraft">📌 Favoriler</p>
-              <div className="flex gap-2">
-                {tumFavoriler.slice(0, 4).map((f) => (
-                  <Link key={f.id} to={esereLink(f.tur, f.disId)} className="block w-14 shrink-0" title={f.baslik}>
-                    <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                      {f.posterUrl && <img src={f.posterUrl} alt={f.baslik} className="h-full w-full object-cover" />}
-                    </div>
-                  </Link>
-                ))}
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-widest text-kraft">🎬 Favori Filmlerim</p>
+                {benimProfilimMi && (
+                  <button onClick={() => setFilmEkleAcik((a) => !a)} className="text-[11px] text-deniz hover:underline">
+                    {filmEkleAcik ? 'Vazgeç' : '+ Ekle'}
+                  </button>
+                )}
               </div>
+              {filmEkleAcik && (
+                <div className="mb-2">
+                  <EserSecici kategori="Film" onSecim={favoriFilmEklendi} />
+                </div>
+              )}
+              {favoriFilmler.length > 0 ? (
+                <YatayKaydirma>
+                  {favoriFilmler.map((f) => (
+                    <div key={f.id} className="group relative shrink-0" style={{ width: 90 }}>
+                      <Link to={esereLink(f.tur, f.disId)} className="block" title={f.baslik}>
+                        <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                          {f.posterUrl && <img src={f.posterUrl} alt={f.baslik} className="h-full w-full object-cover" />}
+                        </div>
+                      </Link>
+                      {benimProfilimMi && (
+                        <button
+                          onClick={() => favoriSeritindenKaldir('sinema', f.disId, filmFavorileriYenile)}
+                          title="Favorilerden çıkar"
+                          className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-kagit opacity-0 transition group-hover:opacity-100 hover:bg-muhur"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </YatayKaydirma>
+              ) : (
+                !filmEkleAcik && <p className="text-xs text-kraft">Henüz favori film eklenmemiş.</p>
+              )}
+            </div>
+          )}
+
+          {!duzenlemeAcik && (favoriKitaplar.length > 0 || benimProfilimMi) && (
+            <div className="mt-4">
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-widest text-kraft">📖 Favori Kitaplarım</p>
+                {benimProfilimMi && (
+                  <button onClick={() => setKitapEkleAcik((a) => !a)} className="text-[11px] text-deniz hover:underline">
+                    {kitapEkleAcik ? 'Vazgeç' : '+ Ekle'}
+                  </button>
+                )}
+              </div>
+              {kitapEkleAcik && (
+                <div className="mb-2">
+                  <EserSecici kategori="Kitap" onSecim={favoriKitapEklendi} />
+                </div>
+              )}
+              {favoriKitaplar.length > 0 ? (
+                <YatayKaydirma>
+                  {favoriKitaplar.map((k) => (
+                    <div key={k.id} className="group relative shrink-0" style={{ width: 90 }}>
+                      <Link to={esereLink(k.tur, k.disId)} className="block" title={k.baslik}>
+                        <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                          {k.posterUrl && <img src={k.posterUrl} alt={k.baslik} className="h-full w-full object-cover" />}
+                        </div>
+                      </Link>
+                      {benimProfilimMi && (
+                        <button
+                          onClick={() => favoriSeritindenKaldir('kitap', k.disId, kitapFavorileriYenile)}
+                          title="Favorilerden çıkar"
+                          className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-kagit opacity-0 transition group-hover:opacity-100 hover:bg-muhur"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </YatayKaydirma>
+              ) : (
+                !kitapEkleAcik && <p className="text-xs text-kraft">Henüz favori kitap eklenmemiş.</p>
+              )}
             </div>
           )}
 

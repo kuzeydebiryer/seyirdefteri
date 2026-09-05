@@ -20,6 +20,8 @@ import MeydanOkuma from '../components/MeydanOkuma.jsx'
 import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
 import AlintiOyunuKarti from '../components/AlintiOyunuKarti.jsx'
 import KitapIstekTanitimKarti from '../components/KitapIstekTanitimKarti.jsx'
+import { storytelKitaplariGetir, storytelPopulerleriGetir } from '../utils/storytelKitaplari.js'
+import YatayKaydirma from '../components/YatayKaydirma.jsx'
 
 function SuankiKitapWidget() {
   const { kullanici } = useAuth()
@@ -171,6 +173,20 @@ export default function KitaplarKesfet() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const { tavsiyeler, yenidenYukle: tavsiyeleriYenile } = useTavsiyeler('kitap')
   const { haberler, yenidenYukle: haberleriYenile } = useHaberler('kitap')
+  const [storytelOnizleme, setStorytelOnizleme] = useState([])
+
+  useEffect(() => {
+    // Önce "popüler" (Serkan'ın elle işaretlediği haftalık öne çıkanlar)
+    // gösterilsin, hiç yoksa genel listeden birkaç tanesi gösterilsin —
+    // ana Kitap sayfasında hiçbir zaman boş bir şerit görünmesin diye.
+    storytelPopulerleriGetir().then((populerler) => {
+      if (populerler.length > 0) {
+        setStorytelOnizleme(populerler.slice(0, 10))
+      } else {
+        storytelKitaplariGetir().then((hepsi) => setStorytelOnizleme(hepsi.slice(0, 10)))
+      }
+    })
+  }, [])
 
   useEffect(() => {
     let iptal = false
@@ -205,16 +221,32 @@ export default function KitaplarKesfet() {
 
       <KitapIstekTanitimKarti />
 
-      <Link
-        to="/storytel-kitaplari"
-        className="mb-10 flex items-center gap-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi transition hover:ring-deniz/50"
-      >
-        <span className="text-2xl">🎧</span>
-        <div>
-          <p className="font-baslik text-base text-murekkep">Storytel'de Olanlar</p>
-          <p className="text-xs text-kraft">Topluluğun elle işaretlediği sesli kitaplar →</p>
+      {storytelOnizleme.length > 0 && (
+        <div className="mb-10">
+          <div className="mb-2 flex items-center justify-between">
+            <Link to="/storytel-kitaplari" className="flex items-center gap-1.5 font-baslik text-base text-murekkep hover:text-deniz">
+              🎧 Storytel'de Olanlar
+            </Link>
+            <Link to="/storytel-kitaplari" className="text-xs text-kraft hover:text-deniz">
+              Tümünü Gör ›
+            </Link>
+          </div>
+          <YatayKaydirma>
+            {storytelOnizleme.map((k) => (
+              <Link key={k.id} to={`/kitap/${k.id}`} className="shrink-0" style={{ width: 100 }}>
+                <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                  {k.posterUrl ? (
+                    <img src={k.posterUrl} alt={k.baslik} loading="lazy" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">📖</div>
+                  )}
+                </div>
+                <p className="mt-1 truncate text-xs text-murekkep">{k.baslik}</p>
+              </Link>
+            ))}
+          </YatayKaydirma>
         </div>
-      </Link>
+      )}
 
       <AlintiKatkiCagrisi />
       <SonAlintilarBolumu limitSayisi={3} />

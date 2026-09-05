@@ -594,7 +594,9 @@ service cloud.firestore {
     match /storytelKitaplari/{kitapId} {
       allow read: if true;
       allow create, delete: if request.auth != null;
-      allow update: if false;
+      // "populerMi" (haftanın öne çıkanı) SADECE yönetici tarafından
+      // değiştirilebiliyor — Serkan bunu elle, haftalık güncelliyor.
+      allow update: if yoneticiMi() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['populerMi']);
     }
 
     match /disariListeler/{listeId} {

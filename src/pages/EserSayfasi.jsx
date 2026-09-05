@@ -2,6 +2,7 @@ import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { filminListeSiralariGetir } from '../utils/disariListeler.js'
 import { storytelKitabiMi, storytelKitabiIsaretle, storytelKitabiKaldir } from '../utils/storytelKitaplari.js'
+import { STORYTEL_KATEGORILERI } from '../utils/storytelKategorileri.js'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 import IMDbIkon from '../components/ikonlar/IMDbIkon.jsx'
 import CriterionIkon from '../components/ikonlar/CriterionIkon.jsx'
@@ -596,15 +597,35 @@ export default function EserSayfasi({ tur }) {
 
   async function storytelIsaretiDegistir() {
     if (!kullanici || !detay) return
-    setStorytelIsleniyor(true)
-    try {
-      if (storytelMi) {
+    if (storytelMi) {
+      setStorytelIsleniyor(true)
+      try {
         await storytelKitabiKaldir(id)
         setStorytelMi(false)
-      } else {
-        await storytelKitabiIsaretle(kullanici, { disId: id, baslik: detay.baslik, alt: detay.yazar || '', posterUrl: detay.posterUrl })
-        setStorytelMi(true)
+      } finally {
+        setStorytelIsleniyor(false)
       }
+    } else {
+      // İşaretlerken artık bir kategori seçilmesi gerekiyor (bkz.
+      // storytelKategorileri.js) — Storytel'in kendi kategori dilini
+      // yansıtan, kitap sayfasında açılan küçük bir form.
+      setStorytelKategoriFormAcik(true)
+    }
+  }
+
+  async function storytelKategoriSecildiKaydet() {
+    if (!secilenStorytelKategori) return
+    setStorytelIsleniyor(true)
+    try {
+      await storytelKitabiIsaretle(kullanici, {
+        disId: id,
+        baslik: detay.baslik,
+        alt: detay.yazar || '',
+        posterUrl: detay.posterUrl,
+        kategori: secilenStorytelKategori,
+      })
+      setStorytelMi(true)
+      setStorytelKategoriFormAcik(false)
     } finally {
       setStorytelIsleniyor(false)
     }
@@ -658,6 +679,8 @@ export default function EserSayfasi({ tur }) {
   const [toplamDakikaGirisi, setToplamDakikaGirisi] = useState('')
   const [storytelMi, setStorytelMi] = useState(false)
   const [storytelIsleniyor, setStorytelIsleniyor] = useState(false)
+  const [storytelKategoriFormAcik, setStorytelKategoriFormAcik] = useState(false)
+  const [secilenStorytelKategori, setSecilenStorytelKategori] = useState('')
   const [sezonTaslak, setSezonTaslak] = useState(1)
   const [bolumTaslak, setBolumTaslak] = useState(0)
   const [baslangicDuzenleAcik, setBaslangicDuzenleAcik] = useState(false)
@@ -1858,6 +1881,39 @@ export default function EserSayfasi({ tur }) {
             </div>
           )}
 
+          {tur === 'kitap' && storytelKategoriFormAcik && (
+            <div className="mt-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="mb-2 text-xs text-kraft">Bu kitap Storytel'de hangi kategoride?</p>
+              <div className="flex flex-wrap gap-1.5">
+                {STORYTEL_KATEGORILERI.map((k) => (
+                  <button
+                    key={k.id}
+                    type="button"
+                    onClick={() => setSecilenStorytelKategori(k.id)}
+                    style={{ backgroundColor: k.renk }}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-medium text-black ${
+                      secilenStorytelKategori === k.id ? 'ring-2 ring-offset-1 ring-offset-kagitKoyu ring-murekkep' : 'opacity-70'
+                    }`}
+                  >
+                    {k.ad}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  onClick={storytelKategoriSecildiKaydet}
+                  disabled={!secilenStorytelKategori || storytelIsleniyor}
+                  className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                >
+                  {storytelIsleniyor ? 'Kaydediliyor...' : "🎧 Storytel'de İşaretle"}
+                </button>
+                <button onClick={() => setStorytelKategoriFormAcik(false)} className="text-xs text-kraft hover:text-murekkep">
+                  Vazgeç
+                </button>
+              </div>
+            </div>
+          )}
+
           {tur === 'kitap' && dinlemeFormAcik && (
             <form onSubmit={dinlemeyeBaslaTiklandi} className="mt-2 flex flex-wrap items-center gap-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
               <span className="text-xs text-kraft">Toplam süre (Storytel'deki gibi):</span>
@@ -2286,11 +2342,11 @@ export default function EserSayfasi({ tur }) {
             </div>
           )}
 
-          {izlenecekKaydi?.durum === 'okunuyor' && (
+          {(izlenecekKaydi?.durum === 'okunuyor' || izlenecekKaydi?.durum === 'dinleniyor') && (
             <div className="mt-3 max-w-xs rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs uppercase tracking-widest text-gise">
-                  {tur === 'kitap' ? 'Şu An Okuyorsun' : 'Şu An İzliyorsun'}
+                  {izlenecekKaydi?.durum === 'dinleniyor' ? '🎧 Şu An Dinliyorsun' : tur === 'kitap' ? 'Şu An Okuyorsun' : 'Şu An İzliyorsun'}
                 </p>
                 {izlenecekKaydi.baslangicTarihi?.toMillis && !baslangicDuzenleAcik && (
                   <button

@@ -603,6 +603,20 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "storytelKitaplari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "populerMi",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
