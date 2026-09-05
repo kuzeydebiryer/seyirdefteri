@@ -1853,6 +1853,22 @@ export default function EserSayfasi({ tur }) {
                 </button>
               )}
 
+              {tur === 'kitap' && !storytelMi && (
+                <a
+                  href={`https://www.storytel.com/tr/search?q=${encodeURIComponent([detay.baslik, detay.yazar].filter(Boolean).join(' '))}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-1 text-[#FF5B22]/70 transition hover:text-[#FF5B22]"
+                  title="Storytel'de bu kitabı ara"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <span className="text-[10px] uppercase tracking-wide text-kraft">Ara</span>
+                </a>
+              )}
+
               {(tur === 'kitap' || tur === 'dizi') && !izlenecekKaydi && (
                 <button
                   onClick={dogrudanOkumayaBasla}
