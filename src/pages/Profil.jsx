@@ -22,6 +22,8 @@ import PuanIceAktar from '../components/PuanIceAktar.jsx'
 import { kahinOlduguSezonlariGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { kullaniciKoleksiyonuGetir, eseriKoleksiyondanCikar } from '../utils/sanatKoleksiyonu.js'
+import { kullaniciAlintilariGetir, alintiSil } from '../utils/alinti.js'
+import AlintiKarti from '../components/AlintiKarti.jsx'
 import Listelerim from './Listelerim.jsx'
 import TemaAvatarIkon, { TEMA_AVATARLARI, temaAvatarUrlMi } from '../components/ikonlar/TemaAvatarIkon.jsx'
 import { begenilenMuzikleriGetir, muzikBegeniKaldir } from '../utils/filmMuzigiBegeni.js'
@@ -83,10 +85,12 @@ export default function Profil() {
   const [kahinSezonlari, setKahinSezonlari] = useState([])
   const [sanatKoleksiyonu, setSanatKoleksiyonu] = useState([])
   const [begenilenMuzikler, setBegenilenMuzikler] = useState([])
+  const [alintilarim, setAlintilarim] = useState([])
 
   useEffect(() => {
     kullaniciKoleksiyonuGetir(uid).then(setSanatKoleksiyonu)
     begenilenMuzikleriGetir(uid).then(setBegenilenMuzikler)
+    kullaniciAlintilariGetir(uid).then(setAlintilarim)
     // Önceden bu ikisi sadece ilgili sekme tıklanınca çekiliyordu — artık
     // "Profil" sekmesindeki sayaç listesi için baştan hazır olmaları
     // gerekiyor.
@@ -397,6 +401,10 @@ export default function Profil() {
   const tamamladiklarimSayisi = izlenecekler?.filter((i) => i.durum === 'tamamlandi').length
   const okuduklarimSayisi = gonderiler.filter((g) => g.tur === 'kitap').length
   const yaziGeziSayisi = gonderiler.filter((g) => g.tur === 'yazi' || g.tur === 'gezi').length
+  // "Dinlediklerim" — toplamDakika alanı olan (yani en az bir kez
+  // "Dinlemeye Başla" ile başlanmış) TÜM kitap kayıtları, hâlâ dinliyor
+  // olsun ya da tamamlamış olsun.
+  const dinlediklerim = izlenecekler?.filter((i) => i.tur === 'kitap' && i.toplamDakika != null) || []
 
   const PROFIL_GRUPLARI = [
     {
@@ -411,7 +419,9 @@ export default function Profil() {
       baslik: '📖 Kitap',
       satirlar: [
         { id: 'okuduklarim', etiket: 'Okuduklarım', sayi: okuduklarimSayisi },
+        { id: 'dinlediklerim', etiket: 'Dinlediklerim', sayi: dinlediklerim.length },
         { id: 'oduncKitaplar', etiket: 'Ödünç Kitaplar', sayi: (oduncVerdiklerim?.length || 0) + (oduncAldiklarim?.length || 0) },
+        { id: 'alintilarim', etiket: 'Alıntılarım', sayi: alintilarim?.length },
       ],
     },
     {
@@ -562,29 +572,6 @@ export default function Profil() {
           {!duzenlemeAcik && hedefProfil.sehir && <p className="mt-0.5 text-xs text-kraft">📍 {hedefProfil.sehir}</p>}
 
 
-          {/* Kişileri Keşfet + Takip Ettikleri — aynı yapıda, yan yana, iki
-              minimal kart. Letterboxd'un koyu renk paletini (bkz. En İyi
-              Film Listeleri rozetleri) burada da kullanıyoruz —
-              "Letterboxd" markasıyla bağlantılı bir bölüm olmasa da, aynı
-              sade/koyu/nötr dili sitenin geri kalanıyla tutarlı kılıyor. */}
-          {!duzenlemeAcik && (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <Link
-                to="/kullanicilar"
-                className="rounded-sm bg-[#14181c] p-3 text-center ring-1 ring-white/10 transition hover:ring-white/25"
-              >
-                <p className="text-lg">👥</p>
-                <p className="mt-1 text-xs text-white">Kişileri Keşfet</p>
-              </Link>
-              <Link
-                to={`/profil/${uid}/takip-edilenler`}
-                className="rounded-sm bg-[#14181c] p-3 text-center ring-1 ring-white/10 transition hover:ring-white/25"
-              >
-                <p className="text-lg">🔗</p>
-                <p className="mt-1 text-xs text-white">Takip Ettikleri ({takipEdilenSayisi})</p>
-              </Link>
-            </div>
-          )}
 
           {duzenlemeAcik && (
             <form onSubmit={profiliKaydet} className="mt-3 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
@@ -716,10 +703,6 @@ export default function Profil() {
           )}
 
           <div className="mt-3 flex items-center gap-4">
-            <p className="text-xs text-kraft">
-              <span className="font-medium text-murekkep">{takipEdilenSayisi}</span> takip ·{' '}
-              <span className="font-medium text-murekkep">{takipciSayisi}</span> takipçi
-            </p>
             {!benimProfilimMi && (
               <button
                 onClick={takipDegistir}
@@ -736,59 +719,6 @@ export default function Profil() {
         </div>
       </div>
 
-      {benimProfilimMi && (
-        <div className="mb-8 grid grid-cols-2 gap-2">
-          <div className={`rounded-sm bg-kagitKoyu ring-1 ring-cizgi ${davetAcik ? 'col-span-2' : ''}`}>
-            <button
-              onClick={() => setDavetAcik((a) => !a)}
-              className="flex w-full items-center justify-between px-3 py-2 text-xs text-murekkep"
-            >
-              <span>🎟️ Davet ({hedefProfil.kalanDavetHakki})</span>
-              <span className="text-kraft">{davetAcik ? '▲' : '▼'}</span>
-            </button>
-
-            {davetAcik && (
-              <div className="border-t border-cizgi px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-kraft">Her kod bir kişi tarafından bir kez kullanılabilir.</p>
-                  <button
-                    onClick={davetKoduOlustur}
-                    disabled={hedefProfil.kalanDavetHakki <= 0 || uretiliyor}
-                    className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
-                  >
-                    {uretiliyor ? 'Oluşturuluyor...' : 'Davet Kodu Oluştur'}
-                  </button>
-                </div>
-                {davetKodlari.length > 0 && (
-                  <ul className="mt-3 max-h-32 space-y-1 overflow-y-auto text-xs text-kraft">
-                    {davetKodlari.map((k) => (
-                      <li key={k.id} className="flex items-center justify-between">
-                        <span className="font-mono tracking-widest text-murekkep">{k.id}</span>
-                        <span>{k.kullanildiMi ? 'Kullanıldı' : 'Kullanılmadı'}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className={`rounded-sm bg-kagitKoyu ring-1 ring-cizgi ${puanIceAktarAcik ? 'col-span-2' : ''}`}>
-            <button
-              onClick={() => setPuanIceAktarAcik((a) => !a)}
-              className="flex w-full items-center justify-between px-3 py-2 text-xs text-murekkep"
-            >
-              <span>📥 İçe Aktar</span>
-              <span className="text-kraft">{puanIceAktarAcik ? '▲' : '▼'}</span>
-            </button>
-            {puanIceAktarAcik && (
-              <div className="border-t border-cizgi px-4 py-3">
-                <PuanIceAktar />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
         {!duzenlemeAcik && (favoriFilmler.length > 0 || benimProfilimMi) && (
           <div className="mt-3">
@@ -873,6 +803,84 @@ export default function Profil() {
             )}
           </div>
         )}
+
+      {/* Kişileri Keşfet + Takip Ettikleri — aynı yapıda, yan yana, iki
+          minimal kart. Letterboxd'un koyu renk paletini (bkz. En İyi
+          Film Listeleri rozetleri) burada da kullanıyoruz —
+          "Letterboxd" markasıyla bağlantılı bir bölüm olmasa da, aynı
+          sade/koyu/nötr dili sitenin geri kalanıyla tutarlı kılıyor. */}
+      {!duzenlemeAcik && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Link
+            to="/kullanicilar"
+            className="rounded-sm bg-[#14181c] p-3 text-center ring-1 ring-white/10 transition hover:ring-white/25"
+          >
+            <p className="text-lg">👥</p>
+            <p className="mt-1 text-xs text-white">Kişileri Keşfet</p>
+          </Link>
+          <Link
+            to={`/profil/${uid}/takip-edilenler`}
+            className="rounded-sm bg-[#14181c] p-3 text-center ring-1 ring-white/10 transition hover:ring-white/25"
+          >
+            <p className="text-lg">🔗</p>
+            <p className="mt-1 text-xs text-white">Takip Ettikleri ({takipEdilenSayisi})</p>
+          </Link>
+        </div>
+      )}
+
+      {benimProfilimMi && (
+        <div className="mb-8 grid grid-cols-2 gap-2">
+          <div className={`rounded-sm bg-kagitKoyu ring-1 ring-cizgi ${davetAcik ? 'col-span-2' : ''}`}>
+            <button
+              onClick={() => setDavetAcik((a) => !a)}
+              className="flex w-full items-center justify-between px-3 py-2 text-xs text-murekkep"
+            >
+              <span>🎟️ Davet ({hedefProfil.kalanDavetHakki})</span>
+              <span className="text-kraft">{davetAcik ? '▲' : '▼'}</span>
+            </button>
+
+            {davetAcik && (
+              <div className="border-t border-cizgi px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-kraft">Her kod bir kişi tarafından bir kez kullanılabilir.</p>
+                  <button
+                    onClick={davetKoduOlustur}
+                    disabled={hedefProfil.kalanDavetHakki <= 0 || uretiliyor}
+                    className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                  >
+                    {uretiliyor ? 'Oluşturuluyor...' : 'Davet Kodu Oluştur'}
+                  </button>
+                </div>
+                {davetKodlari.length > 0 && (
+                  <ul className="mt-3 max-h-32 space-y-1 overflow-y-auto text-xs text-kraft">
+                    {davetKodlari.map((k) => (
+                      <li key={k.id} className="flex items-center justify-between">
+                        <span className="font-mono tracking-widest text-murekkep">{k.id}</span>
+                        <span>{k.kullanildiMi ? 'Kullanıldı' : 'Kullanılmadı'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className={`rounded-sm bg-kagitKoyu ring-1 ring-cizgi ${puanIceAktarAcik ? 'col-span-2' : ''}`}>
+            <button
+              onClick={() => setPuanIceAktarAcik((a) => !a)}
+              className="flex w-full items-center justify-between px-3 py-2 text-xs text-murekkep"
+            >
+              <span>📥 İçe Aktar</span>
+              <span className="text-kraft">{puanIceAktarAcik ? '▲' : '▼'}</span>
+            </button>
+            {puanIceAktarAcik && (
+              <div className="border-t border-cizgi px-4 py-3">
+                <PuanIceAktar />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Üst sekmeler — sadece 4 tane (Letterboxd'daki gibi). Geri kalan 13
           eski sekme, "Profil" sekmesindeki gruplu sayaç listesinde — o
@@ -1738,6 +1746,51 @@ export default function Profil() {
       {sekme === 'listelerim' && benimProfilimMi && (
         <div>
           <Listelerim />
+        </div>
+      )}
+
+      {sekme === 'dinlediklerim' && (
+        <div>
+          {dinlediklerim.length === 0 && <p className="text-sm text-kraft">Henüz dinlenen bir kitap yok.</p>}
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
+            {dinlediklerim.map((d) => {
+              const yuzde = d.toplamDakika ? Math.min(100, Math.round(((d.suankiDakika || 0) / d.toplamDakika) * 100)) : null
+              return (
+                <Link key={d.id} to={`/kitap/${d.disId}`} className="block">
+                  <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                    {d.posterUrl ? (
+                      <img src={d.posterUrl} alt={d.baslik} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">📖</div>
+                    )}
+                  </div>
+                  <p className="mt-1 truncate text-xs text-murekkep">{d.baslik}</p>
+                  {yuzde != null && <p className="text-[10px] text-kraft">%{yuzde}</p>}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {sekme === 'alintilarim' && (
+        <div className="space-y-3">
+          {alintilarim.length === 0 && <p className="text-sm text-kraft">Henüz bir alıntı paylaşmadın.</p>}
+          {alintilarim.map((a) => (
+            <AlintiKarti
+              key={a.id}
+              alinti={a}
+              kullanici={kullanici}
+              onSilTiklandi={
+                benimProfilimMi
+                  ? async () => {
+                      await alintiSil(a.id)
+                      setAlintilarim((onceki) => onceki.filter((x) => x.id !== a.id))
+                    }
+                  : undefined
+              }
+            />
+          ))}
         </div>
       )}
 

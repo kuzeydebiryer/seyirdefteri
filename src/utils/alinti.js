@@ -48,3 +48,11 @@ export async function sonAlintilariGetir(limitSayisi = 30) {
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
+
+// Profil sayfasındaki "Alıntılarım" sayacı/listesi için — bir kullanıcının
+// PAYLAŞTIĞI tüm alıntılar.
+export async function kullaniciAlintilariGetir(uid) {
+  const q = query(collection(db, 'alintilar'), where('kullaniciId', '==', uid), orderBy('tarih', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}

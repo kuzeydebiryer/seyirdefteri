@@ -110,13 +110,22 @@ export async function dinlemeyeBasla(kullanici, tur, disId, { baslik, alt, poste
       toplamDakika: toplamDakika || null,
       suankiDakika: 0,
       baslangicTarihi: serverTimestamp(),
+      // "Kitap Dünyası" ve "Şu An Dinlenenler" widget'ları eklemeTarihi'ne
+      // göre sıralıyor (orderBy) — bu alan olmayan kayıtları Firestore
+      // sonuçlardan SESSİZCE çıkarıyor. Bu alan unutulmuştu, dinleme
+      // kayıtları hiçbir zaman bu widget'larda görünmüyordu.
+      eklemeTarihi: serverTimestamp(),
     },
     { merge: true }
   )
 }
 
+// setDoc+merge kullanılıyor (updateDoc değil) — bu, daha önce
+// eklemeTarihi'siz oluşturulmuş eski dinleme kayıtlarını da (bkz. yukarıdaki
+// düzeltme notu) bir sonraki ilerleme güncellemesinde otomatik "onarıyor",
+// ayrı bir veri taşıma betiğine gerek kalmadan.
 export async function dinlemeIlerlemeGuncelle(uid, tur, disId, suankiDakika) {
-  await updateDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), { suankiDakika })
+  await setDoc(doc(db, 'izlenecekler', izlenecekDokId(uid, tur, disId)), { suankiDakika, eklemeTarihi: serverTimestamp() }, { merge: true })
 }
 
 // Dizi ilerlemesi kitaptaki "sayfa" yerine "sezon + bölüm" ile tutuluyor —
