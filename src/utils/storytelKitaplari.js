@@ -75,6 +75,20 @@ export async function storytelKitabiKaldir(kitapId) {
   await deleteDoc(doc(db, 'storytelKitaplari', String(kitapId)))
 }
 
+// tavsiyePosterleriniSenkronizeEt / izlenecekPosterleriniSenkronizeEt ile
+// aynı desen: kitap Storytel'de kapaksız işaretlenmiş olabilir (o an
+// kitabın kendi kaydında henüz kapak yoktu), sonradan "Bilgiyi Düzenle"
+// ile kapak eklenince buraya da geriye dönük yansısın diye (bkz.
+// EserSayfasi.jsx duzenlemeyiKaydet). Zaten kapağı varsa dokunmuyoruz.
+export async function storytelPosterSenkronizeEt(disId, posterUrl) {
+  if (!posterUrl) return
+  const ref = doc(db, 'storytelKitaplari', String(disId))
+  const snap = await getDoc(ref)
+  if (snap.exists() && !snap.data().posterUrl) {
+    await updateDoc(ref, { posterUrl }).catch(() => {})
+  }
+}
+
 // Seslendiren sayfası için — bir seslendirenin işaretlediğimiz TÜM
 // Storytel kitaplarını getiriyor. "storytelSeslendiren" alanı birden
 // fazla seslendireni virgülle ayırarak tutabildiği için (bkz.

@@ -1,7 +1,7 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { filminListeSiralariGetir } from '../utils/disariListeler.js'
-import { storytelKitabiIsaretle, storytelKitabiKaldir, storytelKitapBilgisiGetir, storytelKitabiDetayGetir } from '../utils/storytelKitaplari.js'
+import { storytelKitabiIsaretle, storytelKitabiKaldir, storytelKitapBilgisiGetir, storytelKitabiDetayGetir, storytelPosterSenkronizeEt } from '../utils/storytelKitaplari.js'
 import { STORYTEL_KATEGORILERI, storytelHamKategoridenPilEslestir } from '../utils/storytelKategorileri.js'
 import { KITAP_UST_KATEGORILERI, hamKategoridenUstKategoriGetir } from '../utils/kitapUstKategorileri.js'
 import StorytelIkon from '../components/ikonlar/StorytelIkon.jsx'
@@ -1166,6 +1166,7 @@ export default function EserSayfasi({ tur }) {
       if (guncellenen.posterUrl) {
         tavsiyePosterleriniSenkronizeEt('kitap', id, guncellenen.posterUrl).catch(() => {})
         izlenecekPosterleriniSenkronizeEt('kitap', id, guncellenen.posterUrl).catch(() => {})
+        storytelPosterSenkronizeEt(id, guncellenen.posterUrl).catch(() => {})
       }
       setDuzenleModuAcik(false)
     } catch (err) {

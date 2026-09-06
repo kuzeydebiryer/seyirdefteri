@@ -3,6 +3,7 @@ import { db } from '../firebase.js'
 import { aksansizKucultulmus } from './metinNormallestir.js'
 import { isbnIleMevcutKitabiBul } from './kitapIsbnEslestir.js'
 import { hamKategoridenUstKategoriGetir } from './kitapUstKategorileri.js'
+import { openLibraryZenginlestir } from './openLibrary.js'
 
 // Türkçe Kitap Veri Tabanı — Google Books'ta Türkçe baskıların sık sık
 // bulunamaması sorununu çözmek için, Kitapyurdu'ndan derlenmiş 67.000+ kitaplık
@@ -11,8 +12,12 @@ import { hamKategoridenUstKategoriGetir } from './kitapUstKategorileri.js'
 // bir kez indirilip tarayıcı belleğinde tutuluyor (sonraki aramalar anında).
 //
 // ÖNEMLİ SINIRLAMA: Bu veri setinde kapak görseli YOK (sadece ürün sayfası
-// linki var). Bir sonuç seçildiğinde ISBN üzerinden Google Books'tan SADECE
-// kapak görseli çekmeyi deniyoruz (bulunamazsa kapaksız kaydediliyor).
+// linki var). Bir sonuç seçildiğinde ISBN üzerinden Google Books'tan kapak
+// görseli çekmeyi deniyoruz; o da bulamazsa (Google'ın Türkçe baskı kapsamı
+// zayıf olduğu için sık oluyor) kitapKatalog.js'teki Google-öncelikli yolla
+// AYNI Open Library yedeğine (ISBN, sonra başlık+yazar) düşüyoruz — bkz.
+// openLibrary.js. Öncesinde bu yol SADECE Google'ı deniyordu, en yüksek
+// hacimli kayıt yolu (67 bin kitap) en zayıf arama yöntemini kullanıyordu.
 //
 // Açıklama (özet) metni parçalanmış ayrı dosyalarda tutuluyor — bkz. aşağıdaki
 // aciklamaGetir(). Bir kitap seçildiğinde tam açıklaması otomatik çekilip
@@ -117,8 +122,16 @@ export async function turkceKitaptanKaydet(kitap) {
       const data = await res.json()
       posterUrl = (data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
     } catch {
-      // Kapak bulunamazsa sorun değil, kapaksız devam
+      // Google'da bulunamazsa sorun değil, aşağıdaki Open Library denemesine düşülecek
     }
+  }
+  // Google'da (ISBN'i olsa bile) sık sık kapak bulunamıyor — Türkçe baskı
+  // kapsamı zayıf. ISBN yoksa Google hiç denenmedi demektir; ikisinde de
+  // Open Library'ye (önce ISBN, sonra başlık+yazar) düşüyoruz — kitapKatalog.js
+  // ile aynı yedek zincirini kullanan tek fonksiyon (bkz. openLibrary.js).
+  if (!posterUrl) {
+    const openLibrary = await openLibraryZenginlestir({ isbn13: kitap.isbn, baslik: kitap.baslik, yazar: kitap.yazar })
+    if (openLibrary?.posterUrl) posterUrl = openLibrary.posterUrl
   }
 
   const ozet = kitap.indeks != null ? await aciklamaGetir(kitap.indeks) : ''

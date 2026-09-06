@@ -28,10 +28,12 @@ import {
   setDoc,
   where,
 } from 'firebase/firestore'
-import { db } from '../firebase.js'
+import { httpsCallable } from 'firebase/functions'
+import { db, functions } from '../firebase.js'
 import { aksansizKucultulmus } from './metinNormallestir.js'
 import { turkceKitapAra } from './turkceKitapVeriTabani.js'
 import { isbnIleMevcutKitabiBul } from './kitapIsbnEslestir.js'
+import { openLibraryZenginlestir } from './openLibrary.js'
 
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
@@ -76,91 +78,8 @@ function googleVerisiniNormallestir(data) {
 }
 
 // --- Open Library (Türkçe kapak/özet/tür zenginleştirme) --------------
-// API anahtarı gerektirmez. İki katmanlı çalışır:
-//   1) ISBN üzerinden TAM baskıyı bulmayı dener (en doğru veri — o Türkçe
-//      baskının gerçek sayfa sayısı, kapağı vb.)
-//   2) ISBN'de bulunamayan ya da eksik kalan alanlar için başlık+yazar
-//      araması yapar ve İSTER Türkçe baskıdan ister başka bir baskıdan olsun,
-//      eşleşen ilk kayıttan yaklaşık bir değer alır (örn. sayfa sayısı) —
-//      hiç veri olmamasından iyidir, sadece bir tahmindir.
-// İkisi de Google verisinin üzerine yazmaz, sadece boş alanları tamamlar.
-async function openLibraryIsbnIle(isbn) {
-  try {
-    const kitapRes = await fetch(`https://openlibrary.org/isbn/${isbn}.json`)
-    if (!kitapRes.ok) return null
-    const kitapData = await kitapRes.json()
-
-    let ozet = ''
-    let turler = []
-    const workKey = kitapData.works?.[0]?.key
-    if (workKey) {
-      try {
-        const workRes = await fetch(`https://openlibrary.org${workKey}.json`)
-        if (workRes.ok) {
-          const workData = await workRes.json()
-          ozet = typeof workData.description === 'string' ? workData.description : workData.description?.value || ''
-          turler = (workData.subjects || []).slice(0, 6)
-        }
-      } catch {
-        // Work verisi alınamazsa sorun değil, isbn seviyesindeki veriyle devam
-      }
-    }
-
-    const kapakId = kitapData.covers?.[0]
-    return {
-      posterUrl: kapakId ? `https://covers.openlibrary.org/b/id/${kapakId}-L.jpg` : '',
-      ozet,
-      turler: turler.join(', '),
-      sayfaSayisi: kitapData.number_of_pages || null,
-      yayinevi: (kitapData.publishers || [])[0] || '',
-    }
-  } catch (err) {
-    console.warn('Open Library (ISBN) zenginleştirme başarısız:', err.message)
-    return null
-  }
-}
-
-async function openLibraryBaslikIle(baslik, yazar) {
-  if (!baslik) return null
-  try {
-    const parcalar = [`title=${encodeURIComponent(baslik)}`]
-    if (yazar) parcalar.push(`author=${encodeURIComponent(yazar.split(',')[0])}`)
-    const res = await fetch(`https://openlibrary.org/search.json?${parcalar.join('&')}&limit=5`)
-    if (!res.ok) return null
-    const data = await res.json()
-    const eslesen = (data.docs || []).find((d) => d.number_of_pages_median || d.cover_i) || data.docs?.[0]
-    if (!eslesen) return null
-    return {
-      posterUrl: eslesen.cover_i ? `https://covers.openlibrary.org/b/id/${eslesen.cover_i}-L.jpg` : '',
-      ozet: '',
-      turler: (eslesen.subject || []).slice(0, 6).join(', '),
-      sayfaSayisi: eslesen.number_of_pages_median || null,
-      yayinevi: (eslesen.publisher || [])[0] || '',
-    }
-  } catch (err) {
-    console.warn('Open Library (başlık araması) zenginleştirme başarısız:', err.message)
-    return null
-  }
-}
-
-async function openLibraryZenginlestir(google) {
-  const isbn = google.isbn13 || google.isbn10
-  const isbnSonucu = isbn ? await openLibraryIsbnIle(isbn) : null
-
-  // ISBN sonucu varsa ama hâlâ boş kalan alanlar varsa, başlık araması ile
-  // TAMAMLAYICI olarak devam et (isbnSonucu'nun üzerine yazmaz).
-  const eksikVarMi = !isbnSonucu || !isbnSonucu.sayfaSayisi || !isbnSonucu.posterUrl || !isbnSonucu.ozet
-  const baslikSonucu = eksikVarMi ? await openLibraryBaslikIle(google.baslik, google.yazar) : null
-
-  if (!isbnSonucu && !baslikSonucu) return null
-  return {
-    posterUrl: isbnSonucu?.posterUrl || baslikSonucu?.posterUrl || '',
-    ozet: isbnSonucu?.ozet || baslikSonucu?.ozet || '',
-    turler: isbnSonucu?.turler || baslikSonucu?.turler || '',
-    sayfaSayisi: isbnSonucu?.sayfaSayisi ?? baslikSonucu?.sayfaSayisi ?? null,
-    yayinevi: isbnSonucu?.yayinevi || baslikSonucu?.yayinevi || '',
-  }
-}
+// Bkz. utils/openLibrary.js — mantık oraya taşındı, turkceKitapVeriTabani.js
+// da (statik 67 bin kitaplık veri seti) aynı katmanlı aramayı kullanabilsin diye.
 
 // Google verisini temel alıp Open Library'den SADECE boş alanları doldurur.
 function birlestir(google, openLibrary) {
@@ -319,6 +238,28 @@ export async function dogrulanmamisKitaplariGetir(limitSayisi = 30) {
   )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// "dogrulanmis" ile "kapağı var mı" birbirinden bağımsız: Kitapyurdu
+// kaynaklı kayıtlar (turkceKitaptanKaydet) güvenilir sayıldığı için HER
+// ZAMAN dogrulanmis:true ile kaydediliyor — kapak bulunamamış olsa bile.
+// Bu yüzden dogrulanmamisKitaplariGetir'in kaçırdığı bir kategori var:
+// "doğrulanmış ama sonsuza kadar kapaksız kalmış" kayıtlar. Bu fonksiyon
+// dogrulanmis durumuna bakmadan SADECE kapağı boş olanları getiriyor —
+// bkz. KitapKatalogBakimi.jsx, iki liste birleştirilip gösteriliyor.
+export async function kapaksizKitaplariGetir(limitSayisi = 30) {
+  const q = query(collection(db, 'kitaplar'), where('posterUrl', '==', ''), orderBy('sonGuncellemeTarihi', 'desc'), limit(limitSayisi))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// Tek seferlik bakım aracı — bkz. functions/index.js'teki
+// kitapKapaklariniTopluDoldur. Kuyruk büyükse (dönen sinirlandiMi true ise)
+// tekrar çağırmak güvenli, sadece HÂLÂ kapaksız kalanlara dokunuyor.
+const kitapKapaklariniTopluDoldurCallable = httpsCallable(functions, 'kitapKapaklariniTopluDoldur')
+export async function kitapKapaklariniTopluDoldur() {
+  const sonuc = await kitapKapaklariniTopluDoldurCallable()
+  return sonuc.data
 }
 
 // Bir kitabın kaç kez düzenlendiğini (duzenlemeGecmisi kayıt sayısını) döndürür —

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { dogrulanmamisKitaplariGetir, kitapDogrula, kitapDuzenlemeSayisi, kitapYenidenZenginlestir } from '../utils/kitapKatalog.js'
+import { dogrulanmamisKitaplariGetir, kapaksizKitaplariGetir, kitapDogrula, kitapDuzenlemeSayisi, kitapKapaklariniTopluDoldur, kitapYenidenZenginlestir } from '../utils/kitapKatalog.js'
 
 // Faz 3: Küçük/davetli bir topluluk olduğumuz için ayrı bir "admin" rolü yok —
 // herkes güvenilir kabul ediliyor (mevcut Firestore Rules deseniyle tutarlı).
@@ -15,14 +15,31 @@ export default function KitapKatalogBakimi() {
   const [hata, setHata] = useState('')
   const [dogrulanıyor, setDogrulanıyor] = useState(null) // hangi kitapId işleniyor
   const [yenidenDeneniyor, setYenidenDeneniyor] = useState(null)
+  const [topluDolduruluyor, setTopluDolduruluyor] = useState(false)
+  const [topluSonuc, setTopluSonuc] = useState(null)
 
   async function yeniden() {
     setYukleniyor(true)
     setHata('')
     try {
-      const liste = await dogrulanmamisKitaplariGetir(30)
+      // İki ayrı sorgu birleştiriliyor: "henüz doğrulanmamış" (Faz 3'ün
+      // orijinal kuyruğu) ve "kapağı eksik" (dogrulanmis durumuna
+      // bakmadan — bkz. kapaksizKitaplariGetir'in üstündeki not, aksi
+      // halde Kitapyurdu kaynaklı ama sonsuza kadar kapaksız kalmış
+      // kayıtlar bu kuyruğa hiç düşmüyordu).
+      const [dogrulanmamislar, kapaksizlar] = await Promise.all([
+        dogrulanmamisKitaplariGetir(30),
+        kapaksizKitaplariGetir(30),
+      ])
+      const gorulenler = new Set()
+      const birlesik = []
+      for (const k of [...dogrulanmamislar, ...kapaksizlar]) {
+        if (gorulenler.has(k.id)) continue
+        gorulenler.add(k.id)
+        birlesik.push(k)
+      }
       const duzenlemeSayilariyla = await Promise.all(
-        liste.map(async (k) => ({ ...k, duzenlemeSayisi: await kitapDuzenlemeSayisi(k.id) }))
+        birlesik.map(async (k) => ({ ...k, duzenlemeSayisi: await kitapDuzenlemeSayisi(k.id) }))
       )
       setKitaplar(duzenlemeSayilariyla)
     } catch (err) {
@@ -62,13 +79,55 @@ export default function KitapKatalogBakimi() {
     }
   }
 
+  async function topluDoldur() {
+    setTopluDolduruluyor(true)
+    setTopluSonuc(null)
+    try {
+      const sonuc = await kitapKapaklariniTopluDoldur()
+      setTopluSonuc(sonuc)
+      await yeniden()
+    } catch (err) {
+      setTopluSonuc({ hata: err.message })
+    } finally {
+      setTopluDolduruluyor(false)
+    }
+  }
+
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-1">Kitap Kataloğu Bakımı</h1>
-      <p className="mb-6 text-sm text-kraft">
+      <p className="mb-3 text-sm text-kraft">
         Google Books + Open Library'den otomatik doldurulmuş ama henüz kimsenin "doğru" demediği kitaplar. Bilgiyi
         kontrol edip eksikse kitap sayfasından düzenle, sonra "Doğrulandı" ile işaretle.
       </p>
+
+      <div className="mb-6 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+        <p className="mb-2 text-xs text-kraft">
+          Tek seferlik toplu araç: kapağı boş olan TÜM kitaplarda Open Library'yi dener (30'luk kuyruk sınırı yok).
+          Kuyruk büyükse tekrar tekrar çalıştırmak güvenli — sadece hâlâ kapaksız kalanlara dokunuyor.
+        </p>
+        <button
+          onClick={topluDoldur}
+          disabled={topluDolduruluyor}
+          className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+        >
+          {topluDolduruluyor ? 'Taranıyor (birkaç dakika sürebilir)...' : '🪄 Kapakları Toplu Bul'}
+        </button>
+        {topluSonuc && (
+          <p className="mt-2 text-[11px] text-kraft">
+            {topluSonuc.hata ? (
+              <span className="text-muhur">Hata: {topluSonuc.hata}</span>
+            ) : (
+              <>
+                {topluSonuc.taranan} kitap tarandı, {topluSonuc.bulunan} tanesine kapak bulundu, {topluSonuc.bulunamayan}{' '}
+                tanesi bulunamadı.
+                {topluSonuc.sinirlandiMi && ' Kuyrukta daha fazlası olabilir — butona tekrar bas.'}
+                {topluSonuc.hatali?.length > 0 && ` (${topluSonuc.hatali.length} kayıtta hata oluştu)`}
+              </>
+            )}
+          </p>
+        )}
+      </div>
 
       {yukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {hata && <p className="text-sm text-muhur">{hata}</p>}

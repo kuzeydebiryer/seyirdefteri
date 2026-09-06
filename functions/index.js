@@ -875,3 +875,93 @@ exports.storytelKitapBilgisiGetir = onCall(async (request) => {
 
   return sonuc
 })
+
+// --- Kapak Toplu Doldurma (tek seferlik bakım aracı) ----------------------
+// KitapKatalogBakimi.jsx'teki "🔄 Yeniden Dene" her kitap için tek tek
+// tıklamayı gerektiriyor. Bu fonksiyon posterUrl'ü boş olan TÜM kitap
+// kayıtlarını tarayıp Open Library'yi (önce ISBN, sonra başlık+yazar)
+// dener — utils/openLibrary.js ile aynı iki katmanlı mantığın admin SDK'ya
+// taşınmış, basitleştirilmiş hali (work/description kısmı atlandı, burada
+// sadece kapak aranıyor). Bulduğu kapağı hem kitabın kendi kaydına hem de
+// onu önceden kapaksız kopyalamış olabilecek izlenecekler/tavsiyeler/
+// storytelKitaplari kayıtlarına da yazıyor — EserSayfasi.jsx'teki tekil
+// düzenleme senkronizasyonuyla (tavsiyePosterleriniSenkronizeEt vb.) aynı
+// prensip, burada toplu ve admin SDK ile.
+//
+// İDEMPOTENT: sadece HÂLÂ kapaksız olanlara dokunuyor, tekrar tekrar
+// çalıştırmak güvenli — kuyruk büyükse birkaç kez çalıştırıp devam
+// edilebilir (dönen "sinirlandiMi" alanı bunu işaret ediyor).
+async function openLibraryKapakIsbnIle(isbn) {
+  try {
+    const res = await fetch(`https://openlibrary.org/isbn/${isbn}.json`)
+    if (!res.ok) return ''
+    const data = await res.json()
+    const kapakId = data.covers?.[0]
+    return kapakId ? `https://covers.openlibrary.org/b/id/${kapakId}-L.jpg` : ''
+  } catch {
+    return ''
+  }
+}
+
+async function openLibraryKapakBaslikIle(baslik, yazar) {
+  if (!baslik) return ''
+  try {
+    const parcalar = [`title=${encodeURIComponent(baslik)}`]
+    if (yazar) parcalar.push(`author=${encodeURIComponent(yazar.split(',')[0])}`)
+    const res = await fetch(`https://openlibrary.org/search.json?${parcalar.join('&')}&limit=5`)
+    if (!res.ok) return ''
+    const data = await res.json()
+    const eslesen = (data.docs || []).find((d) => d.cover_i)
+    return eslesen?.cover_i ? `https://covers.openlibrary.org/b/id/${eslesen.cover_i}-L.jpg` : ''
+  } catch {
+    return ''
+  }
+}
+
+function beklet(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+exports.kitapKapaklariniTopluDoldur = onCall({ timeoutSeconds: 540 }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Giriş yapman gerekiyor')
+
+  const veriSinirlama = Math.min(Number(request.data?.limit) || 300, 300)
+  const snap = await db.collection('kitaplar').where('posterUrl', '==', '').limit(veriSinirlama).get()
+  const sonuc = { taranan: snap.size, bulunan: 0, bulunamayan: 0, hatali: [], sinirlandiMi: snap.size === veriSinirlama }
+
+  for (const belge of snap.docs) {
+    const veri = belge.data()
+    const isbn = veri.isbn13 || veri.isbn10
+    try {
+      let posterUrl = isbn ? await openLibraryKapakIsbnIle(isbn) : ''
+      if (!posterUrl) posterUrl = await openLibraryKapakBaslikIle(veri.baslik, veri.yazar)
+
+      if (posterUrl) {
+        await belge.ref.update({ posterUrl })
+        sonuc.bulunan++
+
+        const [izlenecekSnap, tavsiyeSnap, storytelSnap] = await Promise.all([
+          db.collection('izlenecekler').where('tur', '==', 'kitap').where('disId', '==', belge.id).get(),
+          db.collection('tavsiyeler').where('tur', '==', 'kitap').where('disId', '==', belge.id).get(),
+          db.collection('storytelKitaplari').doc(belge.id).get(),
+        ])
+        await Promise.all(izlenecekSnap.docs.filter((d) => !d.data().posterUrl).map((d) => d.ref.update({ posterUrl }).catch(() => {})))
+        await Promise.all(tavsiyeSnap.docs.filter((d) => !d.data().posterUrl).map((d) => d.ref.update({ posterUrl }).catch(() => {})))
+        if (storytelSnap.exists && !storytelSnap.data().posterUrl) {
+          await storytelSnap.ref.update({ posterUrl }).catch(() => {})
+        }
+      } else {
+        sonuc.bulunamayan++
+      }
+    } catch (err) {
+      sonuc.hatali.push({ id: belge.id, hata: err.message })
+    }
+
+    // Open Library'yi art arda çok sayıda istekle boğmamak için küçük bir
+    // bekleme — nazik davranmak, IP'nin geçici sınırlanmasından (rate
+    // limit) daha değerli.
+    await beklet(300)
+  }
+
+  return sonuc
+})
