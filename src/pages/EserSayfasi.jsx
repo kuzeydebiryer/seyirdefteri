@@ -2,7 +2,7 @@ import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
 import { filminListeSiralariGetir } from '../utils/disariListeler.js'
 import { storytelKitabiIsaretle, storytelKitabiKaldir, storytelKitapBilgisiGetir, storytelKitabiDetayGetir } from '../utils/storytelKitaplari.js'
-import { STORYTEL_KATEGORILERI } from '../utils/storytelKategorileri.js'
+import { STORYTEL_KATEGORILERI, storytelHamKategoridenPilEslestir } from '../utils/storytelKategorileri.js'
 import { KITAP_UST_KATEGORILERI, hamKategoridenUstKategoriGetir } from '../utils/kitapUstKategorileri.js'
 import StorytelIkon from '../components/ikonlar/StorytelIkon.jsx'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
@@ -627,6 +627,11 @@ export default function EserSayfasi({ tur }) {
     try {
       const bilgi = await storytelKitapBilgisiGetir(storytelLinkGirisi.trim())
       setStorytelCekilenBilgi(bilgi)
+      // Çekilen ham Storytel kategorisini bizim renkli pil listemizle
+      // eşleştirip otomatik seçiyoruz — eşleşme yoksa kullanıcı zaten
+      // aşağıdan elle seçebiliyor.
+      const eslesenPilId = storytelHamKategoridenPilEslestir(bilgi.kategori)
+      if (eslesenPilId) setSecilenStorytelKategori(eslesenPilId)
     } catch (e) {
       setStorytelBilgiHatasi(e?.message || 'Bilgiler çekilemedi — linki kontrol et')
       setStorytelCekilenBilgi(null)
@@ -638,6 +643,7 @@ export default function EserSayfasi({ tur }) {
   async function storytelKategoriSecildiKaydet() {
     if (!secilenStorytelKategori) return
     setStorytelIsleniyor(true)
+    setStorytelBilgiHatasi('')
     try {
       await storytelKitabiIsaretle(kullanici, {
         disId: id,
@@ -666,6 +672,10 @@ export default function EserSayfasi({ tur }) {
       setStorytelLinkGirisi('')
       setStorytelCekilenBilgi(null)
       setStorytelBilgiHatasi('')
+    } catch (e) {
+      // Önceden bu hata görünmüyordu — Firestore kuralı reddetse bile
+      // kullanıcı arayüzde hiçbir şey görmüyordu. Artık açıkça gösteriliyor.
+      setStorytelBilgiHatasi(e?.message || 'Kaydedilemedi — bir şeyler ters gitti, tekrar dene')
     } finally {
       setStorytelIsleniyor(false)
     }
@@ -1583,22 +1593,69 @@ export default function EserSayfasi({ tur }) {
                 <span>{detay.yayinevi}</span>
               ))}
             {detay.dbPuan && !disPuanlar && <span>{tur === 'kitap' ? 'Google' : 'TMDB'} {detay.dbPuan}</span>}
-            {tur === 'kitap' && storytelMi && storytelDetay?.storytelSure && (
-              <span className="text-[#FF5B22]">🎧 {storytelDetay.storytelSure}</span>
-            )}
-            {tur === 'kitap' && storytelMi && storytelDetay?.storytelPuan != null && (
-              <span className="text-[#FF5B22]">
-                ★ {storytelDetay.storytelPuan}
-                {storytelDetay.storytelPuanlamaSayisi != null && ` (${storytelDetay.storytelPuanlamaSayisi.toLocaleString('tr-TR')})`}
-              </span>
-            )}
-            {tur === 'kitap' && storytelMi && storytelDetay?.storytelSeslendiren && (
-              <span className="text-[#FF5B22]">Seslendiren: {storytelDetay.storytelSeslendiren}</span>
-            )}
-            {tur === 'kitap' && storytelMi && storytelDetay?.storytelKategori && (
-              <span className="text-[#FF5B22]">Storytel: {storytelDetay.storytelKategori}</span>
-            )}
           </div>
+
+          {tur === 'kitap' &&
+            storytelMi &&
+            (storytelDetay?.storytelSure || storytelDetay?.storytelPuan != null || storytelDetay?.storytelSeslendiren || storytelDetay?.kategori) && (
+              <div className="mt-3 overflow-hidden rounded-sm ring-1 ring-cizgi">
+                <div className="flex items-center gap-1.5 bg-[#FF5B22]/10 px-3 py-1.5">
+                  <StorytelIkon className="h-3.5 w-3.5 text-[#FF5B22]" />
+                  <span className="text-[10px] font-medium uppercase tracking-widest text-[#FF5B22]">Storytel'de</span>
+                  {storytelDetay?.storytelUrl && (
+                    <a
+                      href={storytelDetay.storytelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-auto text-[10px] text-[#FF5B22] hover:underline"
+                    >
+                      Sayfasını Aç ↗
+                    </a>
+                  )}
+                </div>
+                <div className="flex divide-x divide-cizgi bg-kagitKoyu">
+                  {storytelDetay?.storytelSure && (
+                    <div className="min-w-0 flex-1 px-3 py-2 text-center">
+                      <p className="text-[10px] uppercase tracking-wide text-kraft">Süre</p>
+                      <p className="mt-0.5 truncate text-sm font-medium text-murekkep">🎧 {storytelDetay.storytelSure}</p>
+                    </div>
+                  )}
+                  {storytelDetay?.storytelPuan != null && (
+                    <div className="min-w-0 flex-1 px-3 py-2 text-center">
+                      <p className="text-[10px] uppercase tracking-wide text-kraft">Puan</p>
+                      <p className="mt-0.5 truncate text-sm font-medium text-murekkep">
+                        ★ {storytelDetay.storytelPuan}
+                        {storytelDetay.storytelPuanlamaSayisi != null && (
+                          <span className="text-[10px] text-kraft"> ({storytelDetay.storytelPuanlamaSayisi.toLocaleString('tr-TR')})</span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  {storytelDetay?.storytelSeslendiren && (
+                    <div className="min-w-0 flex-1 px-3 py-2 text-center">
+                      <p className="text-[10px] uppercase tracking-wide text-kraft">Seslendiren</p>
+                      <Link
+                        to={`/storytel-seslendiren/${encodeURIComponent(storytelDetay.storytelSeslendiren)}`}
+                        className="mt-0.5 block truncate text-sm font-medium text-deniz hover:underline"
+                      >
+                        {storytelDetay.storytelSeslendiren}
+                      </Link>
+                    </div>
+                  )}
+                  {storytelDetay?.kategori && (
+                    <div className="min-w-0 flex-1 px-3 py-2 text-center">
+                      <p className="text-[10px] uppercase tracking-wide text-kraft">Tür</p>
+                      <Link
+                        to={`/storytel-kitaplari/${storytelDetay.kategori}`}
+                        className="mt-0.5 block truncate text-sm font-medium text-deniz hover:underline"
+                      >
+                        {STORYTEL_KATEGORILERI.find((k) => k.id === storytelDetay.kategori)?.ad || storytelDetay.storytelKategori}
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
           {/* Sinemasal Alt Türler + Dış Liste rozetleri — bu eser hangi alt
               türlere ait (eslesenAltTurler) ve hangi dış listelerde, kaçıncı
@@ -1955,17 +2012,6 @@ export default function EserSayfasi({ tur }) {
                 </button>
               )}
             </div>
-          )}
-
-          {tur === 'kitap' && storytelMi && storytelDetay?.storytelUrl && (
-            <a
-              href={storytelDetay.storytelUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 inline-block text-[11px] text-[#FF5B22] hover:underline"
-            >
-              Storytel'de aç ↗
-            </a>
           )}
 
           {tur === 'kitap' && storytelKategoriFormAcik && (

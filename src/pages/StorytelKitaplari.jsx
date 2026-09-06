@@ -98,6 +98,25 @@ export default function StorytelKitaplari() {
     }))
   }, [tumKitaplar])
 
+  // Seslendirenler listesi — kitap sayfasındaki "Seslendiren" linkinden
+  // (bkz. EserSayfasi.jsx) doğrudan gelmeyip de gezinerek keşfetmek
+  // isteyenler için. "storytelSeslendiren" alanı birden fazla ismi
+  // virgülle tutabiliyor (bkz. functions/index.js), o yüzden ayırıp
+  // her ismi ayrı ayrı sayıyoruz.
+  const seslendirenler = useMemo(() => {
+    if (!tumKitaplar) return []
+    const sayaclar = new Map()
+    for (const k of tumKitaplar) {
+      if (!k.storytelSeslendiren) continue
+      for (const isim of k.storytelSeslendiren.split(',').map((s) => s.trim()).filter(Boolean)) {
+        sayaclar.set(isim, (sayaclar.get(isim) || 0) + 1)
+      }
+    }
+    return Array.from(sayaclar.entries())
+      .map(([isim, sayi]) => ({ isim, sayi }))
+      .sort((a, b) => a.isim.localeCompare(b.isim, 'tr-TR'))
+  }, [tumKitaplar])
+
   const seciliKategori = kategoriId ? STORYTEL_KATEGORILERI.find((k) => k.id === kategoriId) : null
 
   if (seciliKategori) {
@@ -221,6 +240,23 @@ export default function StorytelKitaplari() {
           </Link>
         ))}
       </div>
+
+      {seslendirenler.length > 0 && (
+        <>
+          <h2 className="mb-3 mt-8 font-baslik text-lg text-murekkep">Seslendirenler</h2>
+          <div className="flex flex-wrap gap-1.5">
+            {seslendirenler.map(({ isim, sayi }) => (
+              <Link
+                key={isim}
+                to={`/storytel-seslendiren/${encodeURIComponent(isim)}`}
+                className="rounded-full bg-kagitKoyu px-2.5 py-1 text-xs text-murekkep ring-1 ring-cizgi transition hover:ring-[#FF5B22]/50"
+              >
+                {isim} <span className="text-kraft">({sayi})</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -596,7 +596,14 @@ service cloud.firestore {
       allow create, delete: if request.auth != null;
       // "populerMi" (haftanın öne çıkanı) SADECE yönetici tarafından
       // değiştirilebiliyor — Serkan bunu elle, haftalık güncelliyor.
-      allow update: if yoneticiMi() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['populerMi']);
+      // Diğer alanlar (kategori + storytelKitapBilgisiGetir'den gelen
+      // süre/puan/seslendiren/kategori) giriş yapmış HERKES tarafından
+      // güncellenebiliyor — create ile aynı açıklık düzeyi, çünkü bir
+      // kitabı yeniden işaretleyip bilgilerini tazelemek de bu kapsamda.
+      allow update: if
+        (yoneticiMi() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['populerMi'])) ||
+        (request.auth != null && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['kategori', 'storytelUrl', 'storytelSure', 'storytelPuan', 'storytelPuanlamaSayisi', 'storytelSeslendiren', 'storytelKategori']));
     }
 
     match /disariListeler/{listeId} {

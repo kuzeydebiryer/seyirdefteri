@@ -178,16 +178,17 @@ export default function KitaplarKesfet() {
 
   useEffect(() => {
     // Önce "popüler" (Serkan'ın elle işaretlediği haftalık öne çıkanlar)
-    // gösterilsin, hiç yoksa genel listeden birkaç tanesi gösterilsin —
-    // ana Kitap sayfasında hiçbir zaman boş bir şerit görünmesin diye.
-    storytelPopulerleriGetir().then((populerler) => {
-      if (populerler.length > 0) {
-        setStorytelOnizleme(populerler.slice(0, 10))
-      } else {
-        storytelKitaplariGetir().then((hepsi) => setStorytelOnizleme(hepsi.slice(0, 10)))
-      }
+    // gösterilsin, kalan yer varsa en YENİ eklenenlerle (tarih'e göre,
+    // storytelKitaplariGetir zaten desc sıralı döndürüyor) dolduruluyor —
+    // önceden popüler liste doluyken yeni eklenen bir kitap bu şeritte
+    // HİÇ görünmüyordu, artık popülerin altındaki boş sırlarda görünüyor.
+    Promise.all([storytelPopulerleriGetir(), storytelKitaplariGetir()]).then(([populerler, hepsi]) => {
+      const populerIdSeti = new Set(populerler.map((k) => k.id))
+      const yeniEklenenler = hepsi.filter((k) => !populerIdSeti.has(k.id))
+      setStorytelOnizleme([...populerler, ...yeniEklenenler].slice(0, 10))
     })
   }, [])
+
 
   useEffect(() => {
     let iptal = false

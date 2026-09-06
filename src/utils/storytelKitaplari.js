@@ -74,3 +74,19 @@ export async function storytelPopulerligiDegistir(kitapId, yeniDeger) {
 export async function storytelKitabiKaldir(kitapId) {
   await deleteDoc(doc(db, 'storytelKitaplari', String(kitapId)))
 }
+
+// Seslendiren sayfası için — bir seslendirenin işaretlediğimiz TÜM
+// Storytel kitaplarını getiriyor. "storytelSeslendiren" alanı birden
+// fazla seslendireni virgülle ayırarak tutabildiği için (bkz.
+// functions/index.js) tam eşleşme yerine virgülle ayrılmış listede
+// geçiyor mu diye bakıyoruz.
+export async function storytelKitaplariSeslendireneGoreGetir(isim) {
+  const tumKitaplar = await storytelKitaplariGetir()
+  const q = isim.trim().toLocaleLowerCase('tr-TR')
+  return tumKitaplar.filter((k) =>
+    (k.storytelSeslendiren || '')
+      .split(',')
+      .map((s) => s.trim().toLocaleLowerCase('tr-TR'))
+      .includes(q)
+  )
+}

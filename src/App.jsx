@@ -50,6 +50,7 @@ const YakindaGeliyorSayfasi = lazy(() => import('./pages/YakindaGeliyorSayfasi.j
 const KitaplarKesfet = lazy(() => import('./pages/KitaplarKesfet.jsx'))
 const KitapIstekleri = lazy(() => import('./pages/KitapIstekleri.jsx'))
 const StorytelKitaplari = lazy(() => import('./pages/StorytelKitaplari.jsx'))
+const StorytelSeslendirenSayfasi = lazy(() => import('./pages/StorytelSeslendirenSayfasi.jsx'))
 const KitapKatalogBakimi = lazy(() => import('./pages/KitapKatalogBakimi.jsx'))
 const Listelerim = lazy(() => import('./pages/Listelerim.jsx'))
 const Oscar = lazy(() => import('./pages/Oscar.jsx'))
@@ -159,6 +160,7 @@ export default function App() {
             <Route path="/kitap-istekleri" element={<OzelRota><KitapIstekleri /></OzelRota>} />
             <Route path="/storytel-kitaplari" element={<OzelRota><StorytelKitaplari /></OzelRota>} />
             <Route path="/storytel-kitaplari/:kategoriId" element={<OzelRota><StorytelKitaplari /></OzelRota>} />
+            <Route path="/storytel-seslendiren/:isim" element={<OzelRota><StorytelSeslendirenSayfasi /></OzelRota>} />
             <Route path="/kitaplar/bakim" element={<OzelRota><KitapKatalogBakimi /></OzelRota>} />
             <Route path="/listelerim" element={<OzelRota><Listelerim /></OzelRota>} />
             <Route path="/oscar" element={<OscarYonlendirme />} />
