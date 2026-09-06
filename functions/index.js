@@ -891,14 +891,26 @@ exports.storytelKitapBilgisiGetir = onCall(async (request) => {
 // İDEMPOTENT: sadece HÂLÂ kapaksız olanlara dokunuyor, tekrar tekrar
 // çalıştırmak güvenli — kuyruk büyükse birkaç kez çalıştırıp devam
 // edilebilir (dönen "sinirlandiMi" alanı bunu işaret ediyor).
+// Open Library, kimliksiz (User-Agent'sız) istekleri — özellikle bulut
+// sağlayıcılarından (Cloud Functions gibi) gelenleri — çok daha agresif
+// rate-limit'liyor/engelliyor. Tarayıcıdan giden istekler (openLibrary.js,
+// kullanıcının kendi tarayıcısında çalışıyor) gerçek bir tarayıcı User-Agent'ı
+// taşıdığı için bu sorunu hiç yaşamıyor — bu yüzden "yazar sayfasından tek
+// tek eklerken kapak buluyor ama toplu araç bulamıyor" farkı ortaya çıkıyor.
+const OPEN_LIBRARY_BASLIKLARI = { 'User-Agent': 'Seyirdefteri/1.0 (+https://seyirdefteri.net; kitap kapagi arama)' }
+
 async function openLibraryKapakIsbnIle(isbn) {
   try {
-    const res = await fetch(`https://openlibrary.org/isbn/${isbn}.json`)
-    if (!res.ok) return ''
+    const res = await fetch(`https://openlibrary.org/isbn/${isbn}.json`, { headers: OPEN_LIBRARY_BASLIKLARI })
+    if (!res.ok) {
+      console.warn(`Open Library ISBN ${isbn} — HTTP ${res.status}`)
+      return ''
+    }
     const data = await res.json()
     const kapakId = data.covers?.[0]
     return kapakId ? `https://covers.openlibrary.org/b/id/${kapakId}-L.jpg` : ''
-  } catch {
+  } catch (err) {
+    console.warn(`Open Library ISBN ${isbn} — istek başarısız:`, err.message)
     return ''
   }
 }
@@ -908,12 +920,16 @@ async function openLibraryKapakBaslikIle(baslik, yazar) {
   try {
     const parcalar = [`title=${encodeURIComponent(baslik)}`]
     if (yazar) parcalar.push(`author=${encodeURIComponent(yazar.split(',')[0])}`)
-    const res = await fetch(`https://openlibrary.org/search.json?${parcalar.join('&')}&limit=5`)
-    if (!res.ok) return ''
+    const res = await fetch(`https://openlibrary.org/search.json?${parcalar.join('&')}&limit=5`, { headers: OPEN_LIBRARY_BASLIKLARI })
+    if (!res.ok) {
+      console.warn(`Open Library başlık araması "${baslik}" — HTTP ${res.status}`)
+      return ''
+    }
     const data = await res.json()
     const eslesen = (data.docs || []).find((d) => d.cover_i)
     return eslesen?.cover_i ? `https://covers.openlibrary.org/b/id/${eslesen.cover_i}-L.jpg` : ''
-  } catch {
+  } catch (err) {
+    console.warn(`Open Library başlık araması "${baslik}" — istek başarısız:`, err.message)
     return ''
   }
 }
