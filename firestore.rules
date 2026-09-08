@@ -588,12 +588,15 @@ service cloud.firestore {
     // alt koleksiyondaki her film sadece yönetici tarafından
     // eklenip/silinebiliyor (bkz. utils/disariListeler.js). Alt koleksiyon
     // kuralı üst belgenin match bloğunun İÇİNDE tanımlanıyor.
-    // Storytel'de mevcut kitap işaretleme — Yeni Gelen Filmler ile aynı
-    // açıklık düzeyi: sadece yönetici değil, giriş yapmış herkes
-    // ekleyip/kaldırabiliyor.
+    // Storytel'de mevcut kitap işaretleme — EKLEMEK giriş yapmış herkese
+    // açık (Yeni Gelen Filmler ile aynı açıklık düzeyi). KALDIRMAK ise
+    // SADECE yönetici — bir kitabı Storytel'de işaretlemek emek istiyor
+    // (link bulup bilgi çekmek, kategori seçmek), herhangi bir kullanıcının
+    // meraktan/yanlışlıkla tek tıkla silebilmesi bunu anlamsız kılıyordu.
     match /storytelKitaplari/{kitapId} {
       allow read: if true;
-      allow create, delete: if request.auth != null;
+      allow create: if request.auth != null;
+      allow delete: if yoneticiMi();
       // "populerMi" (haftanın öne çıkanı) SADECE yönetici tarafından
       // değiştirilebiliyor — Serkan bunu elle, haftalık güncelliyor.
       // Diğer alanlar (kategori + storytelKitapBilgisiGetir'den gelen

@@ -604,6 +604,15 @@ export default function EserSayfasi({ tur }) {
   async function storytelIsaretiDegistir() {
     if (!kullanici || !detay) return
     if (storytelMi) {
+      // Storytel bilgisini eklemek (link bulup çekmek, doğru kategoriyi
+      // seçmek) emek istiyor — herhangi bir kullanıcının meraktan tek
+      // tıkla silebilmesi bunu anlamsız kılıyordu. Kaldırma artık sadece
+      // yönetici — bkz. firestore.rules'taki storytelKitaplari "delete" kuralı,
+      // burası SADECE arayüzde erken/anlaşılır bir mesaj vermek için.
+      if (!profil?.yonetici) {
+        window.alert("Bu kitabın Storytel bilgisini sadece yönetici kaldırabilir.")
+        return
+      }
       setStorytelIsleniyor(true)
       try {
         await storytelKitabiKaldir(id)
@@ -1962,7 +1971,7 @@ export default function EserSayfasi({ tur }) {
                   onClick={storytelIsaretiDegistir}
                   disabled={storytelIsleniyor}
                   className="flex flex-col items-center gap-1 disabled:opacity-40"
-                  title={storytelMi ? "Storytel'den kaldır" : "Bu kitap Storytel'de mevcut, işaretle"}
+                  title={storytelMi ? (profil?.yonetici ? "Storytel'den kaldır" : "Storytel bilgisi (kaldırmak için yönetici gerekir)") : "Bu kitap Storytel'de mevcut, işaretle"}
                 >
                   <StorytelIkon className={`h-6 w-6 ${storytelMi ? 'text-[#FF5B22]' : 'text-kraft opacity-30'}`} />
                   <span className="text-[10px] uppercase tracking-wide text-kraft">Storytel</span>
@@ -2005,7 +2014,20 @@ export default function EserSayfasi({ tur }) {
               )}
               {tur === 'kitap' && izlenecekKaydi?.durum !== 'dinleniyor' && izlenecekKaydi?.durum !== 'tamamlandi' && kullanici && (
                 <button
-                  onClick={() => setDinlemeFormAcik((a) => !a)}
+                  onClick={() => {
+                    // Storytel'den bilgi çekilmişse ("20sa 4dk" gibi bir dize —
+                    // bkz. storytelKitapBilgisiGetir), formu açarken saat/dakikayı
+                    // otomatik dolduruyoruz — kullanıcı elle girmek zorunda kalmasın.
+                    // Kendi girdiği bir değer varsa üzerine yazmıyoruz.
+                    if (!dinlemeFormAcik && !toplamSaatGirisi && !toplamDakikaGirisi && storytelDetay?.storytelSure) {
+                      const eslesme = storytelDetay.storytelSure.match(/(\d+)\s*sa\s*(\d+)\s*dk/i)
+                      if (eslesme) {
+                        setToplamSaatGirisi(eslesme[1])
+                        setToplamDakikaGirisi(eslesme[2])
+                      }
+                    }
+                    setDinlemeFormAcik((a) => !a)
+                  }}
                   disabled={izlenecekIsleniyor}
                   className="self-center rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-murekkep ring-1 ring-cizgi disabled:opacity-40"
                 >
