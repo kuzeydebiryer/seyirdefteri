@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { getFunctions } from 'firebase/functions'
+import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -19,3 +20,4 @@ export const auth = getAuth(app)
 // (bkz. functions/index.js setGlobalOptions) — yoksa çağrı varsayılan
 // us-central1'e gider ve 404/CORS hatası alırsınız.
 export const functions = getFunctions(app, 'europe-west1')
+export const storage = getStorage(app)

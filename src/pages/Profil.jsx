@@ -15,6 +15,7 @@ import { gorunenAdGetir, gecmisPaylasimlariGuncelle } from '../utils/gorunenAd.j
 import { takipEt, takipBirak } from '../utils/takip.js'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import EserSecici from '../components/EserSecici.jsx'
+import GorselYukleButonu from '../components/GorselYukleButonu.jsx'
 import YatayKaydirma from '../components/YatayKaydirma.jsx'
 import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
 import BinKitapIkon from '../components/ikonlar/BinKitapIkon.jsx'
@@ -619,6 +620,9 @@ export default function Profil() {
                   placeholder="https://..."
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
+                <div className="mt-1.5">
+                  <GorselYukleButonu klasor="kapaklar" onYuklendi={setKapakTaslak} etiket="📷 Cihazdan Yükle" />
+                </div>
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Avatar Görsel URL</label>
@@ -629,6 +633,9 @@ export default function Profil() {
                   placeholder="https://..."
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
+                <div className="mt-1.5">
+                  <GorselYukleButonu klasor="avatarlar" onYuklendi={setAvatarTaslak} etiket="📷 Cihazdan Yükle" />
+                </div>
                 <p className="mt-2 mb-1 text-xs text-kraft">...veya sinema/dizi/tiyatro/sanat temalı bir avatar seç:</p>
                 <div className="flex flex-wrap gap-2">
                   {TEMA_AVATARLARI.map((t) => {

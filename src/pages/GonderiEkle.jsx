@@ -11,6 +11,7 @@ import { sanatEseriAra } from '../utils/sanatEserleri.js'
 import { eserIstatistikGuncelle } from '../utils/eserIstatistik.js'
 import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
+import GorselYukleButonu from '../components/GorselYukleButonu.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -211,13 +212,10 @@ export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, o
     setIlgiliDisId(null)
   }
 
-  function gorselEkle() {
-    const url = window.prompt('Görsel URL\'i yapıştır (jpg, png, gif, webp):')
-    if (!url || !url.trim()) return
-    const temizUrl = url.trim()
+  function imlecKonumunaMetinEkle(eklenecekUrl) {
     const ta = gunceRef.current
     const imlecKonumu = ta ? ta.selectionStart : gunce.length
-    const eklenecek = `\n\n${temizUrl}\n\n`
+    const eklenecek = `\n\n${eklenecekUrl}\n\n`
     const yeniMetin = gunce.slice(0, imlecKonumu) + eklenecek + gunce.slice(imlecKonumu)
     setGunce(yeniMetin)
     const yeniKonum = imlecKonumu + eklenecek.length
@@ -227,6 +225,12 @@ export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, o
         ta.setSelectionRange(yeniKonum, yeniKonum)
       }
     }, 0)
+  }
+
+  function gorselEkle() {
+    const url = window.prompt('Görsel URL\'i yapıştır (jpg, png, gif, webp):')
+    if (!url || !url.trim()) return
+    imlecKonumunaMetinEkle(url.trim())
   }
 
   async function disIdIleGetir(hedefTur, disId) {
@@ -1160,18 +1164,22 @@ export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, o
           {kategori !== 'yazi' && (
             <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Güncen</label>
           )}
-          {kategori === 'yazi' && (
-            <div className="mb-2 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={gorselEkle}
-                className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
-              >
-                🖼 Görsel Ekle
-              </button>
-              <p className="text-[11px] text-kraft">İpucu: bir görsel linkini kendi satırına yapıştırırsan otomatik resme dönüşür</p>
-            </div>
-          )}
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={gorselEkle}
+              className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
+            >
+              🖼 Görsel Ekle (link)
+            </button>
+            <GorselYukleButonu
+              klasor="gonderi-gorselleri"
+              onYuklendi={imlecKonumunaMetinEkle}
+              etiket="📷 Cihazdan Yükle"
+              sinif="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50 disabled:opacity-40"
+            />
+            <p className="text-[11px] text-kraft">İpucu: bir görsel linkini kendi satırına yapıştırırsan otomatik resme dönüşür</p>
+          </div>
           <textarea
             ref={gunceRef}
             value={gunce}

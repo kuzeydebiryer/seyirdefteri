@@ -1,4 +1,4 @@
-import { NavLink, Link, useNavigate } from 'react-router-dom'
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
@@ -36,10 +36,30 @@ export default function Nav() {
   const { kullanici, profil, cikisYap } = useAuth()
   const { tema, temaDegistir } = useTema()
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuAcik, setMenuAcik] = useState(false)
   const [bildirimIzni, setBildirimIzni] = useState('default')
   const [bildirimDestekli, setBildirimDestekli] = useState(false)
   const [bildirimIsleniyor, setBildirimIsleniyor] = useState(false)
+
+  // Kullanıcılardan gelen tekrarlayan şikayet: kitap/film/dizi gibi birçok
+  // sayfada geri gidecek bir yol yok. Çoğu kullanıcı uygulamayı ana ekrana
+  // eklenmiş PWA olarak veya tarayıcı çubuğunun gizlendiği bir görünümde
+  // kullanıyor — tarayıcının kendi geri tuşu her zaman elle erişilebilir
+  // değil. Her sayfaya ayrı ayrı eklemek yerine TEK bir yerde, genel
+  // başlıkta çözüyoruz — böylece yeni eklenen her sayfa otomatik kapsanmış
+  // olur. history.state.idx > 0 kontrolü: BrowserRouter kullanıyoruz (bkz.
+  // main.jsx), bu yüzden uygulama içinde en az bir adım geçmiş var mı diye
+  // güvenle bakabiliyoruz — yoksa (ör. paylaşılan bir linkle direkt
+  // girilmişse) navigate(-1) uygulamanın dışına/boş sayfaya çıkarabilirdi,
+  // o durumda ana sayfaya dönüyoruz.
+  function geriGit() {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1)
+    } else {
+      navigate('/')
+    }
+  }
 
   useEffect(() => {
     bildirimDurumu().then(({ destekleniyor, izin }) => {
@@ -77,6 +97,15 @@ export default function Nav() {
   return (
     <header className="border-b border-cizgi">
       <div className="mx-auto flex max-w-3xl items-center px-4 py-4">
+        {location.pathname !== '/' && (
+          <button
+            onClick={geriGit}
+            className="sm:hidden mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-lg text-murekkep"
+            aria-label="Geri"
+          >
+            ←
+          </button>
+        )}
         <Link to="/" onClick={() => setMenuAcik(false)} className="shrink-0" aria-label="Anasayfa">
           <Logo sadeceIkon boyut={34} />
         </Link>
