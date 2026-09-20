@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDocs, limit, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // Başlangıç havuzu — ~200 konu. 500'e tamamlamak gerçek bir içerik üretim
@@ -399,53 +399,79 @@ async function havuzuGetir() {
   return onbellekliHavuz
 }
 
-// Konu döngüsünün periyodu — kaç günde bir yenilenir. Küçük bir topluluk
-// için GÜNLÜK yenilenme, bir konunun 1-2 yanıt alıp kaybolmasına yol
-// açabiliyor ("ortak tartışma" hissi zayıf kalıyor). Haftalık, herkesin
-// görüp katılacak zamanı olmasını, bir konunun gerçek bir yanıt kümesi
-// biriktirmesini sağlıyor. Tek bir sayıyı değiştirerek (3, 5, 7...)
-// ayarlanabilir.
-const PERIYOT_GUN = 3
+// Yayın süresi seçenekleri — yönetici, yeni bir konu yayınlarken bunlardan
+// birini seçiyor (gün). Sabit bir periyot/otomatik döngü YOK artık — konu
+// tamamen yönetici kararıyla değişiyor; gün sayısı sadece "ne zamana kadar
+// güncel" bilgisini kullanıcıya göstermek için tutuluyor (süresi dolsa bile
+// yönetici yeni bir konu seçmediği sürece aynı konu gösterilmeye devam eder).
+export const GUN_SECENEKLERI = [3, 4, 5, 6, 7]
 
-function donemBaslangicTarihi(bugunISO) {
-  // Sabit bir epoch'tan (2026-01-01) itibaren kaç PERIYOT_GUN'luk dilim
-  // geçtiğini hesaplayıp, o dilimin İLK gününü döndürür — böylece aynı
-  // 7 günlük pencere içindeki herkes aynı "dönem anahtarı"na düşer.
-  const epoch = new Date('2026-01-01T00:00:00Z')
-  const bugun = new Date(bugunISO + 'T00:00:00Z')
-  const gecenGun = Math.floor((bugun - epoch) / (1000 * 60 * 60 * 24))
-  const donemIndeksi = Math.floor(gecenGun / PERIYOT_GUN)
-  const donemBaslangici = new Date(epoch.getTime() + donemIndeksi * PERIYOT_GUN * 24 * 60 * 60 * 1000)
-  return donemBaslangici.toISOString().slice(0, 10)
+// Yönetici tarafından MANUEL olarak bir konunun yayına alınması — havuzdan
+// seçilmiş bir konu (konuId doluysa) ya da tamamen özel/serbest yazılmış bir
+// metin (konuId null) olabilir. Her yayına alma, gununKonulari koleksiyonuna
+// KALICI bir kayıt olarak eklenir (arşivin/geçmişin kaynağı budur) ve en son
+// eklenen kayıt aynı zamanda "şu an yayında olan konu" sayılır (bkz.
+// gununKonusuGetir). Firestore kuralı bu koleksiyona create/delete'i sadece
+// yoneticiMi() olanlara açıyor.
+export async function konuSecVeYayinla({ konu, konuId = null, gunSayisi }, kullanici) {
+  const bugun = new Date()
+  const baslangicTarihi = bugun.toISOString().slice(0, 10)
+  const bitisTarihi = new Date(bugun.getTime() + gunSayisi * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  await addDoc(collection(db, 'gununKonulari'), {
+    konu: konu.trim(),
+    konuId,
+    gunSayisi,
+    baslangicTarihi,
+    bitisTarihi,
+    damgaTarihi: serverTimestamp(),
+    belirleyenId: kullanici?.uid || null,
+  })
 }
 
-// Bir dönemin konusu — İLK hesaplandığı anda Firestore'a KALICI olarak
-// yazılıyor (gununKonulari/{donemTarihi}). Bu, havuz sonradan büyüse bile
-// (topluluk yeni konu önerdikçe) GEÇMİŞ dönemlerin konusunun asla
-// değişmemesini garanti ediyor — arşivin güvenilir olmasının şartı bu.
+// Şu an yayında olan konu — en son yayına alınan kayıt (damgaTarihi'ne göre
+// en yeni). Hiç konu yayınlanmadıysa null döner (widget bu durumda
+// yöneticiye "bir konu seç" bağlantısı gösteriyor). suresiDoldu, sadece
+// bilgilendirme amaçlı — otomatik bir değişikliğe yol açmıyor.
 export async function gununKonusuGetir() {
-  const donemTarihi = donemBaslangicTarihi(new Date().toISOString().slice(0, 10))
-  const kayitliRef = doc(db, 'gununKonulari', donemTarihi)
-  const kayitliSnap = await getDoc(kayitliRef)
-  if (kayitliSnap.exists()) return { konu: kayitliSnap.data().konu, tarih: donemTarihi }
-
-  const havuz = await havuzuGetir()
-  if (havuz.length === 0) return null
-
-  let toplam = 0
-  for (let i = 0; i < donemTarihi.length; i++) toplam += donemTarihi.charCodeAt(i)
-  const secilen = havuz[toplam % havuz.length]
-
-  await setDoc(kayitliRef, { konu: secilen.konu, konuId: secilen.id, damgaTarihi: serverTimestamp() })
-  return { konu: secilen.konu, tarih: donemTarihi }
+  const q = query(collection(db, 'gununKonulari'), orderBy('damgaTarihi', 'desc'), limit(1))
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+  const veri = snap.docs[0].data()
+  const bugunISO = new Date().toISOString().slice(0, 10)
+  return {
+    id: snap.docs[0].id,
+    konu: veri.konu,
+    tarih: veri.baslangicTarihi,
+    gunSayisi: veri.gunSayisi,
+    baslangicTarihi: veri.baslangicTarihi,
+    bitisTarihi: veri.bitisTarihi,
+    suresiDoldu: veri.bitisTarihi ? bugunISO > veri.bitisTarihi : false,
+  }
 }
 
-// Arşiv — geçmiş dönemlerin konuları, en yeniden eskiye. Sadece daha önce
-// GERÇEKTEN gösterilmiş (yani gununKonulari'na yazılmış) dönemleri listeler.
+// Arşiv — yönetici tarafından yayına alınmış tüm konular, en yeniden eskiye
+// (şu an yayında olan da dahil — gununKonusuGetir zaten bunların en
+// yenisini "aktif" olarak kullanıyor).
 export async function gecmisKonulariGetir(limitSayisi = 30) {
   const q = query(collection(db, 'gununKonulari'), orderBy('damgaTarihi', 'desc'), limit(limitSayisi))
   const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ tarih: d.id, konu: d.data().konu }))
+  return snap.docs.map((d) => ({
+    id: d.id,
+    tarih: d.data().baslangicTarihi,
+    bitisTarihi: d.data().bitisTarihi,
+    gunSayisi: d.data().gunSayisi,
+    konu: d.data().konu,
+  }))
+}
+
+// Geçmiş Konular'ı sıfırdan başlatır — gununKonulari koleksiyonundaki TÜM
+// kayıtları kalıcı olarak siler (eski otomatik/periyodik döngüden kalan
+// kayıtlar dahil). Geri alınamaz; sadece yönetici çağırabilir (Firestore
+// kuralı da bunu zorunlu kılıyor).
+export async function gecmisiSifirla() {
+  const snap = await getDocs(collection(db, 'gununKonulari'))
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
+  return { silinen: snap.size }
 }
 
 // Bugünün konusuna yazılmış günceleri getirir — "kaç kişi bugün bu konu

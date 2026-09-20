@@ -15,6 +15,7 @@ function KonuSatiri({ kayit }) {
     <li className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
       <p className="text-xs text-kraft">
         {new Date(kayit.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+        {kayit.gunSayisi ? ` · ${kayit.gunSayisi} gün yayında kaldı` : ''}
       </p>
       <p className="mt-1 font-baslik text-lg text-murekkep">{kayit.konu}</p>
       <button onClick={ac} className="mt-2 text-xs text-deniz hover:underline">
@@ -58,7 +59,7 @@ export default function DusunceArsivi() {
 
       <ul className="space-y-3">
         {kayitlar?.map((k) => (
-          <KonuSatiri key={k.tarih} kayit={k} />
+          <KonuSatiri key={k.id} kayit={k} />
         ))}
       </ul>
     </div>

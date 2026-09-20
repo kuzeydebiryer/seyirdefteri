@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
@@ -12,6 +12,8 @@ import { eserIstatistikGuncelle } from '../utils/eserIstatistik.js'
 import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
 import GorselYukleButonu from '../components/GorselYukleButonu.jsx'
+import EserSecici from '../components/EserSecici.jsx'
+import { eserReferanslariniBul } from '../utils/icerikAyristir.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -121,6 +123,9 @@ export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, o
   const [instagramUrl, setInstagramUrl] = useState('')
   const [spoiler, setSpoiler] = useState(false)
   const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [eserEkleAcik, setEserEkleAcik] = useState(false)
+  const [eserEkleKategori, setEserEkleKategori] = useState('Film')
+  const [eserDuzeni, setEserDuzeni] = useState('yatay') // 'yatay' şerit ya da 'dikey' numaralı liste
   const gunceRef = useRef(null)
 
   const apiliKategori = API_KATEGORILERI.includes(kategori)
@@ -231,6 +236,46 @@ export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, o
     const url = window.prompt('Görsel URL\'i yapıştır (jpg, png, gif, webp):')
     if (!url || !url.trim()) return
     imlecKonumunaMetinEkle(url.trim())
+  }
+
+  // EserSecici'den gelen seçimi (film/dizi/kitap/oyuncu) metne, kendi
+  // paragrafı olan gizli bir @@eser: bloğu olarak ekler — icerikAyristir.js
+  // bunu ayrıştırıp GomuluEserSeridi ile karta dönüştürüyor. Art arda
+  // eklenen 2+ referans otomatik olarak bir liste oluyor (örn. "En iyi 10
+  // film" cevabı için sırayla 10 kez Film Ekle) — eserDuzeni seçimi
+  // (yatay şerit / dikey numaralı liste) her öğeye damgalanıyor.
+  function eserEklendi(secim) {
+    imlecKonumunaMetinEkle(`@@eser:${JSON.stringify({ ...secim, duzen: eserDuzeni })}`)
+    // Popover'ı bilerek kapatmıyoruz — art arda birkaç eser eklemek
+    // (bir liste oluştururken) çok daha az tıklama gerektiriyor.
+  }
+
+  // Ham metindeki tüm @@eser: referanslarını (konumlarıyla) her render'da
+  // yeniden tarıyor — "Eklenen Eserler" yönetim şeridinin veri kaynağı.
+  const eklenenEserler = useMemo(() => eserReferanslariniBul(gunce), [gunce])
+
+  function eseriKaldir(indeks) {
+    const hedef = eklenenEserler[indeks]
+    if (!hedef) return
+    const yeni = (gunce.slice(0, hedef.index) + gunce.slice(hedef.index + hedef.tamMetin.length)).replace(/\n{3,}/g, '\n\n')
+    setGunce(yeni)
+  }
+
+  // İki referansın metin içindeki konumlarını birbiriyle değiştirir —
+  // aralarındaki her şey (metin, görsel, başka eserler) olduğu gibi kalır.
+  function eseriTasi(indeks, yon) {
+    const hedefIndeks = indeks + yon
+    const a = eklenenEserler[indeks]
+    const b = eklenenEserler[hedefIndeks]
+    if (!a || !b) return
+    const [ilk, ikinci] = a.index < b.index ? [a, b] : [b, a]
+    const yeni =
+      gunce.slice(0, ilk.index) +
+      ikinci.tamMetin +
+      gunce.slice(ilk.index + ilk.tamMetin.length, ikinci.index) +
+      ilk.tamMetin +
+      gunce.slice(ikinci.index + ikinci.tamMetin.length)
+    setGunce(yeni)
   }
 
   async function disIdIleGetir(hedefTur, disId) {
@@ -1178,8 +1223,115 @@ export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, o
               etiket="📷 Cihazdan Yükle"
               sinif="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50 disabled:opacity-40"
             />
+            <button
+              type="button"
+              onClick={() => setEserEkleAcik((a) => !a)}
+              className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
+            >
+              🎬📚 Eser Ekle
+            </button>
             <p className="text-[11px] text-kraft">İpucu: bir görsel linkini kendi satırına yapıştırırsan otomatik resme dönüşür</p>
           </div>
+
+          {eserEkleAcik && (
+            <div className="mb-3 rounded-sm bg-kagit p-3 ring-1 ring-cizgi">
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {['Film', 'Dizi', 'Kitap', 'Oyuncu'].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setEserEkleKategori(k)}
+                    className={`rounded-full px-2.5 py-1 text-[11px] ${
+                      eserEkleKategori === k ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                    }`}
+                  >
+                    {k}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setEserEkleAcik(false)}
+                  className="ml-auto rounded-full px-2.5 py-1 text-[11px] text-kraft hover:text-muhur"
+                >
+                  ✕ Kapat
+                </button>
+              </div>
+              <div className="mb-2 flex items-center gap-2 text-[11px] text-kraft">
+                <span>2+ eser eklersen görünüm:</span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setEserDuzeni('yatay')}
+                    className={`rounded-full px-2 py-0.5 ${
+                      eserDuzeni === 'yatay' ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                    }`}
+                  >
+                    ↔ Şerit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEserDuzeni('dikey')}
+                    className={`rounded-full px-2 py-0.5 ${
+                      eserDuzeni === 'dikey' ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                    }`}
+                  >
+                    ☰ Liste
+                  </button>
+                </div>
+              </div>
+              <EserSecici kategori={eserEkleKategori} secili={null} onSecim={eserEklendi} onTemizle={() => {}} />
+              <p className="mt-2 text-[11px] text-kraft">
+                Seçtiğin her eser metnin içine eklenir — "en iyi 10 film" gibi bir liste için sırayla birden fazla ekleyebilirsin.
+              </p>
+            </div>
+          )}
+
+          {eklenenEserler.length > 0 && (
+            <div className="mb-3 rounded-sm bg-kagit p-2.5 ring-1 ring-cizgi">
+              <p className="mb-1.5 text-[11px] text-kraft">
+                Eklenen eserler ({eklenenEserler.length}) — sırayı değiştirebilir ya da çıkarabilirsin:
+              </p>
+              <ul className="space-y-1">
+                {eklenenEserler.map((oge, i) => (
+                  <li key={i} className="flex items-center gap-2 rounded-sm bg-kagitKoyu px-2 py-1">
+                    <div className="h-8 w-6 shrink-0 overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
+                      {oge.veri.posterUrl && (
+                        <img src={oge.veri.posterUrl} alt="" className="h-full w-full object-cover" />
+                      )}
+                    </div>
+                    <span className="min-w-0 flex-1 truncate text-xs text-murekkep">{oge.veri.baslik}</span>
+                    <button
+                      type="button"
+                      onClick={() => eseriTasi(i, -1)}
+                      disabled={i === 0}
+                      className="text-xs text-kraft hover:text-deniz disabled:opacity-30"
+                      title="Yukarı taşı"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => eseriTasi(i, 1)}
+                      disabled={i === eklenenEserler.length - 1}
+                      className="text-xs text-kraft hover:text-deniz disabled:opacity-30"
+                      title="Aşağı taşı"
+                    >
+                      ▼
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => eseriKaldir(i)}
+                      className="text-xs text-kraft hover:text-muhur"
+                      title="Kaldır"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <textarea
             ref={gunceRef}
             value={gunce}

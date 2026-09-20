@@ -152,6 +152,8 @@ export default function Anasayfa() {
 
       <SonYorumlarBolumu />
 
+      <BugununDusuncesiWidget />
+
       <SonAlintilarBolumu limitSayisi={3} />
 
       <KitapAriyorumWidget />
@@ -161,8 +163,6 @@ export default function Anasayfa() {
       <SeyirPanosuOnizleme />
 
       <GunlukKesif />
-
-      <BugununDusuncesiWidget />
 
       <AcilirKapanirBolum etiket="🏆 Yaklaşan Ödül Törenleri">
         <OdullerVitrini />

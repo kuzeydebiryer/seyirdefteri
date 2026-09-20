@@ -233,12 +233,15 @@ service cloud.firestore {
       allow delete: if yoneticiMi();
     }
 
-    // Bir dönemin (gununKonulari) hangi konuya denk geldiğinin kalıcı
-    // kaydı — arşivin güvenilirliği bu koleksiyonun asla değişmemesine
-    // bağlı, o yüzden sadece "create" var, update/delete yok.
-    match /gununKonulari/{tarih} {
+    // "Bugünün Düşüncesi" — hangi konunun ne zaman yayına alındığının
+    // kalıcı kaydı. Artık periyodik/otomatik değil, tamamen yönetici
+    // kararıyla oluşturuluyor: hem yeni bir konu yayınlamak (create) hem de
+    // Geçmiş Konular'ı sıfırlamak (delete) sadece yöneticiye açık. Update
+    // yok — bir kez yayınlanan kaydın arşivde değişmemesi önemli.
+    match /gununKonulari/{kayitId} {
       allow read: if true;
-      allow create: if request.auth != null;
+      allow create: if yoneticiMi();
+      allow delete: if yoneticiMi();
     }
 
     // İlham Panosu — üyelerin paylaştığı Instagram gönderileri.

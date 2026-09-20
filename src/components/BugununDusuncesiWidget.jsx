@@ -116,33 +116,52 @@ export default function BugununDusuncesiWidget() {
             <li><strong className="text-murekkep">Aracısız Anlatım:</strong> Yazar aradan çekilir; okur, karakterin zihnini doğrudan izler.</li>
           </ul>
           <p>
-            Burada bu tekniği <strong className="text-murekkep">serbest düşünce havuzuyla</strong> birleştiriyoruz: her birkaç günde bir
-            havuzdan ortak bir soru/konu düşüyor, sen de o konu üzerine aklından geçenleri — mantık sırası, "doğru cümle kurma" kaygısı
-            olmadan — serbestçe yazıyorsun. Herkes aynı konuya farklı bir zihinden bakıyor; ortaya bir tartışma değil, bir "zihin
-            kesitleri" koleksiyonu çıkıyor.
+            Burada bu tekniği <strong className="text-murekkep">serbest düşünce havuzuyla</strong> birleştiriyoruz: yönetici havuzdan
+            (ya da tamamen özel) bir soru/konu seçip birkaç gün süreyle yayınlıyor, sen de o konu üzerine aklından geçenleri — mantık
+            sırası, "doğru cümle kurma" kaygısı olmadan — serbestçe yazıyorsun. Herkes aynı konuya farklı bir zihinden bakıyor; ortaya
+            bir tartışma değil, bir "zihin kesitleri" koleksiyonu çıkıyor.
           </p>
         </div>
       )}
 
       {konu === null ? (
-        kullanici && (
-          <div>
+        <div>
+          {konuSayisi === 0 ? (
+            kullanici && (
+              <>
+                <p className="text-sm text-kraft">
+                  Serbest Düşünce Havuzu henüz boş — Bilinç Akışı'nın tetikleyicisi için {BASLANGIC_KONULARI.length} konuluk
+                  başlangıç havuzunu bir kerelik yükleyebilirsin.
+                </p>
+                <button
+                  onClick={havuzuDolduTiklandi}
+                  disabled={havuzDolduruluyor}
+                  className="mt-2 rounded-full bg-gise px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                >
+                  {havuzDolduruluyor ? 'Yükleniyor...' : `Havuzu Doldur (${BASLANGIC_KONULARI.length} konu)`}
+                </button>
+              </>
+            )
+          ) : (
             <p className="text-sm text-kraft">
-              Serbest Düşünce Havuzu henüz boş — Bilinç Akışı'nın günlük tetikleyicisi için {BASLANGIC_KONULARI.length} konuluk
-              başlangıç havuzunu bir kerelik yükleyebilirsin.
+              Henüz bir konu yayınlanmadı.
+              {profil?.yonetici && (
+                <>
+                  {' '}
+                  <Link to="/dusunce-havuzu-yonetim" className="text-deniz hover:underline">
+                    Havuzdan bir konu seç →
+                  </Link>
+                </>
+              )}
             </p>
-            <button
-              onClick={havuzuDolduTiklandi}
-              disabled={havuzDolduruluyor}
-              className="mt-2 rounded-full bg-gise px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
-            >
-              {havuzDolduruluyor ? 'Yükleniyor...' : `Havuzu Doldur (${BASLANGIC_KONULARI.length} konu)`}
-            </button>
-          </div>
-        )
+          )}
+        </div>
       ) : (
         <>
           <h2 className="font-baslik text-xl text-murekkep leading-snug">{konu.konu}</h2>
+          <p className="mt-1 text-[11px] text-kraft">
+            {konu.gunSayisi} gün yayında{konu.suresiDoldu ? ' · süresi doldu' : ` · ${konu.bitisTarihi} tarihine kadar`}
+          </p>
 
           <div className="mt-3 flex flex-wrap items-center gap-3">
             {kullanici && (
