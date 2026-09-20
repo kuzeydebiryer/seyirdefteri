@@ -89,10 +89,15 @@ export default function GomuluEserSeridi({ ogeler, kompakt = false }) {
     )
   }
 
+  // "Şerit" düzeni — tek satırda yatay kaydırma DEĞİL (çok sayıda eser
+  // eklendiğinde ekran genişliğinden fazlası gizli kalıp fark edilmiyordu),
+  // bunun yerine sabit genişlikte kartların gerektikçe alt satırlara sarıp
+  // devam ettiği bir ızgara. Bu sayede 7, 20 ya da 50 öğe de olsa hepsi
+  // kaydırmaya gerek kalmadan görünüyor.
   return (
-    <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+    <div className="flex flex-wrap gap-3">
       {gecerliler.map((oge, i) => (
-        <Link key={i} to={`/${TUR_ROTA[oge.tur]}/${oge.disId}`} className="group block w-24 shrink-0">
+        <Link key={i} to={`/${TUR_ROTA[oge.tur]}/${oge.disId}`} className="group block w-20 shrink-0 sm:w-24">
           <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
             {oge.posterUrl && (
               <img src={oge.posterUrl} alt={oge.baslik} loading="lazy" className="h-full w-full object-cover" />
