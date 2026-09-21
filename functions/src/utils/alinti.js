@@ -6,11 +6,12 @@
 
 import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDocs, limit, orderBy, query, updateDoc, where, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from './gorunenAd.js'
 
 export async function alintiEkle(kullanici, profil, { kitapId, kitapBaslik, kitapYazar, kitapPosterUrl, metin, sayfa }) {
   await addDoc(collection(db, 'alintilar'), {
     kullaniciId: kullanici.uid,
-    kullaniciAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+    kullaniciAdi: gorunenAdGetir(profil, kullanici.displayName),
     kullaniciKullaniciAdi: profil?.kullaniciAdi || '',
     kullaniciAvatarUrl: profil?.avatarUrl || '',
     kitapId,
@@ -44,6 +45,14 @@ export async function kitapAlintilariGetir(kitapId) {
 // Topluluk genelinde en son paylaşılan alıntılar (Alıntı Duvarı sayfası için).
 export async function sonAlintilariGetir(limitSayisi = 30) {
   const q = query(collection(db, 'alintilar'), orderBy('tarih', 'desc'), limit(limitSayisi))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// Profil sayfasındaki "Alıntılarım" sayacı/listesi için — bir kullanıcının
+// PAYLAŞTIĞI tüm alıntılar.
+export async function kullaniciAlintilariGetir(uid) {
+  const q = query(collection(db, 'alintilar'), where('kullaniciId', '==', uid), orderBy('tarih', 'desc'))
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }

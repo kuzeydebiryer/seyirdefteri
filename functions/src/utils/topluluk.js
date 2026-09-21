@@ -1,10 +1,17 @@
-import { deleteDoc, doc, getDoc, getDocs, collection, increment, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore'
+import { arrayRemove, arrayUnion, deleteDoc, doc, getDoc, getDocs, collection, increment, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export async function topluluğaKatil(topluluklId, uid) {
   const batch = writeBatch(db)
   batch.set(doc(db, 'topluluklar', topluluklId, 'uyeler', uid), { katilmaTarihi: serverTimestamp() })
   batch.update(doc(db, 'topluluklar', topluluklId), { uyeSayisi: increment(1) })
+  // Ters indeks: "bu kullanıcı hangi topluluklara üye" sorusuna, sitedeki
+  // HER topluluğu tek tek kontrol etmeden (eskiden TopluluklarBildirimSeridi
+  // bunu yapıyordu — N topluluk = N okuma, her anasayfa ziyaretinde) tek bir
+  // okumayla cevap verebilmek için. Sadece bir görüntüleme/bildirim optimizasyonu
+  // — gerçek yetkilendirme hâlâ topluluklar/{id}/uyeler/{uid} alt koleksiyonundan
+  // kontrol ediliyor, bu dizi güvenlik kararı vermek için kullanılmıyor.
+  batch.update(doc(db, 'kullanicilar', uid), { uyeOlduklarim: arrayUnion(topluluklId) })
   await batch.commit()
 }
 
@@ -12,6 +19,7 @@ export async function topluluktanAyril(topluluklId, uid) {
   const batch = writeBatch(db)
   batch.delete(doc(db, 'topluluklar', topluluklId, 'uyeler', uid))
   batch.update(doc(db, 'topluluklar', topluluklId), { uyeSayisi: increment(-1) })
+  batch.update(doc(db, 'kullanicilar', uid), { uyeOlduklarim: arrayRemove(topluluklId) })
   await batch.commit()
 }
 
@@ -52,6 +60,7 @@ export async function katilmaIstegiOnayla(topluluklId, uid) {
   batch.set(doc(db, 'topluluklar', topluluklId, 'uyeler', uid), { katilmaTarihi: serverTimestamp() })
   batch.update(doc(db, 'topluluklar', topluluklId), { uyeSayisi: increment(1) })
   batch.delete(doc(db, 'topluluklar', topluluklId, 'istekler', uid))
+  batch.update(doc(db, 'kullanicilar', uid), { uyeOlduklarim: arrayUnion(topluluklId) })
   await batch.commit()
 }
 

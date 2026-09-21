@@ -7,14 +7,22 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { suankiOkunanKitabiGetir, ilerlemeGuncelle, izlenecekEkle, toplamSayfaTamamla } from '../utils/izlenecek.js'
 import { kitapGetir } from '../utils/kitapKatalog.js'
 import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
+import AlintiKatkiCagrisi from '../components/AlintiKatkiCagrisi.jsx'
 import KitapSecici from '../components/KitapSecici.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import HaberBolumu from '../components/HaberBolumu.jsx'
 import ListelerBolumu from '../components/ListelerBolumu.jsx'
 import KitapArama from '../components/KitapArama.jsx'
+import NobelBanner from '../components/NobelBanner.jsx'
 import GununKitabi from '../components/GununKitabi.jsx'
 import MeydanOkuma from '../components/MeydanOkuma.jsx'
+import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
+import AlintiOyunuKarti from '../components/AlintiOyunuKarti.jsx'
+import KitapIstekTanitimKarti from '../components/KitapIstekTanitimKarti.jsx'
+import { storytelKitaplariGetir, storytelPopulerleriGetir } from '../utils/storytelKitaplari.js'
+import YatayKaydirma from '../components/YatayKaydirma.jsx'
+import StorytelIkon from '../components/ikonlar/StorytelIkon.jsx'
 
 function SuankiKitapWidget() {
   const { kullanici } = useAuth()
@@ -166,6 +174,21 @@ export default function KitaplarKesfet() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const { tavsiyeler, yenidenYukle: tavsiyeleriYenile } = useTavsiyeler('kitap')
   const { haberler, yenidenYukle: haberleriYenile } = useHaberler('kitap')
+  const [storytelOnizleme, setStorytelOnizleme] = useState([])
+
+  useEffect(() => {
+    // Önce "popüler" (Serkan'ın elle işaretlediği haftalık öne çıkanlar)
+    // gösterilsin, kalan yer varsa en YENİ eklenenlerle (tarih'e göre,
+    // storytelKitaplariGetir zaten desc sıralı döndürüyor) dolduruluyor —
+    // önceden popüler liste doluyken yeni eklenen bir kitap bu şeritte
+    // HİÇ görünmüyordu, artık popülerin altındaki boş sırlarda görünüyor.
+    Promise.all([storytelPopulerleriGetir(), storytelKitaplariGetir()]).then(([populerler, hepsi]) => {
+      const populerIdSeti = new Set(populerler.map((k) => k.id))
+      const yeniEklenenler = hepsi.filter((k) => !populerIdSeti.has(k.id))
+      setStorytelOnizleme([...populerler, ...yeniEklenenler].slice(0, 10))
+    })
+  }, [])
+
 
   useEffect(() => {
     let iptal = false
@@ -189,10 +212,53 @@ export default function KitaplarKesfet() {
         <Link to="/kitaplar/bakim" className="text-[11px] text-kraft hover:text-deniz hover:underline">
           📋 Kitap Kataloğu Bakımı
         </Link>
+        <Link to="/kitap-kategorileri" className="text-[11px] text-kraft hover:text-deniz hover:underline">
+          🗂️ Kategoriler
+        </Link>
         <Link to="/alintilar" className="text-[11px] text-kraft hover:text-deniz hover:underline">
           💬 Alıntı Duvarı
         </Link>
       </div>
+
+      <KitapArama />
+
+      <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} />
+
+      <KitapIstekTanitimKarti />
+
+      {storytelOnizleme.length > 0 && (
+        <div className="mb-10">
+          <div className="mb-2 flex items-center justify-between">
+            <Link to="/storytel-kitaplari" className="flex items-center gap-1.5 font-baslik text-base text-murekkep hover:text-deniz">
+              <StorytelIkon className="h-4 w-4 text-[#FF5B22]" /> Storytel'de Olanlar
+            </Link>
+            <Link to="/storytel-kitaplari" className="text-xs text-kraft hover:text-deniz">
+              Tümünü Gör ›
+            </Link>
+          </div>
+          <YatayKaydirma>
+            {storytelOnizleme.map((k) => (
+              <Link key={k.id} to={`/kitap/${k.id}`} className="shrink-0" style={{ width: 100 }}>
+                <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                  {k.posterUrl ? (
+                    <img src={k.posterUrl} alt={k.baslik} loading="lazy" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">📖</div>
+                  )}
+                </div>
+                <p className="mt-1 truncate text-xs text-murekkep">{k.baslik}</p>
+              </Link>
+            ))}
+          </YatayKaydirma>
+        </div>
+      )}
+
+      <AlintiKatkiCagrisi />
+      <SonAlintilarBolumu limitSayisi={3} />
+
+      <NobelBanner />
+
+      <AlintiOyunuKarti />
 
       <SuankiKitapWidget />
 
@@ -201,12 +267,10 @@ export default function KitaplarKesfet() {
         <MeydanOkuma />
       </div>
 
-      <KitapArama />
-
-      <SonAlintilarBolumu limitSayisi={5} />
-
       <TavsiyeBolumu tur="kitap" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
-      <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} />
+
+      <IlhamPanosuOnizleme kategori="Kitap" />
+
       <ListelerBolumu tur="kitap" />
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Bizim Aramızda Popüler</h2>

@@ -28,7 +28,12 @@ import {
   setDoc,
   where,
 } from 'firebase/firestore'
-import { db } from '../firebase.js'
+import { httpsCallable } from 'firebase/functions'
+import { db, functions } from '../firebase.js'
+import { aksansizKucultulmus } from './metinNormallestir.js'
+import { turkceKitapAra } from './turkceKitapVeriTabani.js'
+import { isbnIleMevcutKitabiBul } from './kitapIsbnEslestir.js'
+import { openLibraryZenginlestir } from './openLibrary.js'
 
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
@@ -73,91 +78,8 @@ function googleVerisiniNormallestir(data) {
 }
 
 // --- Open Library (Türkçe kapak/özet/tür zenginleştirme) --------------
-// API anahtarı gerektirmez. İki katmanlı çalışır:
-//   1) ISBN üzerinden TAM baskıyı bulmayı dener (en doğru veri — o Türkçe
-//      baskının gerçek sayfa sayısı, kapağı vb.)
-//   2) ISBN'de bulunamayan ya da eksik kalan alanlar için başlık+yazar
-//      araması yapar ve İSTER Türkçe baskıdan ister başka bir baskıdan olsun,
-//      eşleşen ilk kayıttan yaklaşık bir değer alır (örn. sayfa sayısı) —
-//      hiç veri olmamasından iyidir, sadece bir tahmindir.
-// İkisi de Google verisinin üzerine yazmaz, sadece boş alanları tamamlar.
-async function openLibraryIsbnIle(isbn) {
-  try {
-    const kitapRes = await fetch(`https://openlibrary.org/isbn/${isbn}.json`)
-    if (!kitapRes.ok) return null
-    const kitapData = await kitapRes.json()
-
-    let ozet = ''
-    let turler = []
-    const workKey = kitapData.works?.[0]?.key
-    if (workKey) {
-      try {
-        const workRes = await fetch(`https://openlibrary.org${workKey}.json`)
-        if (workRes.ok) {
-          const workData = await workRes.json()
-          ozet = typeof workData.description === 'string' ? workData.description : workData.description?.value || ''
-          turler = (workData.subjects || []).slice(0, 6)
-        }
-      } catch {
-        // Work verisi alınamazsa sorun değil, isbn seviyesindeki veriyle devam
-      }
-    }
-
-    const kapakId = kitapData.covers?.[0]
-    return {
-      posterUrl: kapakId ? `https://covers.openlibrary.org/b/id/${kapakId}-L.jpg` : '',
-      ozet,
-      turler: turler.join(', '),
-      sayfaSayisi: kitapData.number_of_pages || null,
-      yayinevi: (kitapData.publishers || [])[0] || '',
-    }
-  } catch (err) {
-    console.warn('Open Library (ISBN) zenginleştirme başarısız:', err.message)
-    return null
-  }
-}
-
-async function openLibraryBaslikIle(baslik, yazar) {
-  if (!baslik) return null
-  try {
-    const parcalar = [`title=${encodeURIComponent(baslik)}`]
-    if (yazar) parcalar.push(`author=${encodeURIComponent(yazar.split(',')[0])}`)
-    const res = await fetch(`https://openlibrary.org/search.json?${parcalar.join('&')}&limit=5`)
-    if (!res.ok) return null
-    const data = await res.json()
-    const eslesen = (data.docs || []).find((d) => d.number_of_pages_median || d.cover_i) || data.docs?.[0]
-    if (!eslesen) return null
-    return {
-      posterUrl: eslesen.cover_i ? `https://covers.openlibrary.org/b/id/${eslesen.cover_i}-L.jpg` : '',
-      ozet: '',
-      turler: (eslesen.subject || []).slice(0, 6).join(', '),
-      sayfaSayisi: eslesen.number_of_pages_median || null,
-      yayinevi: (eslesen.publisher || [])[0] || '',
-    }
-  } catch (err) {
-    console.warn('Open Library (başlık araması) zenginleştirme başarısız:', err.message)
-    return null
-  }
-}
-
-async function openLibraryZenginlestir(google) {
-  const isbn = google.isbn13 || google.isbn10
-  const isbnSonucu = isbn ? await openLibraryIsbnIle(isbn) : null
-
-  // ISBN sonucu varsa ama hâlâ boş kalan alanlar varsa, başlık araması ile
-  // TAMAMLAYICI olarak devam et (isbnSonucu'nun üzerine yazmaz).
-  const eksikVarMi = !isbnSonucu || !isbnSonucu.sayfaSayisi || !isbnSonucu.posterUrl || !isbnSonucu.ozet
-  const baslikSonucu = eksikVarMi ? await openLibraryBaslikIle(google.baslik, google.yazar) : null
-
-  if (!isbnSonucu && !baslikSonucu) return null
-  return {
-    posterUrl: isbnSonucu?.posterUrl || baslikSonucu?.posterUrl || '',
-    ozet: isbnSonucu?.ozet || baslikSonucu?.ozet || '',
-    turler: isbnSonucu?.turler || baslikSonucu?.turler || '',
-    sayfaSayisi: isbnSonucu?.sayfaSayisi ?? baslikSonucu?.sayfaSayisi ?? null,
-    yayinevi: isbnSonucu?.yayinevi || baslikSonucu?.yayinevi || '',
-  }
-}
+// Bkz. utils/openLibrary.js — mantık oraya taşındı, turkceKitapVeriTabani.js
+// da (statik 67 bin kitaplık veri seti) aynı katmanlı aramayı kullanabilsin diye.
 
 // Google verisini temel alıp Open Library'den SADECE boş alanları doldurur.
 function birlestir(google, openLibrary) {
@@ -192,6 +114,8 @@ export async function kitapGetir(id) {
 
   await setDoc(ref, {
     ...birlesik,
+    baslikNormalize: aksansizKucultulmus(birlesik.baslik),
+    yazarNormalize: aksansizKucultulmus(birlesik.yazar),
     dogrulanmis: false,
     olusturulmaTarihi: serverTimestamp(),
     sonGuncellemeTarihi: serverTimestamp(),
@@ -204,6 +128,12 @@ export async function kitapGetir(id) {
 // zaten Google'ın arama sonucu (item) var, tekrar volume isteği atmadan onu
 // normalize edip Open Library ile zenginleştirir ve kalıcı yazar. Böylece
 // hem arama hem detay sayfası aynı zengin veriye kavuşur.
+//
+// KÖPRÜ/TEKİLLEŞTİRME: Aynı fiziksel kitap, statik 67 bin veri setinden
+// (kendi ID sistemi) VE Google Books'tan (kendi ID sistemi) AYRI AYRI
+// kaydedilebiliyordu — "aynı kitaptan iki farklı sayfa" sorununun kök
+// sebebi buydu. Kaydetmeden önce, aynı ISBN'e sahip BAŞKA bir kayıt var mı
+// diye bakıp varsa ONU kullanıyoruz — yeni bir kopya oluşturmuyoruz.
 export async function kitapAramaSonucundanKaydet(item) {
   const id = item.id
   const ref = kitapRef(id)
@@ -213,11 +143,19 @@ export async function kitapAramaSonucundanKaydet(item) {
   }
 
   const google = googleVerisiniNormallestir(item)
+  const isbnAdayi = google.isbn13 || google.isbn10
+  if (isbnAdayi) {
+    const esdeger = await isbnIleMevcutKitabiBul(isbnAdayi)
+    if (esdeger) return esdeger
+  }
+
   const openLibrary = await openLibraryZenginlestir(google)
   const birlesik = birlestir(google, openLibrary)
 
   await setDoc(ref, {
     ...birlesik,
+    baslikNormalize: aksansizKucultulmus(birlesik.baslik),
+    yazarNormalize: aksansizKucultulmus(birlesik.yazar),
     dogrulanmis: false,
     olusturulmaTarihi: serverTimestamp(),
     sonGuncellemeTarihi: serverTimestamp(),
@@ -255,6 +193,16 @@ export async function kitapGuncelle(id, yeniAlanlar, kullanici) {
 
   if (degisenAlanlar.length === 0) return { id, ...eskiVeri }
 
+  // "yazar" değiştiyse, aksan-duyarsız eşleştirme alanını da güncel tut
+  // (bkz. metinNormallestir.js) — aksi halde canliKataloktaYazarinKitaplariniGetir
+  // eski yazarın normalize alanına takılı kalır. Aynısı "baslik" için de geçerli.
+  if ('yazar' in temizlenmis) {
+    temizlenmis.yazarNormalize = aksansizKucultulmus(temizlenmis.yazar)
+  }
+  if ('baslik' in temizlenmis) {
+    temizlenmis.baslikNormalize = aksansizKucultulmus(temizlenmis.baslik)
+  }
+
   await setDoc(
     ref,
     {
@@ -290,6 +238,28 @@ export async function dogrulanmamisKitaplariGetir(limitSayisi = 30) {
   )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// "dogrulanmis" ile "kapağı var mı" birbirinden bağımsız: Kitapyurdu
+// kaynaklı kayıtlar (turkceKitaptanKaydet) güvenilir sayıldığı için HER
+// ZAMAN dogrulanmis:true ile kaydediliyor — kapak bulunamamış olsa bile.
+// Bu yüzden dogrulanmamisKitaplariGetir'in kaçırdığı bir kategori var:
+// "doğrulanmış ama sonsuza kadar kapaksız kalmış" kayıtlar. Bu fonksiyon
+// dogrulanmis durumuna bakmadan SADECE kapağı boş olanları getiriyor —
+// bkz. KitapKatalogBakimi.jsx, iki liste birleştirilip gösteriliyor.
+export async function kapaksizKitaplariGetir(limitSayisi = 30) {
+  const q = query(collection(db, 'kitaplar'), where('posterUrl', '==', ''), orderBy('sonGuncellemeTarihi', 'desc'), limit(limitSayisi))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
+// Tek seferlik bakım aracı — bkz. functions/index.js'teki
+// kitapKapaklariniTopluDoldur. Kuyruk büyükse (dönen sinirlandiMi true ise)
+// tekrar çağırmak güvenli, sadece HÂLÂ kapaksız kalanlara dokunuyor.
+const kitapKapaklariniTopluDoldurCallable = httpsCallable(functions, 'kitapKapaklariniTopluDoldur')
+export async function kitapKapaklariniTopluDoldur() {
+  const sonuc = await kitapKapaklariniTopluDoldurCallable()
+  return sonuc.data
 }
 
 // Bir kitabın kaç kez düzenlendiğini (duzenlemeGecmisi kayıt sayısını) döndürür —
@@ -369,7 +339,9 @@ export async function kitapElleEkle({ baslik, yazar, yayinevi, yil, ozet, turler
   const id = `el_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
   const veri = {
     baslik,
+    baslikNormalize: aksansizKucultulmus(baslik),
     yazar: yazar || '',
+    yazarNormalize: aksansizKucultulmus(yazar || ''),
     yayinevi: yayinevi || '',
     yil: yil || '',
     ozet: ozet || '',
@@ -387,4 +359,89 @@ export async function kitapElleEkle({ baslik, yazar, yayinevi, yil, ozet, turler
   }
   await setDoc(kitapRef(id), veri)
   return { id, ...veri }
+}
+
+// Canlı Firestore kataloğunda (dahili SSOT — elle eklenenler, Google Books
+// aramasından kaydedilenler, tekil ziyaretlerde önbelleğe alınan 67 bin
+// kayıtlı kitaplar dahil) bu yazara ait kitapları bulur. "Yazarın Kitapları"
+// listesi (yazarinKitaplariniGetir, turkceKitapVeriTabani.js) sadece STATİK
+// 67 bin kayıtlı veri setini tarıyor — canlı eklenen bir kitaptan hiç haberi
+// yok. Bu fonksiyon o boşluğu dolduruyor; ikisi birlikte kullanılıyor.
+// NOT: Firestore eşitlik sorgusu büyük/küçük harfe duyarlı — yazar adı yazar
+// sayfasındaki adla BİREBİR aynı yazılmışsa bulunur (yazar sayfası zaten
+// formu bu adla önceden dolduruyor, bkz. KitapyurdundanKitapEkle.jsx).
+export async function canliKataloktaYazarinKitaplariniGetir(yazarAdi) {
+  // Hem eski (sadece "yazar" alanı, aksana duyarlı) hem yeni ("yazarNormalize"
+  // alanı da yazılan) kayıtları kapsasın diye iki sorgu birden atılıyor —
+  // bkz. utils/metinNormallestir.js'teki not (aynı Nobel/Türkçe Kitap Veri
+  // Tabanı yazım farkı burada da geçerli).
+  const [tamEslesme, normSnap] = await Promise.all([
+    getDocs(query(collection(db, 'kitaplar'), where('yazar', '==', yazarAdi))),
+    getDocs(query(collection(db, 'kitaplar'), where('yazarNormalize', '==', aksansizKucultulmus(yazarAdi)))),
+  ])
+  const gorulenler = new Set()
+  const sonuclar = []
+  ;[...tamEslesme.docs, ...normSnap.docs].forEach((d) => {
+    if (gorulenler.has(d.id)) return
+    gorulenler.add(d.id)
+    sonuclar.push({ id: d.id, ...d.data() })
+  })
+  return sonuclar
+}
+
+// "Kitap Ara" da aynı sebeple sadece statik veri setini tarıyor — canlı
+// eklenen kitaplar oraya da hiç düşmüyordu. Firestore serbest metin araması
+// desteklemediği için tam bir çözüm değil, ama en azından BAŞLIĞIN
+// BAŞLANGICINA göre eşleşen canlı kayıtları (elle eklenenler dahil) buluyor
+// — kullanıcı az önce eklediği kitabı adıyla aradığında artık karşısına çıkar.
+//
+// AKSAN/BÜYÜK-KÜÇÜK HARF DUYARSIZ: "baslikNormalize" alanına göre arıyor
+// (yazar aramasındaki "yazarNormalize" ile aynı mantık — bkz.
+// metinNormallestir.js). Bu alan sadece BUNDAN SONRA kaydedilen/düzenlenen
+// kitaplarda var, o yüzden ESKİ kayıtları KAÇIRMAMAK için eski ham "baslik"
+// alanına göre bir sorgu da PARALEL atılıp sonuçlar birleştiriliyor —
+// geriye dönük bir "veri taşıma" scripti çalıştırmaya gerek kalmadan.
+export async function canliKataloktaBaslikIleAra(metin, limitSayisi = 20) {
+  const normalizeMetin = aksansizKucultulmus(metin)
+  const [normalizeSonuc, hamSonuc] = await Promise.all([
+    getDocs(
+      query(
+        collection(db, 'kitaplar'),
+        orderBy('baslikNormalize'),
+        where('baslikNormalize', '>=', normalizeMetin),
+        where('baslikNormalize', '<=', normalizeMetin + '\uf8ff'),
+        limit(limitSayisi)
+      )
+    ),
+    getDocs(
+      query(collection(db, 'kitaplar'), orderBy('baslik'), where('baslik', '>=', metin), where('baslik', '<=', metin + '\uf8ff'), limit(limitSayisi))
+    ),
+  ])
+  const gorulenler = new Set()
+  const sonuclar = []
+  ;[...normalizeSonuc.docs, ...hamSonuc.docs].forEach((d) => {
+    if (gorulenler.has(d.id)) return
+    gorulenler.add(d.id)
+    sonuclar.push({ id: d.id, ...d.data() })
+  })
+  return sonuclar.slice(0, limitSayisi)
+}
+
+// KÖKTEN ÇÖZÜM: Sitede kitap arayan 6 farklı yer vardı, 3'ü (Kulüp Önerisi,
+// Kişisel/Topluluk Liste, Liste Detay) SADECE Google Books'a gidiyordu —
+// statik 67 bin kayıtlı Türkçe veri setine NE DE canlı (elle eklenen/
+// zenginleştirilen) kataloğa hiç bakmıyordu. "Veritabanımızda olan kitabı
+// bulamıyorum" sorununun kök sebebi buydu. Bu TEK fonksiyon ikisini de
+// birleştirip tekilleştiriyor — Google Books'u her arayan bileşen kendi
+// çağırmaya devam ediyor (limit/öncelik tercihleri farklı olabildiğinden),
+// ama artık hepsi AYNI iç veritabanı taramasını paylaşıyor.
+export async function kitapIcVeriTabanindaAra(sorgu, limitSayisi = 10) {
+  if (!sorgu?.trim()) return []
+  const [statik, canli] = await Promise.all([
+    turkceKitapAra(sorgu, limitSayisi),
+    canliKataloktaBaslikIleAra(sorgu.trim(), limitSayisi).catch(() => []),
+  ])
+  const isbnGorulenler = new Set(statik.map((k) => k.isbn).filter(Boolean))
+  const canliBenzersiz = canli.filter((k) => !k.isbn13 || !isbnGorulenler.has(k.isbn13))
+  return [...statik, ...canliBenzersiz]
 }

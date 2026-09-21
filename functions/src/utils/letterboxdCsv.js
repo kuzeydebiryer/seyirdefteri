@@ -10,6 +10,10 @@ export const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 // gibi dosyalar ise tek başlıklı düz tablo. İkisini de aynı şekilde ele almak için
 // "Name" VE "Year" sütunlarını birlikte içeren satırı bulup asıl tablonun başladığı
 // yeri tespit ediyoruz. "Rating" sütunu varsa (ratings.csv/diary.csv) onu da alıyoruz.
+// "Watched Date"/"Date" sütunu varsa (ratings.csv, diary.csv, watched.csv) gerçek
+// izleme tarihini de alıyoruz — bu olmadan içe aktarılan her satır "bugün izlendi"
+// gibi görünüyordu (Yılın Özeti'ndeki köke ilişkin hataya bakınız). "Rewatch"
+// sütunu (sadece diary.csv'de) varsa yeniden izleme işaretini de alıyoruz.
 export function filmSatirlariniAyikla(satirlar) {
   const baslikIndeksi = satirlar.findIndex((satir) => {
     const kucukHarfli = satir.map((h) => (h || '').trim().toLowerCase())
@@ -21,6 +25,8 @@ export function filmSatirlariniAyikla(satirlar) {
   const isimSutunu = baslik.indexOf('name')
   const yilSutunu = baslik.indexOf('year')
   const puanSutunu = baslik.indexOf('rating')
+  const tarihSutunu = baslik.includes('watched date') ? baslik.indexOf('watched date') : baslik.indexOf('date')
+  const tekrarSutunu = baslik.indexOf('rewatch')
 
   return satirlar
     .slice(baslikIndeksi + 1)
@@ -28,6 +34,8 @@ export function filmSatirlariniAyikla(satirlar) {
       isim: (satir[isimSutunu] || '').trim(),
       yil: (satir[yilSutunu] || '').trim(),
       puan: puanSutunu !== -1 ? (satir[puanSutunu] || '').trim() : '',
+      izlemeTarihi: tarihSutunu !== -1 ? (satir[tarihSutunu] || '').trim() : '',
+      tekrarMi: tekrarSutunu !== -1 && (satir[tekrarSutunu] || '').trim().toLowerCase() === 'yes',
     }))
     .filter((s) => s.isim)
 }

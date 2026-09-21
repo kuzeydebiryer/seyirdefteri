@@ -16,6 +16,26 @@ export default function TavsiyeBolumu({
   yatay = false,
   tumunuGorLink = null,
   ekleButonuMetni = '+ Tavsiye Ekle',
+  // Anasayfadaki yatay şeritler için: Letterboxd tarzı sade başlık — sadece
+  // başlık + ince bir "Tümünü Gör" oku, renkli buton/ekleme formu yok.
+  // Ekleme işlevi artık kendi bağımsız sayfasında (bkz. TavsiyelerSayfasi.jsx).
+  sade = false,
+  // Sadece "Dijitalde Yeni Çıkanlar" için: posterin üstüne küçük bir rozet
+  // bindiriyor (platform kartlarındaki rozetlerle aynı görsel dil) — "bu,
+  // belirli bir platforma değil, genel dijital VOD'a ait" anlamını taşıyor.
+  // Diğer TavsiyeBolumu kullanımlarını (Film/Kitap Tavsiyeleri, Yeni Gelen
+  // Filmler) etkilemesin diye varsayılan boş.
+  rozetMetni = null,
+  // Sadece "Dijitalde Yeni Çıkanlar" gibi filtre şeridi gerektiren
+  // kullanımlar için: başlık satırı ile liste arasına keyfi içerik
+  // (filtre butonları gibi) yerleştirmeyi sağlıyor. Diğer kullanımlarda boş.
+  araIcerik = null,
+  // Anasayfadaki art arda gelen poster şeritlerini (Yeni Günceler → Film
+  // Tavsiyeleri → Platformlarda Yeni → Kitap Tavsiyeleri) birbirine
+  // yakınlaştırıp "aynı aile" hissi vermek için — diğer sayfalardaki
+  // (Filmler.jsx, Platformlar.jsx vb.) kullanımları etkilemesin diye
+  // varsayılan kapalı.
+  siki = false,
 }) {
   const { kullanici } = useAuth()
   const [formuAcik, setFormuAcik] = useState(false)
@@ -71,11 +91,13 @@ export default function TavsiyeBolumu({
     if (!secili || !kullanici) return
     setKaydediliyor(true)
     try {
-      await tavsiyeEkle({ tur, ...secili, not: not_, kullanici, koleksiyon })
+      await tavsiyeEkle({ tur, ...secili, not: not_, kullanici, koleksiyon, platformEtiketi: rozetMetni })
       setSecili(null)
       setNot_('')
       setFormuAcik(false)
       yenidenYukle()
+    } catch (err) {
+      window.alert(`Eklenemedi: ${err.message || 'Bilinmeyen bir hata oluştu.'}`)
     } finally {
       setKaydediliyor(false)
     }
@@ -101,25 +123,49 @@ export default function TavsiyeBolumu({
   const esereLink = (disId) => (tur === 'dizi' ? `/dizi/${disId}` : tur === 'kitap' ? `/kitap/${disId}` : `/film/${disId}`)
 
   return (
-    <div className="mb-10">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
-        <div className="flex items-center gap-3">
+    <div className={siki ? 'mb-6' : 'mb-10'}>
+      {sade ? (
+        <div className="mb-3 flex items-center justify-between">
+          {tumunuGorLink ? (
+            <h2 className="font-baslik text-lg text-murekkep">
+              <Link to={tumunuGorLink} className="hover:text-deniz">
+                {baslik}
+              </Link>
+            </h2>
+          ) : (
+            <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
+          )}
           {tumunuGorLink && (
-            <Link to={tumunuGorLink} className="text-[11px] text-kraft hover:text-deniz hover:underline">
-              Tümünü Gör →
+            <Link to={tumunuGorLink} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
+              Tümünü Gör ›
             </Link>
           )}
-          {kullanici && (
-            <button
-              onClick={() => setFormuAcik((a) => !a)}
-              className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
-            >
-              {formuAcik ? 'Vazgeç' : ekleButonuMetni}
-            </button>
-          )}
         </div>
-      </div>
+      ) : (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-baslik text-lg text-murekkep">{baslik}</h2>
+          <div className="flex shrink-0 items-center gap-2">
+            {tumunuGorLink && (
+              <Link
+                to={tumunuGorLink}
+                className="shrink-0 whitespace-nowrap rounded-full bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+              >
+                Tümünü Gör →
+              </Link>
+            )}
+            {kullanici && (
+              <button
+                onClick={() => setFormuAcik((a) => !a)}
+                className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${formuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
+              >
+                {formuAcik ? 'Vazgeç' : ekleButonuMetni}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {araIcerik}
 
       {formuAcik && (
         <div className="mb-4 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
@@ -240,15 +286,16 @@ export default function TavsiyeBolumu({
                   <Link to={esereLink(t.disId)} className="block">
                     <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                       {t.posterUrl && <img src={t.posterUrl} alt={t.baslik} className="h-full w-full object-cover" />}
-                      {t.not && (
-                        <div className="absolute inset-x-0 bottom-0 max-h-full overflow-hidden bg-murekkep/85 p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                          <p className="line-clamp-4 text-[10px] leading-tight text-kagit">{t.not}</p>
-                        </div>
+                      {(t.platformEtiketi || rozetMetni) && (
+                        <span className="absolute bottom-1 left-1 rounded-full bg-murekkep/85 px-1.5 py-0.5 text-[9px] text-kagit">
+                          {t.platformEtiketi || rozetMetni}
+                        </span>
                       )}
                     </div>
                     <p className="mt-1 truncate text-xs text-murekkep">{t.baslik}</p>
                     {t.alt && <p className="truncate text-[11px] text-kraft">{t.alt}</p>}
                     <p className="truncate text-[11px] text-kraft">{t.ekleyenAdi} tavsiye etti</p>
+                    {t.not && <p className="mt-0.5 line-clamp-2 text-[11px] italic text-kraft">"{t.not}"</p>}
                   </Link>
                   {kullanici?.uid === t.ekleyenId && (
                     <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">

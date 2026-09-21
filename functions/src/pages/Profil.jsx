@@ -1,31 +1,47 @@
-import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGonderiler } from '../hooks/useGonderiler.js'
-import { useTakip, takipEdilenProfilleriGetir } from '../hooks/useTakip.js'
+import { useTakip } from '../hooks/useTakip.js'
 import { useFavoriler } from '../hooks/useFavoriler.js'
 import { useIzlenecekler } from '../hooks/useIzlenecekler.js'
 import { useYorumlarim } from '../hooks/useYorumlarim.js'
 import { useRaflar } from '../hooks/useRaflar.js'
 import { useEserPuanlarim } from '../hooks/useEserPuanlarim.js'
 import { rafOlustur, rafSil } from '../utils/raf.js'
+import { gorunenAdGetir, gecmisPaylasimlariGuncelle } from '../utils/gorunenAd.js'
 import { takipEt, takipBirak } from '../utils/takip.js'
-import { favoriKaldir } from '../utils/favori.js'
+import { favoriEkle, favoriKaldir } from '../utils/favori.js'
+import EserSecici from '../components/EserSecici.jsx'
+import GorselYukleButonu from '../components/GorselYukleButonu.jsx'
+import YatayKaydirma from '../components/YatayKaydirma.jsx'
 import LetterboxdIkon from '../components/ikonlar/LetterboxdIkon.jsx'
 import BinKitapIkon from '../components/ikonlar/BinKitapIkon.jsx'
 import PuanIceAktar from '../components/PuanIceAktar.jsx'
 import { kahinOlduguSezonlariGetir } from '../utils/oscar.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
-import { tumIstatistikleriYenidenHesapla } from '../utils/istatistikYenidenHesapla.js'
 import { kullaniciKoleksiyonuGetir, eseriKoleksiyondanCikar } from '../utils/sanatKoleksiyonu.js'
+import { kullaniciAlintilariGetir, alintiSil } from '../utils/alinti.js'
+import AlintiKarti from '../components/AlintiKarti.jsx'
+import Listelerim from './Listelerim.jsx'
+import TemaAvatarIkon, { TEMA_AVATARLARI, temaAvatarUrlMi } from '../components/ikonlar/TemaAvatarIkon.jsx'
+import { begenilenMuzikleriGetir, muzikBegeniKaldir } from '../utils/filmMuzigiBegeni.js'
 import { izlenecekKaldir } from '../utils/izlenecek.js'
 import { uretDavetKodu } from '../utils/davetKodu.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import Avatar from '../components/Avatar.jsx'
 import YildizPuan from '../components/YildizPuan.jsx'
 import YilOzeti from '../components/YilOzeti.jsx'
+import GunlukListesi from '../components/GunlukListesi.jsx'
+import { gunlukYilininKayitlariniGetir, gunlukIlkYiliGetir, mukerrerGunlukKayitlariniTemizle } from '../utils/gunluk.js'
+import { buYilOlaylariHesapla } from '../utils/yilOzeti.js'
+import { meydanOkumalariGetir, herkeseAcikMeydanOkumalariGetir, meydanOkumaOlustur } from '../utils/meydanOkuma.js'
+import { oduncVerdiklerimiGetir, oduncAldiklarimiGetir, itibarSayisiGetir } from '../utils/kitapIstek.js'
+import MeydanOkumaFormu from '../components/MeydanOkumaFormu.jsx'
+import MeydanOkumaKarti from '../components/MeydanOkumaKarti.jsx'
+import { girisGerekiyorsaYonlendir } from '../utils/girisYonlendir.js'
 
 const FAVORI_TURLERI = [
   { id: 'sinema', etiket: 'Filmler' },
@@ -57,39 +73,160 @@ function PosterKart({ baslik, alt, posterUrl, link }) {
 
 export default function Profil() {
   const { uid } = useParams()
+  const navigate = useNavigate()
   const { kullanici, profil: kendiProfilim, profilGuncelle } = useAuth()
   const benimProfilimMi = kullanici?.uid === uid
 
   const [hedefProfil, setHedefProfil] = useState(benimProfilimMi ? kendiProfilim : null)
+  const [meydanOkumalar, setMeydanOkumalar] = useState(null)
+  const [oduncVerdiklerim, setOduncVerdiklerim] = useState(null)
+  const [oduncAldiklarim, setOduncAldiklarim] = useState(null)
+  const [itibarSayisi, setItibarSayisi] = useState(null)
+  const [meydanOkumaFormAcik, setMeydanOkumaFormAcik] = useState(false)
   const [kahinSezonlari, setKahinSezonlari] = useState([])
   const [sanatKoleksiyonu, setSanatKoleksiyonu] = useState([])
+  const [begenilenMuzikler, setBegenilenMuzikler] = useState([])
+  const [alintilarim, setAlintilarim] = useState([])
 
   useEffect(() => {
     kullaniciKoleksiyonuGetir(uid).then(setSanatKoleksiyonu)
-  }, [uid])
+    begenilenMuzikleriGetir(uid).then(setBegenilenMuzikler)
+    kullaniciAlintilariGetir(uid).then(setAlintilarim)
+    // Önceden bu ikisi sadece ilgili sekme tıklanınca çekiliyordu — artık
+    // "Profil" sekmesindeki sayaç listesi için baştan hazır olmaları
+    // gerekiyor.
+    ;(benimProfilimMi ? meydanOkumalariGetir(uid) : herkeseAcikMeydanOkumalariGetir(uid)).then(setMeydanOkumalar)
+    oduncVerdiklerimiGetir(uid).then(setOduncVerdiklerim)
+    oduncAldiklarimiGetir(uid).then(setOduncAldiklarim)
+  }, [uid, benimProfilimMi])
   const { gonderiler, hata: gonderilerHatasi } = useGonderiler({ yazarId: uid, sayfaBoyutu: 500 })
   const { takipEdiyorMu, setTakipEdiyorMu, takipciSayisi, takipEdilenSayisi } = useTakip(uid, kullanici?.uid)
-  const [takipEdilenProfilleri, setTakipEdilenProfilleri] = useState([])
-
-  useEffect(() => {
-    let iptal = false
-    takipEdilenProfilleriGetir(uid).then((liste) => {
-      if (!iptal) setTakipEdilenProfilleri(liste)
-    })
-    return () => {
-      iptal = true
-    }
-  }, [uid])
   const [takipIsleniyor, setTakipIsleniyor] = useState(false)
 
-  const [sekme, setSekme] = useState('yilozeti')
+  const [sekme, setSekme] = useState('profil')
+
+  useEffect(() => {
+    if (!uid) return
+    itibarSayisiGetir(uid).then(setItibarSayisi)
+  }, [uid])
+
+  async function meydanOkumaOlusturTiklandi(veri) {
+    await meydanOkumaOlustur(kullanici, kendiProfilim, veri)
+    setMeydanOkumaFormAcik(false)
+    meydanOkumalariGetir(uid).then(setMeydanOkumalar)
+  }
   const [favoriSekmesi, setFavoriSekmesi] = useState('sinema')
   const { favoriler, yenidenYukle: favorileriYenile } = useFavoriler(uid, favoriSekmesi)
   // Profilin en üstündeki "Sabitlenmiş Favoriler" vitrini için — sekmedeki
   // gibi tek türe filtrelemeden, tüm favorilerden en yeni eklenen 4 tanesi.
   const { favoriler: tumFavoriler } = useFavoriler(uid)
+  // Letterboxd'daki "en sevdiğin 4 film" mantığından esinlendik ama farklı
+  // yaptık — sabit 4 değil, sitenin her yerinde kullandığımız yatay
+  // kaydırmalı şerit (bkz. YatayKaydirma) — istediğin kadar film/kitap
+  // favoriye alabiliyorsun, karışık değil, TÜRE göre ayrı iki şerit.
+  const { favoriler: favoriFilmler, yenidenYukle: filmFavorileriYenile } = useFavoriler(uid, 'sinema')
+  const { favoriler: favoriKitaplar, yenidenYukle: kitapFavorileriYenile } = useFavoriler(uid, 'kitap')
+  const [filmEkleAcik, setFilmEkleAcik] = useState(false)
+  const [kitapEkleAcik, setKitapEkleAcik] = useState(false)
+
+  async function favoriFilmEklendi(secilen) {
+    await favoriEkle(kullanici, { tur: 'sinema', disId: secilen.disId, baslik: secilen.baslik, alt: secilen.yil, posterUrl: secilen.posterUrl })
+    setFilmEkleAcik(false)
+    filmFavorileriYenile()
+  }
+
+  // EserSecici'nin kitap akışı zaten hem Türkçe veritabanını hem Google
+  // Books'u birlikte arayıp, seçilen kitabı turkceKitaptanKaydet /
+  // kitapAramaSonucundanKaydet ile KAYDEDİP posterini çözüyor — burada
+  // ayrıca bir "poster boş geldi" durumu yönetmemize gerek yok, seçim
+  // anında zaten çözülmüş oluyor.
+  async function favoriKitapEklendi(secilen) {
+    await favoriEkle(kullanici, { tur: 'kitap', disId: secilen.disId, baslik: secilen.baslik, alt: secilen.altBaslik, posterUrl: secilen.posterUrl })
+    setKitapEkleAcik(false)
+    kitapFavorileriYenile()
+  }
+
+  async function favoriSeritindenKaldir(tur, disId, yenile) {
+    await favoriKaldir(uid, tur, disId)
+    yenile()
+  }
   const { izlenecekler, yenidenYukle: izlenecekleriYenile } = useIzlenecekler(uid)
   const { puanlar: eserPuanlarim } = useEserPuanlarim(uid)
+
+  // Günlük — 4+ yıllık (özellikle Letterboxd içe aktarımı sonrası binlerce
+  // kayıt olabilen) bir geçmişi her profil ziyaretinde tek seferde çekmek
+  // hem yavaştı hem gereksizdi. Artık sadece SEÇİLİ YILın kayıtları
+  // çekiliyor, "Yılın Özeti" ve "Günlük" sekmeleri aynı seçili yılı
+  // paylaşıyor. Yıl sekmelerini göstermek için de tüm geçmişi değil,
+  // sadece en eski kaydın yılını (tek, ucuz bir sorgu) öğreniyoruz.
+  const [gunlukYil, setGunlukYil] = useState(new Date().getFullYear())
+  const [gunlukTurFiltresi, setGunlukTurFiltresi] = useState('')
+  const [gunlukIlkYil, setGunlukIlkYil] = useState(null)
+  const [gunlukKayitlari, setGunlukKayitlari] = useState([])
+  const [gunlukYukleniyor, setGunlukYukleniyor] = useState(true)
+  const gunlukOnbellek = useRef({})
+
+  useEffect(() => {
+    gunlukIlkYiliGetir(uid).then(setGunlukIlkYil)
+  }, [uid])
+
+  useEffect(() => {
+    let iptal = false
+    async function getir() {
+      setGunlukYukleniyor(true)
+      const anahtarim = `${uid}_${gunlukYil}`
+      if (gunlukOnbellek.current[anahtarim]) {
+        if (!iptal) {
+          setGunlukKayitlari(gunlukOnbellek.current[anahtarim])
+          setGunlukYukleniyor(false)
+        }
+        return
+      }
+      const kayitlar = await gunlukYilininKayitlariniGetir(uid, gunlukYil)
+      gunlukOnbellek.current[anahtarim] = kayitlar
+      if (!iptal) {
+        setGunlukKayitlari(kayitlar)
+        setGunlukYukleniyor(false)
+      }
+    }
+    getir()
+    return () => {
+      iptal = true
+    }
+  }, [uid, gunlukYil])
+
+  function gunlukYenidenYukle() {
+    delete gunlukOnbellek.current[`${uid}_${gunlukYil}`]
+    gunlukYilininKayitlariniGetir(uid, gunlukYil).then((kayitlar) => {
+      gunlukOnbellek.current[`${uid}_${gunlukYil}`] = kayitlar
+      setGunlukKayitlari(kayitlar)
+    })
+  }
+
+  // puanGonder'daki eski davranış (bkz. EserSayfasi.jsx) yıldıza her
+  // tıklamada ayrı bir günlük kaydı düşürüyordu — kök sebep düzeltildi
+  // (artık aynı güne ikinci kayıt eklemek yerine var olanı güncelliyor),
+  // ama düzeltmeden ÖNCE oluşmuş mükerrer kayıtlar otomatik silinmiyor.
+  // Önce Rüya'da, sonra başka kullanıcılarda da aynı kalıntı görülünce
+  // tek seferlik bir yama olmaktan çıkıp kalıcı, herkesin kendi
+  // profilinden kendi kendine düzeltebileceği bir bakım aracına dönüştü.
+  const [temizleniyor, setTemizleniyor] = useState(false)
+  async function mukerrerleriTemizleTiklandi() {
+    setTemizleniyor(true)
+    try {
+      const silinenSayisi = await mukerrerGunlukKayitlariniTemizle(uid)
+      if (silinenSayisi === 0) {
+        window.alert('Mükerrer kayıt bulunamadı, günlüğün zaten temiz.')
+      } else {
+        window.alert(`${silinenSayisi} mükerrer kayıt silindi.`)
+        gunlukOnbellek.current = {}
+        gunlukYenidenYukle()
+      }
+    } finally {
+      setTemizleniyor(false)
+    }
+  }
+
   const { raflar, yenidenYukle: raflariYenile } = useRaflar(uid)
   const [rafFormuAcik, setRafFormuAcik] = useState(false)
   const [rafBaslik, setRafBaslik] = useState('')
@@ -101,9 +238,6 @@ export default function Profil() {
   const [uretiliyor, setUretiliyor] = useState(false)
   const [davetAcik, setDavetAcik] = useState(false)
   const [puanIceAktarAcik, setPuanIceAktarAcik] = useState(false)
-  const [yenidenHesaplaAcik, setYenidenHesaplaAcik] = useState(false)
-  const [yenidenHesaplaniyor, setYenidenHesaplaniyor] = useState(false)
-  const [yenidenHesaplaDurumu, setYenidenHesaplaDurumu] = useState('')
   const [posterAramasi, setPosterAramasi] = useState('')
   const [posterGosterimSayisi, setPosterGosterimSayisi] = useState({ sinema: 28, dizi: 28 })
   const [minPuan, setMinPuan] = useState(0)
@@ -114,11 +248,16 @@ export default function Profil() {
 
   const [duzenlemeAcik, setDuzenlemeAcik] = useState(false)
   const [bioTaslak, setBioTaslak] = useState('')
+  const [sehirTaslak, setSehirTaslak] = useState('')
   const [avatarTaslak, setAvatarTaslak] = useState('')
   const [kapakTaslak, setKapakTaslak] = useState('')
   const [letterboxdTaslak, setLetterboxdTaslak] = useState('')
   const [binKitapTaslak, setBinKitapTaslak] = useState('')
   const [hedefTaslak, setHedefTaslak] = useState(0)
+  const [gorunumTercihiTaslak, setGorunumTercihiTaslak] = useState('adSoyad')
+  const [gecmisGuncellemeTeklifi, setGecmisGuncellemeTeklifi] = useState(false)
+  const [gecmisGuncelleniyor, setGecmisGuncelleniyor] = useState(false)
+  const [gecmisSonucMesaji, setGecmisSonucMesaji] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   useEffect(() => {
@@ -144,11 +283,13 @@ export default function Profil() {
   useEffect(() => {
     if (hedefProfil && benimProfilimMi) {
       setBioTaslak(hedefProfil.bio || '')
+      setSehirTaslak(hedefProfil.sehir || '')
       setAvatarTaslak(hedefProfil.avatarUrl || '')
       setKapakTaslak(hedefProfil.kapakUrl || '')
       setLetterboxdTaslak(hedefProfil.letterboxdUrl || '')
       setBinKitapTaslak(hedefProfil.binKitapUrl || '')
       setHedefTaslak(hedefProfil.yillikOkumaHedefi || 0)
+      setGorunumTercihiTaslak(hedefProfil.gorunumTercihi || 'adSoyad')
     }
   }, [hedefProfil, benimProfilimMi])
 
@@ -156,24 +297,44 @@ export default function Profil() {
     e.preventDefault()
     setKaydediliyor(true)
     try {
+      const tercihDegistiMi = gorunumTercihiTaslak !== (hedefProfil.gorunumTercihi || 'adSoyad')
       const guncelVeri = {
         bio: bioTaslak,
+        sehir: sehirTaslak,
         avatarUrl: avatarTaslak,
         kapakUrl: kapakTaslak,
         letterboxdUrl: letterboxdTaslak,
         binKitapUrl: binKitapTaslak,
         yillikOkumaHedefi: Number(hedefTaslak) || 0,
+        gorunumTercihi: gorunumTercihiTaslak,
       }
       await profilGuncelle(guncelVeri)
       setHedefProfil((onceki) => ({ ...onceki, ...guncelVeri }))
       setDuzenlemeAcik(false)
+      // Tercih gerçekten değiştiyse, geçmiş paylaşımları da güncellemek
+      // isteyip istemediğini soruyoruz — otomatik yapmıyoruz, bu kullanıcının
+      // bilinçli bir kararı olmalı (bkz. gecmisPaylasimlariGuncelle).
+      if (tercihDegistiMi) setGecmisGuncellemeTeklifi(true)
     } finally {
       setKaydediliyor(false)
     }
   }
 
+  async function gecmisiDeGuncelle() {
+    setGecmisGuncelleniyor(true)
+    try {
+      const yeniAd = gorunenAdGetir(hedefProfil)
+      const sayi = await gecmisPaylasimlariGuncelle(uid, yeniAd)
+      setGecmisSonucMesaji(sayi === 0 ? 'Güncellenecek bir şey yoktu, zaten günceldi.' : `${sayi} kayıt güncellendi.`)
+      setGecmisGuncellemeTeklifi(false)
+    } finally {
+      setGecmisGuncelleniyor(false)
+    }
+  }
+
   async function takipDegistir() {
-    if (!kullanici || takipIsleniyor) return
+    if (girisGerekiyorsaYonlendir(kullanici, navigate)) return
+    if (takipIsleniyor) return
     setTakipIsleniyor(true)
     try {
       if (takipEdiyorMu) {
@@ -218,17 +379,84 @@ export default function Profil() {
 
   if (!hedefProfil) return <p className="text-kraft text-sm">Yükleniyor...</p>
 
-  const SEKMELER = [
-    { id: 'yilozeti', etiket: '📊 Yılın Özeti' },
-    { id: 'izlediklerim', etiket: '🎬 İzlediklerim' },
-    { id: 'okuduklarim', etiket: '📖 Okuduklarım' },
-    { id: 'yazigezi', etiket: '✍️ Yazı & Gezi' },
+  // Önceden 16 sekmenin hepsi düz bir buton yığını halindeydi (Letterboxd'un
+  // aksine — orada sadece 4 üst sekme var, geri kalanı sayı+link satırları).
+  // Şimdi sadece 4 üst sekme var, geri kalan 13'ü "Profil" sekmesindeki
+  // gruplu sayaç listesinde (bkz. aşağıdaki PROFIL_GRUPLARI) — her satır
+  // hem sayıyı gösteriyor hem gezinme sağlıyor, ayrı bir tıklama olmadan da
+  // bilgi taşıyor.
+  const ANA_SEKMELER = [
+    { id: 'profil', etiket: 'Profil' },
+    { id: 'gunluk', etiket: '📔 Günlük' },
     { id: 'suanda', etiket: '⏳ Şu An' },
-    { id: 'izleyecegim', etiket: '📋 İzleyecek/Okuyacaklarım' },
-    { id: 'favoriler', etiket: '♥ Favoriler' },
-    { id: 'raflarim', etiket: '📚 Raflarım' },
-    { id: 'yorumlarim', etiket: '💬 Yorumlarım' },
-    { id: 'sanatKoleksiyonum', etiket: '🖼️ Sanat Koleksiyonlarım' },
+    { id: 'listelerim', etiket: '📋 Liste' },
+  ]
+
+  // KÖK SEBEP DÜZELTMESİ: Bu sayılar önceden SADECE "gonderiler" (yazılı
+  // yorumlu paylaşımlar) üzerinden hesaplanıyordu. Ama "İzlediklerim" ve
+  // "Okuduklarım" sekmelerinin GERÇEKTE gösterdiği liste (bkz. aşağıdaki
+  // "Poster Duvarı" ve "Kitaplığım" blokları) gonderiler'e EK olarak
+  // eserPuanlarim'daki (yorum yazılmadan sadece yıldızla puanlanmış)
+  // kayıtları da içeriyordu — yani bir kitabı/filmi yorum yazmadan sadece
+  // puanlayan biri için özet karodaki sayı, sekmeye girince görülenden
+  // ÇOK daha düşük çıkıyordu (ör. 4 vs. gerçek 80). Şimdi ikisi aynı
+  // birleştirme+tekilleştirme mantığını kullanıyor, sayılar yapısal olarak
+  // asla birbirinden sapamaz — yilOzeti.js'teki "hayalet kayıt" düzeltmesiyle
+  // aynı prensip.
+  const gonderiVePuanBirlesikSayisi = (tur, disIdAlani) =>
+    gonderiler.filter((g) => g.tur === tur && g.posterUrl).length +
+    eserPuanlarim.filter((e) => e.tur === tur && e.posterUrl && !gonderiler.some((g) => g.tur === tur && g[disIdAlani] === e.disId)).length
+
+  const izlediklerimSayisi = gonderiVePuanBirlesikSayisi('sinema', 'tmdbId') + gonderiVePuanBirlesikSayisi('dizi', 'tmdbId')
+  const tamamladiklarimSayisi = izlenecekler?.filter((i) => i.durum === 'tamamlandi').length
+  const okuduklarimSayisi =
+    gonderiler.filter((g) => g.tur === 'kitap' && (g.posterUrl || g.ilgiliPosterUrl)).length +
+    eserPuanlarim.filter((e) => e.tur === 'kitap' && e.posterUrl && !gonderiler.some((g) => g.tur === 'kitap' && g.googleBooksId === e.disId)).length
+  const yaziGeziSayisi = gonderiler.filter((g) => g.tur === 'yazi' || g.tur === 'gezi').length
+  // "Dinlediklerim" — toplamDakika alanı olan (yani en az bir kez
+  // "Dinlemeye Başla" ile başlanmış) TÜM kitap kayıtları, hâlâ dinliyor
+  // olsun ya da tamamlamış olsun.
+  const dinlediklerim = izlenecekler?.filter((i) => i.tur === 'kitap' && i.toplamDakika != null) || []
+
+  const PROFIL_GRUPLARI = [
+    {
+      baslik: '🎬 Film & Dizi',
+      satirlar: [
+        { id: 'izlediklerim', etiket: 'İzlediklerim', sayi: izlediklerimSayisi },
+        { id: 'tamamladiklarim', etiket: 'Tamamladıklarım', sayi: tamamladiklarimSayisi },
+        { id: 'izleyecegim', etiket: 'İzleyecek/Okuyacaklarım', sayi: izlenecekler?.length },
+      ],
+    },
+    {
+      baslik: '📖 Kitap',
+      satirlar: [
+        { id: 'okuduklarim', etiket: 'Okuduklarım', sayi: okuduklarimSayisi },
+        { id: 'dinlediklerim', etiket: 'Dinlediklerim', sayi: dinlediklerim.length },
+        { id: 'oduncKitaplar', etiket: 'Ödünç Kitaplar', sayi: (oduncVerdiklerim?.length || 0) + (oduncAldiklarim?.length || 0) },
+        { id: 'alintilarim', etiket: 'Alıntılarım', sayi: alintilarim?.length },
+      ],
+    },
+    {
+      baslik: '✍️ Yaratıcı',
+      satirlar: [
+        { id: 'yazigezi', etiket: 'Yazı & Gezi', sayi: yaziGeziSayisi },
+        { id: 'sanatKoleksiyonum', etiket: 'Sanat Koleksiyonlarım', sayi: sanatKoleksiyonu?.length },
+        { id: 'filmMuzikleri', etiket: 'Film Müzikleri', sayi: begenilenMuzikler?.length },
+      ],
+    },
+    {
+      baslik: '💬 Topluluk',
+      satirlar: [
+        { id: 'yorumlarim', etiket: 'Yorumlarım', sayi: yorumlarim?.length },
+        { id: 'favoriler', etiket: 'Favoriler', sayi: tumFavoriler?.length },
+        { id: 'meydanokumalar', etiket: 'Meydan Okumalarım', sayi: meydanOkumalar?.length },
+        { id: 'raflarim', etiket: 'Raflarım', sayi: raflar?.length },
+      ],
+    },
+    {
+      baslik: '📊 Diğer',
+      satirlar: [{ id: 'yilozeti', etiket: 'Yılın Özeti', sayi: null }],
+    },
   ]
 
   async function rafOlusturTiklandi(e) {
@@ -261,28 +489,56 @@ export default function Profil() {
       )}
 
       <div className="mb-6 flex items-start gap-4">
-        <Avatar adSoyad={hedefProfil.adSoyad} avatarUrl={hedefProfil.avatarUrl} boyut="h-16 w-16" />
-        <div className="flex-1">
+        <Avatar adSoyad={gorunenAdGetir(hedefProfil)} avatarUrl={hedefProfil.avatarUrl} boyut="h-16 w-16" />
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="font-baslik text-2xl text-murekkep">{hedefProfil.adSoyad}</h1>
+            <h1 className="font-baslik text-2xl text-murekkep">{gorunenAdGetir(hedefProfil)}</h1>
             {benimProfilimMi && (
               <button
                 onClick={() => setDuzenlemeAcik((a) => !a)}
-                className="rounded-sm bg-kagitKoyu px-2 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+                title="Profili Düzenle"
+                className="rounded-full p-1.5 text-kraft ring-1 ring-cizgi hover:bg-kagitKoyu hover:text-murekkep"
               >
-                {duzenlemeAcik ? 'Vazgeç' : 'Profili Düzenle'}
+                {duzenlemeAcik ? '✕' : '⚙️'}
               </button>
             )}
-            <Link to="/kullanicilar" className="text-xs text-deniz hover:underline">
-              Kişileri Keşfet →
-            </Link>
-            {benimProfilimMi && (
-              <Link to="/listelerim" className="text-xs text-deniz hover:underline">
-                📋 Listelerim →
-              </Link>
-            )}
           </div>
-          <p className="text-sm text-kraft">@{hedefProfil.kullaniciAdi}</p>
+          {/* Kullanıcı adıyla görünmeyi seçmişse, gerçek adı sadece profilin
+              SAHİBİNE gösteriliyor — ziyaretçilere hiç sızdırılmıyor. Bu,
+              tercihin gizlilik amacıyla kullanılabilmesi için gerekli;
+              tersi (adSoyad seçiliyken @kullaniciAdi'nın görünmesi) sorun
+              değil, çünkü kullanıcı adı zaten kayıt sırasında herkese açık
+              bir etiket olarak belirleniyor. */}
+          {hedefProfil.gorunumTercihi === 'kullaniciAdi' ? (
+            benimProfilimMi && <p className="text-sm text-kraft">{hedefProfil.adSoyad}</p>
+          ) : (
+            <p className="text-sm text-kraft">@{hedefProfil.kullaniciAdi}</p>
+          )}
+
+          {gecmisGuncellemeTeklifi && (
+            <div className="mt-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="text-xs text-murekkep">
+                Görünüm tercihin kaydedildi. Daha önce yazdığın yorum/günce/paylaşımları da bu isimle güncellemek ister
+                misin? (Bu, sadece senin kendi kayıtlarını etkiler.)
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={gecmisiDeGuncelle}
+                  disabled={gecmisGuncelleniyor}
+                  className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                >
+                  {gecmisGuncelleniyor ? 'Güncelleniyor...' : 'Evet, geçmişimi de güncelle'}
+                </button>
+                <button
+                  onClick={() => setGecmisGuncellemeTeklifi(false)}
+                  className="rounded-sm bg-kagit px-3 py-1.5 text-xs text-kraft ring-1 ring-cizgi"
+                >
+                  Hayır, sadece bundan sonrası
+                </button>
+              </div>
+            </div>
+          )}
+          {gecmisSonucMesaji && <p className="mt-2 text-xs text-gise">✓ {gecmisSonucMesaji}</p>}
 
           {kahinSezonlari.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -325,24 +581,36 @@ export default function Profil() {
             </div>
           )}
           {!duzenlemeAcik && hedefProfil.bio && <p className="mt-2 text-sm text-murekkep">{hedefProfil.bio}</p>}
+          {!duzenlemeAcik && hedefProfil.sehir && <p className="mt-0.5 text-xs text-kraft">📍 {hedefProfil.sehir}</p>}
 
-          {!duzenlemeAcik && tumFavoriler.length > 0 && (
-            <div className="mt-3">
-              <p className="mb-1.5 text-[11px] uppercase tracking-widest text-kraft">📌 Favoriler</p>
-              <div className="flex gap-2">
-                {tumFavoriler.slice(0, 4).map((f) => (
-                  <Link key={f.id} to={esereLink(f.tur, f.disId)} className="block w-14 shrink-0" title={f.baslik}>
-                    <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                      {f.posterUrl && <img src={f.posterUrl} alt={f.baslik} className="h-full w-full object-cover" />}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
+
 
           {duzenlemeAcik && (
             <form onSubmit={profiliKaydet} className="mt-3 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Sitede Nasıl Görüneyim?</label>
+                <div className="flex gap-1">
+                  {[
+                    { id: 'adSoyad', etiket: hedefProfil?.adSoyad || 'Ad Soyad' },
+                    { id: 'kullaniciAdi', etiket: `@${hedefProfil?.kullaniciAdi || 'kullaniciadi'}` },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setGorunumTercihiTaslak(s.id)}
+                      className={`rounded-sm px-3 py-1.5 text-xs font-govde ${
+                        gorunumTercihiTaslak === s.id ? 'bg-murekkep text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
+                      }`}
+                    >
+                      {s.etiket}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-[11px] text-kraft">
+                  Bu tercih, bundan sonra yazacağın yorum/günce/paylaşımlarda geçerli olur. Değiştirirsen, kaydettikten
+                  sonra geçmiş paylaşımlarını da güncellemek isteyip istemediğin sorulacak.
+                </p>
+              </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Kapak Görsel URL (profilin en üstünde)</label>
                 <input
@@ -352,16 +620,41 @@ export default function Profil() {
                   placeholder="https://..."
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
+                <div className="mt-1.5">
+                  <GorselYukleButonu klasor="kapaklar" onYuklendi={setKapakTaslak} etiket="📷 Cihazdan Yükle" />
+                </div>
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Avatar Görsel URL</label>
                 <input
                   type="text"
-                  value={avatarTaslak}
+                  value={temaAvatarUrlMi(avatarTaslak) ? '' : avatarTaslak}
                   onChange={(e) => setAvatarTaslak(e.target.value)}
                   placeholder="https://..."
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
+                <div className="mt-1.5">
+                  <GorselYukleButonu klasor="avatarlar" onYuklendi={setAvatarTaslak} etiket="📷 Cihazdan Yükle" />
+                </div>
+                <p className="mt-2 mb-1 text-xs text-kraft">...veya sinema/dizi/tiyatro/sanat temalı bir avatar seç:</p>
+                <div className="flex flex-wrap gap-2">
+                  {TEMA_AVATARLARI.map((t) => {
+                    const seciliMi = avatarTaslak === `tema:${t.id}`
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setAvatarTaslak(`tema:${t.id}`)}
+                        title={t.ad}
+                        className={`flex h-11 w-11 items-center justify-center rounded-full text-kagit ${t.renk} ${
+                          seciliMi ? 'ring-2 ring-offset-2 ring-offset-kagitKoyu ring-murekkep' : 'ring-1 ring-cizgi'
+                        }`}
+                      >
+                        <TemaAvatarIkon id={t.id} boyut={22} />
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Bio</label>
@@ -371,6 +664,17 @@ export default function Profil() {
                   rows={3}
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Şehir (opsiyonel)</label>
+                <input
+                  type="text"
+                  value={sehirTaslak}
+                  onChange={(e) => setSehirTaslak(e.target.value)}
+                  placeholder="örn. Kocaeli"
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+                <p className="mt-1 text-[11px] text-kraft">Kitap ödünç alışverişinde aynı şehirdekileri bulmak için kullanılır.</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -417,10 +721,6 @@ export default function Profil() {
           )}
 
           <div className="mt-3 flex items-center gap-4">
-            <p className="text-xs text-kraft">
-              <span className="font-medium text-murekkep">{takipEdilenSayisi}</span> takip ·{' '}
-              <span className="font-medium text-murekkep">{takipciSayisi}</span> takipçi
-            </p>
             {!benimProfilimMi && (
               <button
                 onClick={takipDegistir}
@@ -434,137 +734,334 @@ export default function Profil() {
             )}
           </div>
 
-          {takipEdilenProfilleri.length > 0 && (
-            <div className="mt-3">
-              <p className="mb-1.5 text-[11px] uppercase tracking-widest text-kraft">Takip Ettikleri</p>
-              <div className="flex flex-wrap gap-2">
-                {takipEdilenProfilleri.map((p) => (
-                  <Link key={p.uid} to={`/profil/${p.uid}`} title={p.adSoyad} className="block">
-                    <Avatar adSoyad={p.adSoyad} avatarUrl={p.avatarUrl} boyut="h-9 w-9" />
-                  </Link>
+        </div>
+      </div>
+
+
+        {!duzenlemeAcik && (favoriFilmler.length > 0 || benimProfilimMi) && (
+          <div className="mt-3">
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-widest text-kraft">🎬 Favori Filmlerim</p>
+              {benimProfilimMi && (
+                <button onClick={() => setFilmEkleAcik((a) => !a)} className="text-[11px] text-deniz hover:underline">
+                  {filmEkleAcik ? 'Vazgeç' : '+ Ekle'}
+                </button>
+              )}
+            </div>
+            {filmEkleAcik && (
+              <div className="mb-2">
+                <EserSecici kategori="Film" onSecim={favoriFilmEklendi} />
+              </div>
+            )}
+            {favoriFilmler.length > 0 ? (
+              <YatayKaydirma>
+                {favoriFilmler.map((f) => (
+                  <div key={f.id} className="group relative shrink-0" style={{ width: 90 }}>
+                    <Link to={esereLink(f.tur, f.disId)} className="block" title={f.baslik}>
+                      <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                        {f.posterUrl && <img src={f.posterUrl} alt={f.baslik} className="h-full w-full object-cover" />}
+                      </div>
+                    </Link>
+                    {benimProfilimMi && (
+                      <button
+                        onClick={() => favoriSeritindenKaldir('sinema', f.disId, filmFavorileriYenile)}
+                        title="Favorilerden çıkar"
+                        className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-kagit opacity-0 transition group-hover:opacity-100 hover:bg-muhur"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </YatayKaydirma>
+            ) : (
+              !filmEkleAcik && <p className="text-xs text-kraft">Henüz favori film eklenmemiş.</p>
+            )}
+          </div>
+        )}
+
+        {!duzenlemeAcik && (favoriKitaplar.length > 0 || benimProfilimMi) && (
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-[11px] uppercase tracking-widest text-kraft">📖 Favori Kitaplarım</p>
+              {benimProfilimMi && (
+                <button onClick={() => setKitapEkleAcik((a) => !a)} className="text-[11px] text-deniz hover:underline">
+                  {kitapEkleAcik ? 'Vazgeç' : '+ Ekle'}
+                </button>
+              )}
+            </div>
+            {kitapEkleAcik && (
+              <div className="mb-2">
+                <EserSecici kategori="Kitap" onSecim={favoriKitapEklendi} />
+              </div>
+            )}
+            {favoriKitaplar.length > 0 ? (
+              <YatayKaydirma>
+                {favoriKitaplar.map((k) => (
+                  <div key={k.id} className="group relative shrink-0" style={{ width: 90 }}>
+                    <Link to={esereLink(k.tur, k.disId)} className="block" title={k.baslik}>
+                      <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                        {k.posterUrl && <img src={k.posterUrl} alt={k.baslik} className="h-full w-full object-cover" />}
+                      </div>
+                    </Link>
+                    {benimProfilimMi && (
+                      <button
+                        onClick={() => favoriSeritindenKaldir('kitap', k.disId, kitapFavorileriYenile)}
+                        title="Favorilerden çıkar"
+                        className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] text-kagit opacity-0 transition group-hover:opacity-100 hover:bg-muhur"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </YatayKaydirma>
+            ) : (
+              !kitapEkleAcik && <p className="text-xs text-kraft">Henüz favori kitap eklenmemiş.</p>
+            )}
+          </div>
+        )}
+
+      {/* Kişileri Keşfet + Takip Ettikleri — aynı yapıda, yan yana, iki
+          minimal kart. Letterboxd'un koyu renk paletini (bkz. En İyi
+          Film Listeleri rozetleri) burada da kullanıyoruz —
+          "Letterboxd" markasıyla bağlantılı bir bölüm olmasa da, aynı
+          sade/koyu/nötr dili sitenin geri kalanıyla tutarlı kılıyor. */}
+      {!duzenlemeAcik && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Link
+            to="/kullanicilar"
+            className="rounded-sm bg-[#14181c] p-3 text-center ring-1 ring-white/10 transition hover:ring-white/25"
+          >
+            <p className="text-lg">👥</p>
+            <p className="mt-1 text-xs text-white">Kişileri Keşfet</p>
+          </Link>
+          <Link
+            to={`/profil/${uid}/takip-edilenler`}
+            className="rounded-sm bg-[#14181c] p-3 text-center ring-1 ring-white/10 transition hover:ring-white/25"
+          >
+            <p className="text-lg">🔗</p>
+            <p className="mt-1 text-xs text-white">Takip Ettikleri ({takipEdilenSayisi})</p>
+          </Link>
+        </div>
+      )}
+
+      {benimProfilimMi && (
+        <div className="mb-8 grid grid-cols-2 gap-2">
+          <div className={`rounded-sm bg-kagitKoyu ring-1 ring-cizgi ${davetAcik ? 'col-span-2' : ''}`}>
+            <button
+              onClick={() => setDavetAcik((a) => !a)}
+              className="flex w-full items-center justify-between px-3 py-2 text-xs text-murekkep"
+            >
+              <span>🎟️ Davet ({hedefProfil.kalanDavetHakki})</span>
+              <span className="text-kraft">{davetAcik ? '▲' : '▼'}</span>
+            </button>
+
+            {davetAcik && (
+              <div className="border-t border-cizgi px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-kraft">Her kod bir kişi tarafından bir kez kullanılabilir.</p>
+                  <button
+                    onClick={davetKoduOlustur}
+                    disabled={hedefProfil.kalanDavetHakki <= 0 || uretiliyor}
+                    className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                  >
+                    {uretiliyor ? 'Oluşturuluyor...' : 'Davet Kodu Oluştur'}
+                  </button>
+                </div>
+                {davetKodlari.length > 0 && (
+                  <ul className="mt-3 max-h-32 space-y-1 overflow-y-auto text-xs text-kraft">
+                    {davetKodlari.map((k) => (
+                      <li key={k.id} className="flex items-center justify-between">
+                        <span className="font-mono tracking-widest text-murekkep">{k.id}</span>
+                        <span>{k.kullanildiMi ? 'Kullanıldı' : 'Kullanılmadı'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className={`rounded-sm bg-kagitKoyu ring-1 ring-cizgi ${puanIceAktarAcik ? 'col-span-2' : ''}`}>
+            <button
+              onClick={() => setPuanIceAktarAcik((a) => !a)}
+              className="flex w-full items-center justify-between px-3 py-2 text-xs text-murekkep"
+            >
+              <span>📥 İçe Aktar</span>
+              <span className="text-kraft">{puanIceAktarAcik ? '▲' : '▼'}</span>
+            </button>
+            {puanIceAktarAcik && (
+              <div className="border-t border-cizgi px-4 py-3">
+                <PuanIceAktar />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Üst sekmeler — sadece 4 tane (Letterboxd'daki gibi). Geri kalan 13
+          eski sekme, "Profil" sekmesindeki gruplu sayaç listesinde — o
+          yüzden "Profil" sekmesi, sekme 'gunluk'/'suanda'/'listelerim'
+          DIŞINDA herhangi bir değerdeyken (13 alt görünümden biri dahil)
+          aktif görünüyor. */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        {ANA_SEKMELER.filter((s) => s.id !== 'listelerim' || benimProfilimMi).map((s) => {
+          const digerUstSekmeler = ['gunluk', 'suanda', 'listelerim']
+          const aktifMi = s.id === 'profil' ? !digerUstSekmeler.includes(sekme) : sekme === s.id
+          return (
+            <button
+              key={s.id}
+              onClick={() => setSekme(s.id)}
+              className={`rounded-sm px-3 py-1.5 font-govde text-sm transition ${
+                aktifMi
+                  ? 'bg-murekkep text-kagit font-medium ring-2 ring-murekkep'
+                  : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:ring-murekkep/50'
+              }`}
+            >
+              {s.etiket}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* "Profil" sekmesinin ana hâli — bio/favoriler zaten yukarıda,
+          burada sadece gruplu sayaç listesi. Her satır Letterboxd'daki
+          "Films 3,203" satırı gibi — hem sayıyı gösteriyor hem tıklanınca
+          o alt görünüme götürüyor. */}
+      {sekme === 'profil' && (
+        <div className="mb-6 space-y-5">
+          {PROFIL_GRUPLARI.map((grup) => (
+            <div key={grup.baslik}>
+              <h3 className="mb-1.5 text-xs uppercase tracking-widest text-kraft">{grup.baslik}</h3>
+              <div className="overflow-hidden rounded-sm ring-1 ring-cizgi">
+                {grup.satirlar.map((satir, i) => (
+                  <button
+                    key={satir.id}
+                    onClick={() => setSekme(satir.id)}
+                    className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm transition hover:bg-kagitKoyu ${
+                      i > 0 ? 'border-t border-cizgi' : ''
+                    }`}
+                  >
+                    <span className="text-murekkep">{satir.etiket}</span>
+                    <span className="flex items-center gap-1.5 text-kraft">
+                      {satir.sayi != null && <span className="font-baslik text-base text-murekkep">{satir.sayi}</span>}
+                      <span className="text-xs">›</span>
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
-          )}
-        </div>
-      </div>
-
-      {benimProfilimMi && (
-        <div className="mb-8 rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-          <button
-            onClick={() => setDavetAcik((a) => !a)}
-            className="flex w-full items-center justify-between px-4 py-2 text-sm text-murekkep"
-          >
-            <span>
-              🎟️ Davet Kodların <span className="text-kraft">(kalan: {hedefProfil.kalanDavetHakki})</span>
-            </span>
-            <span className="text-xs text-kraft">{davetAcik ? '▲ Gizle' : '▼ Göster'}</span>
-          </button>
-
-          {davetAcik && (
-            <div className="border-t border-cizgi px-4 py-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-kraft">Her kod bir kişi tarafından bir kez kullanılabilir.</p>
-                <button
-                  onClick={davetKoduOlustur}
-                  disabled={hedefProfil.kalanDavetHakki <= 0 || uretiliyor}
-                  className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
-                >
-                  {uretiliyor ? 'Oluşturuluyor...' : 'Davet Kodu Oluştur'}
-                </button>
-              </div>
-              {davetKodlari.length > 0 && (
-                <ul className="mt-3 max-h-32 space-y-1 overflow-y-auto text-xs text-kraft">
-                  {davetKodlari.map((k) => (
-                    <li key={k.id} className="flex items-center justify-between">
-                      <span className="font-mono tracking-widest text-murekkep">{k.id}</span>
-                      <span>{k.kullanildiMi ? 'Kullanıldı' : 'Kullanılmadı'}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+          ))}
         </div>
       )}
 
-      {benimProfilimMi && (
-        <div className="mb-8 rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-          <button
-            onClick={() => setPuanIceAktarAcik((a) => !a)}
-            className="flex w-full items-center justify-between px-4 py-2 text-sm text-murekkep"
-          >
-            <span>📥 Letterboxd Puanlarını İçe Aktar</span>
-            <span className="text-xs text-kraft">{puanIceAktarAcik ? '▲ Gizle' : '▼ Göster'}</span>
-          </button>
-          {puanIceAktarAcik && (
-            <div className="border-t border-cizgi px-4 py-3">
-              <PuanIceAktar />
-            </div>
-          )}
-        </div>
+      {/* 13 alt görünümden birindeyken (sayaç listesinden gelindiğinde)
+          "Profil"e dönmek için kısa bir yol. */}
+      {sekme !== 'profil' && !['gunluk', 'suanda', 'listelerim'].includes(sekme) && (
+        <button onClick={() => setSekme('profil')} className="mb-4 text-xs text-kraft hover:text-deniz">
+          ← Profil
+        </button>
       )}
 
-      {benimProfilimMi && (
-        <div className="mb-8 rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-          <button
-            onClick={() => setYenidenHesaplaAcik((a) => !a)}
-            className="flex w-full items-center justify-between px-4 py-2 text-sm text-murekkep"
-          >
-            <span>🔄 Popülerlik Önbelleğini Yeniden Hesapla</span>
-            <span className="text-xs text-kraft">{yenidenHesaplaAcik ? '▲ Gizle' : '▼ Göster'}</span>
-          </button>
-          {yenidenHesaplaAcik && (
-            <div className="border-t border-cizgi px-4 py-3 space-y-2">
-              <p className="text-xs text-kraft">
-                "Bizim Aramızda Popüler" listelerinin performans için okuduğu özet kayıtları, sadece bundan sonraki
-                puanlamalarla dolar. Geçmiş puanları (Letterboxd içe aktarımı dahil) bu özete dahil etmek için bunu{' '}
-                <strong>bir kez</strong> çalıştır — tüm topluluk için geçerli, sadece bir kişinin yapması yeterli.
-              </p>
+      {/* Yılın Özeti ve Günlük aynı yıl seçimini paylaşıyor — biri diğerini
+          etkilemesin diye ayrı state değil, tek bir seçim. */}
+      {(sekme === 'yilozeti' || sekme === 'gunluk') && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {Array.from({ length: new Date().getFullYear() - (gunlukIlkYil || new Date().getFullYear()) + 1 }, (_, i) => new Date().getFullYear() - i).map(
+            (y) => (
               <button
-                onClick={async () => {
-                  setYenidenHesaplaniyor(true)
-                  try {
-                    const sonuc = await tumIstatistikleriYenidenHesapla(setYenidenHesaplaDurumu)
-                    setYenidenHesaplaDurumu(
-                      `✓ Tamamlandı — Film: ${sonuc.sinema}, Dizi: ${sonuc.dizi}, Kitap: ${sonuc.kitap}, Kişi: ${sonuc.kisiler}`
-                    )
-                  } catch (err) {
-                    setYenidenHesaplaDurumu('Hata: ' + err.message)
-                  } finally {
-                    setYenidenHesaplaniyor(false)
-                  }
-                }}
-                disabled={yenidenHesaplaniyor}
-                className="rounded-sm bg-muhur px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                key={y}
+                onClick={() => setGunlukYil(y)}
+                className={`rounded-sm px-3 py-1 font-govde text-xs ${
+                  gunlukYil === y ? 'bg-murekkep text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                }`}
               >
-                {yenidenHesaplaniyor ? 'Hesaplanıyor...' : 'Yeniden Hesapla'}
+                {y}
               </button>
-              {yenidenHesaplaDurumu && <p className="text-xs text-kraft">{yenidenHesaplaDurumu}</p>}
-            </div>
+            )
           )}
         </div>
       )}
 
-      {/* Sekmeler */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        {SEKMELER.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setSekme(s.id)}
-            className={`rounded-sm px-3 py-1.5 font-govde text-sm transition ${
-              sekme === s.id
-                ? 'bg-murekkep text-kagit font-medium ring-2 ring-murekkep'
-                : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:ring-murekkep/50'
-            }`}
-          >
-            {s.etiket}
-          </button>
-        ))}
-      </div>
+      {sekme === 'yilozeti' && (
+        <YilOzeti
+          yil={gunlukYil}
+          yukleniyor={gunlukYukleniyor}
+          gonderiler={gonderiler}
+          eserPuanlarim={eserPuanlarim}
+          gunlukKayitlari={gunlukKayitlari}
+          onTuruSec={(tur) => {
+            // "Yazı" (deneme/inceleme vb.) hiç gunlukKayitlari'na düşmüyor,
+            // Günlük'te gösterilecek bir karşılığı yok — o yüzden Yazı/Gezi/
+            // Etkinlik rakamı Günlük yerine doğrudan Yazı & Gezi sekmesine
+            // gidiyor (gerçek içeriğin yaşadığı yer).
+            if (tur === 'diger') {
+              setSekme('yazigezi')
+              return
+            }
+            setGunlukTurFiltresi(tur)
+            setSekme('gunluk')
+          }}
+        />
+      )}
 
-      {/* İzlediklerim (sadece Film/Dizi) */}
-      {sekme === 'yilozeti' && <YilOzeti gonderiler={gonderiler} eserPuanlarim={eserPuanlarim} />}
+      {sekme === 'gunluk' && (
+        <>
+          {benimProfilimMi && (
+            <button
+              onClick={mukerrerleriTemizleTiklandi}
+              disabled={temizleniyor}
+              className="mb-3 text-[11px] text-kraft hover:text-deniz hover:underline disabled:opacity-40"
+            >
+              {temizleniyor ? 'Kontrol ediliyor...' : '🧹 Mükerrer Kayıtları Temizle'}
+            </button>
+          )}
+          <div className="mb-4 flex flex-wrap gap-2">
+            {[
+              { id: '', etiket: 'Tümü' },
+              { id: 'sinema', etiket: '🎬 Film' },
+              { id: 'dizi', etiket: '📺 Dizi' },
+              { id: 'kitap', etiket: '📖 Kitap' },
+              { id: 'diger', etiket: '🧳 Gezi/Etkinlik' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setGunlukTurFiltresi(f.id)}
+                className={`rounded-full px-3 py-1 text-xs font-govde ring-1 ${
+                  gunlukTurFiltresi === f.id ? 'bg-murekkep text-kagit ring-murekkep' : 'bg-kagitKoyu text-kraft ring-cizgi hover:text-murekkep'
+                }`}
+              >
+                {f.etiket}
+              </button>
+            ))}
+          </div>
+          {gunlukYukleniyor && <p className="text-sm text-kraft">Yükleniyor...</p>}
+          {!gunlukYukleniyor &&
+            (() => {
+              // KÖKTEN ÇÖZÜM: Günlük listesi artık Yılın Özeti'yle AYNI
+              // hesaplamadan (buYilOlaylariHesapla) besleniyor — eskiden bu
+              // liste sadece gerçek gunlukKayitlari'nı gösterirken, Yılın
+              // Özeti ayrıca gonderiler/eserPuanlari'ndan da (henüz bir
+              // günlük satırı oluşturmamış) "hayalet" olaylar sayıyordu.
+              // Rakamlar artık listeyle her zaman birebir örtüşüyor.
+              const tumOlaylar = buYilOlaylariHesapla(gunlukYil, gonderiler, eserPuanlarim, gunlukKayitlari)
+              const filtrelenmis =
+                gunlukTurFiltresi === ''
+                  ? tumOlaylar
+                  : gunlukTurFiltresi === 'diger'
+                    ? tumOlaylar.filter((k) => k.tur === 'gezi' || k.tur === 'etkinlik')
+                    : tumOlaylar.filter((k) => k.tur === gunlukTurFiltresi)
+              return (
+                <GunlukListesi
+                  kayitlar={filtrelenmis}
+                  kendiProfiliMi={benimProfilimMi}
+                  onDegisti={gunlukYenidenYukle}
+                />
+              )
+            })()}
+        </>
+      )}
 
       {sekme === 'izlediklerim' && (
         <>
@@ -965,12 +1462,133 @@ export default function Profil() {
         </div>
       )}
 
+      {sekme === 'tamamladiklarim' && (
+        <div>
+          {(() => {
+            // "Bitirdim" artık kaydı silmek yerine durum:'tamamlandi' olarak
+            // işaretliyor (bkz. utils/izlenecek.js) — bu sekme o kalıcı
+            // veriyi gösteriyor. En son tamamlanan en üstte.
+            const tamamlananFilmDizi = izlenecekler
+              .filter((i) => i.durum === 'tamamlandi' && (i.tur === 'sinema' || i.tur === 'dizi'))
+              .sort((a, b) => (b.tamamlanmaTarihi?.toMillis?.() || 0) - (a.tamamlanmaTarihi?.toMillis?.() || 0))
+            const tamamlananKitap = izlenecekler
+              .filter((i) => i.durum === 'tamamlandi' && i.tur === 'kitap')
+              .sort((a, b) => (b.tamamlanmaTarihi?.toMillis?.() || 0) - (a.tamamlanmaTarihi?.toMillis?.() || 0))
+            if (tamamlananFilmDizi.length === 0 && tamamlananKitap.length === 0) {
+              return <p className="text-sm text-kraft">Henüz "Bitirdim" dediğin bir şey yok.</p>
+            }
+            return (
+              <>
+                {tamamlananFilmDizi.length > 0 && (
+                  <div className="mb-8">
+                    <h2 className="font-baslik text-lg text-murekkep mb-3">Tamamladıklarım</h2>
+                    <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+                      {tamamlananFilmDizi.map((i) => (
+                        <PosterKart key={i.id} baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {tamamlananKitap.length > 0 && (
+                  <div>
+                    <h2 className="font-baslik text-lg text-murekkep mb-3">Bitirdiğim Kitaplar</h2>
+                    <div className="grid grid-cols-3 gap-4 sm:grid-cols-5">
+                      {tamamlananKitap.map((i) => (
+                        <PosterKart key={i.id} baslik={i.baslik} alt={i.alt} posterUrl={i.posterUrl} link={esereLink(i.tur, i.disId)} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          })()}
+        </div>
+      )}
+
+      {sekme === 'meydanokumalar' && (
+        <div>
+          {benimProfilimMi && (
+            <div className="mb-4">
+              {meydanOkumaFormAcik ? (
+                <MeydanOkumaFormu onOlustur={meydanOkumaOlusturTiklandi} onVazgec={() => setMeydanOkumaFormAcik(false)} />
+              ) : (
+                <button
+                  onClick={() => setMeydanOkumaFormAcik(true)}
+                  className="rounded-sm bg-gise px-3 py-1.5 font-govde text-xs text-kagit"
+                >
+                  + Yeni Meydan Okuma
+                </button>
+              )}
+            </div>
+          )}
+          {meydanOkumalar === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
+          {meydanOkumalar?.length === 0 && (
+            <p className="text-sm text-kraft">
+              {benimProfilimMi ? 'Henüz bir meydan okuma başlatmadın.' : 'Herkese açık bir meydan okuması yok.'}
+            </p>
+          )}
+          <div className="space-y-3">
+            {meydanOkumalar?.map((mo) => (
+              <MeydanOkumaKarti
+                key={mo.id}
+                mo={mo}
+                uid={uid}
+                sahibiMiyim={benimProfilimMi}
+                onSil={(id) => setMeydanOkumalar((liste) => liste.filter((m) => m.id !== id))}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {sekme === 'oduncKitaplar' && (
+        <div>
+          {benimProfilimMi && itibarSayisi !== null && itibarSayisi > 0 && (
+            <p className="mb-4 text-sm text-murekkep">🤝 Şimdiye kadar {itibarSayisi} kez kitap ödünç verdi.</p>
+          )}
+
+          <h2 className="mb-2 font-baslik text-lg text-murekkep">Ödünç Verdiklerim</h2>
+          {oduncVerdiklerim === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
+          {oduncVerdiklerim?.length === 0 && <p className="mb-6 text-sm text-kraft">Henüz kimseye kitap ödünç vermedin.</p>}
+          <div className="mb-8 space-y-2">
+            {oduncVerdiklerim?.map((i) => (
+              <Link key={i.id} to={`/kitap/${i.disId}`} className="flex items-center gap-2 rounded-sm bg-kagitKoyu p-2.5 ring-1 ring-cizgi">
+                {i.posterUrl && <img src={i.posterUrl} alt={i.baslik} className="h-12 w-8 shrink-0 rounded-sm object-cover" />}
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-murekkep">{i.baslik}</p>
+                  <p className="text-xs text-kraft">
+                    {i.isteyenAdi}'e verildi{i.durum === 'tamamlandi' ? ' · ✓ iade edildi' : ` · iade: ${new Date(i.iadeTarihi).toLocaleDateString('tr-TR')}`}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <h2 className="mb-2 font-baslik text-lg text-murekkep">Ödünç Aldıklarım</h2>
+          {oduncAldiklarim === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
+          {oduncAldiklarim?.length === 0 && <p className="text-sm text-kraft">Henüz kimseden kitap ödünç almadın.</p>}
+          <div className="space-y-2">
+            {oduncAldiklarim?.map((i) => (
+              <Link key={i.id} to={`/kitap/${i.disId}`} className="flex items-center gap-2 rounded-sm bg-kagitKoyu p-2.5 ring-1 ring-cizgi">
+                {i.posterUrl && <img src={i.posterUrl} alt={i.baslik} className="h-12 w-8 shrink-0 rounded-sm object-cover" />}
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-murekkep">{i.baslik}</p>
+                  <p className="text-xs text-kraft">
+                    {i.oduncVerenAdi}'den alındı{i.durum === 'tamamlandi' ? ' · ✓ iade edildi' : ` · iade: ${new Date(i.iadeTarihi).toLocaleDateString('tr-TR')}`}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* İzleyecek/Okuyacaklarım */}
       {sekme === 'izleyecegim' && (
         <div>
           {(() => {
-            const bekleyenFilmDizi = izlenecekler.filter((i) => i.durum !== 'okunuyor' && (i.tur === 'sinema' || i.tur === 'dizi'))
-            const bekleyenKitap = izlenecekler.filter((i) => i.durum !== 'okunuyor' && i.tur === 'kitap')
+            const bekleyenFilmDizi = izlenecekler.filter((i) => i.durum === 'planlanan' && (i.tur === 'sinema' || i.tur === 'dizi'))
+            const bekleyenKitap = izlenecekler.filter((i) => i.durum === 'planlanan' && i.tur === 'kitap')
             if (bekleyenFilmDizi.length === 0 && bekleyenKitap.length === 0) {
               return <p className="text-sm text-kraft">Liste boş.</p>
             }
@@ -1120,15 +1738,77 @@ export default function Profil() {
         <div>
           {yorumlarim.length === 0 && <p className="text-sm text-kraft">Henüz kimseye yorum yapılmamış.</p>}
           <ul className="space-y-3">
-            {yorumlarim.map((y) => (
-              <li key={y.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-                <Link to={`/gonderi/${y.gonderiId}`} className="text-xs text-deniz hover:underline">
-                  {y.gonderiBasligi || 'Günce'}
-                </Link>
-                <p className="mt-1 text-sm text-murekkep">{y.metin}</p>
-              </li>
-            ))}
+            {yorumlarim.map((y) => {
+              const esereMi = !y.gonderiId
+              const link = esereMi
+                ? y.eserTur === 'kitap'
+                  ? `/kitap/${y.eserDisId}`
+                  : y.eserTur === 'dizi'
+                    ? `/dizi/${y.eserDisId}`
+                    : `/film/${y.eserDisId}`
+                : `/gonderi/${y.gonderiId}`
+              const baslik = esereMi ? y.eserBaslik || (y.eserTur === 'kitap' ? 'Kitap' : y.eserTur === 'dizi' ? 'Dizi' : 'Film') : y.gonderiBasligi || 'Günce'
+              return (
+                <li key={y.id} className="rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+                  <Link to={link} className="text-xs text-deniz hover:underline">
+                    {baslik}
+                  </Link>
+                  <p className="mt-1 text-sm text-murekkep">{y.metin}</p>
+                </li>
+              )
+            })}
           </ul>
+        </div>
+      )}
+
+      {sekme === 'listelerim' && benimProfilimMi && (
+        <div>
+          <Listelerim />
+        </div>
+      )}
+
+      {sekme === 'dinlediklerim' && (
+        <div>
+          {dinlediklerim.length === 0 && <p className="text-sm text-kraft">Henüz dinlenen bir kitap yok.</p>}
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
+            {dinlediklerim.map((d) => {
+              const yuzde = d.toplamDakika ? Math.min(100, Math.round(((d.suankiDakika || 0) / d.toplamDakika) * 100)) : null
+              return (
+                <Link key={d.id} to={`/kitap/${d.disId}`} className="block">
+                  <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                    {d.posterUrl ? (
+                      <img src={d.posterUrl} alt={d.baslik} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">📖</div>
+                    )}
+                  </div>
+                  <p className="mt-1 truncate text-xs text-murekkep">{d.baslik}</p>
+                  {yuzde != null && <p className="text-[10px] text-kraft">%{yuzde}</p>}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {sekme === 'alintilarim' && (
+        <div className="space-y-3">
+          {alintilarim.length === 0 && <p className="text-sm text-kraft">Henüz bir alıntı paylaşmadın.</p>}
+          {alintilarim.map((a) => (
+            <AlintiKarti
+              key={a.id}
+              alinti={a}
+              kullanici={kullanici}
+              onSilTiklandi={
+                benimProfilimMi
+                  ? async () => {
+                      await alintiSil(a.id)
+                      setAlintilarim((onceki) => onceki.filter((x) => x.id !== a.id))
+                    }
+                  : undefined
+              }
+            />
+          ))}
         </div>
       )}
 
@@ -1154,6 +1834,37 @@ export default function Profil() {
                       if (!window.confirm('Bu eseri koleksiyonundan çıkarmak istediğine emin misin?')) return
                       await eseriKoleksiyondanCikar(uid, eser.eserId)
                       setSanatKoleksiyonu((liste) => liste.filter((e) => e.id !== eser.id))
+                    }}
+                    className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft opacity-0 ring-1 ring-cizgi transition-opacity hover:text-muhur group-hover:opacity-100"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {sekme === 'filmMuzikleri' && (
+        <div>
+          {begenilenMuzikler.length === 0 && <p className="text-sm text-kraft">Henüz beğenilen bir film müziği yok.</p>}
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {begenilenMuzikler.map((m) => (
+              <div key={m.id} className="group relative">
+                <Link to={`/film/${m.tmdbId}`} className="block">
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                    {m.posterUrl && <img src={m.posterUrl} alt={m.filmBaslik} loading="lazy" className="h-full w-full object-cover" />}
+                    <span className="absolute bottom-1 left-1 text-sm">🎵</span>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-murekkep">{m.filmBaslik}</p>
+                  {m.filmYil && <p className="truncate text-[11px] text-kraft">{m.filmYil}</p>}
+                </Link>
+                {benimProfilimMi && (
+                  <button
+                    onClick={async () => {
+                      await muzikBegeniKaldir(uid, m.tmdbId)
+                      setBegenilenMuzikler((liste) => liste.filter((x) => x.id !== m.id))
                     }}
                     className="absolute right-1 top-1 rounded-full bg-kagit/90 px-1.5 py-0.5 text-[10px] text-kraft opacity-0 ring-1 ring-cizgi transition-opacity hover:text-muhur group-hover:opacity-100"
                   >

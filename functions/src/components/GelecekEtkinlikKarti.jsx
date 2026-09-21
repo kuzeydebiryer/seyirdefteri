@@ -1,13 +1,29 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { katilacagimDegistir, kaynakEkle, gelecekEtkinlikGuncelle } from '../utils/gelecekEtkinlik.js'
 import { useKaynaklar } from '../hooks/useKaynaklar.js'
+import { kulupIlerlemeGetir } from '../utils/kulupIstatistik.js'
+import { kitapIcVeriTabanindaAra } from '../utils/kitapKatalog.js'
+import { turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import MedyaGomulusu from './MedyaGomulusu.jsx'
 import Avatar from './Avatar.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
+
+// Oyuncu listesi kartı gereksiz uzatıyordu (mobilde 5+ isim birkaç satıra
+// taşabiliyordu) — artık yönetmenle birlikte TEK satırda, ilk 2 isim + kalan
+// sayı olarak özetleniyor. Film/kitap etkinlikleri artık birbirine yakın
+// bir yükseklikte kalıyor.
+function oyuncuOzeti(oyuncularStr) {
+  const isimler = (oyuncularStr || '').split(',').map((s) => s.trim()).filter(Boolean)
+  if (isimler.length === 0) return ''
+  if (isimler.length <= 2) return isimler.join(', ')
+  return `${isimler.slice(0, 2).join(', ')} +${isimler.length - 2}`
+}
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
 
@@ -28,6 +44,8 @@ function tarihSaatGoster(iso) {
 export default function GelecekEtkinlikKarti({ etkinlik }) {
   const { kullanici } = useAuth()
   const [katilacaklar, setKatilacaklar] = useState(etkinlik.katilacaklar || [])
+  const [kulupIlerleme, setKulupIlerleme] = useState(null)
+  const [canliKitapVerisi, setCanliKitapVerisi] = useState(null)
   const [kaynaklarAcik, setKaynaklarAcik] = useState(false)
   const [kaynakFormuAcik, setKaynakFormuAcik] = useState(false)
   const [kaynakTur, setKaynakTur] = useState('yazi')
@@ -73,6 +91,42 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
   // okuma maliyeti sabit kalsın diye.
   const GOSTERILECEK_AVATAR_SAYISI = 6
   const [katilimciProfilleri, setKatilimciProfilleri] = useState([])
+
+  // Kulüp içi ilerleme/ortalama — sadece bu etkinliğin topluluğuna üye
+  // kişiler arasında, o eser için "kaç kişi başladı / kulübün ortalama
+  // puanı ne" (site geneli istatistiklerden bilerek ayrı).
+  useEffect(() => {
+    const eserTur = etkinlik.eserTur
+    const eserDisId = etkinlik.eserTmdbId ?? etkinlik.eserGoogleBooksId
+    if (!eserTur || !eserDisId || !etkinlik.topluluklId) return
+    let iptal = false
+    getDocs(collection(db, 'topluluklar', etkinlik.topluluklId, 'uyeler')).then((uyelerSnap) => {
+      if (iptal) return
+      const uyeUidleri = uyelerSnap.docs.map((d) => d.id)
+      kulupIlerlemeGetir(uyeUidleri, eserTur, eserDisId).then((sonuc) => {
+        if (!iptal) setKulupIlerleme(sonuc)
+      })
+    })
+    return () => {
+      iptal = true
+    }
+  }, [etkinlik.eserTur, etkinlik.eserTmdbId, etkinlik.eserGoogleBooksId, etkinlik.topluluklId])
+
+  // Kitap bilgisi (poster/başlık) etkinlik oluşturulurken bir "anlık görüntü"
+  // olarak kopyalanıyor — kitap sayfası SONRADAN düzenlenip kapak eklense
+  // bile bu kopya güncellenmiyordu ("kapak eklendi ama kulüp kartına
+  // gelmedi" sorununun kaynağı buydu). Kitap kendi Firestore koleksiyonumuzda
+  // olduğu için ucuz bir canlı okuma ile her zaman GÜNCEL veriyi gösteriyoruz.
+  useEffect(() => {
+    if (etkinlik.eserTur !== 'kitap' || !etkinlik.eserGoogleBooksId) return
+    let iptal = false
+    getDoc(doc(db, 'kitaplar', etkinlik.eserGoogleBooksId)).then((snap) => {
+      if (!iptal && snap.exists()) setCanliKitapVerisi(snap.data())
+    })
+    return () => {
+      iptal = true
+    }
+  }, [etkinlik.eserTur, etkinlik.eserGoogleBooksId])
 
   useEffect(() => {
     let iptal = false
@@ -149,12 +203,27 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
     if (!kitapArama.trim()) return
     const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
     const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(kitapArama)}&maxResults=8${anahtarParcasi}`
-    const res = await fetch(url)
-    const data = await res.json()
-    setKitapSonuclari(data.items || [])
+    const [icSonuclar, googleSonuc] = await Promise.all([
+      kitapIcVeriTabanindaAra(kitapArama, 8),
+      fetch(url)
+        .then((res) => res.json())
+        .then((data) => data.items || [])
+        .catch(() => []),
+    ])
+    setKitapSonuclari([...icSonuclar.map((k) => ({ ...k, _kaynak: 'ic' })), ...googleSonuc])
   }
 
-  function kitapSec(item) {
+  async function kitapSec(item) {
+    if (item._kaynak === 'ic') {
+      const kayit = item.id?.startsWith('tr_') ? await turkceKitaptanKaydet(item) : item
+      setSeciliKitap({
+        googleBooksId: kayit.id,
+        baslik: kayit.baslik || '',
+        yazar: kayit.yazar || '',
+        posterUrl: kayit.posterUrl || '',
+      })
+      return
+    }
     const v = item.volumeInfo || {}
     setSeciliKitap({
       googleBooksId: item.id,
@@ -168,11 +237,19 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
     e.preventDefault()
     if (!dEserArama.trim()) return
     if (dEserKategori === 'kitap') {
+      // KÖKTEN ÇÖZÜM: bu arama sadece Google Books'a gidiyordu, bizim iç
+      // veritabanımıza (statik veri seti + canlı katalog) hiç bakmıyordu —
+      // "aynı kitabın farklı edisyonu bulunamıyor" sorununun bir parçası.
       const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
       const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(dEserArama)}&maxResults=16${anahtarParcasi}`
-      const res = await fetch(url)
-      const data = await res.json()
-      setDEserSonuclari(data.items || [])
+      const [icSonuclar, googleSonuc] = await Promise.all([
+        kitapIcVeriTabanindaAra(dEserArama, 10),
+        fetch(url)
+          .then((res) => res.json())
+          .then((data) => data.items || [])
+          .catch(() => []),
+      ])
+      setDEserSonuclari([...icSonuclar.map((k) => ({ ...k, _kaynak: 'ic' })), ...googleSonuc])
       return
     }
     if (!TMDB_API_KEY) return
@@ -185,6 +262,20 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
 
   async function dEserSec(item) {
     if (dEserKategori === 'kitap') {
+      if (item._kaynak === 'ic') {
+        const kayit = item.id?.startsWith('tr_') ? await turkceKitaptanKaydet(item) : item
+        setDEser({
+          eserTur: 'kitap',
+          eserGoogleBooksId: kayit.id,
+          eserBaslik: kayit.baslik || '',
+          eserYazar: kayit.yazar || '',
+          eserYil: kayit.yil || '',
+          eserPosterUrl: kayit.posterUrl || '',
+        })
+        setDEserSonuclari([])
+        setDEserArama('')
+        return
+      }
       const v = item.volumeInfo || {}
       setDEser({
         eserTur: 'kitap',
@@ -239,7 +330,8 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
   }
 
   const eserSayfasiLinki =
-    etkinlik.eserTmdbId && (etkinlik.eserTur === 'dizi' ? `/dizi/${etkinlik.eserTmdbId}` : `/film/${etkinlik.eserTmdbId}`)
+    (etkinlik.eserTmdbId && (etkinlik.eserTur === 'dizi' ? `/dizi/${etkinlik.eserTmdbId}` : `/film/${etkinlik.eserTmdbId}`)) ||
+    (etkinlik.eserGoogleBooksId && `/kitap/${etkinlik.eserGoogleBooksId}`)
 
   // Etkinlik geçtiyse ve bir eser bağlıysa, "bu eser hakkında günce yaz" CTA'sı
   // için GonderiEkle'nin zaten desteklediği ?tur=&disId= prefill'ini kullanıyoruz.
@@ -255,11 +347,15 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
   return (
     <div className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex gap-3">
-          {etkinlik.eserPosterUrl && (
-            <img src={etkinlik.eserPosterUrl} alt={etkinlik.eserBaslik} className="h-24 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi" />
+        <div className="flex min-w-0 flex-1 gap-3">
+          {(canliKitapVerisi?.posterUrl || etkinlik.eserPosterUrl) && (
+            <img
+              src={canliKitapVerisi?.posterUrl || etkinlik.eserPosterUrl}
+              alt={etkinlik.eserBaslik}
+              className="h-24 w-16 shrink-0 rounded-sm object-cover ring-1 ring-cizgi"
+            />
           )}
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="font-govde text-sm text-murekkep">
               {etkinlik.baslik}
               {etkinlik.tekrarSeriId && <span title="Tekrarlayan etkinlik"> 🔁</span>}
@@ -282,17 +378,31 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
                 )}
               </p>
             )}
-            {etkinlik.yonetmen && <p className="text-[11px] text-kraft">Yönetmen: {etkinlik.yonetmen}</p>}
-            {etkinlik.oyuncular && <p className="text-[11px] text-kraft">Oyuncular: {etkinlik.oyuncular}</p>}
-            {etkinlik.eserYazar && <p className="text-[11px] text-kraft">Yazar: {etkinlik.eserYazar}</p>}
+            {(etkinlik.yonetmen || etkinlik.oyuncular) && (
+              <p className="truncate text-[11px] text-kraft">
+                {etkinlik.yonetmen}
+                {etkinlik.yonetmen && etkinlik.oyuncular && ' · '}
+                {oyuncuOzeti(etkinlik.oyuncular)}
+              </p>
+            )}
+            {etkinlik.eserYazar && <p className="truncate text-[11px] text-kraft">{etkinlik.eserYazar}</p>}
+            {kulupIlerleme && (kulupIlerleme.baslayanSayisi > 0 || kulupIlerleme.ortalamaPuan != null) && (
+              <p className="text-[11px] text-deniz">
+                {kulupIlerleme.baslayanSayisi > 0 && `👥 ${kulupIlerleme.baslayanSayisi} kişi başladı`}
+                {kulupIlerleme.baslayanSayisi > 0 && kulupIlerleme.ortalamaPuan != null && ' · '}
+                {kulupIlerleme.ortalamaPuan != null &&
+                  `⭐ Kulüp ortalaması ${kulupIlerleme.ortalamaPuan.toFixed(1)} (${kulupIlerleme.puanlayanSayisi} puan)`}
+              </p>
+            )}
             <p className="text-xs text-kraft mt-0.5">{tarihSaatGoster(etkinlik.tarih)}</p>
             {etkinlik.aciklama && <p className="mt-1 text-xs text-murekkep/90">{etkinlik.aciklama}</p>}
+            {etkinlik.instagramUrl && <MedyaGomulusu url={etkinlik.instagramUrl} paylasanAdi={etkinlik.olusturanAdi} />}
             {katilacaklar.length > 0 ? (
               <div className="mt-1.5 flex items-center gap-1.5">
                 <div className="flex -space-x-2">
                   {katilimciProfilleri.map((p) => (
-                    <Link key={p.id} to={`/profil/${p.id}`} title={p.adSoyad}>
-                      <Avatar adSoyad={p.adSoyad} avatarUrl={p.avatarUrl} boyut="h-6 w-6" />
+                    <Link key={p.id} to={`/profil/${p.id}`} title={gorunenAdGetir(p)}>
+                      <Avatar adSoyad={gorunenAdGetir(p)} avatarUrl={p.avatarUrl} boyut="h-6 w-6" />
                     </Link>
                   ))}
                 </div>
@@ -425,12 +535,26 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
                   {dEserSonuclari.slice(0, 10).map((item) => {
                     const posterUrl =
                       dEserKategori === 'kitap'
-                        ? (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                        ? item._kaynak === 'ic'
+                          ? item.posterUrl || ''
+                          : (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
                         : item.poster_path && `${TMDB_POSTER}${item.poster_path}`
+                    const baslik =
+                      dEserKategori === 'sinema'
+                        ? item.title
+                        : dEserKategori === 'dizi'
+                          ? item.name
+                          : item._kaynak === 'ic'
+                            ? item.baslik
+                            : item.volumeInfo?.title
                     return (
-                      <button key={item.id} type="button" onClick={() => dEserSec(item)} className="text-left">
-                        <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
-                          {posterUrl && <img src={posterUrl} alt="" className="h-full w-full object-cover" />}
+                      <button key={item.id} type="button" onClick={() => dEserSec(item)} className="text-left" title={baslik}>
+                        <div className="flex aspect-[2/3] items-center justify-center overflow-hidden rounded-sm bg-kagit p-1 ring-1 ring-cizgi">
+                          {posterUrl ? (
+                            <img src={posterUrl} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="line-clamp-5 text-center text-[9px] leading-tight text-kraft">{baslik || 'Kapak yok'}</span>
+                          )}
                         </div>
                       </button>
                     )
@@ -544,11 +668,16 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
                     {kitapSonuclari.length > 0 && (
                       <div className="grid grid-cols-5 gap-1">
                         {kitapSonuclari.map((item) => {
-                          const url = (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                          const url = item._kaynak === 'ic' ? item.posterUrl || '' : (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                          const baslik = item._kaynak === 'ic' ? item.baslik : item.volumeInfo?.title
                           return (
-                            <button key={item.id} type="button" onClick={() => kitapSec(item)} className="text-left">
-                              <div className="aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-                                {url && <img src={url} alt="" className="h-full w-full object-cover" />}
+                            <button key={item.id} type="button" onClick={() => kitapSec(item)} className="text-left" title={baslik}>
+                              <div className="flex aspect-[2/3] items-center justify-center overflow-hidden rounded-sm bg-kagitKoyu p-1 ring-1 ring-cizgi">
+                                {url ? (
+                                  <img src={url} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  <span className="line-clamp-5 text-center text-[9px] leading-tight text-kraft">{baslik || 'Kapak yok'}</span>
+                                )}
                               </div>
                             </button>
                           )

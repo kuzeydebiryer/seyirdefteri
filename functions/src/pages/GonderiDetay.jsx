@@ -15,12 +15,14 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { begeniDegistir } from '../utils/begeni.js'
 import { useTartismaEtkinlikleri } from '../hooks/useTartismaEtkinlikleri.js'
 import YildizPuan from '../components/YildizPuan.jsx'
 import EtkinlikKarti from '../components/EtkinlikKarti.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
+import MedyaGomulusu from '../components/MedyaGomulusu.jsx'
 import HavaDurumuOzeti from '../components/HavaDurumuOzeti.jsx'
 import YerBilgiKutusu from '../components/YerBilgiKutusu.jsx'
 
@@ -93,12 +95,12 @@ export default function GonderiDetay() {
         gonderiId: id,
         gonderiBasligi: gonderi?.baslik || '',
         yazarId: kullanici.uid,
-        yazarAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+        yazarAdi: gorunenAdGetir(profil, kullanici.displayName),
         metin: yeniYorum.trim(),
         tarih: serverTimestamp(),
       })
       await updateDoc(doc(db, 'gonderiler', id), { yorumSayisi: increment(1) })
-      setYorumlar((onceki) => [...onceki, { id: yeniYorumRef.id, yazarAdi: profil?.adSoyad, metin: yeniYorum.trim() }])
+      setYorumlar((onceki) => [...onceki, { id: yeniYorumRef.id, yazarAdi: gorunenAdGetir(profil, kullanici.displayName), metin: yeniYorum.trim() }])
       setYeniYorum('')
     } finally {
       setGonderiliyor(false)
@@ -129,7 +131,7 @@ export default function GonderiDetay() {
         gonderiTuru: gonderi.tur,
         topluluklId: null,
         olusturanId: kullanici.uid,
-        olusturanAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+        olusturanAdi: gorunenAdGetir(profil, kullanici.displayName),
         tarih: etkinlikTarihi,
         aciklama: etkinlikAciklama,
         olusturmaTarihi: serverTimestamp(),
@@ -367,6 +369,8 @@ export default function GonderiDetay() {
         </div>
       )}
 
+      {gonderi.instagramUrl && <MedyaGomulusu url={gonderi.instagramUrl} paylasanAdi={gonderi.yazarAdi} />}
+
       <button
         onClick={begenTiklandi}
         disabled={!kullanici}
@@ -380,14 +384,14 @@ export default function GonderiDetay() {
       {(gonderi.tur === 'sinema' || gonderi.tur === 'dizi' || gonderi.tur === 'kitap') && (
         <>
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h2 className="font-baslik text-lg text-murekkep">
                 Bu {gonderi.tur === 'kitap' ? 'kitap' : gonderi.tur === 'dizi' ? 'dizi' : 'film'} hakkında konuşalım
               </h2>
               {kullanici && (
                 <button
                   onClick={() => setEtkinlikFormuAcik((a) => !a)}
-                  className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+                  className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${etkinlikFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
                 >
                   {etkinlikFormuAcik ? 'Vazgeç' : '+ Etkinlik Oluştur'}
                 </button>

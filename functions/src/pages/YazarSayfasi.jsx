@@ -4,7 +4,9 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { favoriEkle, favoriKaldir } from '../utils/favori.js'
 import { favoriMi } from '../hooks/useFavoriler.js'
 import { yazarinKitaplariniGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import { canliKataloktaYazarinKitaplariniGetir } from '../utils/kitapKatalog.js'
 import YazarBiyografisi from '../components/YazarBiyografisi.jsx'
+import KitapyurdundanKitapEkle from '../components/KitapyurdundanKitapEkle.jsx'
 
 export default function YazarSayfasi() {
   const { ad } = useParams()
@@ -31,12 +33,20 @@ export default function YazarSayfasi() {
   useEffect(() => {
     let iptal = false
     setYukleniyor(true)
-    yazarinKitaplariniGetir(yazarAdi).then((liste) => {
-      if (!iptal) {
-        setKitaplar(liste)
+    Promise.all([yazarinKitaplariniGetir(yazarAdi), canliKataloktaYazarinKitaplariniGetir(yazarAdi)]).then(
+      ([statikListe, canliListe]) => {
+        if (iptal) return
+        // Aynı kitap iki kaynakta da olabilir (statik listeden görüntülenip
+        // canlı kataloğa kaydedilmiş olabilir, bkz. turkceKitaptanKaydet) —
+        // ISBN'i eşleşenleri statik listedekiyle (kapak senkronu zaten var)
+        // tekilleştiriyoruz, sadece gerçekten YENİ (statikte hiç olmayan,
+        // elle eklenmiş vb.) canlı kayıtları ekliyoruz.
+        const statikIsbnler = new Set(statikListe.map((k) => k.isbn).filter(Boolean))
+        const yeniCanliListe = canliListe.filter((k) => !k.isbn13 || !statikIsbnler.has(k.isbn13))
+        setKitaplar([...statikListe, ...yeniCanliListe])
         setYukleniyor(false)
       }
-    })
+    )
 
     if (kullanici) {
       favoriMi(kullanici.uid, 'yazar', ad).then((v) => {
@@ -88,14 +98,22 @@ export default function YazarSayfasi() {
       <div className="defter-cizgi my-6" />
 
       <h2 className="font-baslik text-lg text-murekkep mb-3">Kitapları</h2>
+
+      <KitapyurdundanKitapEkle varsayilanYazar={yazarAdi} />
+
       {!yukleniyor && kitaplar.length === 0 && (
         <p className="text-sm text-kraft">Bu yazara ait kitap bulunamadı (yazar adı yazımı farklı olabilir).</p>
       )}
 
       <div className="space-y-2">
         {kitaplar.map((k) => (
-          <div key={k.id} className="flex items-center justify-between gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
-            <div className="min-w-0">
+          <div key={k.id} className="flex items-center gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+            {k.posterUrl ? (
+              <img src={k.posterUrl} alt={k.baslik} className="h-20 w-14 shrink-0 rounded-sm object-cover ring-1 ring-cizgi" />
+            ) : (
+              <div className="flex h-20 w-14 shrink-0 items-center justify-center rounded-sm bg-kagit text-lg ring-1 ring-cizgi">📖</div>
+            )}
+            <div className="min-w-0 flex-1">
               <button
                 onClick={() => incele(k)}
                 disabled={inceleniyorId === k.id}

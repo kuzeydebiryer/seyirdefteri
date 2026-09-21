@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useEtkinlikOnerileri } from '../hooks/useEtkinlikOnerileri.js'
 import { oneriEkle, oneriSil, oneriBegenDegistir, oneriyiEtkinligeCevir } from '../utils/etkinlikOnerisi.js'
+import { kitapIcVeriTabanindaAra } from '../utils/kitapKatalog.js'
+import { turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -126,18 +128,29 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
   const [eserArama, setEserArama] = useState('')
   const [eserSonuclari, setEserSonuclari] = useState([])
   const [seciliEser, setSeciliEser] = useState(null)
+  const [instagramUrl, setInstagramUrl] = useState('')
   const [not_, setNot_] = useState('')
+  const [sonTarih, setSonTarih] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   async function eserAra(e) {
     e.preventDefault()
     if (!eserArama.trim()) return
     if (eserKategori === 'kitap') {
+      // KÖKTEN ÇÖZÜM: eskiden burada sadece Google Books'a gidiliyordu —
+      // sitenin kendi 67 bin kayıtlı Türkçe veri seti ve canlı (elle
+      // eklenen/zenginleştirilen) kataloğu hiç aranmıyordu. "Veritabanımızda
+      // olan kitabı bulamıyorum" sorununun kaynağı buydu.
       const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
-      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(eserArama)}&maxResults=16${anahtarParcasi}`
-      const res = await fetch(url)
-      const data = await res.json()
-      setEserSonuclari(data.items || [])
+      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(eserArama)}&maxResults=10${anahtarParcasi}`
+      const [icSonuclar, googleSonuc] = await Promise.all([
+        kitapIcVeriTabanindaAra(eserArama, 10),
+        fetch(url)
+          .then((res) => res.json())
+          .then((data) => data.items || [])
+          .catch(() => []),
+      ])
+      setEserSonuclari([...icSonuclar.map((k) => ({ ...k, _kaynak: 'ic' })), ...googleSonuc])
       return
     }
     if (!TMDB_API_KEY) return
@@ -148,8 +161,25 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
     setEserSonuclari(data.results || [])
   }
 
-  function eserSec(item) {
+  async function eserSec(item) {
     if (eserKategori === 'kitap') {
+      if (item._kaynak === 'ic') {
+        // Statik veri setinden geliyorsa (henüz gerçek bir Firestore kaydı
+        // yok) burada bir tane oluşturuluyor; canlı katalogdan geliyorsa
+        // (zaten gerçek bir kayıt) doğrudan kullanılıyor.
+        const kayit = item.id?.startsWith('tr_') ? await turkceKitaptanKaydet(item) : item
+        setSeciliEser({
+          eserTur: 'kitap',
+          eserGoogleBooksId: kayit.id,
+          eserBaslik: kayit.baslik || '',
+          eserYazar: kayit.yazar || '',
+          eserYil: kayit.yil || '',
+          eserPosterUrl: kayit.posterUrl || '',
+        })
+        setEserSonuclari([])
+        setEserArama('')
+        return
+      }
       const v = item.volumeInfo || {}
       setSeciliEser({
         eserTur: 'kitap',
@@ -176,9 +206,17 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
     if (!seciliEser || !kullanici) return
     setKaydediliyor(true)
     try {
-      await oneriEkle(topluluklId, { eser: seciliEser, not: not_, topluluk, kullanici })
+      await oneriEkle(topluluklId, {
+        eser: { ...seciliEser, instagramUrl: instagramUrl.trim() || null },
+        not: not_,
+        sonTarih: sonTarih || null,
+        topluluk,
+        kullanici,
+      })
       setSeciliEser(null)
       setNot_('')
+      setSonTarih('')
+      setInstagramUrl('')
       setFormuAcik(false)
       yenidenYukle()
     } finally {
@@ -188,7 +226,7 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
 
   return (
     <div className="mb-8">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="font-baslik text-lg text-murekkep">🗳️ Etkinlik Önerileri</h2>
           <p className="text-[11px] text-kraft">Sıradaki buluşma için öner, en çok beğenilen gerçekleşir.</p>
@@ -196,7 +234,7 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
         {uyeMi && (
           <button
             onClick={() => setFormuAcik((a) => !a)}
-            className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+            className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${formuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
           >
             {formuAcik ? 'Vazgeç' : '+ Öner'}
           </button>
@@ -263,7 +301,9 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
                   {eserSonuclari.slice(0, 16).map((item) => {
                     const posterUrl =
                       eserKategori === 'kitap'
-                        ? (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                        ? item._kaynak === 'ic'
+                          ? item.posterUrl || ''
+                          : (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
                         : item.poster_path && `${TMDB_POSTER}${item.poster_path}`
                     return (
                       <button key={item.id} type="button" onClick={() => eserSec(item)} className="text-left">
@@ -287,6 +327,28 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
             className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
           />
 
+          <div>
+            <label className="mb-1 block text-[11px] text-kraft">Oylama son tarihi (opsiyonel — geçince "kazanan" otomatik belirlenir)</label>
+            <input
+              type="date"
+              value={sonTarih}
+              onChange={(e) => setSonTarih(e.target.value)}
+              min={new Date().toISOString().slice(0, 10)}
+              className="rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11px] text-kraft">📷 İlgili Instagram / YouTube / X (opsiyonel)</label>
+            <input
+              type="text"
+              value={instagramUrl}
+              onChange={(e) => setInstagramUrl(e.target.value)}
+              placeholder="Instagram, YouTube veya X linki..."
+              className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={!seciliEser || kaydediliyor}
@@ -305,6 +367,25 @@ export default function EtkinlikOnerileriBolumu({ topluluklId, topluluk, uyeMi, 
         </p>
       )}
       {!yukleniyor && !hata && oneriler.length === 0 && <p className="text-sm text-kraft">Henüz bir öneri yok.</p>}
+
+      {!yukleniyor && (() => {
+        // Oylama süresi geçmiş öneriler arasından en çok beğenileni bul —
+        // öneri, dönüşene kadar hâlâ listede duruyor, sadece belirgin bir
+        // banner ile öne çıkıyor. Yönetici bunu tek tıkla gerçek etkinliğe
+        // çevirebiliyor (aynı OneriKarti'deki "Etkinlik Yap" formu).
+        const suan = new Date()
+        const suresiGecenler = oneriler.filter((o) => o.sonTarih && new Date(o.sonTarih) <= suan)
+        if (suresiGecenler.length === 0) return null
+        const kazanan = [...suresiGecenler].sort((a, b) => (b.begenenler?.length || 0) - (a.begenenler?.length || 0))[0]
+        return (
+          <div className="mb-4 rounded-sm bg-gise/15 p-3 ring-1 ring-gise">
+            <p className="text-xs font-medium text-murekkep">
+              🏆 Oylama süresi doldu — <strong>{kazanan.eserBaslik}</strong> {kazanan.begenenler?.length || 0} beğeniyle önde.
+              {yoneticiMiyim ? ' Aşağıdan "Etkinlik Yap" ile onaylayabilirsin.' : ' Yönetici onayı bekleniyor.'}
+            </p>
+          </div>
+        )
+      })()}
 
       <div className="space-y-3">
         {oneriler.map((o) => (

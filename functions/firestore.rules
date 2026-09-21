@@ -16,12 +16,118 @@ service cloud.firestore {
       );
     }
 
+    // Site geneli yönetici kontrolü — dusunceHavuzu'ndaki tek seferlik
+    // kontrolle aynı mantık, artık birden fazla yerde (platform verisi,
+    // favori/yönetmen silme gibi paylaşılan/yıkıcı işlemler) kullanıldığı
+    // için tek bir fonksiyona çıkarıldı. Genel bir rol sistemi değil,
+    // sadece kullanicilar/{uid} belgesinde "yonetici: true" alanı olanlar.
+    function yoneticiMi() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/kullanicilar/$(request.auth.uid)).data.get('yonetici', false) == true;
+    }
+
+    // Uygulama içi bildirim merkezi — SADECE Cloud Functions (Admin SDK, bu
+    // kurallara hiç tabi değil) yazabilir, bu yüzden "create" istemciden
+    // tamamen kapalı (sahte bildirim oluşturmayı engellemek için). Sahibi
+    // sadece "okunduMu" alanını değiştirebilir veya kendi bildirimini silebilir.
+    match /bildirimler/{bildirimId} {
+      allow read: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+      allow create: if false;
+      allow update: if request.auth != null && resource.data.kullaniciId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okunduMu']);
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Günlük Kayıtları (Diary) — bir eseri gerçekte ne zaman izlediğin/okuduğun
+    // OLAYI, "eserPuanlarim"daki güncel puandan bağımsız (bkz. utils/gunluk.js
+    // başındaki not). Sadece sahibi yazabilir/silebilir/güncelleyebilir;
+    // okuma herkese açık (profildeki günlük sekmesi başkaları tarafından da
+    // görülebilsin diye).
+    match /gunlukKayitlari/{kayitId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+      // Kaydın sahibi her alanı güncelleyebilir (not düzenleme, tarih değiştirme vb.).
+      // Başka bir giriş yapmış kullanıcı ise SADECE "begenenler" alanını
+      // değiştirebilir — takip akışındaki beğeni butonu için (bkz.
+      // gunlukBegenDegistir). "bildirimler" koleksiyonundaki aynı desenin eşi.
+      allow update: if request.auth != null && (
+        resource.data.kullaniciId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['begenenler'])
+      );
+    }
+
     // Eser/Kişi İstatistikleri: "Bizim Aramızda Popüler" listelerinin okuduğu
     // özet kayıtlar — her puan verildiğinde otomatik güncellenir (bkz.
     // eserIstatistik.js, kisiDegerlendirme.js). Kişi kendi yazdığı değil,
     // sistemin ürettiği bir özet olduğu için "write" pragmatik olarak
     // giriş yapmış herkese açık (kitaplar kataloğuyla aynı desen).
     match /eserIstatistikleri/{istatistikId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Film Müziği önbelleği — SADECE Cloud Function (Admin SDK, kurallara
+    // tabi değil) yazabilir, istemciden "create/update" tamamen kapalı,
+    // sahte veri girilmesini engellemek için.
+    match /filmMuzikleri/{tmdbId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Dizi Müziği önbelleği — filmMuzikleri ile aynı kural.
+    match /diziMuzikleri/{tmdbId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Platform katalog anlık görüntüsü — SADECE Cloud Function yazıyor
+    // (dünle bugünü kıyaslamak için), istemciye hiç gösterilmiyor.
+    match /platformKatalogSnapshot/{belgeId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // Platformlara yeni eklenenler — herkes okuyabilir (platform sayfasında
+    // gösteriliyor), sadece Cloud Function yazabilir.
+    match /platformYeniEklenenler/{belgeId} {
+      allow read: if true;
+      // Otomatik tespitler Cloud Function üzerinden (admin SDK, kurallara
+      // tabi değil) yazılıyor. Elle ekleme için giriş yapmış herkese
+      // create izni verildi — Haber Ekle ile aynı açıklık düzeyi.
+      allow create: if request.auth != null;
+      //
+      // Delete önceden herkese açıktı — giriş yapmış HERHANGİ biri, otomatik
+      // tespit edilenler dahil, TÜM veriyi silebilirdi. Şimdi: elle
+      // ekleyen kendi kendi eklediğini silebilir (mükerrer/yanlış girişi
+      // temizlemek için), otomatik tespit edilenleri (ekleyenId yok) ya da
+      // başkasının eklediğini sadece yönetici silebilir.
+      allow delete: if request.auth != null && (
+        resource.data.ekleyenId == request.auth.uid || yoneticiMi()
+      );
+      allow update: if false;
+    }
+
+    // Film müziği beğenileri — kullanıcı kendi beğenisini ekleyip
+    // kaldırabilir, herkes okuyabilir (profil sekmesi + anasayfa widget'ı).
+    match /begenilenMuzikler/{begeniId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Dizi müziği beğenileri — begenilenMuzikler ile aynı kural, ayrı
+    // koleksiyon (TMDB film/dizi ID çakışmasını önlemek için, bkz.
+    // diziMuzigiBegeni.js).
+    match /begenilenDiziMuzikleri/{begeniId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+    }
+
+    // Müzik Tahmin oyununun iTunes önizleme önbelleği — herkes okuyup
+    // yazabilir (sahte/zararlı veri riski yok, sadece bir önizleme URL'i).
+    match /muzikOyunuOnizlemeleri/{tmdbId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
@@ -43,7 +149,14 @@ service cloud.firestore {
     match /kullanicilar/{uid} {
       allow read: if true;
       allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && (
+        request.auth.uid == uid ||
+        // "uyeOlduklarim" ters indeksi (bkz. utils/topluluk.js) katılma isteği
+        // ONAYLANDIĞINDA yöneticinin, başka bir kullanıcının kendi profiline bu
+        // alanı yazması gerekiyor — sadece bu tek alanla sınırlı, güvenlik
+        // kararı vermiyor (gerçek yetkilendirme hâlâ uyeler alt koleksiyonunda).
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uyeOlduklarim'])
+      );
 
       // Takip ettiklerim: sadece ben kendi listeme yazabilirim
       match /takipEdilenler/{hedefUid} {
@@ -83,15 +196,96 @@ service cloud.firestore {
       allow get: if true;
       allow list: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.olusturanId == request.auth.uid;
-      allow update: if request.auth != null;
+      // Önceden herhangi bir giriş yapmış kullanıcı BAŞKASININ davet kodunu
+      // (hatta toplu şekilde tüm kullanılmamış kodları) "kullanıldı" diye
+      // işaretleyebilirdi — daveti sistemini kilitleyebilirdi. Şimdi sadece
+      // kayıt akışındaki (kayitOl, AuthContext.jsx) tam olarak yaptığı şeye
+      // izin veriliyor: kullanılmamış bir kodu, SADECE bu üç alanı
+      // değiştirerek, kendi adına "kullanıldı" yapmak.
+      allow update: if request.auth != null &&
+        resource.data.kullanildiMi == false &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kullanildiMi', 'kullananId', 'kullanilmaTarihi']) &&
+        request.resource.data.kullanildiMi == true &&
+        request.resource.data.kullananId == request.auth.uid;
+    }
+
+    // Üyelik başvuruları: kimlik doğrulaması olmayan biri de başvurabilir
+    // (henüz üye değil), ama listeyi sadece giriş yapmış üyeler görebilir
+    // (spam/kişisel bilgi herkese açık olmasın diye). Onay/red durumu
+    // güncellemesi de giriş yapmış herhangi bir üyeye açık — ayrı bir
+    // "yönetici" rolü yok, akran onayı (peer-invite) mantığıyla çalışıyor.
+    match /uyelikBasvurulari/{basvuruId} {
+      allow create: if true;
+      allow read, update: if request.auth != null;
     }
 
     // Gönderiler (günceler): herkes okuyabilir, sadece kendi adına oluşturup silebilir.
     // "update" beğeni sayacı gibi ortak alanlar için serbest bırakıldı (Faz 1).
+    // Serbest Düşünce Havuzu — Bilinç Akışı'nın günlük ortak tartışma
+    // konusu kaynağı. Herkes okuyabilir, giriş yapmış herkes yeni konu
+    // önerebilir (topluluğun havuzu büyütmesi için) — düzenleme/silme yok,
+    // bir kez eklenen konu kalıcı.
+    match /dusunceHavuzu/{konuId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      // Sadece yönetici uygunsuz/hatalı bir konuyu silebilir — genel bir
+      // yönetici rolü sistemi değil, sadece bu tek hassas işlem için.
+      allow delete: if yoneticiMi();
+    }
+
+    // "Bugünün Düşüncesi" — hangi konunun ne zaman yayına alındığının
+    // kalıcı kaydı. Artık periyodik/otomatik değil, tamamen yönetici
+    // kararıyla oluşturuluyor: hem yeni bir konu yayınlamak (create) hem de
+    // Geçmiş Konular'ı sıfırlamak (delete) sadece yöneticiye açık. Update
+    // yok — bir kez yayınlanan kaydın arşivde değişmemesi önemli.
+    match /gununKonulari/{kayitId} {
+      allow read: if true;
+      allow create: if yoneticiMi();
+      allow delete: if yoneticiMi();
+    }
+
+    // İlham Panosu — üyelerin paylaştığı Instagram gönderileri.
+    match /ilhamPanosu/{ilhamId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.paylasanId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.paylasanId == request.auth.uid;
+      // Sahibi SADECE "paylasanAdi" alanını değiştirebilir — "Geçmişimi de
+      // Güncelle" özelliği için (bkz. gecmisPaylasimlariGuncelle).
+      allow update: if request.auth != null && resource.data.paylasanId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paylasanAdi']);
+    }
+
+    // Gezi Planları — sahip veya ortak düzenleyenler okuyup düzenleyebilir
+    // (küçük, güvenilir bir topluluk için — kim ortak düzenleyici eklediğini
+    // alan bazında ayırmıyoruz). Sadece sahip planı silebilir.
+    match /geziPlanlari/{planId} {
+      allow read, update: if request.auth != null &&
+        (resource.data.sahipId == request.auth.uid || request.auth.uid in resource.data.ortakDuzenleyenler);
+      allow delete: if request.auth != null && resource.data.sahipId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.sahipId == request.auth.uid;
+    }
+
+    // Meydan Okumalar — varsayılan özel: sadece sahip okuyup yazabilir.
+    // herkeseAcik:true olanlar İSTİSNA olarak herkese okunabilir (profil
+    // sayfasında başkalarının paylaştığı meydan okumaları göstermek için).
+    match /meydanOkumalar/{moId} {
+      allow read: if resource.data.herkeseAcik == true || (request.auth != null && resource.data.sahipId == request.auth.uid);
+      allow update, delete: if request.auth != null && resource.data.sahipId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.sahipId == request.auth.uid;
+    }
+
     match /gonderiler/{gonderiId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;
-      allow update: if request.auth != null;
+      // Sahibi her alanı güncelleyebilir (düzenleme). Başka bir giriş yapmış
+      // kullanıcı ise SADECE beğeni (begenenler) ve yorum sayacı
+      // (yorumSayisi) alanlarını değiştirebilir — önceden bu kural
+      // hiçbir kısıtlama içermiyordu, herkes başkasının paylaşımının
+      // İÇERİĞİNİ değiştirebilirdi.
+      allow update: if request.auth != null && (
+        resource.data.yazarId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['begenenler', 'yorumSayisi'])
+      );
       allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
     }
 
@@ -102,15 +296,31 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.yazarId == request.auth.uid;
       allow delete: if request.auth != null && resource.data.yazarId == request.auth.uid;
+      // Beğeni butonu için — herhangi bir giriş yapmış kullanıcı SADECE
+      // "begenenler" alanını değiştirebilir (bildirimler/günlük
+      // kayıtlarındaki aynı desen). Yazarın kendisi "yazarAdi" alanını
+      // ("Geçmişimi de Güncelle" için) YA DA kendi yorumunun metnini
+      // (düzenleme özelliği, duzenlendiMi/duzenlemeTarihi ile birlikte)
+      // değiştirebilir — başka bir alanı değiştiremez.
+      allow update: if request.auth != null && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['begenenler']) ||
+        (resource.data.yazarId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['yazarAdi'])) ||
+        (resource.data.yazarId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['metin', 'duzenlendiMi', 'duzenlemeTarihi']))
+      );
     }
 
     // Alıntı Duvarı: bir kitaptan beğenilen bir alıntının paylaşılması.
-    // "update" beğeni sayacı (begenenler dizisi) için serbest bırakıldı — diğer
-    // beğeni/katılım alanlarıyla aynı pragmatik desen.
+    // Sahibi her alanı güncelleyebilir. Başkası SADECE "begenenler" alanını
+    // değiştirebilir — önceden hiçbir kısıtlama yoktu, herkes başkasının
+    // paylaştığı alıntının metnini değiştirebilirdi.
     match /alintilar/{alintiId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
-      allow update: if request.auth != null;
+      allow update: if request.auth != null && (
+        resource.data.kullaniciId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['begenenler'])
+      );
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
@@ -122,13 +332,16 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Etkinlik Habercisi: ileriye dönük etkinlik duyuru panosu. "katilacaklar"
-    // dizisi herkes tarafından güncellenebilir (katılım işareti); diğer alanlar
-    // sadece ekleyen tarafından silinebilir.
+    // Etkinlik Habercisi: ileriye dönük etkinlik duyuru panosu. Sahibi her
+    // alanı güncelleyebilir. Başkası SADECE "katilacaklar" dizisini
+    // değiştirebilir (katılım işareti) — önceden hiçbir kısıtlama yoktu.
     match /etkinlikHabercileri/{habercId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
-      allow update: if request.auth != null;
+      allow update: if request.auth != null && (
+        resource.data.ekleyenId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['katilacaklar'])
+      );
       allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
     }
 
@@ -237,13 +450,23 @@ service cloud.firestore {
     match /favoriler/{favoriId} {
       allow read: if true;
       allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
-      allow delete: if request.auth != null;
+      // Önceden herkese açıktı — giriş yapmış herhangi biri başkasının
+      // favorisini silebilirdi.
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
     match /izlenecekler/{izlenecekId} {
       allow read: if true;
-      allow write: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
-      allow delete: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
+      // "posterUrl" alanı için istisna: bir kitap/film sonradan düzenlenip
+      // kapak eklendiğinde, TÜM kullanıcıların o esere ait kapaksız
+      // "izleyecek/okuyorum" kayıtlarını doldurabilmek için (bkz.
+      // izlenecekPosterleriniSenkronizeEt) — sadece bu tek alanla sınırlı.
+      allow update: if request.auth != null && (
+        request.resource.data.kullaniciId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['posterUrl'])
+      );
+      allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
     // Kişi (yönetmen/oyuncu) değerlendirmeleri: doküman ID'si `${kisiTmdbId}_${uid}`
@@ -277,6 +500,29 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
     }
 
+    // Dijitalde Yeni Çıkanlar: Platformlar bölümünde elle eklenen, "artık
+    // dijitalde/VOD'da izlenebilir" film şeridi — Yeni Gelen Filmler'den
+    // (vizyona giriş) kavramsal olarak farklı bir aşama (dijitale düşüş),
+    // bu yüzden ayrı bir koleksiyonda. Yapı birebir aynı.
+    match /dijitalYeniCikanlar/{filmId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
+    // Yakında Gelecekler: "X filmi Y tarihinde Z platformuna/dijitale
+    // geliyor" — geleceğe dönük duyuru. Çıkış tarihi geldiğinde bir Cloud
+    // Function (yakindaGelenleriGecisYap) bunu otomatik olarak
+    // platformYeniEklenenler ya da dijitalYeniCikanlar'a taşıyıp buradan
+    // siliyor — admin SDK ile, kurallara tabi değil.
+    match /yakindaGelecekler/{belgeId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+    }
+
     // Haberler: Film/Dizi/Oyuncu bölümlerindeki kısa duyurular.
     match /haberler/{haberId} {
       allow read: if true;
@@ -288,7 +534,10 @@ service cloud.firestore {
     match /raflar/{rafId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;
-      allow update: if request.auth != null; // ogeSayisi güncellemesi için serbest
+      // ogeSayisi güncellemesi de dahil, raflar kişisel olduğu için (başkası
+      // asla bir başkasının rafına öge eklemiyor) sahiplik yeterli — önceden
+      // herkese açıktı, herkes başkasının raf adını/açıklamasını değiştirebilirdi.
+      allow update: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
@@ -298,11 +547,99 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
     }
 
+    // Kitap İstekleri — "Şu kitabı arıyorum" panosu. Herkes okuyabilir,
+    // sadece isteği açan güncelleyebilir/silebilir (kapatma dahil).
+    match /kitapIstekleri/{istekId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.isteyenId == request.auth.uid;
+      // v2: ödünç veren kişi isteyen DEĞİL — ama isteği güncelleyebilmesi
+      // (oduncVerenId'yi kendi uid'sine ayarlaması, sonra "iade edildi"
+      // işaretlemesi) gerekiyor. Kendini oduncVerenId olarak yazmasına ya da
+      // zaten oduncVerenId oysa güncellemeye izin veriyoruz — başkasını
+      // oduncVerenId diye işaretleyemez.
+      allow update: if request.auth != null &&
+        (resource.data.isteyenId == request.auth.uid ||
+         request.resource.data.oduncVerenId == request.auth.uid ||
+         resource.data.oduncVerenId == request.auth.uid);
+      allow delete: if request.auth != null && resource.data.isteyenId == request.auth.uid;
+    }
+
     // Yönetmenler: üyelerin elle eklediği küratörlü liste, doküman ID'si TMDB kişi ID'si.
+    // Sinemasal Alt Türler (Korku Sineması, ileride Bilim Kurgu vb.) — hem
+    // ana tür hem alt tür belgeleri sadece yönetici tarafından
+    // eklenip/silinebiliyor (bkz. yoneticiMi()). Herkes okuyabilir, çünkü bu
+    // menü yapısı sitenin genel keşif deneyiminin bir parçası.
+    match /sinemaTurleri/{turId} {
+      allow read: if true;
+      allow create, delete: if yoneticiMi();
+      allow update: if false;
+    }
+
+    match /sinemaAltTurleri/{altTurId} {
+      allow read: if true;
+      allow create, delete: if yoneticiMi();
+      allow update: if false;
+    }
+
+    // Letterboxd'un resmi CSV dışa aktarma özelliğinden içe aktarılan
+    // "En İyi 500 Film" listesi — sadece yönetici toplu olarak
+    // ekleyip/silebilir (bkz. Letterboxd500IceAktar.jsx). update de
+    // yöneticiye açık — aynı filmi (aynı doküman ID'si) tekrar
+    // kaydetmek (batch.set) yarım kalan bir içe aktarmayı güvenle
+    // sürdürebilmek için "create" değil "update" sayılıyor.
+    // Dış film listeleri (Letterboxd 500, IMDb 250 vb.) — liste tanımı ve
+    // alt koleksiyondaki her film sadece yönetici tarafından
+    // eklenip/silinebiliyor (bkz. utils/disariListeler.js). Alt koleksiyon
+    // kuralı üst belgenin match bloğunun İÇİNDE tanımlanıyor.
+    // Storytel'de mevcut kitap işaretleme — EKLEMEK giriş yapmış herkese
+    // açık (Yeni Gelen Filmler ile aynı açıklık düzeyi). KALDIRMAK ise
+    // SADECE yönetici — bir kitabı Storytel'de işaretlemek emek istiyor
+    // (link bulup bilgi çekmek, kategori seçmek), herhangi bir kullanıcının
+    // meraktan/yanlışlıkla tek tıkla silebilmesi bunu anlamsız kılıyordu.
+    match /storytelKitaplari/{kitapId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow delete: if yoneticiMi();
+      // "populerMi" (haftanın öne çıkanı) SADECE yönetici tarafından
+      // değiştirilebiliyor — Serkan bunu elle, haftalık güncelliyor.
+      // Diğer alanlar (kategori + storytelKitapBilgisiGetir'den gelen
+      // süre/puan/seslendiren/kategori + kitap sonradan kapak kazanınca
+      // geriye dönük doldurulan posterUrl) giriş yapmış HERKES tarafından
+      // güncellenebiliyor — create ile aynı açıklık düzeyi, çünkü bir
+      // kitabı yeniden işaretleyip bilgilerini tazelemek de bu kapsamda.
+      allow update: if
+        (yoneticiMi() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['populerMi'])) ||
+        (request.auth != null && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['kategori', 'storytelUrl', 'storytelSure', 'storytelPuan', 'storytelPuanlamaSayisi', 'storytelSeslendiren', 'storytelKategori', 'posterUrl']));
+    }
+
+    match /disariListeler/{listeId} {
+      allow read: if true;
+      allow create, update, delete: if yoneticiMi();
+
+      match /filmler/{tmdbId} {
+        allow read: if true;
+        allow create, update, delete: if yoneticiMi();
+      }
+    }
+
+    // "O mu Bu mu" oyunu — turnuva galibi sayacı (bkz. utils/filmTercih.js).
+    // Her tur için değil, 15 turluk oyunun SONUNDAKİ tek galip için yazılıyor.
+    match /filmTercihPuanlari/{tmdbId} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.resource.data.keys().hasOnly(['baslik', 'posterUrl', 'kazanma', 'sonGuncelleme']);
+      allow update: if request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['baslik', 'posterUrl', 'kazanma', 'sonGuncelleme']);
+    }
+
     match /yonetmenler/{tmdbId} {
       allow read: if true;
       allow write: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
-      allow delete: if request.auth != null;
+      // Önceden herkese açıktı — giriş yapmış herhangi biri, kim eklemiş
+      // olursa olsun, küratörlü listeden silebilirdi. Şimdi: ekleyen kendi
+      // eklediğini silebilir, başkasınınkini sadece yönetici silebilir.
+      allow delete: if request.auth != null && (resource.data.ekleyenId == request.auth.uid || yoneticiMi());
 
       match /ilgiliKitaplar/{kitapId} {
         allow read: if true;
@@ -440,7 +777,12 @@ service cloud.firestore {
     match /tartismaEtkinlikleri/{etkinlikId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.olusturanId == request.auth.uid;
-      allow update: if request.auth != null; // katılımcı listesi güncellemesi için serbest
+      // Sahibi her alanı güncelleyebilir. Başkası SADECE "katilimcilar"
+      // dizisini değiştirebilir (katıl/ayrıl) — önceden hiçbir kısıtlama yoktu.
+      allow update: if request.auth != null && (
+        resource.data.olusturanId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['katilimcilar'])
+      );
       allow delete: if request.auth != null && resource.data.olusturanId == request.auth.uid;
     }
   }

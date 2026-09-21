@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
   updateProfile,
 } from 'firebase/auth'
-import { doc, getDoc, runTransaction, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, runTransaction, serverTimestamp, updateDoc, where } from 'firebase/firestore'
 import { auth, db } from '../firebase.js'
 
 const AuthContext = createContext(null)
@@ -34,6 +34,31 @@ export function AuthSaglayici({ children }) {
     return kaldir
   }, [])
 
+  // "Bugün aktif olanlar" için son görülme damgası — her eylemde değil,
+  // 15 dakikada bir güncelleniyor (throttle). Maliyet önemsiz: küçük bir
+  // topluluk için günde birkaç yüz yazma, ücretsiz Firestore kotasının
+  // (günlük 20.000 yazma) kırıntısı bile değil.
+  useEffect(() => {
+    if (!kullanici) return
+    const SON_GORULME_ARALIGI_MS = 15 * 60 * 1000
+    const localAnahtar = `sonGorulmeGuncelleme_${kullanici.uid}`
+
+    function guncellemeGerekiyorMu() {
+      const sonGuncelleme = Number(localStorage.getItem(localAnahtar) || 0)
+      return Date.now() - sonGuncelleme > SON_GORULME_ARALIGI_MS
+    }
+
+    function sonGorulmeyiGuncelle() {
+      if (!guncellemeGerekiyorMu()) return
+      localStorage.setItem(localAnahtar, String(Date.now()))
+      updateDoc(doc(db, 'kullanicilar', kullanici.uid), { sonGorulme: serverTimestamp() }).catch(() => {})
+    }
+
+    sonGorulmeyiGuncelle() // sayfa açılışında bir kez
+    const zamanlayici = setInterval(sonGorulmeyiGuncelle, SON_GORULME_ARALIGI_MS)
+    return () => clearInterval(zamanlayici)
+  }, [kullanici])
+
   async function girisYap(eposta, sifre) {
     await signInWithEmailAndPassword(auth, eposta, sifre)
   }
@@ -53,6 +78,16 @@ export function AuthSaglayici({ children }) {
     if (!kodSnap.exists()) throw new Error('Davet kodu bulunamadı.')
     if (kodSnap.data().kullanildiMi) throw new Error('Bu davet kodu zaten kullanılmış.')
 
+    // Kullanıcı adı benzersizliği — hesap oluşturulmadan ÖNCE kontrol
+    // ediliyor, aksi halde kullanıcı adı çakışması durumunda yarım kalmış
+    // bir hesap (auth var ama kullanicilar belgesi yok) oluşabilirdi.
+    // Artık kullanıcı adı sadece profildeki küçük bir "@" etiketi değil,
+    // isteğe bağlı olarak sitede birincil görünen isim de olabildiği için
+    // (bkz. gorunumTercihi) çakışma daha önemli hale geldi.
+    const kullaniciAdiTemiz = kullaniciAdi.trim().toLowerCase()
+    const mevcutSnap = await getDocs(query(collection(db, 'kullanicilar'), where('kullaniciAdi', '==', kullaniciAdiTemiz)))
+    if (!mevcutSnap.empty) throw new Error('Bu kullanıcı adı zaten alınmış, başka bir tane dene.')
+
     const cred = await createUserWithEmailAndPassword(auth, eposta, sifre)
     await updateProfile(cred.user, { displayName: adSoyad })
 
@@ -68,7 +103,7 @@ export function AuthSaglayici({ children }) {
       })
       tx.set(doc(db, 'kullanicilar', cred.user.uid), {
         adSoyad,
-        kullaniciAdi,
+        kullaniciAdi: kullaniciAdiTemiz,
         bio: '',
         avatarUrl: '',
         davetEden: guncelKodSnap.data().olusturanId || null,

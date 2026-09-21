@@ -19,6 +19,7 @@ import { listeOlustur } from '../utils/liste.js'
 import { useGelecekEtkinlikler } from '../hooks/useGelecekEtkinlikler.js'
 import { gelecekEtkinlikOlustur } from '../utils/gelecekEtkinlik.js'
 import Avatar from '../components/Avatar.jsx'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import GelecekEtkinlikKarti from '../components/GelecekEtkinlikKarti.jsx'
 import EtkinlikOnerileriBolumu from '../components/EtkinlikOnerileriBolumu.jsx'
 import ListeOnizleme from '../components/ListeOnizleme.jsx'
@@ -75,6 +76,7 @@ export default function TopluluklarDetay() {
   const [dTur, setDTur] = useState('Sinema')
   const [dKapakUrl, setDKapakUrl] = useState('')
   const [dGizli, setDGizli] = useState(false)
+  const [dKurallar, setDKurallar] = useState('')
   const [dKaydediliyor, setDKaydediliyor] = useState(false)
 
   const [tekrarTur, setTekrarTur] = useState('yok')
@@ -82,6 +84,7 @@ export default function TopluluklarDetay() {
 
   const [topluluk, setTopluluk] = useState(null)
   const [uyeler, setUyeler] = useState([])
+  const [digerUyeSayisi, setDigerUyeSayisi] = useState(0)
   const [uyeMi, setUyeMi] = useState(false)
   const [yukleniyor, setYukleniyor] = useState(true)
   const [isleniyor, setIsleniyor] = useState(false)
@@ -122,6 +125,7 @@ export default function TopluluklarDetay() {
         setDTur(veri.tur)
         setDKapakUrl(veri.kapakUrl || '')
         setDGizli(!!veri.gizli)
+        setDKurallar(veri.kurallar || '')
       }
 
       const uyelerSnap = await getDocs(collection(db, 'topluluklar', id, 'uyeler'))
@@ -130,8 +134,14 @@ export default function TopluluklarDetay() {
       const uyeIdler = uyeKayitlari.map((u) => u.id)
       setUyeMi(kullanici ? uyeIdler.includes(kullanici.uid) : false)
 
+      // İsim/avatar için her üyeye ayrı bir profil okuması gerekiyor — topluluk
+      // büyüdükçe bu, her ziyarette üye sayısıyla orantılı okumaya dönüşür.
+      // Sınırsız büyümesin diye ilk PROFIL_LIMIT üyenin profili çekiliyor,
+      // kalanlar "+N diğer üye" olarak (isim/avatar okumadan) gösteriliyor.
+      const PROFIL_LIMIT = 30
+      const profilCekilecekler = uyeKayitlari.slice(0, PROFIL_LIMIT)
       const profiller = await Promise.all(
-        uyeKayitlari.map(async (uyeKaydi) => {
+        profilCekilecekler.map(async (uyeKaydi) => {
           const pSnap = await getDoc(doc(db, 'kullanicilar', uyeKaydi.id))
           const profil = pSnap.exists() ? pSnap.data() : { adSoyad: 'Bilinmeyen' }
           return { id: uyeKaydi.id, rol: uyeKaydi.rol, ...profil }
@@ -139,6 +149,7 @@ export default function TopluluklarDetay() {
       )
       if (!iptal) {
         setUyeler(profiller)
+        setDigerUyeSayisi(Math.max(0, uyeKayitlari.length - PROFIL_LIMIT))
         setYukleniyor(false)
       }
 
@@ -202,7 +213,7 @@ export default function TopluluklarDetay() {
       await katilmaIstegiOnayla(id, istekUid)
       const istek = istekler.find((i) => i.id === istekUid)
       setIstekler((onceki) => onceki.filter((i) => i.id !== istekUid))
-      setUyeler((onceki) => [...onceki, { id: istekUid, adSoyad: istek?.adSoyad || 'Bilinmeyen' }])
+      setUyeler((onceki) => [...onceki, { id: istekUid, adSoyad: gorunenAdGetir(istek, 'Bilinmeyen') }])
       setTopluluk((onceki) => ({ ...onceki, uyeSayisi: (onceki.uyeSayisi || 0) + 1 }))
     } finally {
       setIstekIsleniyor(null)
@@ -228,8 +239,8 @@ export default function TopluluklarDetay() {
     e.preventDefault()
     setDKaydediliyor(true)
     try {
-      await updateDoc(doc(db, 'topluluklar', id), { ad: dAd.trim(), aciklama: dAciklama, tur: dTur, kapakUrl: dKapakUrl, gizli: dGizli })
-      setTopluluk((onceki) => ({ ...onceki, ad: dAd.trim(), aciklama: dAciklama, tur: dTur, kapakUrl: dKapakUrl, gizli: dGizli }))
+      await updateDoc(doc(db, 'topluluklar', id), { ad: dAd.trim(), aciklama: dAciklama, tur: dTur, kapakUrl: dKapakUrl, gizli: dGizli, kurallar: dKurallar })
+      setTopluluk((onceki) => ({ ...onceki, ad: dAd.trim(), aciklama: dAciklama, tur: dTur, kapakUrl: dKapakUrl, gizli: dGizli, kurallar: dKurallar }))
       setDuzenlemeAcik(false)
     } finally {
       setDKaydediliyor(false)
@@ -365,6 +376,12 @@ export default function TopluluklarDetay() {
             {topluluk.kurucuAdi} tarafından kuruldu · {topluluk.uyeSayisi || 0} üye
           </p>
           {topluluk.aciklama && <p className="mt-2 text-sm text-murekkep">{topluluk.aciklama}</p>}
+          {topluluk.kurallar && (
+            <div className="mt-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              <p className="mb-1 text-[11px] uppercase tracking-widest text-gise">📌 Kulüp Künyesi</p>
+              <p className="whitespace-pre-wrap text-xs text-murekkep">{topluluk.kurallar}</p>
+            </div>
+          )}
           {yoneticiMiyim && (
             <button onClick={() => setDuzenlemeAcik((a) => !a)} className="mt-2 text-xs text-kraft hover:text-murekkep">
               {duzenlemeAcik ? 'Vazgeç' : 'Topluluğu Düzenle'}
@@ -411,6 +428,18 @@ export default function TopluluklarDetay() {
                   value={dKapakUrl}
                   onChange={(e) => setDKapakUrl(e.target.value)}
                   placeholder="https://..."
+                  className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+                />
+              </div>
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-kraft mb-1">
+                  Kulüp Künyesi (toplantı sıklığı, kurallar vb. — opsiyonel)
+                </label>
+                <textarea
+                  value={dKurallar}
+                  onChange={(e) => setDKurallar(e.target.value)}
+                  rows={3}
+                  placeholder="Örn: Her ayın ilk Cumartesi'si toplanıyoruz. Spoiler vermeden tartışalım."
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
               </div>
@@ -464,7 +493,7 @@ export default function TopluluklarDetay() {
           <ul className="space-y-2">
             {istekler.map((i) => (
               <li key={i.id} className="flex items-center justify-between gap-2">
-                <span className="text-sm text-murekkep">{i.adSoyad}</span>
+                <span className="text-sm text-murekkep">{gorunenAdGetir(i)}</span>
                 <div className="flex gap-2">
                   <button
                     onClick={() => istegiOnayla(i.id)}
@@ -493,12 +522,12 @@ export default function TopluluklarDetay() {
 
       {/* Gelecek Etkinlikler */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h2 className="font-baslik text-lg text-murekkep">Gelecek Etkinlikler</h2>
           {uyeMi && (
             <button
               onClick={() => setEtkinlikFormuAcik((a) => !a)}
-              className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${etkinlikFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
             >
               {etkinlikFormuAcik ? 'Vazgeç' : '+ Etkinlik Ekle'}
             </button>
@@ -718,12 +747,12 @@ export default function TopluluklarDetay() {
 
       {/* Topluluk Listeleri */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h2 className="font-baslik text-lg text-murekkep">Topluluk Listeleri</h2>
           {uyeMi && (
             <button
               onClick={() => setListeFormuAcik((a) => !a)}
-              className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${listeFormuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
             >
               {listeFormuAcik ? 'Vazgeç' : '+ Liste Oluştur'}
             </button>
@@ -806,10 +835,10 @@ export default function TopluluklarDetay() {
           return (
             <li key={u.id} className="flex items-center gap-3 rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
               <Link to={`/profil/${u.id}`} className="flex flex-1 items-center gap-3 min-w-0">
-                <Avatar adSoyad={u.adSoyad} avatarUrl={u.avatarUrl} boyut="h-8 w-8" />
+                <Avatar adSoyad={gorunenAdGetir(u)} avatarUrl={u.avatarUrl} boyut="h-8 w-8" />
                 <div className="min-w-0">
                   <p className="text-sm text-murekkep">
-                    {u.adSoyad}
+                    {gorunenAdGetir(u)}
                     {uRol === 'kurucu' && <span className="ml-1.5 text-[10px] text-gise">👑 Kurucu</span>}
                     {uRol === 'moderator' && <span className="ml-1.5 text-[10px] text-deniz">🛡️ Moderatör</span>}
                   </p>
@@ -828,6 +857,7 @@ export default function TopluluklarDetay() {
           )
         })}
       </ul>
+      {digerUyeSayisi > 0 && <p className="mt-2 text-xs text-kraft">+{digerUyeSayisi} diğer üye</p>}
     </div>
   )
 }

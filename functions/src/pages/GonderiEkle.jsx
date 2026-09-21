@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ULKELER } from '../data/ulkeler.js'
@@ -8,7 +9,11 @@ import { kitapGetir, kitapAramaSonucundanKaydet } from '../utils/kitapKatalog.js
 import { turkceKitapAra, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { sanatEseriAra } from '../utils/sanatEserleri.js'
 import { eserIstatistikGuncelle } from '../utils/eserIstatistik.js'
+import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { ETKINLIK_TURLERI } from '../data/etkinlikTurleri.js'
+import GorselYukleButonu from '../components/GorselYukleButonu.jsx'
+import EserSecici from '../components/EserSecici.jsx'
+import { eserReferanslariniBul } from '../utils/icerikAyristir.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -44,13 +49,23 @@ const PUANSIZ_YAZI_ALT_TURLERI = ['deneme', 'kisi-yazisi', 'liste-yazisi', 'soyl
 // Bir kategori TMDB/Google Books araması kullanıyor mu?
 const API_KATEGORILERI = ['sinema', 'dizi', 'kitap']
 
-export default function GonderiEkle() {
+// kompaktMod: anasayfaya gömüldüğünde (bkz. Anasayfa.jsx) devasa bir form
+// alanı kaplamasın diye — kategori/arama kısmı hep açık kalır, detaylı form
+// (Başlık/Özet/Puan/Paylaş...) SADECE bir eser seçilince (film/dizi/kitap/
+// eser-bağlantılı yazı) ya da arama adımı olmayan türlerde (Gezi/Etkinlik/
+// eser bağlamayan yazı alt türleri) kategori seçilir seçilmez açılır.
+// /gonderi-ekle sayfasında (kompaktMod=false) davranış hiç değişmiyor.
+export default function GonderiEkle({ kompaktMod = false, baslikGizli = false, onBasariylaEklendi } = {}) {
   const { kullanici, profil } = useAuth()
   const navigate = useNavigate()
   const [aramaParametreleri] = useSearchParams()
 
   const [kategori, setKategori] = useState('sinema')
   const [yaziAltTur, setYaziAltTur] = useState('deneme')
+  // Serbest Düşünce Havuzu'ndaki "bugünün konusu"na yaz linkinden gelindiyse
+  // (?konu=...) o konu metnini taşıyor — sadece gönderiye damgalanır,
+  // "gununYazilariniGetir" bu alana göre filtreler.
+  const [bilincAkisiKonusu, setBilincAkisiKonusu] = useState('')
 
   const [arama, setArama] = useState('')
   const [sonuclar, setSonuclar] = useState([])
@@ -102,9 +117,15 @@ export default function GonderiEkle() {
   const [ilgiliKaynakUrl, setIlgiliKaynakUrl] = useState('') // sanat eleştirisi: Met/AIC kaynak linki
 
   const [kullaniciPuani, setKullaniciPuani] = useState(4)
+  const [gunlukTarihi, setGunlukTarihi] = useState(new Date().toISOString().slice(0, 10))
+  const [gunlukTekrar, setGunlukTekrar] = useState(false)
   const [gunce, setGunce] = useState('')
+  const [instagramUrl, setInstagramUrl] = useState('')
   const [spoiler, setSpoiler] = useState(false)
   const [kaydediliyor, setKaydediliyor] = useState(false)
+  const [eserEkleAcik, setEserEkleAcik] = useState(false)
+  const [eserEkleKategori, setEserEkleKategori] = useState('Film')
+  const [eserDuzeni, setEserDuzeni] = useState('yatay') // 'yatay' şerit ya da 'dikey' numaralı liste
   const gunceRef = useRef(null)
 
   const apiliKategori = API_KATEGORILERI.includes(kategori)
@@ -121,6 +142,18 @@ export default function GonderiEkle() {
               : null
       : null
   const aramaGosterilsinMi = apiliKategori || yaziAramaHedefi
+
+  // kompaktMod'da: arama adımı gerektiren türlerde (film/dizi/kitap/eser
+  // bağlantılı yazı) bir sonuç seçilene kadar detaylı form gizli kalıyor.
+  // Arama adımı olmayan türlerde (Gezi/Etkinlik, eser bağlamayan yazı alt
+  // türleri) zaten seçilecek bir "sonuç" olmadığından form hemen açılıyor.
+  //
+  // NOT: "seçildi mi" sinyali için seciliId kullanılıyor — ilgiliBaslik
+  // SADECE yazı içindeki eser-bağlama alt akışında dolduruluyor, doğrudan
+  // film/dizi/kitap günce akışında (kategori !== 'yazi') hiç set edilmiyor.
+  // Onu kullanmak, Film/Dizi/Kitap sekmelerinde seçim yapılsa bile formun
+  // hiç açılmamasına sebep oluyordu.
+  const kompaktFormAcikMi = !kompaktMod || !aramaGosterilsinMi || !!seciliId
 
   function kategoriDegistir(yeni) {
     setKategori(yeni)
@@ -184,13 +217,10 @@ export default function GonderiEkle() {
     setIlgiliDisId(null)
   }
 
-  function gorselEkle() {
-    const url = window.prompt('Görsel URL\'i yapıştır (jpg, png, gif, webp):')
-    if (!url || !url.trim()) return
-    const temizUrl = url.trim()
+  function imlecKonumunaMetinEkle(eklenecekUrl) {
     const ta = gunceRef.current
     const imlecKonumu = ta ? ta.selectionStart : gunce.length
-    const eklenecek = `\n\n${temizUrl}\n\n`
+    const eklenecek = `\n\n${eklenecekUrl}\n\n`
     const yeniMetin = gunce.slice(0, imlecKonumu) + eklenecek + gunce.slice(imlecKonumu)
     setGunce(yeniMetin)
     const yeniKonum = imlecKonumu + eklenecek.length
@@ -200,6 +230,52 @@ export default function GonderiEkle() {
         ta.setSelectionRange(yeniKonum, yeniKonum)
       }
     }, 0)
+  }
+
+  function gorselEkle() {
+    const url = window.prompt('Görsel URL\'i yapıştır (jpg, png, gif, webp):')
+    if (!url || !url.trim()) return
+    imlecKonumunaMetinEkle(url.trim())
+  }
+
+  // EserSecici'den gelen seçimi (film/dizi/kitap/oyuncu) metne, kendi
+  // paragrafı olan gizli bir @@eser: bloğu olarak ekler — icerikAyristir.js
+  // bunu ayrıştırıp GomuluEserSeridi ile karta dönüştürüyor. Art arda
+  // eklenen 2+ referans otomatik olarak bir liste oluyor (örn. "En iyi 10
+  // film" cevabı için sırayla 10 kez Film Ekle) — eserDuzeni seçimi
+  // (yatay şerit / dikey numaralı liste) her öğeye damgalanıyor.
+  function eserEklendi(secim) {
+    imlecKonumunaMetinEkle(`@@eser:${JSON.stringify({ ...secim, duzen: eserDuzeni })}`)
+    // Popover'ı bilerek kapatmıyoruz — art arda birkaç eser eklemek
+    // (bir liste oluştururken) çok daha az tıklama gerektiriyor.
+  }
+
+  // Ham metindeki tüm @@eser: referanslarını (konumlarıyla) her render'da
+  // yeniden tarıyor — "Eklenen Eserler" yönetim şeridinin veri kaynağı.
+  const eklenenEserler = useMemo(() => eserReferanslariniBul(gunce), [gunce])
+
+  function eseriKaldir(indeks) {
+    const hedef = eklenenEserler[indeks]
+    if (!hedef) return
+    const yeni = (gunce.slice(0, hedef.index) + gunce.slice(hedef.index + hedef.tamMetin.length)).replace(/\n{3,}/g, '\n\n')
+    setGunce(yeni)
+  }
+
+  // İki referansın metin içindeki konumlarını birbiriyle değiştirir —
+  // aralarındaki her şey (metin, görsel, başka eserler) olduğu gibi kalır.
+  function eseriTasi(indeks, yon) {
+    const hedefIndeks = indeks + yon
+    const a = eklenenEserler[indeks]
+    const b = eklenenEserler[hedefIndeks]
+    if (!a || !b) return
+    const [ilk, ikinci] = a.index < b.index ? [a, b] : [b, a]
+    const yeni =
+      gunce.slice(0, ilk.index) +
+      ikinci.tamMetin +
+      gunce.slice(ilk.index + ilk.tamMetin.length, ikinci.index) +
+      ilk.tamMetin +
+      gunce.slice(ikinci.index + ikinci.tamMetin.length)
+    setGunce(yeni)
   }
 
   async function disIdIleGetir(hedefTur, disId) {
@@ -262,6 +338,7 @@ export default function GonderiEkle() {
     const urlTur = aramaParametreleri.get('tur')
     const urlDisId = aramaParametreleri.get('disId')
     const urlAltTur = aramaParametreleri.get('altTur')
+    const urlKonu = aramaParametreleri.get('konu')
     if (urlTur && urlDisId) {
       setKategori(urlTur)
       disIdIleGetir(urlTur, urlDisId)
@@ -270,6 +347,10 @@ export default function GonderiEkle() {
       // sadece ?tur=gezi ile gelindiğinde de o kategoriye geçilsin.
       kategoriDegistir(urlTur)
       if (urlTur === 'yazi' && urlAltTur) setYaziAltTur(urlAltTur)
+    }
+    if (urlKonu) {
+      setBaslik(urlKonu)
+      setBilincAkisiKonusu(urlKonu)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -518,11 +599,11 @@ export default function GonderiEkle() {
       const secilenUlke = kategori === 'gezi' ? ULKELER.find((u) => u.kod === ulkeKodu) : null
       const konumBilgisi = kategori === 'gezi' ? await sehirKonumunuGeocodeEt(konum, secilenUlke?.ad) : null
 
-      await addDoc(collection(db, 'gonderiler'), {
+      const gonderiRef = await addDoc(collection(db, 'gonderiler'), {
         tur: kategori,
         altTur: kategori === 'yazi' ? yaziAltTur : kategori === 'etkinlik' ? altTur : null,
         yazarId: kullanici.uid,
-        yazarAdi: profil?.adSoyad || kullanici.displayName || 'İsimsiz',
+        yazarAdi: gorunenAdGetir(profil, kullanici.displayName),
         yazarKullaniciAdi: profil?.kullaniciAdi || '',
         yazarAvatarUrl: profil?.avatarUrl || '',
         baslik: baslik.trim(),
@@ -565,6 +646,8 @@ export default function GonderiEkle() {
         ilgiliDisId: kategori === 'yazi' && yaziAltTur === 'kitap-incelemesi' ? ilgiliDisId : null,
         ilgiliKaynakUrl: kategori === 'yazi' && yaziAltTur === 'sanat-elestirisi' ? ilgiliKaynakUrl : '',
         kullaniciPuani: kategori === 'yazi' && PUANSIZ_YAZI_ALT_TURLERI.includes(yaziAltTur) ? null : kullaniciPuani,
+        bilincAkisiKonusu: kategori === 'yazi' && yaziAltTur === 'bilinc-akisi' ? bilincAkisiKonusu || null : null,
+        instagramUrl: kategori === 'yazi' ? instagramUrl.trim() || null : null,
         gunce,
         spoiler,
         tarih: serverTimestamp(),
@@ -577,9 +660,49 @@ export default function GonderiEkle() {
       if (apiliKategori && kullaniciPuani != null) {
         const disId = kategori === 'kitap' ? googleBooksId : Number(tmdbId)
         await eserIstatistikGuncelle(kategori, disId, { baslik: baslik.trim(), alt: yazar || yonetmen || '', posterUrl, yil }, kullaniciPuani, null)
+        // Gerçek izleme/okuma tarihiyle bir günlük kaydı da düşüyoruz (bkz.
+        // utils/gunluk.js) — Yılın Özeti ve Günlük sekmesi bunu kullanıyor.
+        await gunlukKaydiEkle(kullanici, {
+          profil,
+          tur: kategori,
+          disId,
+          baslik: baslik.trim(),
+          posterUrl,
+          yil,
+          izlemeTarihiISO: gunlukTarihi,
+          puan: kullaniciPuani,
+          tekrarMi: gunlukTekrar,
+        })
+        // NOT: burada eserPuanindaGunlukVarIsaretle çağırmıyoruz — GonderiEkle
+        // "eserPuanlari" koleksiyonuna hiç yazmıyor (sadece eserIstatistikleri
+        // özetini günceller), yani işaretlenecek bir doküman yok. Bu akışın
+        // Yılın Özeti'nde çift sayılma riski zaten düşük — sadece PuanIceAktar
+        // (toplu içe aktarma) ve EserSayfasi (doğrudan puanlama) "eserPuanlari"
+        // yazıyor, ikisinde de işaretleme var.
+      }
+
+      // Gezi ve Etkinlik güncelerinin kendi tarih alanları zaten var
+      // (baslangicTarihi / etkinlikTarihi) — ayrıca "ne zaman?" sormaya
+      // gerek yok, doğrudan onları kullanıyoruz. Eser sayfası olmadıkları
+      // için (TMDB/Google Books id'si yok) günlük kaydının "disId"si,
+      // gönderinin kendi Firestore ID'si — bağlantı /gonderi/{id}'ye gidiyor.
+      if ((kategori === 'gezi' || kategori === 'etkinlik') && kullanici) {
+        const olayTarihi = kategori === 'etkinlik' ? etkinlikTarihi : baslangicTarihi
+        if (olayTarihi) {
+          await gunlukKaydiEkle(kullanici, {
+          profil,
+            tur: kategori,
+            disId: gonderiRef.id,
+            baslik: baslik.trim(),
+            posterUrl,
+            izlemeTarihiISO: olayTarihi,
+            puan: kullaniciPuani,
+          })
+        }
       }
 
       navigate('/')
+      onBasariylaEklendi?.()
     } catch (err) {
       setAramaHatasi('Kaydedilemedi: ' + err.message)
     } finally {
@@ -589,7 +712,7 @@ export default function GonderiEkle() {
 
   return (
     <div className={kategori === 'yazi' ? 'max-w-2xl' : 'max-w-xl'}>
-      <h1 className="font-baslik text-2xl text-murekkep mb-4">Günce Ekle</h1>
+      {!baslikGizli && <h1 className="font-baslik text-2xl text-murekkep mb-4">Günce Ekle</h1>}
 
       <div className="mb-4 flex flex-wrap gap-2">
         {KATEGORILER.map((k) => (
@@ -597,7 +720,7 @@ export default function GonderiEkle() {
             key={k.id}
             type="button"
             onClick={() => kategoriDegistir(k.id)}
-            className={`rounded-sm px-3 py-1.5 font-govde text-sm transition ${
+            className={`rounded-full px-3 py-1.5 font-govde text-sm transition ${
               kategori === k.id
                 ? 'bg-murekkep text-kagit font-medium ring-2 ring-murekkep'
                 : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:ring-murekkep/50'
@@ -725,10 +848,11 @@ export default function GonderiEkle() {
             </>
           )}
 
-          <div className="defter-cizgi mb-6" />
+          {kompaktFormAcikMi && <div className="defter-cizgi mb-6" />}
         </>
       )}
 
+      {kompaktFormAcikMi && (
       <form onSubmit={paylas} className="space-y-4">
         {kategori !== 'yazi' && (
           <div className="flex gap-4">
@@ -1064,22 +1188,150 @@ export default function GonderiEkle() {
           </div>
         )}
 
+        {apiliKategori && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-kraft">
+            <span>{kategori === 'kitap' ? 'Ne zaman okudun?' : 'Ne zaman izledin?'}</span>
+            <input
+              type="date"
+              value={gunlukTarihi}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setGunlukTarihi(e.target.value)}
+              className="rounded-sm bg-kagitKoyu px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi"
+            />
+            <label className="flex items-center gap-1">
+              <input type="checkbox" checked={gunlukTekrar} onChange={(e) => setGunlukTekrar(e.target.checked)} />
+              🔄 Yeniden {kategori === 'kitap' ? 'okuma' : 'izleme'}
+            </label>
+          </div>
+        )}
+
         <div>
           {kategori !== 'yazi' && (
             <label className="block text-xs uppercase tracking-widest text-kraft mb-1">Güncen</label>
           )}
-          {kategori === 'yazi' && (
-            <div className="mb-2 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={gorselEkle}
-                className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
-              >
-                🖼 Görsel Ekle
-              </button>
-              <p className="text-[11px] text-kraft">İpucu: bir görsel linkini kendi satırına yapıştırırsan otomatik resme dönüşür</p>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={gorselEkle}
+              className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
+            >
+              🖼 Görsel Ekle (link)
+            </button>
+            <GorselYukleButonu
+              klasor="gonderi-gorselleri"
+              onYuklendi={imlecKonumunaMetinEkle}
+              etiket="📷 Cihazdan Yükle"
+              sinif="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50 disabled:opacity-40"
+            />
+            <button
+              type="button"
+              onClick={() => setEserEkleAcik((a) => !a)}
+              className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
+            >
+              🎬📚 Eser Ekle
+            </button>
+            <p className="text-[11px] text-kraft">İpucu: bir görsel linkini kendi satırına yapıştırırsan otomatik resme dönüşür</p>
+          </div>
+
+          {eserEkleAcik && (
+            <div className="mb-3 rounded-sm bg-kagit p-3 ring-1 ring-cizgi">
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {['Film', 'Dizi', 'Kitap', 'Oyuncu'].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setEserEkleKategori(k)}
+                    className={`rounded-full px-2.5 py-1 text-[11px] ${
+                      eserEkleKategori === k ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                    }`}
+                  >
+                    {k}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setEserEkleAcik(false)}
+                  className="ml-auto rounded-full px-2.5 py-1 text-[11px] text-kraft hover:text-muhur"
+                >
+                  ✕ Kapat
+                </button>
+              </div>
+              <div className="mb-2 flex items-center gap-2 text-[11px] text-kraft">
+                <span>2+ eser eklersen görünüm:</span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setEserDuzeni('yatay')}
+                    className={`rounded-full px-2 py-0.5 ${
+                      eserDuzeni === 'yatay' ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                    }`}
+                  >
+                    ↔ Şerit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEserDuzeni('dikey')}
+                    className={`rounded-full px-2 py-0.5 ${
+                      eserDuzeni === 'dikey' ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                    }`}
+                  >
+                    ☰ Liste
+                  </button>
+                </div>
+              </div>
+              <EserSecici kategori={eserEkleKategori} secili={null} onSecim={eserEklendi} onTemizle={() => {}} />
+              <p className="mt-2 text-[11px] text-kraft">
+                Seçtiğin her eser metnin içine eklenir — "en iyi 10 film" gibi bir liste için sırayla birden fazla ekleyebilirsin.
+              </p>
             </div>
           )}
+
+          {eklenenEserler.length > 0 && (
+            <div className="mb-3 rounded-sm bg-kagit p-2.5 ring-1 ring-cizgi">
+              <p className="mb-1.5 text-[11px] text-kraft">
+                Eklenen eserler ({eklenenEserler.length}) — sırayı değiştirebilir ya da çıkarabilirsin:
+              </p>
+              <ul className="space-y-1">
+                {eklenenEserler.map((oge, i) => (
+                  <li key={i} className="flex items-center gap-2 rounded-sm bg-kagitKoyu px-2 py-1">
+                    <div className="h-8 w-6 shrink-0 overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
+                      {oge.veri.posterUrl && (
+                        <img src={oge.veri.posterUrl} alt="" className="h-full w-full object-cover" />
+                      )}
+                    </div>
+                    <span className="min-w-0 flex-1 truncate text-xs text-murekkep">{oge.veri.baslik}</span>
+                    <button
+                      type="button"
+                      onClick={() => eseriTasi(i, -1)}
+                      disabled={i === 0}
+                      className="text-xs text-kraft hover:text-deniz disabled:opacity-30"
+                      title="Yukarı taşı"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => eseriTasi(i, 1)}
+                      disabled={i === eklenenEserler.length - 1}
+                      className="text-xs text-kraft hover:text-deniz disabled:opacity-30"
+                      title="Aşağı taşı"
+                    >
+                      ▼
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => eseriKaldir(i)}
+                      className="text-xs text-kraft hover:text-muhur"
+                      title="Kaldır"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <textarea
             ref={gunceRef}
             value={gunce}
@@ -1109,6 +1361,18 @@ export default function GonderiEkle() {
               ⚠️ Bu yazıda spoiler var
             </label>
           )}
+          {kategori === 'yazi' && (
+            <div className="mt-3">
+              <label className="block text-xs uppercase tracking-widest text-kraft mb-1">📷 İlgili Instagram / YouTube / X (opsiyonel)</label>
+              <input
+                type="text"
+                value={instagramUrl}
+                onChange={(e) => setInstagramUrl(e.target.value)}
+                placeholder="Instagram, YouTube veya X linki..."
+                className="w-full rounded-sm bg-kagitKoyu px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
+          )}
         </div>
 
         <button
@@ -1119,6 +1383,7 @@ export default function GonderiEkle() {
           {kaydediliyor ? 'Paylaşılıyor...' : 'Paylaş'}
         </button>
       </form>
+      )}
     </div>
   )
 }

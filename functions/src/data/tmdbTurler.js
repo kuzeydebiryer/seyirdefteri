@@ -30,3 +30,28 @@ export function turIsimleriGetir(genreIds) {
     .filter(Boolean)
     .join(', ')
 }
+
+// TMDB'nin dizi (tv) tür listesi FİLMDEN FARKLI — bazı ID'ler bile
+// çakışıyor ama farklı anlama geliyor (ör. film 12=Macera, dizi 10759=
+// Aksiyon&Macera). Not: TV listesinde "Korku" diye bir kategori YOK —
+// Sinemasal Alt Türler'de dizi aramalarının tür kısıtı olmadan sadece
+// anahtar kelimeyle çalışmasının sebebi bu (bkz. sinemaTurleri.js).
+export const TMDB_DIZI_TURLERI = {
+  10759: 'Aksiyon & Macera',
+  16: 'Animasyon',
+  35: 'Komedi',
+  80: 'Suç',
+  99: 'Belgesel',
+  18: 'Dram',
+  10751: 'Aile',
+  10762: 'Çocuk',
+  9648: 'Gizem',
+  10763: 'Haber',
+  10764: 'Reality',
+  10765: 'Bilim Kurgu & Fantastik',
+  10766: 'Pembe Dizi',
+  10767: 'Talk Show',
+  10768: 'Savaş & Politika',
+  37: 'Vahşi Batı',
+}
+

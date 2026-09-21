@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import Papa from 'papaparse'
 import { useAuth } from '../context/AuthContext.jsx'
-import { eserPuanla } from '../utils/eserPuani.js'
+import { eserPuanla, eserPuanindaGunlukVarIsaretle } from '../utils/eserPuani.js'
+import { gunlukKaydiEkle } from '../utils/gunluk.js'
 import { filmSatirlariniAyikla, tmdbdeAra, esZamanliIsle, TMDB_POSTER } from '../utils/letterboxdCsv.js'
 import { turIsimleriGetir } from '../data/tmdbTurler.js'
 
@@ -77,22 +78,61 @@ export default function PuanIceAktar({ onTamamlandi }) {
     if (secilenler.length === 0 || !kullanici) return
     setIceAktariliyor(true)
     setIlerleme({ tamam: 0, toplam: secilenler.length })
+    const basarisizlar = []
     await esZamanliIsle(
       secilenler,
       async (s) => {
-        await eserPuanla('sinema', s.eslesme.tmdbId, Number(s.puan), kullanici, {
-          baslik: s.eslesme.baslik,
-          alt: s.eslesme.yil,
-          posterUrl: s.eslesme.posterUrl,
-          yil: s.eslesme.yil,
-          turler: s.eslesme.turler,
-        })
+        // Tek bir satırdaki hata (ör. izin/ağ sorunu) tüm içe aktarmayı
+        // sessizce çökertip donuk bırakmasın diye — hatayı burada
+        // yakalayıp o satırı "başarısız" olarak işaretleyip devam ediyoruz.
+        try {
+          // Bu esere DAHA ÖNCE (önceki bir içe aktarmada) zaten doğru
+          // tarihli bir günlük kaydı düşürülmüş mü diye kontrol ediyoruz —
+          // bu sayede içe aktarmayı güvenle TEKRAR çalıştırabilirsin (ör.
+          // bu düzeltmeden önce yapılmış, günlük kaydı olmayan eski bir
+          // içe aktarmayı düzeltmek için), mükerrer günlük satırı oluşmadan.
+          // "gunlukVar" bilgisini artık eserPuanla'nın döndürdüğü veriden
+          // alıyoruz — aynı dokümanı ayrıca eserPuaniGetir ile okumaya gerek
+          // yok, satır başına bir okumayı tamamen ortadan kaldırıyor.
+          const { oncekiVeri } = await eserPuanla('sinema', s.eslesme.tmdbId, Number(s.puan), kullanici, {
+            baslik: s.eslesme.baslik,
+            alt: s.eslesme.yil,
+            posterUrl: s.eslesme.posterUrl,
+            yil: s.eslesme.yil,
+            turler: s.eslesme.turler,
+          })
+          const gunlukZatenVar = oncekiVeri?.gunlukVar === true
+          // Aggregate puanın yanında GERÇEK izleme tarihiyle bir günlük kaydı da
+          // düşüyoruz — CSV'de tarih yoksa (bazı export'larda olmayabilir)
+          // günlük kaydı hiç oluşturulmuyor (Yılın Özeti'nde "bugün izlendi"
+          // gibi yanlış bir kayıt bırakmamak için, boş bırakmak yanlış bir
+          // tarih uydurmaktan daha doğru).
+          if (s.izlemeTarihi && !gunlukZatenVar) {
+            await gunlukKaydiEkle(kullanici, {
+              tur: 'sinema',
+              disId: s.eslesme.tmdbId,
+              baslik: s.eslesme.baslik,
+              posterUrl: s.eslesme.posterUrl,
+              yil: s.eslesme.yil,
+              izlemeTarihiISO: s.izlemeTarihi,
+              puan: Number(s.puan),
+              tekrarMi: s.tekrarMi,
+            })
+            await eserPuanindaGunlukVarIsaretle('sinema', s.eslesme.tmdbId, kullanici.uid)
+          }
+        } catch (err) {
+          console.warn(`İçe aktarma hatası (${s.isim}):`, err.message)
+          basarisizlar.push(s.isim)
+        }
       },
       8,
       (tamam, toplam) => setIlerleme({ tamam, toplam })
     )
     setIceAktariliyor(false)
     setTamamlandi(true)
+    if (basarisizlar.length > 0) {
+      setHata(`${basarisizlar.length} satır kaydedilemedi (izin/ağ hatası). Konsolda (F12) hangileri olduğunu görebilirsin.`)
+    }
     onTamamlandi?.()
   }
 
@@ -104,7 +144,11 @@ export default function PuanIceAktar({ onTamamlandi }) {
         Letterboxd'dan indirdiğin export ZIP'inin içinden <code>ratings.csv</code> (ya da puanları da içeren{' '}
         <code>diary.csv</code>) dosyasını yükle. Puan ölçeği (0.5-5 yıldız) birebir aynı olduğu için hiçbir dönüşüm
         gerekmiyor. Bu, sadece puanlarını dolduracak — geçmişe dönük yüzlerce gönderi oluşturmayacak, akışın
-        şişmeyecek.
+        şişmeyecek. Dosyada "Watched Date"/"Date" sütunu varsa (ikisinde de genelde var), gerçek izleme tarihi de
+        kaydedilip Günlük'üne ve Yılın Özeti'ne doğru tarihle yansıyor — yoksa o satır için günlük kaydı
+        oluşturulmuyor (tarihi olmayan bir satırı "bugün izlendi" gibi göstermemek için). Aynı dosyayı{' '}
+        <strong>güvenle tekrar yükleyebilirsin</strong> — daha önce doğru günlük kaydı düşürülmüş satırlar tekrar
+        işlenmez, mükerrer kayıt oluşmaz (sadece puanlar güncellenir).
       </p>
 
       <input
@@ -155,6 +199,8 @@ export default function PuanIceAktar({ onTamamlandi }) {
                 <span className="min-w-0 flex-1 truncate text-murekkep">
                   {s.isim} {s.yil && `(${s.yil})`}
                 </span>
+                {s.izlemeTarihi && <span className="shrink-0 text-[10px] text-kraft">{s.izlemeTarihi}</span>}
+                {s.tekrarMi && <span className="shrink-0 text-[10px] text-kraft">🔄</span>}
                 <span className="shrink-0 text-kraft">★ {s.puan}</span>
                 {!s.eslesme && <span className="shrink-0 text-muhur">Eşleşme yok</span>}
               </li>

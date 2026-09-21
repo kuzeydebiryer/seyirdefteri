@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Avatar from './Avatar.jsx'
+import { konuOner } from '../utils/dusunceHavuzu.js'
 
 const KISALTMA_UZUNLUGU = 180
 
@@ -9,6 +10,20 @@ const KISALTMA_UZUNLUGU = 180
 export default function AlintiKarti({ alinti, kullanici, onBegenTiklandi, onSilTiklandi, kapakGoster = true }) {
   const begeniyorMu = kullanici && (alinti.begenenler || []).includes(kullanici.uid)
   const [genisletildi, setGenisletildi] = useState(false)
+  const [havuzaEklendi, setHavuzaEklendi] = useState(false)
+  const [havuzaEkleniyor, setHavuzaEkleniyor] = useState(false)
+
+  async function havuzaEkleTiklandi() {
+    if (!kullanici) return
+    setHavuzaEkleniyor(true)
+    try {
+      const kaynakBilgisi = [alinti.kitapBaslik, alinti.kitapYazar].filter(Boolean).join(', ')
+      await konuOner(`"${alinti.metin}"${kaynakBilgisi ? ` — ${kaynakBilgisi}` : ''}`, kullanici)
+      setHavuzaEklendi(true)
+    } finally {
+      setHavuzaEkleniyor(false)
+    }
+  }
 
   const uzunMu = alinti.metin.length > KISALTMA_UZUNLUGU
   const gosterilenMetin = genisletildi || !uzunMu ? alinti.metin : alinti.metin.slice(0, KISALTMA_UZUNLUGU).trimEnd() + '…'
@@ -53,6 +68,16 @@ export default function AlintiKarti({ alinti, kullanici, onBegenTiklandi, onSilT
             </button>
           )}
         </div>
+        {kullanici && (
+          <button
+            onClick={havuzaEkleTiklandi}
+            disabled={havuzaEkleniyor || havuzaEklendi}
+            className="mt-1.5 text-[11px] text-kraft hover:text-deniz disabled:opacity-40"
+            title="Bu alıntıyı Serbest Düşünce Havuzu'na, bir gün Bilinç Akışı konusu olarak çıkması için ekle"
+          >
+            {havuzaEklendi ? '✓ Düşünce Havuzuna eklendi' : havuzaEkleniyor ? 'Ekleniyor...' : '💭 Bilinç Akışına Ekle'}
+          </button>
+        )}
       </div>
     </li>
   )

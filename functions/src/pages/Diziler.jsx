@@ -5,8 +5,12 @@ import { useHaberler } from '../hooks/useHaberler.js'
 import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import HaberBolumu from '../components/HaberBolumu.jsx'
 import ListelerBolumu from '../components/ListelerBolumu.jsx'
+import DiziDunyasiWidget from '../components/DiziDunyasiWidget.jsx'
+import YaklasanBolumler from '../components/YaklasanBolumler.jsx'
+import BegenilenDiziMuzikleriBolumu from '../components/BegenilenDiziMuzikleriBolumu.jsx'
 import FilmDiziArama from '../components/FilmDiziArama.jsx'
 import EserKarti from '../components/EserKarti.jsx'
+import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -57,6 +61,10 @@ export default function Diziler() {
       <FilmDiziArama tur="dizi" />
 
       <TavsiyeBolumu tur="dizi" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
+      <YaklasanBolumler />
+      <DiziDunyasiWidget />
+      <BegenilenDiziMuzikleriBolumu />
+      <IlhamPanosuOnizleme kategori="Dizi" />
       <HaberBolumu kategori="dizi" haberler={haberler} yenidenYukle={haberleriYenile} />
       <ListelerBolumu tur="dizi" />
 

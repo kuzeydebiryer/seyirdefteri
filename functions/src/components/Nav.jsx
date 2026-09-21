@@ -1,25 +1,34 @@
-import { NavLink, Link, useNavigate } from 'react-router-dom'
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { useTema } from '../context/TemaContext.jsx'
 import { bildirimDurumu, bildirimleriEtkinlestir, bildirimleriKapat } from '../utils/bildirim.js'
+import BildirimZili from './BildirimZili.jsx'
+import TiyatroMaskeleriIkon from './ikonlar/TiyatroMaskeleriIkon.jsx'
 import OscarHeykelIkon from './ikonlar/OscarHeykelIkon.jsx'
 import Avatar from './Avatar.jsx'
 import Logo from './Logo.jsx'
 
-// Akış ve Ekle kaldırıldı — Anasayfa'nın kendisi zaten akış ve "Günce Ekle" butonunu
-// içeriyor. Kişiler profile, Etkinlikler Topluluklar sayfasına taşındı. Yönetmenler
-// artık Oyuncular sayfasının içinde (ayrı menü maddesi değil).
+// Kişiler profile, Etkinlikler Topluluklar sayfasına taşındı. Yönetmenler
+// artık Oyuncular sayfasının içinde (ayrı menü maddesi değil). Akış,
+// anasayfadaki "Yeni Güncelerde Tümünü Gör" linkiyle hâlâ erişilebiliyor
+// (kendi rotası duruyor), sadece üst menüden kaldırıldı — menü kalabalığını
+// azaltmak için. Oyunlar da aynı mantıkla menüden kalktı: film oyunları
+// Film sayfasına, kitap alıntı oyunu Kitap sayfasına taşındı (kendi rotası
+// ve /oyunlar hub sayfası hâlâ duruyor, sadece üst menüde değil).
 const LINKLER = [
   { yol: '/filmler', etiket: 'Film', ikon: '🎬' },
   { yol: '/diziler', etiket: 'Dizi', ikon: '📺' },
+  { yol: '/platformlar', etiket: 'Platformlar', ikon: '📡' },
   { yol: '/oyuncular', etiket: 'Oyuncu', ikon: '🎭' },
-  { yol: '/oscar', etiket: 'Oscar', ikon: '🏆' },
+  { yol: '/odul-toreni', etiket: 'Ödüller', ikon: '🏆' },
   { yol: '/festival', etiket: 'Festival', ikon: '🎪' },
   { yol: '/kitaplar', etiket: 'Kitap', ikon: '📚' },
   { yol: '/yazilar', etiket: 'Yazı', ikon: '📝' },
   { yol: '/gezi', etiket: 'Gezi', ikon: '✈️' },
   { yol: '/etkinlik-dunyasi', etiket: 'Etkinlik', ikon: '🎟️' },
+  { yol: '/seyir-panosu', etiket: 'Seyir Panosu', ikon: '📌' },
 ]
 const TOPLULUK_LINKLERI = [{ yol: '/topluluklar', etiket: 'Topluluk', ikon: '👥' }]
 
@@ -27,10 +36,30 @@ export default function Nav() {
   const { kullanici, profil, cikisYap } = useAuth()
   const { tema, temaDegistir } = useTema()
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuAcik, setMenuAcik] = useState(false)
   const [bildirimIzni, setBildirimIzni] = useState('default')
   const [bildirimDestekli, setBildirimDestekli] = useState(false)
   const [bildirimIsleniyor, setBildirimIsleniyor] = useState(false)
+
+  // Kullanıcılardan gelen tekrarlayan şikayet: kitap/film/dizi gibi birçok
+  // sayfada geri gidecek bir yol yok. Çoğu kullanıcı uygulamayı ana ekrana
+  // eklenmiş PWA olarak veya tarayıcı çubuğunun gizlendiği bir görünümde
+  // kullanıyor — tarayıcının kendi geri tuşu her zaman elle erişilebilir
+  // değil. Her sayfaya ayrı ayrı eklemek yerine TEK bir yerde, genel
+  // başlıkta çözüyoruz — böylece yeni eklenen her sayfa otomatik kapsanmış
+  // olur. history.state.idx > 0 kontrolü: BrowserRouter kullanıyoruz (bkz.
+  // main.jsx), bu yüzden uygulama içinde en az bir adım geçmiş var mı diye
+  // güvenle bakabiliyoruz — yoksa (ör. paylaşılan bir linkle direkt
+  // girilmişse) navigate(-1) uygulamanın dışına/boş sayfaya çıkarabilirdi,
+  // o durumda ana sayfaya dönüyoruz.
+  function geriGit() {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1)
+    } else {
+      navigate('/')
+    }
+  }
 
   useEffect(() => {
     bildirimDurumu().then(({ destekleniyor, izin }) => {
@@ -68,7 +97,16 @@ export default function Nav() {
   return (
     <header className="border-b border-cizgi">
       <div className="mx-auto flex max-w-3xl items-center px-4 py-4">
-        <Link to="/" onClick={() => setMenuAcik(false)} className="shrink-0">
+        {location.pathname !== '/' && (
+          <button
+            onClick={geriGit}
+            className="sm:hidden mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-lg text-murekkep"
+            aria-label="Geri"
+          >
+            ←
+          </button>
+        )}
+        <Link to="/" onClick={() => setMenuAcik(false)} className="shrink-0" aria-label="Anasayfa">
           <Logo sadeceIkon boyut={34} />
         </Link>
 
@@ -85,22 +123,24 @@ export default function Nav() {
               ))}
               <NavLink to={`/profil/${kullanici.uid}`} className={linkSinifi}>
                 <span className="flex items-center gap-2">
-                  <Avatar adSoyad={profil?.adSoyad} avatarUrl={profil?.avatarUrl} boyut="h-6 w-6" />
+                  <Avatar adSoyad={gorunenAdGetir(profil)} avatarUrl={profil?.avatarUrl} boyut="h-6 w-6" />
                   {profil?.kullaniciAdi || 'Profil'}
                 </span>
               </NavLink>
+              <BildirimZili />
               {bildirimDestekli && bildirimIzni !== 'denied' && (
                 <button
                   onClick={bildirimDegistir}
                   disabled={bildirimIsleniyor}
                   className="text-kraft hover:text-murekkep disabled:opacity-40"
-                  title={bildirimIzni === 'granted' ? 'Bildirimleri kapat' : 'Bildirimleri aç'}
+                  title={bildirimIzni === 'granted' ? 'Push bildirimlerini kapat' : 'Push bildirimlerini aç'}
+                  aria-label={bildirimIzni === 'granted' ? 'Push bildirimlerini kapat' : 'Push bildirimlerini aç'}
                 >
-                  {bildirimIzni === 'granted' ? '🔔' : '🔕'}
+                  {bildirimIzni === 'granted' ? '📳' : '🔕'}
                 </button>
               )}
-              <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
-                {tema === 'koyu' ? '☀️' : '🌙'}
+              <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'} aria-label={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
+                <TiyatroMaskeleriIkon tema={tema} boyut={28} />
               </button>
               <button onClick={cikis} className="text-kraft hover:text-murekkep">
                 Çıkış
@@ -108,12 +148,15 @@ export default function Nav() {
             </nav>
 
             {/* Mobilde hamburger düğmesi */}
+            <div className="sm:hidden flex h-9 w-9 items-center justify-center">
+              <BildirimZili />
+            </div>
             <button
               onClick={temaDegistir}
               className="sm:hidden flex h-9 w-9 items-center justify-center rounded-sm text-murekkep"
               aria-label={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}
             >
-              {tema === 'koyu' ? '☀️' : '🌙'}
+              <TiyatroMaskeleriIkon tema={tema} boyut={28} />
             </button>
             <button
               onClick={() => setMenuAcik((a) => !a)}
@@ -125,8 +168,8 @@ export default function Nav() {
           </div>
         ) : (
           <nav className="ml-auto flex items-center gap-4 font-govde text-sm">
-            <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
-              {tema === 'koyu' ? '☀️' : '🌙'}
+            <button onClick={temaDegistir} className="text-kraft hover:text-murekkep" title={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'} aria-label={tema === 'koyu' ? 'Aydınlık moda geç' : 'Karanlık moda geç'}>
+              <TiyatroMaskeleriIkon tema={tema} boyut={28} />
             </button>
             <NavLink to="/giris" className="text-kraft hover:text-murekkep">
               Giriş
@@ -160,8 +203,17 @@ export default function Nav() {
               onClick={() => setMenuAcik(false)}
               className={({ isActive }) => `flex items-center gap-2 rounded-sm px-2 py-2.5 ${isActive ? 'text-muhur' : 'text-murekkep'}`}
             >
-              <Avatar adSoyad={profil?.adSoyad} avatarUrl={profil?.avatarUrl} boyut="h-7 w-7" />
+              <Avatar adSoyad={gorunenAdGetir(profil)} avatarUrl={profil?.avatarUrl} boyut="h-7 w-7" />
               <span className="font-medium">{profil?.kullaniciAdi || 'Profil'}</span>
+            </NavLink>
+
+            <NavLink
+              to="/basvurular"
+              onClick={() => setMenuAcik(false)}
+              className={({ isActive }) => `flex items-center gap-3 rounded-sm px-2 py-2 ${isActive ? 'text-muhur' : 'text-kraft'}`}
+            >
+              <span className="w-5 text-center">📨</span>
+              Üyelik Başvuruları
             </NavLink>
 
             <div className="defter-cizgi my-1" />
@@ -200,13 +252,13 @@ export default function Nav() {
                 disabled={bildirimIsleniyor}
                 className="flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left text-kraft disabled:opacity-40"
               >
-                <span className="w-5 text-center">{bildirimIzni === 'granted' ? '🔔' : '🔕'}</span>
-                {bildirimIzni === 'granted' ? 'Bildirimleri Kapat' : 'Bildirimleri Aç'}
+                <span className="w-5 text-center">{bildirimIzni === 'granted' ? '📳' : '🔕'}</span>
+                {bildirimIzni === 'granted' ? 'Push Bildirimlerini Kapat' : 'Push Bildirimlerini Aç'}
               </button>
             )}
 
             <button onClick={temaDegistir} className="flex w-full items-center gap-3 rounded-sm px-2 py-2 text-left text-kraft">
-              <span className="w-5 text-center">{tema === 'koyu' ? '☀️' : '🌙'}</span>
+              <span className="w-7 text-center"><TiyatroMaskeleriIkon tema={tema} boyut={24} className="inline-block" /></span>
               {tema === 'koyu' ? 'Aydınlık Mod' : 'Karanlık Mod'}
             </button>
 

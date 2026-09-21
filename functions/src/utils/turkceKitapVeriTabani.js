@@ -1,5 +1,9 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase.js'
+import { aksansizKucultulmus } from './metinNormallestir.js'
+import { isbnIleMevcutKitabiBul } from './kitapIsbnEslestir.js'
+import { hamKategoridenUstKategoriGetir } from './kitapUstKategorileri.js'
+import { openLibraryZenginlestir } from './openLibrary.js'
 
 // Türkçe Kitap Veri Tabanı — Google Books'ta Türkçe baskıların sık sık
 // bulunamaması sorununu çözmek için, Kitapyurdu'ndan derlenmiş 67.000+ kitaplık
@@ -8,8 +12,12 @@ import { db } from '../firebase.js'
 // bir kez indirilip tarayıcı belleğinde tutuluyor (sonraki aramalar anında).
 //
 // ÖNEMLİ SINIRLAMA: Bu veri setinde kapak görseli YOK (sadece ürün sayfası
-// linki var). Bir sonuç seçildiğinde ISBN üzerinden Google Books'tan SADECE
-// kapak görseli çekmeyi deniyoruz (bulunamazsa kapaksız kaydediliyor).
+// linki var). Bir sonuç seçildiğinde ISBN üzerinden Google Books'tan kapak
+// görseli çekmeyi deniyoruz; o da bulamazsa (Google'ın Türkçe baskı kapsamı
+// zayıf olduğu için sık oluyor) kitapKatalog.js'teki Google-öncelikli yolla
+// AYNI Open Library yedeğine (ISBN, sonra başlık+yazar) düşüyoruz — bkz.
+// openLibrary.js. Öncesinde bu yol SADECE Google'ı deniyordu, en yüksek
+// hacimli kayıt yolu (67 bin kitap) en zayıf arama yöntemini kullanıyordu.
 //
 // Açıklama (özet) metni parçalanmış ayrı dosyalarda tutuluyor — bkz. aşağıdaki
 // aciklamaGetir(). Bir kitap seçildiğinde tam açıklaması otomatik çekilip
@@ -97,6 +105,15 @@ export async function turkceKitaptanKaydet(kitap) {
     return { id, ...oncekiSnap.data() }
   }
 
+  // Bu kitap DAHA ÖNCE Google Books üzerinden (farklı bir ID şemasıyla)
+  // zaten kaydedilmiş olabilir — "aynı kitaptan iki farklı sayfa"
+  // sorununu önlemek için, sabit tr_{isbn} ID'sini oluşturmadan önce aynı
+  // ISBN'e sahip başka bir kayıt var mı diye bakıyoruz.
+  if (kitap.isbn) {
+    const esdeger = await isbnIleMevcutKitabiBul(kitap.isbn)
+    if (esdeger) return esdeger
+  }
+
   let posterUrl = ''
   if (kitap.isbn) {
     try {
@@ -105,15 +122,25 @@ export async function turkceKitaptanKaydet(kitap) {
       const data = await res.json()
       posterUrl = (data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
     } catch {
-      // Kapak bulunamazsa sorun değil, kapaksız devam
+      // Google'da bulunamazsa sorun değil, aşağıdaki Open Library denemesine düşülecek
     }
+  }
+  // Google'da (ISBN'i olsa bile) sık sık kapak bulunamıyor — Türkçe baskı
+  // kapsamı zayıf. ISBN yoksa Google hiç denenmedi demektir; ikisinde de
+  // Open Library'ye (önce ISBN, sonra başlık+yazar) düşüyoruz — kitapKatalog.js
+  // ile aynı yedek zincirini kullanan tek fonksiyon (bkz. openLibrary.js).
+  if (!posterUrl) {
+    const openLibrary = await openLibraryZenginlestir({ isbn13: kitap.isbn, baslik: kitap.baslik, yazar: kitap.yazar })
+    if (openLibrary?.posterUrl) posterUrl = openLibrary.posterUrl
   }
 
   const ozet = kitap.indeks != null ? await aciklamaGetir(kitap.indeks) : ''
 
   const veri = {
     baslik: kitap.baslik,
+    baslikNormalize: aksansizKucultulmus(kitap.baslik),
     yazar: kitap.yazar,
+    yazarNormalize: aksansizKucultulmus(kitap.yazar),
     yayinevi: kitap.yayinevi || '',
     isbn13: kitap.isbn || '',
     isbn10: '',
@@ -146,6 +173,25 @@ export async function gununKitabiGetir() {
     }
   }
   return satiriNesneyeGevir(veri[0], 0)
+}
+
+// GunlukKesif.jsx'teki "Günün Eseri" önizlemesi için — turkceKitaptanKaydet
+// ile AYNI Google Books ISBN sorgusu, ama Firestore'a hiç yazmadan. Sadece
+// bir önizleme kapağı göstermek için her ziyarette kitaplar koleksiyonuna
+// yazmak (ve kimse hiç "İncele"ye basmasa bile kalıcı bir kayıt açmak)
+// israf olurdu — kullanıcı gerçekten "İncele"ye basınca zaten
+// turkceKitaptanKaydet kendi kapağını (bu fonksiyondan bağımsız) çekip
+// kalıcı kaydı oluşturuyor.
+export async function kapakOnizlemeGetir(isbn) {
+  if (!isbn) return ''
+  try {
+    const anahtarParcasi = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY ? `&key=${import.meta.env.VITE_GOOGLE_BOOKS_API_KEY}` : ''
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}${anahtarParcasi}`)
+    const data = await res.json()
+    return (data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
+  } catch {
+    return ''
+  }
 }
 
 // Sayfa Sayısına Göre Meydan Okuma — birkaç hazır meydan okuma türünden
@@ -233,6 +279,37 @@ export async function kategorideKitaplariGetir(kategoriAdi, enFazla = 60) {
   return sonuclar
 }
 
+// Storytel'deki gibi sabit, renkli ÜST kategori yapısı (bkz.
+// kitapUstKategorileri.js) için: bir üst kategori id'sine düşen tüm ham
+// kategorilerdeki kitapları getirir. kategorideKitaplariGetir()'den farkı,
+// tek bir ham dizeyle değil, o dizeyi üst kategoriye eşleyerek (ör.
+// "roman" -> "Roman (Yerli)" + "Roman (Çeviri)" + "Tarihi Roman" + ...)
+// çok daha geniş bir eşleşme kümesi taraması.
+export async function ustKategorideKitaplariGetir(ustKategoriId, enFazla = 60) {
+  const veri = await veriyiYukle()
+  const sonuclar = []
+  for (let i = 0; i < veri.length; i++) {
+    if (hamKategoridenUstKategoriGetir(veri[i][6]) === ustKategoriId) {
+      sonuclar.push(satiriNesneyeGevir(veri[i], i))
+      if (sonuclar.length >= enFazla) break
+    }
+  }
+  return sonuclar
+}
+
+// KITAP_UST_KATEGORILERI'ndeki her üst kategoride kaç kitap olduğunu
+// getirir — kategori kartlarında sayı göstermek için (bkz. tumKategorileriGetir,
+// bu onun üst-kategori karşılığı).
+export async function tumUstKategorileriGetir() {
+  const veri = await veriyiYukle()
+  const sayaclar = new Map()
+  for (let i = 0; i < veri.length; i++) {
+    const ustId = hamKategoridenUstKategoriGetir(veri[i][6])
+    sayaclar.set(ustId, (sayaclar.get(ustId) || 0) + 1)
+  }
+  return sayaclar
+}
+
 // Tüm benzersiz kategori adlarını (ve her birinde kaç kitap olduğunu) getirir
 // — Kategori Keşfi'nin ana listeleme sayfası için.
 export async function tumKategorileriGetir() {
@@ -250,6 +327,9 @@ export async function tumKategorileriGetir() {
 
 // Gelişmiş Kitap Arama/Filtreleme için: metin + kategori + yayınevi + yıl
 // aralığı + sayfa sayısı aralığına göre filtreler. Tüm filtreler opsiyonel.
+// NOT: `kategori` artık ham Kitapyurdu dizesi değil, KITAP_UST_KATEGORILERI'ndeki
+// üst kategori id'si (ör. "roman") — Kitap Kategorileri sayfasıyla (bkz.
+// kitapUstKategorileri.js) aynı, tutarlı bir kategori dili kullansın diye.
 export async function kitapFiltrele({ metin, kategori, yayinevi, yilBaslangic, yilBitis, sayfaMin, sayfaMaks } = {}, enFazla = 60) {
   const veri = await veriyiYukle()
   const metinQ = metin?.trim().toLocaleLowerCase('tr-TR') || ''
@@ -262,7 +342,7 @@ export async function kitapFiltrele({ metin, kategori, yayinevi, yilBaslangic, y
       const eslesiyor = baslik.toLocaleLowerCase('tr-TR').includes(metinQ) || yazar.toLocaleLowerCase('tr-TR').includes(metinQ)
       if (!eslesiyor) continue
     }
-    if (kategori && kategoriAdi !== kategori) continue
+    if (kategori && hamKategoridenUstKategoriGetir(kategoriAdi) !== kategori) continue
     if (yayinevi && yayineviAdi !== yayinevi) continue
     if (yilBaslangic && (!yil || Number(yil) < Number(yilBaslangic))) continue
     if (yilBitis && (!yil || Number(yil) > Number(yilBitis))) continue
@@ -279,13 +359,35 @@ export async function kitapFiltrele({ metin, kategori, yayinevi, yilBaslangic, y
 // baskılar farklı yazılmışsa kaçırılabilir, bu bilinen bir sınırlama.
 export async function yazarinKitaplariniGetir(yazarAdi) {
   const veri = await veriyiYukle()
-  const q = yazarAdi.trim().toLocaleLowerCase('tr-TR')
+  const q = aksansizKucultulmus(yazarAdi)
   const sonuclar = []
   for (let i = 0; i < veri.length; i++) {
-    if (veri[i][1].toLocaleLowerCase('tr-TR') === q) {
+    if (aksansizKucultulmus(veri[i][1]) === q) {
       sonuclar.push(satiriNesneyeGevir(veri[i], i))
     }
   }
   sonuclar.sort((a, b) => (b.yil || '0').localeCompare(a.yil || '0'))
+
+  // 67 bin kitaplık statik veri setinde (bkz. dosya başındaki not) kapak
+  // görseli hiç yok. Ama bir kitap daha önce ziyaret edilip (turkceKitaptanKaydet)
+  // veya elle düzenlenip kapak eklendiyse, bu artık "kitaplar/tr_{isbn}"
+  // altında CANLI bir kayıt olarak duruyor — statik listeden habersiz.
+  // Yazar sayfasında kapaksız görünmemesi için, ISBN'i olan her sonuç için bu
+  // canlı kaydı kontrol edip varsa kapağı (ve varsa güncel başlığı) devralıyoruz.
+  await Promise.all(
+    sonuclar.map(async (s) => {
+      if (!s.isbn) return
+      try {
+        const canliSnap = await getDoc(doc(db, 'kitaplar', `tr_${s.isbn}`))
+        if (canliSnap.exists()) {
+          const canli = canliSnap.data()
+          if (canli.posterUrl) s.posterUrl = canli.posterUrl
+        }
+      } catch {
+        // sessizce geç — kapaksız göstermeye devam
+      }
+    })
+  )
+
   return sonuclar
 }

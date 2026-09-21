@@ -1,4 +1,5 @@
 import { icerikBloklariniAyir, satirIciBicimlendir, okumaSuresiTahminEt } from '../utils/icerikAyristir.js'
+import GomuluEserSeridi from './GomuluEserSeridi.jsx'
 
 function SatirIci({ metin }) {
   return satirIciBicimlendir(metin).map((parca) =>
@@ -20,12 +21,16 @@ export default function GonderiIcerik({ metin, tam = true }) {
 
   if (!tam) {
     const ilkMetin = bloklar.find((b) => b.tip === 'metin' || b.tip === 'baslik')
-    if (!ilkMetin) return null
+    const ilkEserListesi = bloklar.find((b) => b.tip === 'eser-listesi')
+    if (!ilkMetin && !ilkEserListesi) return null
     const onizlemeOkumaSuresi = okumaSuresiTahminEt(metin)
     return (
       <div>
         {onizlemeOkumaSuresi >= 2 && <p className="text-[11px] text-kraft">⏱ {onizlemeOkumaSuresi} dk okuma</p>}
-        <p className="mt-1 text-sm text-murekkep/90 leading-snug line-clamp-3 whitespace-pre-wrap">{ilkMetin.icerik}</p>
+        {ilkEserListesi && <GomuluEserSeridi ogeler={ilkEserListesi.ogeler} kompakt />}
+        {ilkMetin && (
+          <p className="mt-1 text-sm text-murekkep/90 leading-snug line-clamp-3 whitespace-pre-wrap">{ilkMetin.icerik}</p>
+        )}
       </div>
     )
   }
@@ -41,6 +46,9 @@ export default function GonderiIcerik({ metin, tam = true }) {
       {bloklar.map((blok, i) => {
         if (blok.tip === 'gorsel') {
           return <img key={i} src={blok.url} alt="" className="w-full rounded-sm ring-1 ring-cizgi" />
+        }
+        if (blok.tip === 'eser-listesi') {
+          return <GomuluEserSeridi key={i} ogeler={blok.ogeler} />
         }
         if (blok.tip === 'baslik') {
           return (

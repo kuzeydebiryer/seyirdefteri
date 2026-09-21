@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useListeOgeleri } from '../hooks/useListeOgeleri.js'
 import { uyeMi as uyelikKontrolEt } from '../hooks/useTopluluklar.js'
 import { ogeEkle, listeGuncelle, listeSil } from '../utils/liste.js'
+import { kitapIcVeriTabanindaAra } from '../utils/kitapKatalog.js'
+import { turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import ListeOgesi from '../components/ListeOgesi.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -71,6 +73,36 @@ export default function ListeDetay() {
 
   const yoneticiMiyim = kullanici && topluluk && (kullanici.uid === topluluk.kurucuId || rolum === 'moderator')
 
+  // Eskiden burada, "sira" alanı eklendiğinde eski öğeleri onarmak için
+  // yönetici her ziyaret ettiğinde OTOMATİK çalışan bir kontrol vardı — ama
+  // bu, düzeltilecek bir şey kalmasa bile HER ZİYARETTE listenin tamamını
+  // okuyordu (Blaze planında bu, gereksiz sürekli bir maliyet). Artık manuel
+  // bir buton: sadece gerektiğinde, tek tıkla çalıştırılıyor (bkz. aşağıdaki
+  // "sıraOnar" fonksiyonu ve "🔧 Sırayı Onar" butonu).
+  const [siraOnariliyor, setSiraOnariliyor] = useState(false)
+  async function siraOnar() {
+    setSiraOnariliyor(true)
+    try {
+      const q = query(collection(db, 'listeOgeleri'), where('topluluklId', '==', topluluklId), where('listeId', '==', listeId))
+      const snap = await getDocs(q)
+      const eksikOlanlar = snap.docs.filter((d) => d.data().sira === undefined)
+      if (eksikOlanlar.length === 0) {
+        window.alert('Eksik sıra bulunamadı, hepsi zaten sıralı.')
+        return
+      }
+      const mevcutSiralar = snap.docs.map((d) => d.data().sira).filter((s) => s !== undefined)
+      const enYuksekSira = mevcutSiralar.length > 0 ? Math.max(...mevcutSiralar) : -1
+      const siraliEksikler = [...eksikOlanlar].sort(
+        (a, b) => (a.data().eklemeTarihi?.toMillis?.() || 0) - (b.data().eklemeTarihi?.toMillis?.() || 0)
+      )
+      await Promise.all(siraliEksikler.map((d, i) => updateDoc(d.ref, { sira: enYuksekSira + 1 + i })))
+      yenidenYukle()
+      window.alert(`${eksikOlanlar.length} öğenin sırası dolduruldu.`)
+    } finally {
+      setSiraOnariliyor(false)
+    }
+  }
+
   // Kendiliğinden onarım: "sira" alanı bu güncellemeden önce yoktu. Firestore'un
   // orderBy('sira') sorgusu, alanı hiç olmayan belgeleri sonuçtan tamamen düşürür
   // (null değil, YOK sayar) — yani eski öğeler useListeOgeleri'nden hiç dönmüyor
@@ -78,28 +110,6 @@ export default function ListeDetay() {
   // sorguyla tüm öğeleri çekip eksik olanlara eklenme tarihine göre sıra atıyoruz.
   // Bir öğe zaten sira'ya sahipse dokunmuyoruz; hepsi doldurulunca bu bir daha
   // hiç çalışmaz (idempotent).
-  useEffect(() => {
-    if (!yoneticiMiyim || !topluluklId || !listeId) return
-    let iptal = false
-    async function onar() {
-      const q = query(collection(db, 'listeOgeleri'), where('topluluklId', '==', topluluklId), where('listeId', '==', listeId))
-      const snap = await getDocs(q)
-      if (iptal) return
-      const eksikOlanlar = snap.docs.filter((d) => d.data().sira === undefined)
-      if (eksikOlanlar.length === 0) return
-      const mevcutSiralar = snap.docs.map((d) => d.data().sira).filter((s) => s !== undefined)
-      const enYuksekSira = mevcutSiralar.length > 0 ? Math.max(...mevcutSiralar) : -1
-      const siraliEksikler = [...eksikOlanlar].sort(
-        (a, b) => (a.data().eklemeTarihi?.toMillis?.() || 0) - (b.data().eklemeTarihi?.toMillis?.() || 0)
-      )
-      await Promise.all(siraliEksikler.map((d, i) => updateDoc(d.ref, { sira: enYuksekSira + 1 + i })))
-      if (!iptal) yenidenYukle()
-    }
-    onar().catch((e) => console.warn('Sıra onarımı başarısız:', e.message))
-    return () => {
-      iptal = true
-    }
-  }, [yoneticiMiyim, topluluklId, listeId])
 
   async function ara(e) {
     e.preventDefault()
@@ -115,18 +125,26 @@ export default function ListeDetay() {
         const data = await res.json()
         setSonuclar(data.results || [])
       } else {
+        // KÖKTEN ÇÖZÜM: eskiden burada sadece Google Books'a gidiliyordu,
+        // sitenin kendi 67 bin kayıtlı Türkçe veri seti ve canlı kataloğu
+        // hiç aranmıyordu.
         const anahtarParcasi = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : ''
         const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(arama)}&maxResults=10${anahtarParcasi}`
-        const res = await fetch(url)
-        const data = await res.json()
-        setSonuclar(data.items || [])
+        const [icSonuclar, googleSonuc] = await Promise.all([
+          kitapIcVeriTabanindaAra(arama, 10),
+          fetch(url)
+            .then((res) => res.json())
+            .then((data) => data.items || [])
+            .catch(() => []),
+        ])
+        setSonuclar([...icSonuclar.map((k) => ({ ...k, _kaynak: 'ic' })), ...googleSonuc])
       }
     } finally {
       setAramaYukleniyor(false)
     }
   }
 
-  function sec(item) {
+  async function sec(item) {
     if (kategori === 'sinema') {
       setSecili({
         tmdbId: item.id,
@@ -140,6 +158,15 @@ export default function ListeDetay() {
         baslik: item.name,
         yil: item.first_air_date ? item.first_air_date.slice(0, 4) : null,
         posterUrl: item.poster_path ? `${TMDB_POSTER}${item.poster_path}` : '',
+      })
+    } else if (item._kaynak === 'ic') {
+      const kayit = item.id?.startsWith('tr_') ? await turkceKitaptanKaydet(item) : item
+      setSecili({
+        googleBooksId: kayit.id,
+        baslik: kayit.baslik || '',
+        yazar: kayit.yazar || '',
+        yil: kayit.yil || null,
+        posterUrl: kayit.posterUrl || '',
       })
     } else {
       const v = item.volumeInfo || {}
@@ -246,6 +273,14 @@ export default function ListeDetay() {
             <button onClick={listeyiSilTiklandi} className="rounded-sm px-3 py-1.5 font-govde text-xs text-kraft hover:text-muhur">
               Listeyi Sil
             </button>
+            <button
+              onClick={siraOnar}
+              disabled={siraOnariliyor}
+              title="Eski öğelerde sıra numarası eksikse doldurur — normalde gerek duymazsın"
+              className="rounded-sm px-3 py-1.5 font-govde text-xs text-kraft hover:text-deniz disabled:opacity-40"
+            >
+              {siraOnariliyor ? 'Kontrol ediliyor...' : '🔧 Sırayı Onar'}
+            </button>
           </>
         )}
       </div>
@@ -332,10 +367,19 @@ export default function ListeDetay() {
               {sonuclar.length > 0 && (
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                   {sonuclar.slice(0, 12).map((item) => {
-                    const ad = kategori === 'sinema' ? item.title : kategori === 'dizi' ? item.name : item.volumeInfo?.title
+                    const ad =
+                      kategori === 'sinema'
+                        ? item.title
+                        : kategori === 'dizi'
+                          ? item.name
+                          : item._kaynak === 'ic'
+                            ? item.baslik
+                            : item.volumeInfo?.title
                     const url =
                       kategori === 'kitap'
-                        ? (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
+                        ? item._kaynak === 'ic'
+                          ? item.posterUrl || ''
+                          : (item.volumeInfo?.imageLinks?.thumbnail || '').replace('http://', 'https://')
                         : item.poster_path
                           ? `${TMDB_POSTER}${item.poster_path}`
                           : ''

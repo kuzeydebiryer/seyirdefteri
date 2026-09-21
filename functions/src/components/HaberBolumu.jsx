@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { haberEkle, haberSil } from '../utils/haber.js'
+import { haberEkle } from '../utils/haber.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w185'
@@ -33,14 +33,13 @@ function youtubeIdCikar(girdi) {
   return temiz
 }
 
-const eserLink = (tur, disId) => (tur === 'dizi' ? `/dizi/${disId}` : tur === 'kitap' ? `/kitap/${disId}` : `/film/${disId}`)
 
-function HaberSatiri({ haber, acikMi, ac, kullanici, sil }) {
+function HaberSatiri({ haber, kullanici }) {
   const kucukGorsel = haber.gorselUrl || haber.ilgiliPosterUrl
 
   return (
     <li className="rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-      <button onClick={ac} className="flex w-full gap-3 p-3 text-left">
+      <Link to={`/haber/${haber.id}`} className="flex w-full gap-3 p-3 text-left">
         <div className="h-16 w-24 shrink-0 overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi sm:h-20 sm:w-28">
           {kucukGorsel ? (
             <img src={kucukGorsel} alt="" className="h-full w-full object-cover" />
@@ -50,50 +49,12 @@ function HaberSatiri({ haber, acikMi, ac, kullanici, sil }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-govde text-sm font-medium text-murekkep line-clamp-2">{haber.baslik}</p>
-          {haber.icerik && !acikMi && <p className="mt-0.5 line-clamp-1 text-xs text-kraft">{haber.icerik}</p>}
+          {haber.icerik && <p className="mt-0.5 line-clamp-1 text-xs text-kraft">{haber.icerik}</p>}
           <p className="mt-1 text-[11px] text-kraft">
             {haber.ekleyenAdi} · {tarihGoster(haber.tarih)}
           </p>
         </div>
-      </button>
-
-      {acikMi && (
-        <div className="border-t border-cizgi px-3 pb-3 pt-2">
-          {haber.icerik && <p className="text-sm text-murekkep/90">{haber.icerik}</p>}
-
-          {haber.gorselUrl && (
-            <img src={haber.gorselUrl} alt="" className="mt-2 max-h-64 w-full rounded-sm object-cover ring-1 ring-cizgi" />
-          )}
-
-          {haber.ilgiliBaslik && (
-            <Link
-              to={eserLink(haber.ilgiliTur, haber.ilgiliDisId)}
-              className="mt-2 flex w-fit items-center gap-2 rounded-sm bg-kagit p-2 ring-1 ring-cizgi hover:ring-deniz"
-            >
-              {haber.ilgiliPosterUrl && <img src={haber.ilgiliPosterUrl} alt="" className="h-14 w-10 rounded-sm object-cover" />}
-              <span className="text-xs text-murekkep">{haber.ilgiliBaslik}</span>
-            </Link>
-          )}
-
-          {haber.fragmanId && (
-            <div className="mt-2 aspect-video max-w-md overflow-hidden rounded-sm ring-1 ring-cizgi">
-              <iframe
-                src={`https://www.youtube.com/embed/${haber.fragmanId}`}
-                title="Fragman"
-                className="h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          )}
-
-          {kullanici?.uid === haber.ekleyenId && (
-            <button onClick={() => sil(haber.id)} className="mt-2 text-xs text-kraft hover:text-muhur">
-              Sil
-            </button>
-          )}
-        </div>
-      )}
+      </Link>
     </li>
   )
 }
@@ -113,7 +74,6 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
   const [eserSonuclari, setEserSonuclari] = useState([])
   const [secilenEser, setSecilenEser] = useState(null)
 
-  const [acikId, setAcikId] = useState(null)
   const [gosterilecekSayi, setGosterilecekSayi] = useState(SAYFA_BASI)
 
   async function eserAra(e) {
@@ -186,26 +146,25 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
     }
   }
 
-  async function sil(id) {
-    if (!window.confirm('Bu haberi silmek istediğine emin misin?')) return
-    await haberSil(id)
-    yenidenYukle()
-  }
-
   const gosterilenler = haberler.slice(0, gosterilecekSayi)
 
   return (
     <div className="mb-10">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-baslik text-lg text-murekkep">Haberler</h2>
-        {kullanici && (
-          <button
-            onClick={() => setFormuAcik((a) => !a)}
-            className="rounded-sm bg-kagitKoyu px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi"
-          >
-            {formuAcik ? 'Vazgeç' : '+ Haber Ekle'}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <Link to={`/haberler?kategori=${kategori}`} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
+            Tümünü Gör ›
+          </Link>
+          {kullanici && (
+            <button
+              onClick={() => setFormuAcik((a) => !a)}
+              className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 font-govde text-xs ${formuAcik ? 'bg-kagitKoyu text-kraft ring-1 ring-cizgi' : 'bg-gise text-kagit'}`}
+            >
+              {formuAcik ? 'Vazgeç' : '+ Haber Ekle'}
+            </button>
+          )}
+        </div>
       </div>
 
       {formuAcik && (
@@ -347,14 +306,7 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
         <>
           <ul className="space-y-2">
             {gosterilenler.map((h) => (
-              <HaberSatiri
-                key={h.id}
-                haber={h}
-                acikMi={acikId === h.id}
-                ac={() => setAcikId((onceki) => (onceki === h.id ? null : h.id))}
-                kullanici={kullanici}
-                sil={sil}
-              />
+              <HaberSatiri key={h.id} haber={h} kullanici={kullanici} />
             ))}
           </ul>
           {haberler.length > gosterilecekSayi && (

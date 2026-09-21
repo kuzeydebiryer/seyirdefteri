@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { buYilOlaylariHesapla } from '../utils/yilOzeti.js'
 
 const AY_ADLARI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
 
@@ -9,107 +9,88 @@ function tariheDevir(deger) {
 }
 
 function esereLink(tur, disId) {
+  if (tur === 'gezi' || tur === 'etkinlik') return `/gonderi/${disId}`
   if (tur === 'kitap') return `/kitap/${disId}`
   if (tur === 'dizi') return `/dizi/${disId}`
   return `/film/${disId}`
 }
 
-// Profilde zaten var olan iki veri kaynağından (günceler + doğrudan puanlar)
-// yıllık bir özet hesaplar — yeni bir Firestore koleksiyonu gerekmiyor, hepsi
-// istemci tarafında, elde olan veriden türetiliyor.
-export default function YilOzeti({ gonderiler, eserPuanlarim }) {
-  // Verideki tüm yılların birleşimi (en yeniden eskiye) — kullanıcı geçmiş
-  // yılları da görebilsin diye.
-  const tumYillar = [
-    ...new Set(
-      [...gonderiler.map((g) => g.tarih), ...eserPuanlarim.map((e) => e.tarih)]
-        .map((t) => tariheDevir(t)?.getFullYear())
-        .filter(Boolean)
-    ),
-  ].sort((a, b) => b - a)
+// Hesaplama artık utils/yilOzeti.js'te — Günlük sekmesiyle (Profil.jsx)
+// AYNI fonksiyonu paylaşıyor, iki yerde ayrı ayrı (ve birbirinden sapan)
+// hesaplama olmasın diye (bkz. o dosyadaki uzun açıklama — bu, gösterilen
+// rakamlarla Günlük listesinin tutarsız görünmesinin kök sebebiydi).
+export default function YilOzeti({ yil, yukleniyor, gonderiler, eserPuanlarim, gunlukKayitlari = [], onTuruSec }) {
+  const buYilOlaylar = buYilOlaylariHesapla(yil, gonderiler, eserPuanlarim, gunlukKayitlari)
 
-  const [seciliYil, setSeciliYil] = useState(tumYillar[0] || new Date().getFullYear())
-
-  if (tumYillar.length === 0) {
-    return <p className="text-sm text-kraft">Henüz özetlenecek bir etkinlik yok.</p>
-  }
-
-  const buYilGonderiler = gonderiler.filter((g) => tariheDevir(g.tarih)?.getFullYear() === seciliYil)
-  const buYilPuanlar = eserPuanlarim.filter((e) => tariheDevir(e.tarih)?.getFullYear() === seciliYil)
-
-  // "İzlediklerim" sekmesindeki mantığın aynısı: günce + doğrudan puanı
-  // birleştirip aynı esere ait tekrarları ele (bir eser hem günce hem ayrı
-  // puanla değerlendirilmiş olabilir).
+  // Aynı esere ait birden fazla olay olabilir (başladım + bitirdim + puanladım
+  // hepsi ayrı birer günlük kaydı) — "kaç film/dizi/kitap" sayısı OLAY değil,
+  // BENZERSİZ ESER sayısı olmalı, yoksa tek bir kitap "3 kitap okudun" gibi
+  // yanlış şişirilmiş bir sonuç üretirdi.
   function turSayisi(tur) {
-    const gundenGelenler = buYilGonderiler.filter((g) => g.tur === tur && g.posterUrl)
-    const puandanGelenler = buYilPuanlar.filter(
-      (e) => e.tur === tur && !gundenGelenler.some((g) => g.tmdbId === e.disId || g.googleBooksId === e.disId)
-    )
-    return gundenGelenler.length + puandanGelenler.length
+    return new Set(buYilOlaylar.filter((o) => o.tur === tur).map((o) => o.disId)).size
   }
 
   const filmSayisi = turSayisi('sinema')
   const diziSayisi = turSayisi('dizi')
   const kitapSayisi = turSayisi('kitap')
-  const yaziSayisi = buYilGonderiler.filter((g) => g.tur === 'yazi').length
-  const geziSayisi = buYilGonderiler.filter((g) => g.tur === 'gezi').length
+  const yaziSayisi = gonderiler.filter((g) => g.tur === 'yazi' && tariheDevir(g.tarih)?.getFullYear() === yil).length
+  const geziEtkinlikSayisi = turSayisi('gezi') + turSayisi('etkinlik')
 
-  const tumPuanlar = [
-    ...buYilGonderiler.filter((g) => g.kullaniciPuani != null).map((g) => ({ ...g, puan: g.kullaniciPuani, kaynak: 'gonderi' })),
-    ...buYilPuanlar.map((e) => ({ ...e, kaynak: 'puan' })),
-  ]
-  const ortalamaPuan = tumPuanlar.length ? tumPuanlar.reduce((t, p) => t + p.puan, 0) / tumPuanlar.length : null
-  const enYuksekPuanli = [...tumPuanlar].sort((a, b) => (b.puan || 0) - (a.puan || 0))[0]
+  const puanliOlaylar = buYilOlaylar.filter((o) => o.puan != null)
+  const ortalamaPuan = puanliOlaylar.length ? puanliOlaylar.reduce((t, o) => t + o.puan, 0) / puanliOlaylar.length : null
+  const enYuksekPuanli = [...puanliOlaylar].sort((a, b) => (b.puan || 0) - (a.puan || 0))[0]
 
-  // En aktif ay — o ay içindeki toplam günce sayısına göre.
   const ayDagilimi = Array(12).fill(0)
-  buYilGonderiler.forEach((g) => {
-    const ay = tariheDevir(g.tarih)?.getMonth()
+  buYilOlaylar.forEach((o) => {
+    const ay = tariheDevir(o.tarih)?.getMonth()
     if (ay != null) ayDagilimi[ay]++
   })
   const enAktifAyIndex = ayDagilimi.some((n) => n > 0) ? ayDagilimi.indexOf(Math.max(...ayDagilimi)) : null
 
   const toplamEser = filmSayisi + diziSayisi + kitapSayisi
 
+  if (yukleniyor) return <p className="text-sm text-kraft">Yükleniyor...</p>
+
   return (
     <div>
-      {tumYillar.length > 1 && (
-        <div className="mb-4 flex gap-2">
-          {tumYillar.map((y) => (
-            <button
-              key={y}
-              onClick={() => setSeciliYil(y)}
-              className={`rounded-sm px-3 py-1 font-govde text-xs ${
-                seciliYil === y ? 'bg-murekkep text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
-              }`}
-            >
-              {y}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {toplamEser === 0 && buYilGonderiler.length === 0 ? (
-        <p className="text-sm text-kraft">{seciliYil} yılında henüz bir etkinlik yok.</p>
+      {toplamEser === 0 && yaziSayisi === 0 && geziEtkinlikSayisi === 0 ? (
+        <p className="text-sm text-kraft">{yil} yılında henüz bir etkinlik yok.</p>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi">
+            <button
+              onClick={() => onTuruSec?.('sinema')}
+              disabled={!onTuruSec || filmSayisi === 0}
+              className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi transition enabled:hover:ring-deniz/50 disabled:cursor-default"
+            >
               <p className="font-baslik text-3xl text-murekkep">{filmSayisi}</p>
               <p className="text-xs text-kraft">🎬 Film</p>
-            </div>
-            <div className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi">
+            </button>
+            <button
+              onClick={() => onTuruSec?.('dizi')}
+              disabled={!onTuruSec || diziSayisi === 0}
+              className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi transition enabled:hover:ring-deniz/50 disabled:cursor-default"
+            >
               <p className="font-baslik text-3xl text-murekkep">{diziSayisi}</p>
               <p className="text-xs text-kraft">📺 Dizi</p>
-            </div>
-            <div className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi">
+            </button>
+            <button
+              onClick={() => onTuruSec?.('kitap')}
+              disabled={!onTuruSec || kitapSayisi === 0}
+              className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi transition enabled:hover:ring-deniz/50 disabled:cursor-default"
+            >
               <p className="font-baslik text-3xl text-murekkep">{kitapSayisi}</p>
               <p className="text-xs text-kraft">📖 Kitap</p>
-            </div>
-            <div className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi">
-              <p className="font-baslik text-3xl text-murekkep">{yaziSayisi + geziSayisi}</p>
-              <p className="text-xs text-kraft">✍️ Yazı/Gezi</p>
-            </div>
+            </button>
+            <button
+              onClick={() => onTuruSec?.('diger')}
+              disabled={!onTuruSec || yaziSayisi + geziEtkinlikSayisi === 0}
+              className="rounded-sm bg-kagitKoyu p-4 text-center ring-1 ring-cizgi transition enabled:hover:ring-deniz/50 disabled:cursor-default"
+              title="Yazılarını görmek için Yazı & Gezi sekmesine gider"
+            >
+              <p className="font-baslik text-3xl text-murekkep">{yaziSayisi + geziEtkinlikSayisi}</p>
+              <p className="text-xs text-kraft">✍️ Yazı/Gezi/Etkinlik</p>
+            </button>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-4 text-sm text-murekkep">
@@ -135,13 +116,9 @@ export default function YilOzeti({ gonderiler, eserPuanlarim }) {
                 />
               )}
               <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-widest text-gise">{seciliYil}'in en yükseğini verdiğin</p>
+                <p className="text-[11px] uppercase tracking-widest text-gise">{yil}'in en yükseğini verdiğin</p>
                 <Link
-                  to={
-                    enYuksekPuanli.kaynak === 'gonderi'
-                      ? `/gonderi/${enYuksekPuanli.id}`
-                      : esereLink(enYuksekPuanli.tur, enYuksekPuanli.disId)
-                  }
+                  to={enYuksekPuanli.kaynak === 'gonderi' ? `/gonderi/${enYuksekPuanli.gonderiId}` : esereLink(enYuksekPuanli.tur, enYuksekPuanli.disId)}
                   className="font-baslik text-base text-murekkep hover:underline"
                 >
                   {enYuksekPuanli.baslik}

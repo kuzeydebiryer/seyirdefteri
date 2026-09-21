@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// Firestore kurallarındaki (firestore.rules) aynı güven modeli: giriş
+// yapmış herkes yazabiliyor, ama SADECE kendi klasörüne (uid eşleşmesi
+// zorunlu) — avatarını/kapak görselini/gönderi görselini başka birinin
+// adına yükleyemez. Okuma herkese açık (profil resimleri, gönderi
+// görselleri zaten herkese açık gösteriliyor).
+//
+// "klasor" sadece bilinen 3 hedeften biri olabiliyor — bkz.
+// src/components/GorselYukleButonu.jsx ve src/utils/gorselYukle.js.
+// Yeni bir yükleme yeri eklenirse buraya da eklenmesi gerekiyor.
+//
+// Boyut/tip sınırı sunucu tarafında da tekrarlanıyor (istemci zaten
+// sıkıştırıp gönderiyor ama kurallar istemci koduna güvenmez).
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{klasor}/{uid}/{dosyaAdi} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && klasor in ['avatarlar', 'kapaklar', 'gonderi-gorselleri']
+        && request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

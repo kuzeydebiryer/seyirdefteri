@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { topluluktaPopulerEserler } from '../hooks/useEser.js'
 import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
 import { useHaberler } from '../hooks/useHaberler.js'
@@ -7,6 +8,9 @@ import HaberBolumu from '../components/HaberBolumu.jsx'
 import ListelerBolumu from '../components/ListelerBolumu.jsx'
 import FilmDiziArama from '../components/FilmDiziArama.jsx'
 import EserKarti from '../components/EserKarti.jsx'
+import BegenilenMuziklerBolumu from '../components/BegenilenMuziklerBolumu.jsx'
+import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
+import SinemaOyunlariBolumu from '../components/SinemaOyunlariBolumu.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -37,6 +41,7 @@ export default function Filmler() {
   const [yakinda, setYakinda] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const { tavsiyeler, yenidenYukle: tavsiyeleriYenile } = useTavsiyeler('sinema')
+  const { tavsiyeler: yeniGelenFilmler, yenidenYukle: yeniGelenFilmleriYenile } = useTavsiyeler('sinema', 'yeniGelenFilmler')
   const { haberler, yenidenYukle: haberleriYenile } = useHaberler('sinema')
 
   useEffect(() => {
@@ -74,9 +79,43 @@ export default function Filmler() {
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-6">Film</h1>
 
+      <Link
+        to="/sinema-turleri"
+        className="mb-3 flex items-center gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi transition hover:ring-deniz/50"
+      >
+        <span className="text-xl">🎭</span>
+        <div>
+          <p className="text-sm text-murekkep">Sinemasal Alt Türler</p>
+          <p className="text-xs text-kraft">Folk Horror, Giallo, Buluntu Film ve daha fazlası →</p>
+        </div>
+      </Link>
+
+      <Link
+        to="/dis-listeler"
+        className="mb-6 flex items-center gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi transition hover:ring-deniz/50"
+      >
+        <span className="text-xl">🎞️</span>
+        <div>
+          <p className="text-sm text-murekkep">En İyi Film Listeleri</p>
+          <p className="text-xs text-kraft">Letterboxd 500'den IMDb 250'ye, sinema tarihinin zirveleri →</p>
+        </div>
+      </Link>
+
       <FilmDiziArama tur="sinema" />
 
       <TavsiyeBolumu tur="sinema" tavsiyeler={tavsiyeler} yenidenYukle={tavsiyeleriYenile} />
+      <TavsiyeBolumu
+        tur="sinema"
+        koleksiyon="yeniGelenFilmler"
+        tavsiyeler={yeniGelenFilmler}
+        yenidenYukle={yeniGelenFilmleriYenile}
+        baslik="Yeni Gelen Filmler"
+        tumunuGorLink="/yeni-gelen-filmler"
+        ekleButonuMetni="+ Film Ekle"
+      />
+      <BegenilenMuziklerBolumu />
+      <SinemaOyunlariBolumu />
+      <IlhamPanosuOnizleme kategori="Film" />
       <HaberBolumu kategori="sinema" haberler={haberler} yenidenYukle={haberleriYenile} />
       <ListelerBolumu tur="sinema" />
 

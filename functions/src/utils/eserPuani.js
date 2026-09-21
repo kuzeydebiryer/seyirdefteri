@@ -1,4 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { eserIstatistikGuncelle } from './eserIstatistik.js'
 
@@ -15,7 +15,8 @@ export async function eserPuanla(tur, disId, puan, kullanici, { baslik, alt, pos
   // bu esere daha önce puan verdiyse eski puanı öğrenmemiz gerekiyor (fark kadar
   // güncellemek için) — aksi hâlde her yeniden puanlamada sayaç yanlışlıkla artardı.
   const oncekiSnap = await getDoc(ref)
-  const eskiPuan = oncekiSnap.exists() ? oncekiSnap.data().puan : null
+  const oncekiVeri = oncekiSnap.exists() ? oncekiSnap.data() : null
+  const eskiPuan = oncekiVeri?.puan ?? null
 
   await setDoc(
     ref,
@@ -35,4 +36,31 @@ export async function eserPuanla(tur, disId, puan, kullanici, { baslik, alt, pos
   )
 
   await eserIstatistikGuncelle(tur, disIdNormal, { baslik, alt, posterUrl, yil }, puan, eskiPuan)
+
+  // Zaten bu dokümanı okuduk (yukarıda) — çağıran taraf "günlük kaydı var mı"
+  // gibi bir kontrol için ayrıca eserPuaniGetir çağırmasın diye (Letterboxd
+  // içe aktarımı gibi toplu işlemlerde bu, satır başına bir okumayı tamamen
+  // ortadan kaldırıyor) o veriyi burada geri veriyoruz.
+  return { oncekiVeri }
+}
+
+// Bu esere ait "eserPuanlari" kaydını, aynı ID'yi yeniden hesaplamadan
+// doğrudan okumak için (içe aktarma sırasında "zaten günlüğü var mı"
+// kontrolü ve gunlukVar işaretleme için kullanılıyor).
+export async function eserPuaniGetir(tur, disId, uid) {
+  const disIdNormal = tur === 'kitap' ? disId : Number(disId)
+  const snap = await getDoc(doc(db, 'eserPuanlari', `${tur}_${disIdNormal}_${uid}`))
+  return snap.exists() ? snap.data() : null
+}
+
+// Bir günlük kaydı (gunlukKayitlari) bu esere gerçekten eklendiğinde işaretlemek
+// için — Yılın Özeti, "eserPuanlari.tarih" (ki bu sadece PUANLAMA/İÇE AKTARMA
+// ANI'nı taşır, gerçek izleme tarihini değil) üzerinden bir eseri ikinci kez
+// saymasın diye bunu kontrol ediyor. Bu alan olmadan, Letterboxd içe aktarımı
+// gibi toplu işlemler her esere "bugün izlendi" gibi yanlış bir kayıt daha
+// eklemiş gibi görünüyordu (bkz. Yılın Özeti'nde 3000+ film tek yılda toplanma
+// hatası).
+export async function eserPuanindaGunlukVarIsaretle(tur, disId, uid) {
+  const disIdNormal = tur === 'kitap' ? disId : Number(disId)
+  await updateDoc(doc(db, 'eserPuanlari', `${tur}_${disIdNormal}_${uid}`), { gunlukVar: true })
 }

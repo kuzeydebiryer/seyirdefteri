@@ -4,15 +4,26 @@
 
 :root {
   /* Aydınlık (varsayılan) palet — R G B, virgülsüz (Tailwind'in
-     rgb(var(--x) / <alpha-value>) opaklık numarasıyla çalışması için) */
-  --kagit: 245 239 225;
-  --kagitKoyu: 237 228 206;
+     rgb(var(--x) / <alpha-value>) opaklık numarasıyla çalışması için).
+     Karanlık moddakiyle (.dark) AYNI sıcak amber/kahve ton ailesi — sadece
+     çok daha açık. Önceki hali fazla soluk/genel bir krem gibi duruyordu,
+     şimdi biraz daha doygun, "eskitilmiş kağıt" hissi veriyor. */
+  --kagit: 240 230 208;
+  --kagitKoyu: 227 212 179;
   --murekkep: 31 36 33;
   --muhur: 179 58 58;
-  --kraft: 140 131 104;
-  --cizgi: 216 203 170;
-  --deniz: 74 110 107;
-  --gise: 166 118 63;
+  /* kraft/gise/deniz burada KASITLI OLARAK orijinal tondan biraz daha koyu —
+     Google PageSpeed erişilebilirlik denetimi, eski değerlerin (kraft
+     128/114/82, gise 166/118/63) açık zemin üzerinde WCAG AA metin kontrast
+     eşiğini (4.5:1) TUTTURAMADIĞINI gösterdi (kraft: 3.81:1, gise
+     kagitKoyu'da: 2.71:1 — ikisi de FAIL). Aynı sıcak ton ailesinde, sadece
+     koyulaştırılmış değerler kullanılıyor; hepsi hem kagit hem kagitKoyu
+     zemininde ≥4.5:1'i geçiyor (hesaplandı, bkz. proje notları).
+     Koyu mod zaten geçiyordu, dokunulmadı. */
+  --kraft: 102 90 65;
+  --cizgi: 199 180 141;
+  --deniz: 66 98 95;
+  --gise: 120 85 45;
 }
 
 .dark {
@@ -50,4 +61,16 @@ body {
 
 .yildiz {
   color: rgb(var(--muhur));
+}
+
+/* Yatay kaydırılabilir şeritlerde (film/kitap carousel'leri, "Tümünü Gör"
+   ile zaten kendi sayfasına yönlendirildikleri için) tarayıcının çirkin
+   görünen kaydırma çubuğunu gizliyoruz — kaydırma işlevi (dokunma/tekerlek/
+   sürükleme) aynen çalışmaya devam ediyor, sadece görünür şerit kayboluyor. */
+.overflow-x-auto {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* eski Edge/IE */
+}
+.overflow-x-auto::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, yeni Edge */
 }

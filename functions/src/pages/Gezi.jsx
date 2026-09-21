@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useGonderiler } from '../hooks/useGonderiler.js'
 import GonderiKarti from '../components/GonderiKarti.jsx'
 import DunyaHaritasi from '../components/DunyaHaritasi.jsx'
+import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
 
 export default function Gezi() {
   const { gonderiler: geziler, yukleniyor: geziYukleniyor, dahaFazlaVarMi, dahaFazlaYukle } = useGonderiler({ tur: 'gezi' })
@@ -12,12 +13,18 @@ export default function Gezi() {
 
       {!geziYukleniyor && <DunyaHaritasi geziler={geziler} />}
 
-      <div className="mb-6 flex justify-center">
+      <div className="mb-6 flex flex-wrap justify-center gap-2">
         <Link
           to="/gonderi-ekle?tur=gezi"
           className="rounded-sm bg-muhur px-4 py-2 font-govde text-sm text-kagit hover:opacity-90"
         >
           + Gezini Ekle
+        </Link>
+        <Link
+          to="/gezi-planlarim"
+          className="rounded-sm bg-deniz px-4 py-2 font-govde text-sm text-kagit hover:opacity-90"
+        >
+          🗺️ Gezi Planlarım
         </Link>
       </div>
 
@@ -42,6 +49,8 @@ export default function Gezi() {
           </button>
         )}
       </div>
+
+      <IlhamPanosuOnizleme kategori="Gezi" />
     </div>
   )
 }

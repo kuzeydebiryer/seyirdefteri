@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { kitapFiltrele, tumKategorileriGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import { kitapFiltrele, tumUstKategorileriGetir, turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
+import { KITAP_UST_KATEGORILERI, hamKategoridenUstKategoriGetir } from '../utils/kitapUstKategorileri.js'
+import { canliKataloktaBaslikIleAra } from '../utils/kitapKatalog.js'
+import KitapyurdundanKitapEkle from './KitapyurdundanKitapEkle.jsx'
 
 export default function KitapArama() {
   const navigate = useNavigate()
@@ -13,7 +16,9 @@ export default function KitapArama() {
   const [inceleniyorId, setInceleniyorId] = useState(null)
 
   useEffect(() => {
-    tumKategorileriGetir().then((liste) => setKategoriler(liste.slice(0, 40)))
+    tumUstKategorileriGetir().then((sayaclar) => {
+      setKategoriler(KITAP_UST_KATEGORILERI.map((k) => ({ ...k, sayi: sayaclar.get(k.id) || 0 })))
+    })
   }, [])
 
   async function ara(e) {
@@ -21,8 +26,18 @@ export default function KitapArama() {
     setYukleniyor(true)
     setAramaYapildi(true)
     try {
-      const liste = await kitapFiltrele(form, 60)
-      setSonuclar(liste)
+      const [statikListe, canliListe] = await Promise.all([
+        kitapFiltrele(form, 60),
+        // Statik 67 bin kayıtlı veri seti, elle eklenen/canlı kaydedilen
+        // kitaplardan habersiz — bu, en azından BAŞLIĞIN BAŞINA göre
+        // eşleşen canlı kayıtları da sonuçlara katıyor (yalnızca metin
+        // araması yapıldıysa; kategori/yıl/sayfa filtreleri statik veri
+        // setine özel olduğundan canlı arama sadece "metin" alanına bakıyor).
+        form.metin.trim() ? canliKataloktaBaslikIleAra(form.metin.trim(), 20).catch(() => []) : Promise.resolve([]),
+      ])
+      const statikIsbnler = new Set(statikListe.map((k) => k.isbn).filter(Boolean))
+      const yeniCanliListe = canliListe.filter((k) => !k.isbn13 || !statikIsbnler.has(k.isbn13))
+      setSonuclar([...statikListe, ...yeniCanliListe])
     } finally {
       setYukleniyor(false)
     }
@@ -78,8 +93,8 @@ export default function KitapArama() {
               >
                 <option value="">Tüm kategoriler</option>
                 {kategoriler.map((k) => (
-                  <option key={k.kategori} value={k.kategori}>
-                    {k.kategori} ({k.sayi})
+                  <option key={k.id} value={k.id}>
+                    {k.ad} ({k.sayi.toLocaleString('tr-TR')})
                   </option>
                 ))}
               </select>
@@ -131,6 +146,8 @@ export default function KitapArama() {
         )}
       </form>
 
+      <KitapyurdundanKitapEkle />
+
       {aramaYapildi && !yukleniyor && sonuclar.length === 0 && <p className="mt-3 text-sm text-kraft">Sonuç bulunamadı.</p>}
 
       {sonuclar.length > 0 && (
@@ -151,10 +168,10 @@ export default function KitapArama() {
                 </p>
                 {k.kategori && (
                   <Link
-                    to={`/kitap-kategori/${encodeURIComponent(k.kategori)}`}
+                    to={`/kitap-kategorileri/${hamKategoridenUstKategoriGetir(k.kategori)}`}
                     className="truncate text-[11px] text-deniz hover:underline"
                   >
-                    {k.kategori}
+                    {KITAP_UST_KATEGORILERI.find((u) => u.id === hamKategoridenUstKategoriGetir(k.kategori))?.ad || k.kategori}
                   </Link>
                 )}
               </div>

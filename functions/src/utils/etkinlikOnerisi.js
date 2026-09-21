@@ -8,10 +8,11 @@ import { gelecekEtkinlikOlustur } from './gelecekEtkinlik.js'
 // çevrilir (bkz. oneriyiEtkinligeCevir) — otomatik bir arka uç zamanlayıcı
 // olmadığı için "kazananın gerçekleşmesi" bilinçli bir yönetici onayı
 // gerektiriyor, ama sıralama (en çok beğenilen en üstte) kararı kolaylaştırıyor.
-export async function oneriEkle(topluluklId, { eser, not: notMetni, topluluk, kullanici }) {
+export async function oneriEkle(topluluklId, { eser, not: notMetni, sonTarih, topluluk, kullanici }) {
   await addDoc(collection(db, 'etkinlikOnerileri'), {
     ...eser,
     not: notMetni || '',
+    sonTarih: sonTarih || null,
     topluluklId,
     topluluklAd: topluluk?.ad || '',
     topluluklTur: topluluk?.tur || 'Genel',
