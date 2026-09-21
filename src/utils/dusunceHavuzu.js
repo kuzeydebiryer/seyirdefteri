@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDocs, limit, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // Başlangıç havuzu — ~200 konu. 500'e tamamlamak gerçek bir içerik üretim
@@ -426,6 +426,21 @@ export async function konuSecVeYayinla({ konu, konuId = null, gunSayisi }, kulla
     damgaTarihi: serverTimestamp(),
     belirleyenId: kullanici?.uid || null,
   })
+}
+
+// Şu an yayında olan konuyu YENİDEN yayınlamadan (yani gununKonulari'na
+// mükerrer bir arşiv kaydı eklemeden), sadece süresini günceller. Yönetim
+// sayfasındaki gün sayısı seçicisi tek başına bir şey yapmıyor — o sadece
+// bir SONRAKİ "Yayınla" tıklamasında kullanılacak değeri seçiyor. Aktif
+// konunun süresini hemen değiştirmek isteyen (örn. "7 gün yapıyorum ama
+// hiçbir şey olmuyor" şikayeti tam bu ihtiyaçtan doğdu) bu fonksiyonu
+// çağırıyor: bitiş tarihini, konunun ASIL başlangıç tarihine göre yeniden
+// hesaplayıp aynı kayıt üzerinde günceller.
+export async function aktifKonununSuresiniGuncelle(kayitId, baslangicTarihi, yeniGunSayisi) {
+  const bitisTarihi = new Date(new Date(`${baslangicTarihi}T00:00:00Z`).getTime() + yeniGunSayisi * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10)
+  await updateDoc(doc(db, 'gununKonulari', kayitId), { gunSayisi: yeniGunSayisi, bitisTarihi })
 }
 
 // Şu an yayında olan konu — en son yayına alınan kayıt (damgaTarihi'ne göre

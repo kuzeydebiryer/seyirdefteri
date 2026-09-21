@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { tumHavuzuGetir, konuSil, gununKonusuGetir, konuSecVeYayinla, gecmisiSifirla, GUN_SECENEKLERI } from '../utils/dusunceHavuzu.js'
+import {
+  tumHavuzuGetir,
+  konuSil,
+  gununKonusuGetir,
+  konuSecVeYayinla,
+  aktifKonununSuresiniGuncelle,
+  gecmisiSifirla,
+  GUN_SECENEKLERI,
+} from '../utils/dusunceHavuzu.js'
 
 // Bu sayfa herkese açık (route seviyesinde giriş kontrolü OzelRota ile
 // zaten var) ama İÇERİĞİ sadece profil.yonetici === true olan hesaplara
@@ -17,6 +25,7 @@ export default function DusunceHavuzuYonetim() {
   const [ozelKonuMetni, setOzelKonuMetni] = useState('')
   const [ozelYayinlaniyor, setOzelYayinlaniyor] = useState(false)
   const [sifirlaniyor, setSifirlaniyor] = useState(false)
+  const [sureGuncelleniyor, setSureGuncelleniyor] = useState(false)
 
   useEffect(() => {
     if (profil?.yonetici) {
@@ -47,6 +56,22 @@ export default function DusunceHavuzuYonetim() {
       gununKonusuGetir().then(setAktifKonu)
     } finally {
       setOzelYayinlaniyor(false)
+    }
+  }
+
+  // Aşağıdaki gün-sayısı seçicisi TEK BAŞINA hiçbir şeyi değiştirmez —
+  // sadece bir sonraki "Yayınla" tıklamasında kullanılacak değeri seçer.
+  // Zaten yayında olan konunun süresini HEMEN değiştirmek için bu fonksiyon
+  // gerekiyor: aynı kaydı (yeniden yayınlamadan, Geçmiş Konular'a mükerrer
+  // kayıt eklemeden) güncelliyor.
+  async function sureyiGuncelleTiklandi() {
+    if (!aktifKonu) return
+    setSureGuncelleniyor(true)
+    try {
+      await aktifKonununSuresiniGuncelle(aktifKonu.id, aktifKonu.baslangicTarihi, gunSayisi)
+      gununKonusuGetir().then(setAktifKonu)
+    } finally {
+      setSureGuncelleniyor(false)
     }
   }
 
@@ -113,12 +138,15 @@ export default function DusunceHavuzuYonetim() {
               {aktifKonu.baslangicTarihi} → {aktifKonu.bitisTarihi} ({aktifKonu.gunSayisi} gün)
               {aktifKonu.suresiDoldu && <span className="ml-2 text-muhur">— süresi doldu, yeni bir konu seçebilirsin</span>}
             </p>
+            <Link to={`/dusunce/${encodeURIComponent(aktifKonu.konu)}`} className="mt-1 inline-block text-xs text-deniz hover:underline">
+              Yazıları gör →
+            </Link>
           </>
         )}
 
         <div className="mt-4 border-t border-cizgi pt-3">
-          <p className="mb-1.5 text-xs text-kraft">Yeni konu kaç gün yayında kalsın?</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="mb-1.5 text-xs text-kraft">Gün sayısı:</p>
+          <div className="flex flex-wrap items-center gap-2">
             {GUN_SECENEKLERI.map((g) => (
               <button
                 key={g}
@@ -131,7 +159,22 @@ export default function DusunceHavuzuYonetim() {
                 {g} gün
               </button>
             ))}
+            {aktifKonu && (
+              <button
+                type="button"
+                onClick={sureyiGuncelleTiklandi}
+                disabled={sureGuncelleniyor}
+                className="rounded-full bg-deniz px-3 py-1 text-xs text-kagit disabled:opacity-40"
+              >
+                {sureGuncelleniyor ? '...' : `🔄 Şu anki konunun süresini ${gunSayisi} gün yap`}
+              </button>
+            )}
           </div>
+          <p className="mt-1.5 text-[11px] text-kraft">
+            Yukarıdaki gün sayısı seçimi tek başına bir şey değiştirmez — ya "🔄 Şu anki konunun süresini ... yap" ile{' '}
+            <strong className="text-murekkep">yayındaki konuyu</strong> günceller, ya da aşağıda bir konu "Yayınla"dığında{' '}
+            <strong className="text-murekkep">yeni konu</strong> için kullanılır.
+          </p>
         </div>
 
         <form onSubmit={ozelKonuYayinla} className="mt-3 flex flex-wrap gap-2 border-t border-cizgi pt-3">

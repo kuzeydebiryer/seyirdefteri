@@ -20,6 +20,7 @@ const KayitOl = lazy(() => import('./pages/KayitOl.jsx'))
 const UyelikBasvuru = lazy(() => import('./pages/UyelikBasvuru.jsx'))
 const DusunceArsivi = lazy(() => import('./pages/DusunceArsivi.jsx'))
 const DusunceHavuzuYonetim = lazy(() => import('./pages/DusunceHavuzuYonetim.jsx'))
+const DusunceKonuSayfasi = lazy(() => import('./pages/DusunceKonuSayfasi.jsx'))
 const IlhamPanosu = lazy(() => import('./pages/IlhamPanosu.jsx'))
 const Basvurular = lazy(() => import('./pages/Basvurular.jsx'))
 const GonderiEkle = lazy(() => import('./pages/GonderiEkle.jsx'))
@@ -133,6 +134,7 @@ export default function App() {
             <Route path="/uyelik-basvuru" element={<UyelikBasvuru />} />
             <Route path="/dusunce-arsivi" element={<OzelRota><DusunceArsivi /></OzelRota>} />
             <Route path="/dusunce-havuzu-yonetim" element={<OzelRota><DusunceHavuzuYonetim /></OzelRota>} />
+            <Route path="/dusunce/:konu" element={<OzelRota><DusunceKonuSayfasi /></OzelRota>} />
             <Route path="/ilham-panosu" element={<IlhamPanosuYonlendirme />} />
             <Route path="/seyir-panosu" element={<OzelRota><IlhamPanosu /></OzelRota>} />
             <Route path="/basvurular" element={<OzelRota><Basvurular /></OzelRota>} />

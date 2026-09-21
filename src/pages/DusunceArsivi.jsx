@@ -1,16 +1,8 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { gecmisKonulariGetir, gununYazilariniGetir } from '../utils/dusunceHavuzu.js'
+import { useEffect, useState } from 'react'
+import { gecmisKonulariGetir } from '../utils/dusunceHavuzu.js'
 
 function KonuSatiri({ kayit }) {
-  const [yazilar, setYazilar] = useState(null)
-  const [acik, setAcik] = useState(false)
-
-  function ac() {
-    setAcik((a) => !a)
-    if (!yazilar) gununYazilariniGetir(kayit.konu).then(setYazilar)
-  }
-
   return (
     <li className="rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
       <p className="text-xs text-kraft">
@@ -18,27 +10,17 @@ function KonuSatiri({ kayit }) {
         {kayit.gunSayisi ? ` · ${kayit.gunSayisi} gün yayında kaldı` : ''}
       </p>
       <p className="mt-1 font-baslik text-lg text-murekkep">{kayit.konu}</p>
-      <button onClick={ac} className="mt-2 text-xs text-deniz hover:underline">
-        {acik ? '▲ Gizle' : `▼ ${yazilar ? `${yazilar.length} yazı` : 'Yazıları gör'}`}
-      </button>
-      {acik && yazilar && (
-        <ul className="mt-2 space-y-1 border-t border-cizgi pt-2">
-          {yazilar.length === 0 && <p className="text-xs text-kraft">Bu konuya kimse yazmamış.</p>}
-          {yazilar.map((y) => (
-            <li key={y.id}>
-              <Link to={`/gonderi/${y.id}`} className="text-xs text-murekkep hover:text-deniz hover:underline">
-                {y.yazarAdi}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <Link to={`/dusunce/${encodeURIComponent(kayit.konu)}`} className="mt-2 inline-block text-xs text-deniz hover:underline">
+        Yazıları gör →
+      </Link>
     </li>
   )
 }
 
 // Serbest Düşünce Havuzu'nun geçmişi — daha önce gerçekten gösterilmiş
-// (gununKonulari'na kaydedilmiş) dönemler, en yeniden eskiye.
+// (gununKonulari'na kaydedilmiş) dönemler, en yeniden eskiye. Her satır,
+// o konuya kimlerin ne yazdığını tek bir sayfada topluca gösteren "konu
+// sayfasına" (DusunceKonuSayfasi.jsx) yönlendiriyor.
 export default function DusunceArsivi() {
   const [kayitlar, setKayitlar] = useState(null)
 

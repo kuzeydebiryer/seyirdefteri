@@ -242,6 +242,12 @@ service cloud.firestore {
       allow read: if true;
       allow create: if yoneticiMi();
       allow delete: if yoneticiMi();
+      // Yönetici, zaten yayında olan bir konunun süresini (gün sayısı +
+      // buna göre yeniden hesaplanan bitiş tarihi) yeniden yayınlamadan
+      // güncelleyebiliyor — bkz. aktifKonununSuresiniGuncelle. Başka hiçbir
+      // alan (konu metni, başlangıç tarihi, damga...) bu yoldan değişemez.
+      allow update: if yoneticiMi() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gunSayisi', 'bitisTarihi']);
     }
 
     // İlham Panosu — üyelerin paylaştığı Instagram gönderileri.

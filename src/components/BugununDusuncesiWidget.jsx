@@ -12,7 +12,6 @@ import {
   BASLANGIC_KONULARI,
   IKINCI_DALGA_KONULARI,
 } from '../utils/dusunceHavuzu.js'
-import Avatar from './Avatar.jsx'
 
 // "Bilinç Akışı" yazı alt türünün günlük tetikleyicisi — Serbest Düşünce
 // Havuzu'ndan tarihe göre deterministik olarak seçilen bir konu, herkese
@@ -22,7 +21,6 @@ export default function BugununDusuncesiWidget() {
   const { kullanici, profil } = useAuth()
   const [konu, setKonu] = useState(undefined) // undefined = yükleniyor, null = havuz boş
   const [yazilar, setYazilar] = useState([])
-  const [listeAcik, setListeAcik] = useState(false)
   const [oneriAcik, setOneriAcik] = useState(false)
   const [oneriMetni, setOneriMetni] = useState('')
   const [oneriGonderiliyor, setOneriGonderiliyor] = useState(false)
@@ -172,9 +170,13 @@ export default function BugununDusuncesiWidget() {
                 ✍️ Yaz
               </Link>
             )}
-            <button onClick={() => setListeAcik((a) => !a)} className="text-xs text-kraft hover:text-deniz">
-              {yazilar.length > 0 ? `${yazilar.length} kişi yazdı ${listeAcik ? '▲' : '▼'}` : 'Henüz kimse yazmadı'}
-            </button>
+            {yazilar.length > 0 ? (
+              <Link to={`/dusunce/${encodeURIComponent(konu.konu)}`} className="text-xs text-kraft hover:text-deniz">
+                {yazilar.length} kişi yazdı →
+              </Link>
+            ) : (
+              <span className="text-xs text-kraft">Henüz kimse yazmadı</span>
+            )}
             {kullanici && (
               <button onClick={() => setOneriAcik((a) => !a)} className="text-xs text-kraft hover:text-deniz">
                 {oneriAcik ? 'Vazgeç' : '+ Konu Öner'}
@@ -191,19 +193,6 @@ export default function BugununDusuncesiWidget() {
           </div>
 
           {konuSayisi != null && <p className="mt-2 text-[11px] text-kraft">Havuzda toplam {konuSayisi} konu var.</p>}
-
-          {listeAcik && yazilar.length > 0 && (
-            <ul className="mt-3 space-y-2 border-t border-cizgi pt-3">
-              {yazilar.map((y) => (
-                <li key={y.id}>
-                  <Link to={`/gonderi/${y.id}`} className="flex items-center gap-2 text-xs hover:text-deniz">
-                    <Avatar adSoyad={y.yazarAdi} avatarUrl={y.yazarAvatarUrl} boyut="h-5 w-5" />
-                    <span className="text-murekkep">{y.yazarAdi}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
 
           {oneriAcik && (
             <form onSubmit={oneriGonder} className="mt-3 space-y-2 border-t border-cizgi pt-3">
