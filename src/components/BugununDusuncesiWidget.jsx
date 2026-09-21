@@ -156,7 +156,9 @@ export default function BugununDusuncesiWidget() {
         </div>
       ) : (
         <>
-          <h2 className="font-baslik text-xl text-murekkep leading-snug">{konu.konu}</h2>
+          <Link to={`/dusunce/${encodeURIComponent(konu.konu)}`} className="block">
+            <h2 className="font-baslik text-xl text-murekkep leading-snug hover:text-deniz">{konu.konu}</h2>
+          </Link>
           <p className="mt-1 text-[11px] text-kraft">
             {konu.gunSayisi} gün yayında{konu.suresiDoldu ? ' · süresi doldu' : ` · ${konu.bitisTarihi} tarihine kadar`}
           </p>
@@ -191,8 +193,6 @@ export default function BugununDusuncesiWidget() {
               </Link>
             )}
           </div>
-
-          {konuSayisi != null && <p className="mt-2 text-[11px] text-kraft">Havuzda toplam {konuSayisi} konu var.</p>}
 
           {oneriAcik && (
             <form onSubmit={oneriGonder} className="mt-3 space-y-2 border-t border-cizgi pt-3">
