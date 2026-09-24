@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { haberSayfasiGetir } from '../utils/haber.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import HaberBolumu from '../components/HaberBolumu.jsx'
 
 const KATEGORILER = [
   { id: '', etiket: 'Tümü', ikon: '📰' },
@@ -9,7 +10,12 @@ const KATEGORILER = [
   { id: 'dizi', etiket: 'Dizi', ikon: '📺' },
   { id: 'kitap', etiket: 'Kitap', ikon: '📚' },
   { id: 'kisi', etiket: 'Oyuncu', ikon: '🎭' },
+  { id: 'kultur-sanat', etiket: 'Kültür-Sanat', ikon: '🎨' },
 ]
+
+// Haber ekleme kategorisi seçicisi "Tümü" hariç tüm gerçek kategorileri
+// listeler — bkz. HaberBolumu'nun kategoriSecenekleri prop'u.
+const EKLEME_KATEGORILERI = KATEGORILER.filter((k) => k.id)
 
 function tarihGoster(deger) {
   if (!deger) return ''
@@ -33,6 +39,8 @@ export default function Haberler() {
   const [hepsiYuklendiMi, setHepsiYuklendiMi] = useState(false)
   const [dahaFazlaYukleniyor, setDahaFazlaYukleniyor] = useState(false)
 
+  const [yenile, setYenile] = useState(0)
+
   useEffect(() => {
     setHaberler(null)
     haberSayfasiGetir(kategori || undefined).then(({ liste, sonBelge, hepsiYuklendiMi }) => {
@@ -40,7 +48,7 @@ export default function Haberler() {
       setSonBelge(sonBelge)
       setHepsiYuklendiMi(hepsiYuklendiMi)
     })
-  }, [kategori])
+  }, [kategori, yenile])
 
   async function dahaFazlaYukle() {
     setDahaFazlaYukleniyor(true)
@@ -85,6 +93,13 @@ export default function Haberler() {
           </button>
         ))}
       </div>
+
+      <HaberBolumu
+        kategoriSecenekleri={EKLEME_KATEGORILERI}
+        listeGizli
+        haberler={[]}
+        yenidenYukle={() => setYenile((n) => n + 1)}
+      />
 
       {haberler === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {haberler !== null && haberler.length === 0 && <p className="text-sm text-kraft">Bu kategoride henüz haber yok.</p>}

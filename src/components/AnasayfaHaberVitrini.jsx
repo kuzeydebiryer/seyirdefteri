@@ -4,7 +4,7 @@ import { sonHaberleriGetir } from '../utils/haber.js'
 import { onizlemeMetniCikar } from '../utils/icerikAyristir.js'
 import PaylasButonu from './PaylasButonu.jsx'
 
-const KATEGORI_ETIKETI = { sinema: '🎬 Film', dizi: '📺 Dizi', kitap: '📚 Kitap', kisi: '🎭 Oyuncu' }
+const KATEGORI_ETIKETI = { sinema: '🎬 Film', dizi: '📺 Dizi', kitap: '📚 Kitap', kisi: '🎭 Oyuncu', 'kultur-sanat': '🎨 Kültür-Sanat' }
 
 function tarihGoster(deger) {
   if (!deger) return ''

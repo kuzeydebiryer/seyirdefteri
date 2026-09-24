@@ -38,7 +38,7 @@ export async function haberEkle({
   yoneticiMi = false,
 }) {
   await addDoc(collection(db, 'haberler'), {
-    kategori, // 'sinema' | 'dizi' | 'kitap' | 'kisi'
+    kategori, // 'sinema' | 'dizi' | 'kitap' | 'kisi' | 'kultur-sanat'
     baslik,
     icerik,
     gorselUrl: gorselUrl || '',

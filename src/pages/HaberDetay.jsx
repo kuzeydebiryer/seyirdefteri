@@ -22,7 +22,13 @@ import EserSecici from '../components/EserSecici.jsx'
 
 const eserLink = (tur, disId) => (tur === 'dizi' ? `/dizi/${disId}` : tur === 'kitap' ? `/kitap/${disId}` : tur === 'kisi' ? `/kisi/${disId}` : `/film/${disId}`)
 
-const KATEGORI_ETIKETI = { sinema: '🎬 Film Haberi', dizi: '📺 Dizi Haberi', kitap: '📚 Kitap Haberi', kisi: '🎭 Oyuncu Haberi' }
+const KATEGORI_ETIKETI = {
+  sinema: '🎬 Film Haberi',
+  dizi: '📺 Dizi Haberi',
+  kitap: '📚 Kitap Haberi',
+  kisi: '🎭 Oyuncu Haberi',
+  'kultur-sanat': '🎨 Kültür-Sanat Haberi',
+}
 
 function tarihGoster(deger) {
   if (!deger) return ''
@@ -216,7 +222,16 @@ export default function HaberDetay() {
     }
   }
 
-  const gerisayfa = haber?.kategori === 'dizi' ? '/diziler' : haber?.kategori === 'kitap' ? '/kitaplar' : haber?.kategori === 'kisi' ? '/oyuncular' : '/filmler'
+  const gerisayfa =
+    haber?.kategori === 'dizi'
+      ? '/diziler'
+      : haber?.kategori === 'kitap'
+        ? '/kitaplar'
+        : haber?.kategori === 'kisi'
+          ? '/oyuncular'
+          : haber?.kategori === 'sinema'
+            ? '/filmler'
+            : '/haberler'
 
   if (haber === undefined) return <p className="text-sm text-kraft">Yükleniyor...</p>
   if (haber === null) return <p className="text-sm text-kraft">Bu haber bulunamadı.</p>

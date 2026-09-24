@@ -64,9 +64,27 @@ function HaberSatiri({ haber, kullanici }) {
   )
 }
 
-export default function HaberBolumu({ kategori, haberler, yenidenYukle, hepsiYuklendiMi = true, dahaFazlaYukleniyor = false, dahaFazlaYukle }) {
+// kategori: sabit tek kategori (Filmler/Diziler/Oyuncular/KitaplarKesfet'te
+// olduğu gibi — o sayfada eklenen her haber otomatik o kategoriden sayılır).
+// kategoriSecenekleri: bunun yerine (ör. /haberler hub'ında) bir kategori
+// SEÇİCİSİ gösterilsin istiyorsak — [{id, etiket}] listesi.
+// listeGizli: true ise bu bileşen sadece "+ Haber Ekle" formunu render eder,
+// kendi liste/sayfalama UI'ını göstermez (hub sayfası zaten kendi listesini
+// ayrıca çiziyor, iki kez göstermeyelim diye).
+export default function HaberBolumu({
+  kategori,
+  kategoriSecenekleri,
+  listeGizli = false,
+  haberler,
+  yenidenYukle,
+  hepsiYuklendiMi = true,
+  dahaFazlaYukleniyor = false,
+  dahaFazlaYukle,
+}) {
   const { kullanici, profil } = useAuth()
   const [formuAcik, setFormuAcik] = useState(false)
+  const [secilenKategori, setSecilenKategori] = useState(kategori || kategoriSecenekleri?.[0]?.id)
+  const aktifKategori = kategori || secilenKategori
   const [baslik, setBaslik] = useState('')
   const [icerik, setIcerik] = useState('')
   const [gorselUrl, setGorselUrl] = useState('')
@@ -74,7 +92,7 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle, hepsiYuk
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   const [eserFormuAcik, setEserFormuAcik] = useState(false)
-  const [eserKategori, setEserKategori] = useState(kategori === 'dizi' ? 'dizi' : 'sinema')
+  const [eserKategori, setEserKategori] = useState(aktifKategori === 'dizi' ? 'dizi' : 'sinema')
   const [eserArama, setEserArama] = useState('')
   const [eserSonuclari, setEserSonuclari] = useState([])
   const [secilenEser, setSecilenEser] = useState(null)
@@ -180,7 +198,7 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle, hepsiYuk
     try {
       const yoneticiMi = profil?.yonetici === true
       await haberEkle({
-        kategori,
+        kategori: aktifKategori,
         baslik: baslik.trim(),
         icerik,
         gorselUrl,
@@ -199,6 +217,7 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle, hepsiYuk
       setSecilenEser(null)
       setGomuluEserAcik(false)
       setFormuAcik(false)
+      if (kategoriSecenekleri) setSecilenKategori(kategoriSecenekleri[0]?.id)
       if (yoneticiMi) yenidenYukle()
       else window.alert('Haberin eklendi — yönetici onayından sonra yayına girecek.')
     } finally {
@@ -207,13 +226,15 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle, hepsiYuk
   }
 
   return (
-    <div className="mb-10">
+    <div className={listeGizli ? '' : 'mb-10'}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-baslik text-lg text-murekkep">Haberler</h2>
+        {!listeGizli && <h2 className="font-baslik text-lg text-murekkep">Haberler</h2>}
         <div className="flex items-center gap-3">
-          <Link to={`/haberler?kategori=${kategori}`} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
-            Tümünü Gör ›
-          </Link>
+          {!listeGizli && (
+            <Link to={`/haberler?kategori=${aktifKategori}`} className="shrink-0 whitespace-nowrap text-sm text-kraft hover:text-deniz">
+              Tümünü Gör ›
+            </Link>
+          )}
           {kullanici && (
             <button
               onClick={() => setFormuAcik((a) => !a)}
@@ -227,6 +248,25 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle, hepsiYuk
 
       {formuAcik && (
         <form onSubmit={gonder} className="mb-4 space-y-3 rounded-sm bg-kagitKoyu p-5 ring-1 ring-cizgi max-w-2xl">
+          {kategoriSecenekleri && (
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-kraft mb-1">Kategori</label>
+              <div className="flex flex-wrap gap-1.5">
+                {kategoriSecenekleri.map((k) => (
+                  <button
+                    key={k.id}
+                    type="button"
+                    onClick={() => setSecilenKategori(k.id)}
+                    className={`rounded-full px-3 py-1 text-xs ${
+                      secilenKategori === k.id ? 'bg-deniz text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'
+                    }`}
+                  >
+                    {k.etiket}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <input
             type="text"
             value={baslik}
@@ -465,26 +505,27 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle, hepsiYuk
         </form>
       )}
 
-      {haberler.length === 0 ? (
-        <p className="text-sm text-kraft">Henüz haber yok.</p>
-      ) : (
-        <>
-          <ul className="space-y-2">
-            {haberler.map((h) => (
-              <HaberSatiri key={h.id} haber={h} kullanici={kullanici} />
-            ))}
-          </ul>
-          {!hepsiYuklendiMi && (
-            <button
-              onClick={dahaFazlaYukle}
-              disabled={dahaFazlaYukleniyor}
-              className="mt-3 rounded-sm bg-kagitKoyu px-4 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:opacity-40"
-            >
-              {dahaFazlaYukleniyor ? 'Yükleniyor...' : 'Daha Fazla Haber Göster'}
-            </button>
-          )}
-        </>
-      )}
+      {!listeGizli &&
+        (haberler.length === 0 ? (
+          <p className="text-sm text-kraft">Henüz haber yok.</p>
+        ) : (
+          <>
+            <ul className="space-y-2">
+              {haberler.map((h) => (
+                <HaberSatiri key={h.id} haber={h} kullanici={kullanici} />
+              ))}
+            </ul>
+            {!hepsiYuklendiMi && (
+              <button
+                onClick={dahaFazlaYukle}
+                disabled={dahaFazlaYukleniyor}
+                className="mt-3 rounded-sm bg-kagitKoyu px-4 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:opacity-40"
+              >
+                {dahaFazlaYukleniyor ? 'Yükleniyor...' : 'Daha Fazla Haber Göster'}
+              </button>
+            )}
+          </>
+        ))}
     </div>
   )
 }
