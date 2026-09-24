@@ -98,6 +98,8 @@ export default function Anasayfa() {
 
   return (
     <div>
+      <p className="mb-4 font-govde text-sm italic text-kraft">Kültür ve sanat hayatının ortak günlüğü.</p>
+
       <AnasayfaHaberVitrini />
 
       {kullanici && (
@@ -114,7 +116,6 @@ export default function Anasayfa() {
             </div>
           ) : (
             <div>
-              <p className="mb-2 font-govde text-sm italic text-kraft">Kültür ve sanat hayatının ortak günlüğü.</p>
               <button
                 onClick={() => setGunceFormAcik(true)}
                 className="flex items-center gap-2 rounded-full bg-kagitKoyu px-4 py-2 font-govde text-sm text-murekkep ring-1 ring-cizgi transition hover:ring-deniz/50"
