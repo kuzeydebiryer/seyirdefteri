@@ -89,6 +89,7 @@ export default function HaberBolumu({
   const [icerik, setIcerik] = useState('')
   const [gorselUrl, setGorselUrl] = useState('')
   const [fragmanGirdi, setFragmanGirdi] = useState('')
+  const [instagramUrl, setInstagramUrl] = useState('')
   const [kaydediliyor, setKaydediliyor] = useState(false)
 
   const [eserFormuAcik, setEserFormuAcik] = useState(false)
@@ -203,6 +204,7 @@ export default function HaberBolumu({
         icerik,
         gorselUrl,
         fragmanId: youtubeIdCikar(fragmanGirdi),
+        instagramUrl: instagramUrl.trim(),
         ilgiliTur: secilenEser?.tur,
         ilgiliDisId: secilenEser?.disId,
         ilgiliBaslik: secilenEser?.baslik,
@@ -214,6 +216,7 @@ export default function HaberBolumu({
       setIcerik('')
       setGorselUrl('')
       setFragmanGirdi('')
+      setInstagramUrl('')
       setSecilenEser(null)
       setGomuluEserAcik(false)
       setFormuAcik(false)
@@ -409,6 +412,19 @@ export default function HaberBolumu({
                 className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] uppercase tracking-widest text-kraft mb-1">
+              Sosyal Medya Linki (opsiyonel — Instagram, YouTube ya da X)
+            </label>
+            <input
+              type="text"
+              value={instagramUrl}
+              onChange={(e) => setInstagramUrl(e.target.value)}
+              placeholder="https://instagram.com/p/... veya youtube/x linki"
+              className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+            />
           </div>
 
           <div>

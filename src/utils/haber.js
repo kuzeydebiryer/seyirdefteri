@@ -34,6 +34,7 @@ export async function haberEkle({
   ilgiliBaslik,
   ilgiliPosterUrl,
   fragmanId,
+  instagramUrl,
   kullanici,
   yoneticiMi = false,
 }) {
@@ -47,6 +48,10 @@ export async function haberEkle({
     ilgiliBaslik: ilgiliBaslik || '',
     ilgiliPosterUrl: ilgiliPosterUrl || '',
     fragmanId: fragmanId || '',
+    // Instagram/YouTube/X linki — MedyaGomulusu bileşeni (Seyir Panosu,
+    // Etkinlik Habercisi ve diğer yerlerde de kullanılan aynı tek giriş
+    // noktası) linke bakıp doğru platformu kendisi tespit ediyor.
+    instagramUrl: instagramUrl || '',
     ekleyenId: kullanici.uid,
     ekleyenAdi: kullanici.displayName || 'İsimsiz',
     tarih: serverTimestamp(),
@@ -106,8 +111,14 @@ export async function sonHaberleriGetir(limitSayisi = 7) {
   return liste.slice(0, limitSayisi)
 }
 
-export async function haberDuzenle(haberId, { baslik, icerik, gorselUrl, fragmanId }) {
-  await updateDoc(doc(db, 'haberler', haberId), { baslik, icerik, gorselUrl: gorselUrl || '', fragmanId: fragmanId || '' })
+export async function haberDuzenle(haberId, { baslik, icerik, gorselUrl, fragmanId, instagramUrl }) {
+  await updateDoc(doc(db, 'haberler', haberId), {
+    baslik,
+    icerik,
+    gorselUrl: gorselUrl || '',
+    fragmanId: fragmanId || '',
+    instagramUrl: instagramUrl || '',
+  })
 }
 
 // Sadece yönetici — onayla (yayına al) / reddet (kalıcı sil) / öne çıkar.

@@ -17,6 +17,7 @@ import { eserYorumlariGetir, eserYorumEkle, yorumSil, yorumBegenDegistir } from 
 import { eserReferanslariniBul } from '../utils/icerikAyristir.js'
 import PaylasButonu from '../components/PaylasButonu.jsx'
 import Avatar from '../components/Avatar.jsx'
+import MedyaGomulusu from '../components/MedyaGomulusu.jsx'
 import GonderiIcerik from '../components/GonderiIcerik.jsx'
 import EserSecici from '../components/EserSecici.jsx'
 
@@ -67,6 +68,7 @@ export default function HaberDetay() {
   const [duzenleIcerik, setDuzenleIcerik] = useState('')
   const [duzenleGorselUrl, setDuzenleGorselUrl] = useState('')
   const [duzenleFragman, setDuzenleFragman] = useState('')
+  const [duzenleInstagramUrl, setDuzenleInstagramUrl] = useState('')
   const [duzenleKaydediliyor, setDuzenleKaydediliyor] = useState(false)
 
   // Düzenlerken de içeriğe film/dizi/kitap şeridi eklenip çıkarılabilsin diye
@@ -205,6 +207,7 @@ export default function HaberDetay() {
     setDuzenleIcerik(haber.icerik || '')
     setDuzenleGorselUrl(haber.gorselUrl || '')
     setDuzenleFragman(haber.fragmanId || '')
+    setDuzenleInstagramUrl(haber.instagramUrl || '')
     setDuzenleAcik(true)
   }
 
@@ -214,8 +217,22 @@ export default function HaberDetay() {
     setDuzenleKaydediliyor(true)
     try {
       const yeniFragmanId = youtubeIdCikar(duzenleFragman)
-      await haberDuzenle(id, { baslik: duzenleBaslik.trim(), icerik: duzenleIcerik, gorselUrl: duzenleGorselUrl, fragmanId: yeniFragmanId })
-      setHaber((h) => ({ ...h, baslik: duzenleBaslik.trim(), icerik: duzenleIcerik, gorselUrl: duzenleGorselUrl, fragmanId: yeniFragmanId }))
+      const yeniInstagramUrl = duzenleInstagramUrl.trim()
+      await haberDuzenle(id, {
+        baslik: duzenleBaslik.trim(),
+        icerik: duzenleIcerik,
+        gorselUrl: duzenleGorselUrl,
+        fragmanId: yeniFragmanId,
+        instagramUrl: yeniInstagramUrl,
+      })
+      setHaber((h) => ({
+        ...h,
+        baslik: duzenleBaslik.trim(),
+        icerik: duzenleIcerik,
+        gorselUrl: duzenleGorselUrl,
+        fragmanId: yeniFragmanId,
+        instagramUrl: yeniInstagramUrl,
+      }))
       setDuzenleAcik(false)
     } finally {
       setDuzenleKaydediliyor(false)
@@ -377,6 +394,16 @@ export default function HaberDetay() {
                 className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
               />
             </div>
+            <div>
+              <label className="mb-1 block text-[11px] uppercase tracking-widest text-kraft">Sosyal Medya Linki</label>
+              <input
+                type="text"
+                value={duzenleInstagramUrl}
+                onChange={(e) => setDuzenleInstagramUrl(e.target.value)}
+                placeholder="Instagram, YouTube ya da X linki"
+                className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
+              />
+            </div>
           </div>
           <div className="flex gap-2">
             <button type="submit" disabled={duzenleKaydediliyor} className="rounded-sm bg-muhur px-4 py-2 font-govde text-xs text-kagit disabled:opacity-40">
@@ -437,6 +464,12 @@ export default function HaberDetay() {
           )}
 
           {haber.icerik && <GonderiIcerik metin={haber.icerik} tam={true} />}
+
+          {haber.instagramUrl && (
+            <div className="mt-4">
+              <MedyaGomulusu url={haber.instagramUrl} paylasanAdi={haber.ekleyenAdi} />
+            </div>
+          )}
         </>
       )}
 
