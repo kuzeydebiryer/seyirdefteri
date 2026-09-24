@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { haberEkle } from '../utils/haber.js'
+import { eserReferanslariniBul, onizlemeMetniCikar } from '../utils/icerikAyristir.js'
+import EserSecici from './EserSecici.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w185'
 const GOOGLE_BOOKS_KEY = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY
-const SAYFA_BASI = 5
 
 const ESER_KATEGORILERI = [
   { id: 'sinema', etiket: 'Film' },
@@ -48,10 +49,14 @@ function HaberSatiri({ haber, kullanici }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-govde text-sm font-medium text-murekkep line-clamp-2">{haber.baslik}</p>
-          {haber.icerik && <p className="mt-0.5 line-clamp-1 text-xs text-kraft">{haber.icerik}</p>}
+          <p className="font-govde text-sm font-medium text-murekkep line-clamp-2">
+            {haber.oneCikan && <span title="Öne çıkan">⭐ </span>}
+            {haber.baslik}
+          </p>
+          {haber.icerik && <p className="mt-0.5 line-clamp-1 text-xs text-kraft">{onizlemeMetniCikar(haber.icerik)}</p>}
           <p className="mt-1 text-[11px] text-kraft">
             {haber.ekleyenAdi} · {tarihGoster(haber.tarih)}
+            {haber.begenenler?.length > 0 && <> · ♥ {haber.begenenler.length}</>}
           </p>
         </div>
       </Link>
@@ -59,8 +64,8 @@ function HaberSatiri({ haber, kullanici }) {
   )
 }
 
-export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
-  const { kullanici } = useAuth()
+export default function HaberBolumu({ kategori, haberler, yenidenYukle, hepsiYuklendiMi = true, dahaFazlaYukleniyor = false, dahaFazlaYukle }) {
+  const { kullanici, profil } = useAuth()
   const [formuAcik, setFormuAcik] = useState(false)
   const [baslik, setBaslik] = useState('')
   const [icerik, setIcerik] = useState('')
@@ -74,7 +79,58 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
   const [eserSonuclari, setEserSonuclari] = useState([])
   const [secilenEser, setSecilenEser] = useState(null)
 
-  const [gosterilecekSayi, setGosterilecekSayi] = useState(SAYFA_BASI)
+  // İçeriğe gömülü film/dizi/kitap/oyuncu şeridi — GonderiEkle'deki "Eser
+  // Ekle" akışının aynısı (bkz. icerikAyristir.js @@eser: bloğu), böylece
+  // Bugünün Düşüncesi'ndeki gibi haber metninin içine de "en iyi 10 film"
+  // tarzı bir liste/şerit eklenebiliyor.
+  const [gomuluEserAcik, setGomuluEserAcik] = useState(false)
+  const [gomuluEserKategori, setGomuluEserKategori] = useState('Film')
+  const [gomuluEserDuzeni, setGomuluEserDuzeni] = useState('yatay')
+  const icerikRef = useRef(null)
+
+  function imlecKonumunaMetinEkle(eklenecek) {
+    const ta = icerikRef.current
+    const imlecKonumu = ta ? ta.selectionStart : icerik.length
+    const eklenecekBlok = `\n\n${eklenecek}\n\n`
+    const yeniMetin = icerik.slice(0, imlecKonumu) + eklenecekBlok + icerik.slice(imlecKonumu)
+    setIcerik(yeniMetin)
+    const yeniKonum = imlecKonumu + eklenecekBlok.length
+    setTimeout(() => {
+      if (ta) {
+        ta.focus()
+        ta.setSelectionRange(yeniKonum, yeniKonum)
+      }
+    }, 0)
+  }
+
+  function gomuluEserEklendi(secim) {
+    imlecKonumunaMetinEkle(`@@eser:${JSON.stringify({ ...secim, duzen: gomuluEserDuzeni })}`)
+    // Popover'ı bilerek kapatmıyoruz — art arda birkaç eser eklemek bir liste
+    // oluştururken çok daha az tıklama gerektiriyor.
+  }
+
+  const gomuluEserler = useMemo(() => eserReferanslariniBul(icerik), [icerik])
+
+  function gomuluEseriKaldir(indeks) {
+    const hedef = gomuluEserler[indeks]
+    if (!hedef) return
+    setIcerik((icerik.slice(0, hedef.index) + icerik.slice(hedef.index + hedef.tamMetin.length)).replace(/\n{3,}/g, '\n\n'))
+  }
+
+  function gomuluEseriTasi(indeks, yon) {
+    const hedefIndeks = indeks + yon
+    const a = gomuluEserler[indeks]
+    const b = gomuluEserler[hedefIndeks]
+    if (!a || !b) return
+    const [ilk, ikinci] = a.index < b.index ? [a, b] : [b, a]
+    setIcerik(
+      icerik.slice(0, ilk.index) +
+        ikinci.tamMetin +
+        icerik.slice(ilk.index + ilk.tamMetin.length, ikinci.index) +
+        ilk.tamMetin +
+        icerik.slice(ikinci.index + ikinci.tamMetin.length)
+    )
+  }
 
   async function eserAra(e) {
     e.preventDefault()
@@ -122,6 +178,7 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
     if (!baslik.trim() || !kullanici) return
     setKaydediliyor(true)
     try {
+      const yoneticiMi = profil?.yonetici === true
       await haberEkle({
         kategori,
         baslik: baslik.trim(),
@@ -133,20 +190,21 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
         ilgiliBaslik: secilenEser?.baslik,
         ilgiliPosterUrl: secilenEser?.posterUrl,
         kullanici,
+        yoneticiMi,
       })
       setBaslik('')
       setIcerik('')
       setGorselUrl('')
       setFragmanGirdi('')
       setSecilenEser(null)
+      setGomuluEserAcik(false)
       setFormuAcik(false)
-      yenidenYukle()
+      if (yoneticiMi) yenidenYukle()
+      else window.alert('Haberin eklendi — yönetici onayından sonra yayına girecek.')
     } finally {
       setKaydediliyor(false)
     }
   }
-
-  const gosterilenler = haberler.slice(0, gosterilecekSayi)
 
   return (
     <div className="mb-10">
@@ -178,12 +236,115 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
             className="w-full rounded-sm bg-kagit px-3 py-2.5 text-base text-murekkep ring-1 ring-cizgi"
           />
           <textarea
+            ref={icerikRef}
             value={icerik}
             onChange={(e) => setIcerik(e.target.value)}
             rows={4}
             placeholder="Kısa içerik (opsiyonel)"
             className="w-full rounded-sm bg-kagit px-3 py-2.5 text-sm text-murekkep ring-1 ring-cizgi"
           />
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setGomuluEserAcik((a) => !a)}
+              className="rounded-sm bg-kagit px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
+            >
+              🎬📚 İçeriğe Film/Dizi/Kitap Şeridi Ekle
+            </button>
+
+            {gomuluEserAcik && (
+              <div className="mt-2 rounded-sm bg-kagit p-3 ring-1 ring-cizgi">
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {['Film', 'Dizi', 'Kitap', 'Oyuncu'].map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setGomuluEserKategori(k)}
+                      className={`rounded-full px-2.5 py-1 text-[11px] ${
+                        gomuluEserKategori === k ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                      }`}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setGomuluEserAcik(false)}
+                    className="ml-auto rounded-full px-2.5 py-1 text-[11px] text-kraft hover:text-muhur"
+                  >
+                    ✕ Kapat
+                  </button>
+                </div>
+                <div className="mb-2 flex items-center gap-2 text-[11px] text-kraft">
+                  <span>2+ eser eklersen görünüm:</span>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setGomuluEserDuzeni('yatay')}
+                      className={`rounded-full px-2 py-0.5 ${
+                        gomuluEserDuzeni === 'yatay' ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                      }`}
+                    >
+                      ↔ Şerit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGomuluEserDuzeni('dikey')}
+                      className={`rounded-full px-2 py-0.5 ${
+                        gomuluEserDuzeni === 'dikey' ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                      }`}
+                    >
+                      ☰ Liste
+                    </button>
+                  </div>
+                </div>
+                <EserSecici kategori={gomuluEserKategori} secili={null} onSecim={gomuluEserEklendi} onTemizle={() => {}} />
+                <p className="mt-2 text-[11px] text-kraft">
+                  Seçtiğin her eser içeriğin içine eklenir — "en iyi 10 film" gibi bir liste için sırayla birden fazla ekleyebilirsin.
+                </p>
+              </div>
+            )}
+
+            {gomuluEserler.length > 0 && (
+              <div className="mt-2 rounded-sm bg-kagit p-2.5 ring-1 ring-cizgi">
+                <p className="mb-1.5 text-[11px] text-kraft">
+                  İçeriğe eklenen eserler ({gomuluEserler.length}) — sırayı değiştirebilir ya da çıkarabilirsin:
+                </p>
+                <ul className="space-y-1">
+                  {gomuluEserler.map((oge, i) => (
+                    <li key={i} className="flex items-center gap-2 rounded-sm bg-kagitKoyu px-2 py-1">
+                      <div className="h-8 w-6 shrink-0 overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
+                        {oge.veri.posterUrl && <img src={oge.veri.posterUrl} alt="" className="h-full w-full object-cover" />}
+                      </div>
+                      <span className="min-w-0 flex-1 truncate text-xs text-murekkep">{oge.veri.baslik}</span>
+                      <button
+                        type="button"
+                        onClick={() => gomuluEseriTasi(i, -1)}
+                        disabled={i === 0}
+                        className="text-xs text-kraft hover:text-deniz disabled:opacity-30"
+                        title="Yukarı taşı"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => gomuluEseriTasi(i, 1)}
+                        disabled={i === gomuluEserler.length - 1}
+                        className="text-xs text-kraft hover:text-deniz disabled:opacity-30"
+                        title="Aşağı taşı"
+                      >
+                        ▼
+                      </button>
+                      <button type="button" onClick={() => gomuluEseriKaldir(i)} className="text-xs text-kraft hover:text-muhur" title="Kaldır">
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -290,6 +451,10 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
             )}
           </div>
 
+          {!profil?.yonetici && (
+            <p className="text-[11px] text-kraft">Eklediğin haber yönetici onayından sonra yayına girer.</p>
+          )}
+
           <button
             type="submit"
             disabled={kaydediliyor}
@@ -305,16 +470,17 @@ export default function HaberBolumu({ kategori, haberler, yenidenYukle }) {
       ) : (
         <>
           <ul className="space-y-2">
-            {gosterilenler.map((h) => (
+            {haberler.map((h) => (
               <HaberSatiri key={h.id} haber={h} kullanici={kullanici} />
             ))}
           </ul>
-          {haberler.length > gosterilecekSayi && (
+          {!hepsiYuklendiMi && (
             <button
-              onClick={() => setGosterilecekSayi((n) => n + SAYFA_BASI)}
-              className="mt-3 rounded-sm bg-kagitKoyu px-4 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi hover:text-murekkep"
+              onClick={dahaFazlaYukle}
+              disabled={dahaFazlaYukleniyor}
+              className="mt-3 rounded-sm bg-kagitKoyu px-4 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:opacity-40"
             >
-              Daha Fazla Haber Göster ({haberler.length - gosterilecekSayi} kaldı)
+              {dahaFazlaYukleniyor ? 'Yükleniyor...' : 'Daha Fazla Haber Göster'}
             </button>
           )}
         </>

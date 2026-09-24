@@ -173,7 +173,7 @@ export default function KitaplarKesfet() {
   const [topluluk, setTopluluk] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const { tavsiyeler, yenidenYukle: tavsiyeleriYenile } = useTavsiyeler('kitap')
-  const { haberler, yenidenYukle: haberleriYenile } = useHaberler('kitap')
+  const { haberler, yenidenYukle: haberleriYenile, hepsiYuklendiMi: haberlerHepsiYuklendiMi, dahaFazlaYukleniyor: haberlerDahaFazlaYukleniyor, dahaFazlaYukle: haberleriDahaFazlaYukle } = useHaberler('kitap')
   const [storytelOnizleme, setStorytelOnizleme] = useState([])
 
   useEffect(() => {
@@ -222,7 +222,7 @@ export default function KitaplarKesfet() {
 
       <KitapArama />
 
-      <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} />
+      <HaberBolumu kategori="kitap" haberler={haberler} yenidenYukle={haberleriYenile} hepsiYuklendiMi={haberlerHepsiYuklendiMi} dahaFazlaYukleniyor={haberlerDahaFazlaYukleniyor} dahaFazlaYukle={haberleriDahaFazlaYukle} />
 
       <KitapIstekTanitimKarti />
 

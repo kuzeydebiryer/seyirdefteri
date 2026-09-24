@@ -30,6 +30,16 @@ function kacisliMetin(metin) {
   return (metin || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+// Haber içeriğine artık film/dizi/kitap şeridi gömülebiliyor (bkz.
+// src/utils/icerikAyristir.js @@eser: bloğu) — bot önizlemesindeki açıklama
+// bu ham JSON satırlarını hiç göstermemeli, sadece gerçek metni.
+function duzMetinCikar(metin) {
+  return (metin || '')
+    .split(/\n\s*\n/)
+    .map((blok) => blok.trim())
+    .find((blok) => blok && !/^@@eser:/.test(blok) && !/^https?:\/\/\S+\.(jpg|jpeg|png|gif|webp|avif)/i.test(blok)) || ''
+}
+
 function onizlemeHtml({ baslik, aciklama, gorsel, url }) {
   return `<!doctype html>
 <html lang="tr">
@@ -152,8 +162,8 @@ export default async function middleware(request) {
       const baslik = belge.metinAl('baslik')
       if (!baslik) return
       const gorsel = belge.metinAl('gorselUrl') || belge.metinAl('ilgiliPosterUrl')
-      const icerik = belge.metinAl('icerik')
-      const aciklama = icerik ? icerik.slice(0, 200) : 'Seyirdefteri'
+      const duzMetin = duzMetinCikar(belge.metinAl('icerik'))
+      const aciklama = duzMetin ? duzMetin.slice(0, 200) : 'Seyirdefteri'
       return new Response(onizlemeHtml({ baslik, aciklama, gorsel, url: url.toString() }), {
         headers: { 'content-type': 'text/html; charset=utf-8' },
       })

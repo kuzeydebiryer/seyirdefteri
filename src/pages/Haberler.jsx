@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { haberSayfasiGetir } from '../utils/haber.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const KATEGORILER = [
   { id: '', etiket: 'Tümü', ikon: '📰' },
@@ -24,6 +25,7 @@ function tarihGoster(deger) {
 // erişiliyor. Kategoriler arası filtre burada, sayfa başına bölünmeden
 // tüm listeyi kategoriye göre süzüyor. 20'şer sayfalanıyor (bkz. haber.js).
 export default function Haberler() {
+  const { profil } = useAuth()
   const [aramaParametreleri, setAramaParametreleri] = useSearchParams()
   const kategori = aramaParametreleri.get('kategori') || ''
   const [haberler, setHaberler] = useState(null)
@@ -60,7 +62,14 @@ export default function Haberler() {
 
   return (
     <div>
-      <h1 className="mb-1 font-baslik text-2xl text-murekkep">📰 Haberler</h1>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h1 className="font-baslik text-2xl text-murekkep">📰 Haberler</h1>
+        {profil?.yonetici && (
+          <Link to="/haber-onay-yonetim" className="text-xs text-kraft hover:text-deniz">
+            🛠 Haber Yönetimi
+          </Link>
+        )}
+      </div>
       <p className="mb-6 text-sm text-kraft">Film, dizi, kitap ve oyuncu dünyasından topluluğun paylaştığı haberler.</p>
 
       <div className="mb-6 flex flex-wrap gap-2">
@@ -97,7 +106,10 @@ export default function Haberler() {
                 <p className="text-[10px] uppercase tracking-widest text-kraft">
                   {katIkon} {KATEGORILER.find((k) => k.id === h.kategori)?.etiket}
                 </p>
-                <p className="font-govde text-sm font-medium text-murekkep line-clamp-2">{h.baslik}</p>
+                <p className="font-govde text-sm font-medium text-murekkep line-clamp-2">
+                  {h.oneCikan && <span title="Öne çıkan">⭐ </span>}
+                  {h.baslik}
+                </p>
                 <p className="mt-1 text-[11px] text-kraft">
                   {h.ekleyenAdi} · {tarihGoster(h.tarih)}
                 </p>

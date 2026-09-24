@@ -1,11 +1,24 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { haberGetir, haberSil, haberDuzenle, benzerHaberleriGetir } from '../utils/haber.js'
+import {
+  haberGetir,
+  haberSil,
+  haberDuzenle,
+  benzerHaberleriGetir,
+  haberGoruntulendi,
+  haberBegenDegistir,
+  haberOnayla,
+  haberReddet,
+  haberOneCikarDegistir,
+} from '../utils/haber.js'
 import { eserYorumlariGetir, eserYorumEkle, yorumSil, yorumBegenDegistir } from '../utils/yorum.js'
+import { eserReferanslariniBul } from '../utils/icerikAyristir.js'
 import PaylasButonu from '../components/PaylasButonu.jsx'
 import Avatar from '../components/Avatar.jsx'
+import GonderiIcerik from '../components/GonderiIcerik.jsx'
+import EserSecici from '../components/EserSecici.jsx'
 
 const eserLink = (tur, disId) => (tur === 'dizi' ? `/dizi/${disId}` : tur === 'kitap' ? `/kitap/${disId}` : tur === 'kisi' ? `/kisi/${disId}` : `/film/${disId}`)
 
@@ -50,8 +63,58 @@ export default function HaberDetay() {
   const [duzenleFragman, setDuzenleFragman] = useState('')
   const [duzenleKaydediliyor, setDuzenleKaydediliyor] = useState(false)
 
+  // Düzenlerken de içeriğe film/dizi/kitap şeridi eklenip çıkarılabilsin diye
+  // — HaberBolumu'ndaki "🎬📚 Ekle" akışının aynısı, sadece duzenleIcerik'e yazıyor.
+  const [gomuluEserAcik, setGomuluEserAcik] = useState(false)
+  const [gomuluEserKategori, setGomuluEserKategori] = useState('Film')
+  const [gomuluEserDuzeni, setGomuluEserDuzeni] = useState('yatay')
+  const duzenleIcerikRef = useRef(null)
+
+  function imlecKonumunaMetinEkle(eklenecek) {
+    const ta = duzenleIcerikRef.current
+    const imlecKonumu = ta ? ta.selectionStart : duzenleIcerik.length
+    const eklenecekBlok = `\n\n${eklenecek}\n\n`
+    const yeniMetin = duzenleIcerik.slice(0, imlecKonumu) + eklenecekBlok + duzenleIcerik.slice(imlecKonumu)
+    setDuzenleIcerik(yeniMetin)
+    const yeniKonum = imlecKonumu + eklenecekBlok.length
+    setTimeout(() => {
+      if (ta) {
+        ta.focus()
+        ta.setSelectionRange(yeniKonum, yeniKonum)
+      }
+    }, 0)
+  }
+
+  function gomuluEserEklendi(secim) {
+    imlecKonumunaMetinEkle(`@@eser:${JSON.stringify({ ...secim, duzen: gomuluEserDuzeni })}`)
+  }
+
+  const gomuluEserler = useMemo(() => eserReferanslariniBul(duzenleIcerik), [duzenleIcerik])
+
+  function gomuluEseriKaldir(indeks) {
+    const hedef = gomuluEserler[indeks]
+    if (!hedef) return
+    setDuzenleIcerik((duzenleIcerik.slice(0, hedef.index) + duzenleIcerik.slice(hedef.index + hedef.tamMetin.length)).replace(/\n{3,}/g, '\n\n'))
+  }
+
+  function gomuluEseriTasi(indeks, yon) {
+    const hedefIndeks = indeks + yon
+    const a = gomuluEserler[indeks]
+    const b = gomuluEserler[hedefIndeks]
+    if (!a || !b) return
+    const [ilk, ikinci] = a.index < b.index ? [a, b] : [b, a]
+    setDuzenleIcerik(
+      duzenleIcerik.slice(0, ilk.index) +
+        ikinci.tamMetin +
+        duzenleIcerik.slice(ilk.index + ilk.tamMetin.length, ikinci.index) +
+        ilk.tamMetin +
+        duzenleIcerik.slice(ikinci.index + ikinci.tamMetin.length)
+    )
+  }
+
   useEffect(() => {
     haberGetir(id).then(setHaber)
+    haberGoruntulendi(id)
   }, [id])
 
   useEffect(() => {
@@ -104,6 +167,33 @@ export default function HaberDetay() {
     window.history.back()
   }
 
+  async function begenTiklandiHaber() {
+    if (!kullanici) return
+    const begeniyorMu = (haber.begenenler || []).includes(kullanici.uid)
+    setHaber((h) => ({
+      ...h,
+      begenenler: begeniyorMu ? h.begenenler.filter((u) => u !== kullanici.uid) : [...(h.begenenler || []), kullanici.uid],
+    }))
+    await haberBegenDegistir(id, kullanici.uid, begeniyorMu)
+  }
+
+  async function onaylaTiklandi() {
+    await haberOnayla(id)
+    setHaber((h) => ({ ...h, onayli: true }))
+  }
+
+  async function reddetTiklandi() {
+    if (!window.confirm('Bu haberi reddedip kalıcı olarak silmek istediğine emin misin?')) return
+    await haberReddet(id)
+    window.history.back()
+  }
+
+  async function oneCikarTiklandiHaber() {
+    const yeni = !haber.oneCikan
+    await haberOneCikarDegistir(id, yeni)
+    setHaber((h) => ({ ...h, oneCikan: yeni }))
+  }
+
   function duzenleyiAc() {
     setDuzenleBaslik(haber.baslik)
     setDuzenleIcerik(haber.icerik || '')
@@ -150,12 +240,109 @@ export default function HaberDetay() {
             className="w-full rounded-sm bg-kagit px-3 py-2.5 text-base text-murekkep ring-1 ring-cizgi"
           />
           <textarea
+            ref={duzenleIcerikRef}
             value={duzenleIcerik}
             onChange={(e) => setDuzenleIcerik(e.target.value)}
             rows={6}
             placeholder="İçerik"
             className="w-full rounded-sm bg-kagit px-3 py-2.5 text-sm text-murekkep ring-1 ring-cizgi"
           />
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setGomuluEserAcik((a) => !a)}
+              className="rounded-sm bg-kagit px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
+            >
+              🎬📚 İçeriğe Film/Dizi/Kitap Şeridi Ekle
+            </button>
+
+            {gomuluEserAcik && (
+              <div className="mt-2 rounded-sm bg-kagit p-3 ring-1 ring-cizgi">
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {['Film', 'Dizi', 'Kitap', 'Oyuncu'].map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setGomuluEserKategori(k)}
+                      className={`rounded-full px-2.5 py-1 text-[11px] ${
+                        gomuluEserKategori === k ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                      }`}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setGomuluEserAcik(false)}
+                    className="ml-auto rounded-full px-2.5 py-1 text-[11px] text-kraft hover:text-muhur"
+                  >
+                    ✕ Kapat
+                  </button>
+                </div>
+                <div className="mb-2 flex items-center gap-2 text-[11px] text-kraft">
+                  <span>2+ eser eklersen görünüm:</span>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setGomuluEserDuzeni('yatay')}
+                      className={`rounded-full px-2 py-0.5 ${
+                        gomuluEserDuzeni === 'yatay' ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                      }`}
+                    >
+                      ↔ Şerit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGomuluEserDuzeni('dikey')}
+                      className={`rounded-full px-2 py-0.5 ${
+                        gomuluEserDuzeni === 'dikey' ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi'
+                      }`}
+                    >
+                      ☰ Liste
+                    </button>
+                  </div>
+                </div>
+                <EserSecici kategori={gomuluEserKategori} secili={null} onSecim={gomuluEserEklendi} onTemizle={() => {}} />
+              </div>
+            )}
+
+            {gomuluEserler.length > 0 && (
+              <div className="mt-2 rounded-sm bg-kagit p-2.5 ring-1 ring-cizgi">
+                <p className="mb-1.5 text-[11px] text-kraft">İçeriğe eklenen eserler ({gomuluEserler.length}):</p>
+                <ul className="space-y-1">
+                  {gomuluEserler.map((oge, i) => (
+                    <li key={i} className="flex items-center gap-2 rounded-sm bg-kagitKoyu px-2 py-1">
+                      <div className="h-8 w-6 shrink-0 overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
+                        {oge.veri.posterUrl && <img src={oge.veri.posterUrl} alt="" className="h-full w-full object-cover" />}
+                      </div>
+                      <span className="min-w-0 flex-1 truncate text-xs text-murekkep">{oge.veri.baslik}</span>
+                      <button
+                        type="button"
+                        onClick={() => gomuluEseriTasi(i, -1)}
+                        disabled={i === 0}
+                        className="text-xs text-kraft hover:text-deniz disabled:opacity-30"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => gomuluEseriTasi(i, 1)}
+                        disabled={i === gomuluEserler.length - 1}
+                        className="text-xs text-kraft hover:text-deniz disabled:opacity-30"
+                      >
+                        ▼
+                      </button>
+                      <button type="button" onClick={() => gomuluEseriKaldir(i)} className="text-xs text-kraft hover:text-muhur">
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-[11px] uppercase tracking-widest text-kraft">Görsel URL</label>
@@ -187,30 +374,54 @@ export default function HaberDetay() {
         </form>
       ) : (
         <>
+          {haber.onayli === false && (
+            <p className="mb-2 inline-block rounded-full bg-muhur px-3 py-1 text-[11px] text-kagit">⏳ Onay bekliyor — henüz yayında değil</p>
+          )}
           <div className="mt-1 mb-1 flex items-start justify-between gap-3">
-            <h1 className="font-baslik text-2xl text-murekkep">{haber.baslik}</h1>
+            <h1 className="font-baslik text-2xl text-murekkep">
+              {haber.oneCikan && <span title="Öne çıkan">⭐ </span>}
+              {haber.baslik}
+            </h1>
             <PaylasButonu baslik={haber.baslik} url={`/haber/${id}`} boyut="kucuk" />
           </div>
-          <p className="mb-4 text-xs text-kraft">
-            {haber.ekleyenAdi} · {tarihGoster(haber.tarih)}
-          </p>
+          <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-kraft">
+            <span>
+              {haber.ekleyenAdi} · {tarihGoster(haber.tarih)}
+            </span>
+            {kullanici && (
+              <button onClick={begenTiklandiHaber} className={(haber.begenenler || []).includes(kullanici.uid) ? 'text-muhur' : 'hover:text-murekkep'}>
+                {(haber.begenenler || []).includes(kullanici.uid) ? '♥' : '♡'} {haber.begenenler?.length > 0 && haber.begenenler.length}
+              </button>
+            )}
+          </div>
+
+          {profil?.yonetici && (
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+              {haber.onayli === false ? (
+                <>
+                  <button onClick={onaylaTiklandi} className="rounded-sm bg-gise px-3 py-1 text-xs text-kagit">
+                    ✓ Onayla
+                  </button>
+                  <button onClick={reddetTiklandi} className="rounded-sm bg-kagit px-3 py-1 text-xs text-kraft ring-1 ring-cizgi hover:text-muhur">
+                    ✕ Reddet
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={oneCikarTiklandiHaber}
+                  className={`rounded-full px-3 py-1 text-xs ${haber.oneCikan ? 'bg-gise text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
+                >
+                  {haber.oneCikan ? '⭐ Öne Çıkan' : '☆ Öne Çıkar'}
+                </button>
+              )}
+            </div>
+          )}
 
           {haber.gorselUrl && (
             <img src={haber.gorselUrl} alt="" className="mb-4 max-h-96 w-full rounded-sm object-cover shadow-lg ring-1 ring-cizgi" />
           )}
 
-          {haber.icerik && (
-            <div className="space-y-3">
-              {haber.icerik
-                .split('\n')
-                .filter((satir) => satir.trim())
-                .map((satir, i) => (
-                  <p key={i} className="text-sm leading-relaxed text-murekkep">
-                    {satir}
-                  </p>
-                ))}
-            </div>
-          )}
+          {haber.icerik && <GonderiIcerik metin={haber.icerik} tam={true} />}
         </>
       )}
 

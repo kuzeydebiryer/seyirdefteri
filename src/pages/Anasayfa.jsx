@@ -18,6 +18,7 @@ import KitapAriyorumWidget from '../components/KitapAriyorumWidget.jsx'
 import EtkinlikHabercisiOnizleme from '../components/EtkinlikHabercisiOnizleme.jsx'
 import EtkinlikOneCikanlar from '../components/EtkinlikOneCikanlar.jsx'
 import BugununDusuncesiWidget from '../components/BugununDusuncesiWidget.jsx'
+import AnasayfaHaberVitrini from '../components/AnasayfaHaberVitrini.jsx'
 import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
 import SonYorumlarBolumu from '../components/SonYorumlarBolumu.jsx'
 
@@ -97,6 +98,8 @@ export default function Anasayfa() {
 
   return (
     <div>
+      <AnasayfaHaberVitrini />
+
       {kullanici && (
         <div className="mb-10">
           {gunceFormAcik ? (

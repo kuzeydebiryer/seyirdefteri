@@ -76,6 +76,14 @@ export function eserReferanslariniBul(metin) {
   return sonuc
 }
 
+// Düz metin önizlemesi gereken yerlerde (haber liste satırı, vitrin özeti)
+// kullanılıyor — @@eser: blokları ve resim linkleri gibi teknik satırları
+// atlayıp ilk gerçek metin/başlık paragrafını döndürür.
+export function onizlemeMetniCikar(metin) {
+  const ilkMetin = icerikBloklariniAyir(metin).find((b) => b.tip === 'metin' || b.tip === 'baslik')
+  return ilkMetin?.icerik || ''
+}
+
 // `*kalın metin*` içeren bir paragrafı, sırayla düz/kalın parçalara böler —
 // GonderiIcerik bunu React elemanlarına çevirip render ediyor.
 export function satirIciBicimlendir(metin) {

@@ -591,6 +591,20 @@
       ]
     },
     {
+      "collectionGroup": "haberler",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "onayli",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tarih",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "sinemaAltTurleri",
       "queryScope": "COLLECTION",
       "fields": [

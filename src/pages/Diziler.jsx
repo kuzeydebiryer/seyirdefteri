@@ -21,7 +21,7 @@ export default function Diziler() {
   const [yayinda, setYayinda] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
   const { tavsiyeler, yenidenYukle: tavsiyeleriYenile } = useTavsiyeler('dizi')
-  const { haberler, yenidenYukle: haberleriYenile } = useHaberler('dizi')
+  const { haberler, yenidenYukle: haberleriYenile, hepsiYuklendiMi: haberlerHepsiYuklendiMi, dahaFazlaYukleniyor: haberlerDahaFazlaYukleniyor, dahaFazlaYukle: haberleriDahaFazlaYukle } = useHaberler('dizi')
 
   useEffect(() => {
     let iptal = false
@@ -65,7 +65,7 @@ export default function Diziler() {
       <DiziDunyasiWidget />
       <BegenilenDiziMuzikleriBolumu />
       <IlhamPanosuOnizleme kategori="Dizi" />
-      <HaberBolumu kategori="dizi" haberler={haberler} yenidenYukle={haberleriYenile} />
+      <HaberBolumu kategori="dizi" haberler={haberler} yenidenYukle={haberleriYenile} hepsiYuklendiMi={haberlerHepsiYuklendiMi} dahaFazlaYukleniyor={haberlerDahaFazlaYukleniyor} dahaFazlaYukle={haberleriDahaFazlaYukle} />
       <ListelerBolumu tur="dizi" />
 
       {yayinda.length > 0 && (

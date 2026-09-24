@@ -42,7 +42,7 @@ export default function Filmler() {
   const [yukleniyor, setYukleniyor] = useState(true)
   const { tavsiyeler, yenidenYukle: tavsiyeleriYenile } = useTavsiyeler('sinema')
   const { tavsiyeler: yeniGelenFilmler, yenidenYukle: yeniGelenFilmleriYenile } = useTavsiyeler('sinema', 'yeniGelenFilmler')
-  const { haberler, yenidenYukle: haberleriYenile } = useHaberler('sinema')
+  const { haberler, yenidenYukle: haberleriYenile, hepsiYuklendiMi: haberlerHepsiYuklendiMi, dahaFazlaYukleniyor: haberlerDahaFazlaYukleniyor, dahaFazlaYukle: haberleriDahaFazlaYukle } = useHaberler('sinema')
 
   useEffect(() => {
     let iptal = false
@@ -116,7 +116,7 @@ export default function Filmler() {
       <BegenilenMuziklerBolumu />
       <SinemaOyunlariBolumu />
       <IlhamPanosuOnizleme kategori="Film" />
-      <HaberBolumu kategori="sinema" haberler={haberler} yenidenYukle={haberleriYenile} />
+      <HaberBolumu kategori="sinema" haberler={haberler} yenidenYukle={haberleriYenile} hepsiYuklendiMi={haberlerHepsiYuklendiMi} dahaFazlaYukleniyor={haberlerDahaFazlaYukleniyor} dahaFazlaYukle={haberleriDahaFazlaYukle} />
       <ListelerBolumu tur="sinema" />
 
       {vizyondakiler.length > 0 && (

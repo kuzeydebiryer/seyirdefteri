@@ -16,7 +16,7 @@ export default function Oyuncular() {
   const [topluluk, setTopluluk] = useState([])
   const [populer, setPopuler] = useState([])
   const [yukleniyor, setYukleniyor] = useState(true)
-  const { haberler, yenidenYukle: haberleriYenile } = useHaberler('kisi')
+  const { haberler, yenidenYukle: haberleriYenile, hepsiYuklendiMi: haberlerHepsiYuklendiMi, dahaFazlaYukleniyor: haberlerDahaFazlaYukleniyor, dahaFazlaYukle: haberleriDahaFazlaYukle } = useHaberler('kisi')
 
   const { yonetmenler, yukleniyor: yonetmenlerYukleniyor, yenidenYukle: yonetmenleriYenile } = useYonetmenler()
   const [yonetmenFormuAcik, setYonetmenFormuAcik] = useState(false)
@@ -109,7 +109,7 @@ export default function Oyuncular() {
 
       <KisiArama />
 
-      <HaberBolumu kategori="kisi" haberler={haberler} yenidenYukle={haberleriYenile} />
+      <HaberBolumu kategori="kisi" haberler={haberler} yenidenYukle={haberleriYenile} hepsiYuklendiMi={haberlerHepsiYuklendiMi} dahaFazlaYukleniyor={haberlerDahaFazlaYukleniyor} dahaFazlaYukle={haberleriDahaFazlaYukle} />
 
       {/* Yönetmenler — üyelerin elle eklediği küratörlü liste */}
       <div className="mb-10">
