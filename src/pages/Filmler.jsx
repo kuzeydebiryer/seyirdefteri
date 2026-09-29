@@ -96,7 +96,7 @@ export default function Filmler() {
       >
         <span className="text-xl">🎞️</span>
         <div>
-          <p className="text-sm text-murekkep">En İyi Film Listeleri</p>
+          <p className="text-sm text-murekkep">En İyi Listeler</p>
           <p className="text-xs text-kraft">Letterboxd 500'den IMDb 250'ye, sinema tarihinin zirveleri →</p>
         </div>
       </Link>

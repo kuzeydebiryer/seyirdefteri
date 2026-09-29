@@ -1,6 +1,6 @@
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import { tumAltTurleriGetir } from '../utils/sinemaTurleri.js'
-import { filminListeSiralariGetir } from '../utils/disariListeler.js'
+import { eserinListeSiralariGetir } from '../utils/disariListeler.js'
 import { storytelKitabiIsaretle, storytelKitabiKaldir, storytelKitapBilgisiGetir, storytelKitabiDetayGetir, storytelPosterSenkronizeEt } from '../utils/storytelKitaplari.js'
 import { STORYTEL_KATEGORILERI, storytelHamKategoridenPilEslestir } from '../utils/storytelKategorileri.js'
 import { KITAP_UST_KATEGORILERI, hamKategoridenUstKategoriGetir } from '../utils/kitapUstKategorileri.js'
@@ -562,18 +562,20 @@ export default function EserSayfasi({ tur }) {
     }
   }, [tur, detay?.anahtarKelimeIdleri])
 
-  // Dış listelerdeki (Letterboxd 500, IMDb 250 vb.) sırası — sadece film
-  // sayfası için anlamlı (bu listeler sadece film içeriyor). Liste sayısı
-  // az olduğu için filminListeSiralariGetir tüm listeleri tarayıp bu filmin
-  // hangilerinde olduğunu döndürüyor (bkz. utils/disariListeler.js).
+  // Dış listelerdeki (Letterboxd 500, IMDb 250, NYT En İyi 100 Dizi vb.)
+  // sırası — film VE dizi sayfası için anlamlı, kitap/oyuncu için değil.
+  // Liste sayısı az olduğu için eserinListeSiralariGetir tüm (aynı türdeki)
+  // listeleri tarayıp bu eserin hangilerinde olduğunu döndürüyor (bkz.
+  // utils/disariListeler.js) — tur ayrımı film/dizi TMDB id çakışmasını
+  // engellemek için zorunlu.
   const [disListeSiralari, setDisListeSiralari] = useState([])
   useEffect(() => {
-    if (tur !== 'sinema' || !id) {
+    if ((tur !== 'sinema' && tur !== 'dizi') || !id) {
       setDisListeSiralari([])
       return
     }
     let iptal = false
-    filminListeSiralariGetir(id).then((sonuclar) => {
+    eserinListeSiralariGetir(id, tur).then((sonuclar) => {
       if (!iptal) setDisListeSiralari(sonuclar)
     })
     return () => {

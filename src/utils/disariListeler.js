@@ -7,11 +7,22 @@ import { uzunSureliOnbellektenOku, uzunSureliOnbellegeYaz, uzunSureliOnbellegiTe
 // denince, ikinci bir kopya kurmak yerine (Sinemasal Alt Türler'de
 // yaptığımız hatayı tekrarlamamak için) genelleştirildi — artık kaç tane
 // dış liste olursa olsun (Letterboxd 500, IMDb 250, Sight & Sound...) aynı
-// yapıyı paylaşıyor.
+// yapıyı paylaşıyor. Sonrasında "NYT'nin En İyi 100 Dizisi" gibi dizi
+// listeleri de istenince, aynı yapı `tur` alanıyla ('sinema' | 'dizi')
+// ikinci kez genelleştirildi — liste tanımı hangi TMDB ad alanını/uç
+// noktasını kullanacağını, üye eserlerin hangi sayfaya (/film veya /dizi)
+// bağlanacağını bu alandan biliyor. Eski listelerde `tur` alanı hiç yok —
+// bunlar hep 'sinema' sayılıyor (bkz. turuGetir).
 //
 // Veri modeli:
-//   disariListeler/{listeId}                     — liste TANIMI (ad, stil)
-//   disariListeler/{listeId}/filmler/{tmdbId}     — o listedeki her film
+//   disariListeler/{listeId}                     — liste TANIMI (ad, stil, tur)
+//   disariListeler/{listeId}/filmler/{tmdbId}     — o listedeki her eser (film ya da dizi)
+
+// Eski (tur alanı hiç yazılmamış) listelerle geriye dönük uyumluluk için —
+// alan yoksa 'sinema' sayılıyor, aksi halde siteden aniden kaybolurlardı.
+export function turuGetir(liste) {
+  return liste?.tur === 'dizi' ? 'dizi' : 'sinema'
+}
 
 export async function listeleriGetir() {
   const snap = await getDocs(query(collection(db, 'disariListeler'), orderBy('sira', 'asc')))
@@ -31,13 +42,14 @@ export async function listeGetir(listeId) {
 // ÜYELİK listesi — sıra numarası anlamsız/yanıltıcı olur ("1001 Film ·
 // #567" gibi). false ise rozette/poster üzerinde sıra numarası hiç
 // gösterilmiyor.
-export async function listeEkle(kullanici, { ad, kisaAd, stil, siraliMi = true }) {
+export async function listeEkle(kullanici, { ad, kisaAd, stil, siraliMi = true, tur = 'sinema' }) {
   const mevcutSayisi = (await listeleriGetir()).length
   const belge = await addDoc(collection(db, 'disariListeler'), {
     ad,
     kisaAd,
     stil,
     siraliMi,
+    tur, // 'sinema' | 'dizi'
     sira: mevcutSayisi,
     ekleyenId: kullanici.uid,
     tarih: serverTimestamp(),
@@ -102,9 +114,11 @@ export async function listeyeTopluKaydet(kullanici, listeId, kayitlar) {
 // filmlerini tek bir havuzda karıştırmak isteyen özellikler için — her
 // listenin filmlerini çekip, aynı film birden fazla listede olabileceği
 // için (ör. hem Letterboxd 500 hem IMDb 250'de) tmdbId'ye göre tekilleştirip
-// döndürüyor.
+// döndürüyor. Oyun sadece FİLM üzerine kurulu olduğundan, dizi listeleri
+// (tur: 'dizi') bilerek dışarıda bırakılıyor — aksi halde bir dizinin TMDB
+// id'si tesadüfen bir filminkiyle çakışıp oyuna yanlış giriyordu.
 export async function tumListeFilmleriGetir() {
-  const listeler = await listeleriGetir()
+  const listeler = (await listeleriGetir()).filter((l) => turuGetir(l) === 'sinema')
   const hepsi = await Promise.all(listeler.map((liste) => listeFilmleriGetir(liste.id)))
   const havuz = new Map()
   hepsi.flat().forEach((film) => {
@@ -126,7 +140,7 @@ export async function stildeListeFilmleriGetir(izinVerilenStiller) {
   const onbellekteki = uzunSureliOnbellektenOku('disListe', onbellekAnahtari)
   if (onbellekteki !== undefined) return onbellekteki
 
-  const listeler = (await listeleriGetir()).filter((l) => izinVerilenStiller.includes(l.stil))
+  const listeler = (await listeleriGetir()).filter((l) => turuGetir(l) === 'sinema' && izinVerilenStiller.includes(l.stil))
   const hepsi = await Promise.all(listeler.map((liste) => listeFilmleriGetir(liste.id)))
   const havuz = new Map()
   hepsi.flat().forEach((film) => {
@@ -137,18 +151,21 @@ export async function stildeListeFilmleriGetir(izinVerilenStiller) {
   return sonuc
 }
 
-// Film sayfasındaki rozetler için — bu film HANGİ dış listelerde, kaçıncı
-// sırada? Önceden HER film sayfası ziyaretinde 1 (liste tanımları) + N
-// (her liste için 1 getDoc) okuma yapıyordu — liste sayısı arttıkça (şu an
-// 4) bu maliyet de artıyordu. Liste üyeliği neredeyse hiç değişmediği için
+// Eser sayfasındaki rozetler için — bu film/dizi HANGİ dış listelerde,
+// kaçıncı sırada? Önceden HER sayfa ziyaretinde 1 (liste tanımları) + N
+// (her liste için 1 getDoc) okuma yapıyordu — liste sayısı arttıkça bu
+// maliyet de artıyordu. Liste üyeliği neredeyse hiç değişmediği için
 // (sadece yönetici elle içe aktarma/düzeltme yaptığında), sonuç 30 günlük
 // bir önbellekte tutuluyor — bkz. utils/uzunSureliOnbellek.js.
-export async function filminListeSiralariGetir(tmdbId) {
-  const onbellekAnahtari = `film_${tmdbId}`
+// tur zorunlu: film ve dizi TMDB id uzayları AYRI ve aynı sayıya sahip
+// olabilirler — tur filtresi olmadan bir dizi sayfasında tesadüfen bir
+// filmin rozeti (ya da tam tersi) görünebilirdi.
+export async function eserinListeSiralariGetir(tmdbId, tur = 'sinema') {
+  const onbellekAnahtari = `${tur}_${tmdbId}`
   const onbellekteki = uzunSureliOnbellektenOku('disListe', onbellekAnahtari)
   if (onbellekteki !== undefined) return onbellekteki
 
-  const listeler = await listeleriGetir()
+  const listeler = (await listeleriGetir()).filter((l) => turuGetir(l) === tur)
   const sonuclar = await Promise.all(
     listeler.map(async (liste) => {
       const snap = await getDoc(doc(db, 'disariListeler', liste.id, 'filmler', String(tmdbId)))
@@ -159,4 +176,9 @@ export async function filminListeSiralariGetir(tmdbId) {
   const temiz = sonuclar.filter(Boolean)
   uzunSureliOnbellegeYaz('disListe', onbellekAnahtari, temiz)
   return temiz
+}
+
+// Eski ad — geriye dönük uyumluluk için (sadece film/sinema listeleri).
+export async function filminListeSiralariGetir(tmdbId) {
+  return eserinListeSiralariGetir(tmdbId, 'sinema')
 }

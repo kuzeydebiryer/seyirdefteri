@@ -76,7 +76,7 @@ export default function DisListeDetay() {
     return (
       <div>
         <Link to="/dis-listeler" className="text-xs text-kraft hover:text-deniz">
-          ← En İyi Film Listeleri
+          ← En İyi Listeler
         </Link>
         <p className="mt-4 text-sm text-kraft">Bu liste bulunamadı.</p>
       </div>
@@ -85,11 +85,13 @@ export default function DisListeDetay() {
 
   const rozetSinifi = STIL_ROZET_RENGI[liste.stil] || STIL_ROZET_RENGI.genel
   const siraliMi = liste.siraliMi !== false // eski listelerde alan hiç yoktu, varsayılan true (eski davranış)
+  const tur = liste.tur === 'dizi' ? 'dizi' : 'sinema' // eski listelerde alan yok — hep film sayılır
+  const eserRotasi = tur === 'dizi' ? 'dizi' : 'film'
 
   return (
     <div>
       <Link to="/dis-listeler" className="text-xs text-kraft hover:text-deniz">
-        ← En İyi Film Listeleri
+        ← En İyi Listeler
       </Link>
       <div className="mt-1 mb-1 flex items-center gap-2">
         {liste.stil === 'letterboxd' ? (
@@ -107,7 +109,8 @@ export default function DisListeDetay() {
       </div>
       <div className="mb-6 flex items-center gap-3">
         <p className="text-sm text-kraft">
-          {filmler?.length || 0} film{siraliMi ? ' — resmî sıralamasıyla.' : ' — üyelik listesi (sıralaması yok).'}
+          {filmler?.length || 0} {tur === 'dizi' ? 'dizi' : 'film'}
+          {siraliMi ? ' — resmî sıralamasıyla.' : ' — üyelik listesi (sıralaması yok).'}
         </p>
         {profil?.yonetici && (
           <button onClick={() => setDuzenlemeAcik((a) => !a)} className="text-xs text-deniz hover:underline">
@@ -144,7 +147,7 @@ export default function DisListeDetay() {
         </div>
       )}
 
-      <DisListeIceAktar listeId={liste.id} listeAdi={liste.ad} onEklendi={() => setYenile((n) => n + 1)} />
+      <DisListeIceAktar listeId={liste.id} listeAdi={liste.ad} tur={tur} onEklendi={() => setYenile((n) => n + 1)} />
 
       {filmler === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {filmler !== null && filmler.length === 0 && <p className="text-sm text-kraft">Bu liste henüz içe aktarılmamış.</p>}
@@ -152,12 +155,12 @@ export default function DisListeDetay() {
       <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
         {filmler?.map((film) => (
           <div key={film.id} className="group relative">
-            <Link to={`/film/${film.id}`} className="block">
+            <Link to={`/${eserRotasi}/${film.id}`} className="block">
               <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                 {film.posterUrl ? (
                   <img src={film.posterUrl} alt={film.baslik} loading="lazy" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">🎬</div>
+                  <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">{tur === 'dizi' ? '📺' : '🎬'}</div>
                 )}
                 {siraliMi && (
                   <span className={`absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${rozetSinifi}`}>#{film.siraNo}</span>

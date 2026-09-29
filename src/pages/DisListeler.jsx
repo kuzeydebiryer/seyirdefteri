@@ -28,7 +28,12 @@ export default function DisListeler() {
   const [kisaAd, setKisaAd] = useState('')
   const [stil, setStil] = useState('genel')
   const [siraliMi, setSiraliMi] = useState(true)
+  const [tur, setTur] = useState('sinema')
   const [kaydediliyor, setKaydediliyor] = useState(false)
+
+  // Vitrin filtresi — Tümü / Film / Dizi. Liste sayısı arttıkça ikisini
+  // karıştırmak yerine ayırt etmek isteyecekler.
+  const [filtreTuru, setFiltreTuru] = useState('hepsi')
 
   useEffect(() => {
     listeleriGetir().then(setListeler)
@@ -38,17 +43,20 @@ export default function DisListeler() {
     e.preventDefault()
     setKaydediliyor(true)
     try {
-      await listeEkle(kullanici, { ad: ad.trim(), kisaAd: kisaAd.trim(), stil, siraliMi })
+      await listeEkle(kullanici, { ad: ad.trim(), kisaAd: kisaAd.trim(), stil, siraliMi, tur })
       setAd('')
       setKisaAd('')
       setStil('genel')
       setSiraliMi(true)
+      setTur('sinema')
       setFormAcik(false)
       setYenile((n) => n + 1)
     } finally {
       setKaydediliyor(false)
     }
   }
+
+  const gosterilecekListeler = listeler?.filter((l) => filtreTuru === 'hepsi' || (l.tur === 'dizi' ? 'dizi' : 'sinema') === filtreTuru)
 
   async function silTiklandi(liste) {
     if (!window.confirm(`"${liste.ad}" listesini (tüm filmleriyle birlikte) silmek istediğine emin misin?`)) return
@@ -59,13 +67,35 @@ export default function DisListeler() {
   return (
     <div>
       <Link to="/filmler" className="text-xs text-kraft hover:text-deniz">
-        ← Filmler
+        ← Film
       </Link>
-      <h1 className="mt-1 mb-1 font-baslik text-2xl text-murekkep">🎞️ En İyi Film Listeleri</h1>
+      {' · '}
+      <Link to="/diziler" className="text-xs text-kraft hover:text-deniz">
+        Dizi
+      </Link>
+      <h1 className="mt-1 mb-1 font-baslik text-2xl text-murekkep">🎞️📺 En İyi Listeler</h1>
       <p className="mb-6 text-sm text-kraft">
-        Sinema tarihinin zirvesine çıkan filmler — dünyanın en saygın topluluklarının oylarıyla şekillenen, kuşaktan
-        kuşağa aktarılan başyapıt listeleri.
+        Sinema ve dizi tarihinin zirvesine çıkan eserler — dünyanın en saygın topluluklarının/yayınlarının oylarıyla
+        şekillenen, kuşaktan kuşağa aktarılan başyapıt listeleri.
       </p>
+
+      <div className="mb-6 flex gap-1.5">
+        {[
+          { id: 'hepsi', etiket: 'Tümü' },
+          { id: 'sinema', etiket: '🎬 Film' },
+          { id: 'dizi', etiket: '📺 Dizi' },
+        ].map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setFiltreTuru(s.id)}
+            className={`rounded-full px-3 py-1 text-xs ${
+              filtreTuru === s.id ? 'bg-gise text-kagit' : 'bg-kagitKoyu text-kraft ring-1 ring-cizgi hover:text-murekkep'
+            }`}
+          >
+            {s.etiket}
+          </button>
+        ))}
+      </div>
 
       {profil?.yonetici && (
         <div className="mb-6">
@@ -75,12 +105,31 @@ export default function DisListeler() {
           {formAcik && (
             <form onSubmit={kaydet} className="mt-2 max-w-md space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
               <div>
+                <label className="mb-1 block text-[11px] text-kraft">Liste Türü</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTur('sinema')}
+                    className={`rounded-full px-3 py-1 text-xs ${tur === 'sinema' ? 'bg-gise text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
+                  >
+                    🎬 Film
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTur('dizi')}
+                    className={`rounded-full px-3 py-1 text-xs ${tur === 'dizi' ? 'bg-gise text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
+                  >
+                    📺 Dizi
+                  </button>
+                </div>
+              </div>
+              <div>
                 <label className="mb-1 block text-[11px] text-kraft">Liste Adı (tam)</label>
                 <input
                   type="text"
                   value={ad}
                   onChange={(e) => setAd(e.target.value)}
-                  placeholder="ör. IMDb En İyi 250 Film"
+                  placeholder={tur === 'dizi' ? "ör. NYT'nin En İyi 100 Dizisi" : 'ör. IMDb En İyi 250 Film'}
                   required
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
@@ -91,7 +140,7 @@ export default function DisListeler() {
                   type="text"
                   value={kisaAd}
                   onChange={(e) => setKisaAd(e.target.value)}
-                  placeholder="ör. IMDb 250"
+                  placeholder={tur === 'dizi' ? 'ör. NYT 100' : 'ör. IMDb 250'}
                   required
                   className="w-full rounded-sm bg-kagit px-3 py-2 text-sm text-murekkep ring-1 ring-cizgi"
                 />
@@ -125,12 +174,18 @@ export default function DisListeler() {
 
       {listeler === null && <p className="text-sm text-kraft">Yükleniyor...</p>}
       {listeler !== null && listeler.length === 0 && <p className="text-sm text-kraft">Henüz hiç liste tanımlanmamış.</p>}
+      {listeler !== null && listeler.length > 0 && gosterilecekListeler.length === 0 && (
+        <p className="text-sm text-kraft">Bu türde henüz bir liste yok.</p>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {listeler?.map((liste) => (
+        {gosterilecekListeler?.map((liste) => (
           <div key={liste.id} className="flex items-center justify-between rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
             <Link to={`/dis-liste/${liste.id}`} className="flex-1 hover:text-deniz">
               <p className="flex items-center gap-1.5 font-baslik text-base text-murekkep">
+                <span className="shrink-0 text-sm" title={liste.tur === 'dizi' ? 'Dizi listesi' : 'Film listesi'}>
+                  {liste.tur === 'dizi' ? '📺' : '🎬'}
+                </span>
                 {liste.stil === 'letterboxd' && <LetterboxdNoktalarIkon className="h-4 w-9 shrink-0" />}
                 {liste.stil === 'criterion' && <CriterionIkon className="h-4 w-4 shrink-0" />}
                 {liste.stil === 'binbirfilm' && <BinBirFilmIkon className="shrink-0 px-1 py-0.5 text-[10px]" />}

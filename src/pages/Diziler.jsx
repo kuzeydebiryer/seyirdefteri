@@ -11,6 +11,7 @@ import BegenilenDiziMuzikleriBolumu from '../components/BegenilenDiziMuzikleriBo
 import FilmDiziArama from '../components/FilmDiziArama.jsx'
 import EserKarti from '../components/EserKarti.jsx'
 import IlhamPanosuOnizleme from '../components/IlhamPanosuOnizleme.jsx'
+import { Link } from 'react-router-dom'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -57,6 +58,17 @@ export default function Diziler() {
   return (
     <div>
       <h1 className="font-baslik text-2xl text-murekkep mb-6">Dizi</h1>
+
+      <Link
+        to="/dis-listeler"
+        className="mb-6 flex items-center gap-3 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi transition hover:ring-deniz/50"
+      >
+        <span className="text-xl">📺</span>
+        <div>
+          <p className="text-sm text-murekkep">En İyi Listeler</p>
+          <p className="text-xs text-kraft">NYT'nin En İyi 100 Dizisi ve diğer saygın dizi sıralamaları →</p>
+        </div>
+      </Link>
 
       <FilmDiziArama tur="dizi" />
 
