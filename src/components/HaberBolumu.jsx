@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { haberEkle } from '../utils/haber.js'
 import { eserReferanslariniBul, onizlemeMetniCikar } from '../utils/icerikAyristir.js'
 import EserSecici from './EserSecici.jsx'
+import ListedenEserEkle from './ListedenEserEkle.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w185'
@@ -126,6 +127,20 @@ export default function HaberBolumu({
     imlecKonumunaMetinEkle(`@@eser:${JSON.stringify({ ...secim, duzen: gomuluEserDuzeni })}`)
     // Popover'ı bilerek kapatmıyoruz — art arda birkaç eser eklemek bir liste
     // oluştururken çok daha az tıklama gerektiriyor.
+  }
+
+  // "Listeden Ekle" (bkz. ListedenEserEkle.jsx) — kişisel listelerim, dış
+  // listeler (Letterboxd 500, NYT 100 vb.) ya da bir festival/ödül sezonunun
+  // filmlerinden TOPLU seçim yapıp tek seferde ekliyor. Her öğe, tek tek
+  // "Eser Ekle" ile eklenmiş gibi aynı @@eser: bloklarına dönüştürülüyor —
+  // gruplama/render tarafı (icerikAyristir.js, GomuluEserSeridi.jsx) hiçbir
+  // fark görmüyor.
+  const [listedenEkleAcik, setListedenEkleAcik] = useState(false)
+
+  function listedenEklendi(secilenler, duzenSecim) {
+    const bloklar = secilenler.map((oge) => `@@eser:${JSON.stringify({ ...oge, duzen: duzenSecim })}`).join('\n\n')
+    imlecKonumunaMetinEkle(bloklar)
+    setListedenEkleAcik(false)
   }
 
   const gomuluEserler = useMemo(() => eserReferanslariniBul(icerik), [icerik])
@@ -288,13 +303,24 @@ export default function HaberBolumu({
           />
 
           <div>
-            <button
-              type="button"
-              onClick={() => setGomuluEserAcik((a) => !a)}
-              className="rounded-sm bg-kagit px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
-            >
-              🎬📚 İçeriğe Film/Dizi/Kitap Şeridi Ekle
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setGomuluEserAcik((a) => !a)}
+                className="rounded-sm bg-kagit px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
+              >
+                🎬📚 İçeriğe Film/Dizi/Kitap Şeridi Ekle
+              </button>
+              <button
+                type="button"
+                onClick={() => setListedenEkleAcik((a) => !a)}
+                className="rounded-sm bg-kagit px-3 py-1 font-govde text-xs text-kraft ring-1 ring-cizgi hover:ring-deniz/50"
+              >
+                📋 Listeden Ekle
+              </button>
+            </div>
+
+            {listedenEkleAcik && <ListedenEserEkle onEkle={listedenEklendi} onKapat={() => setListedenEkleAcik(false)} />}
 
             {gomuluEserAcik && (
               <div className="mt-2 rounded-sm bg-kagit p-3 ring-1 ring-cizgi">
