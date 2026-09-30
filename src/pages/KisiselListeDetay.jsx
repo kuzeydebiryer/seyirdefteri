@@ -10,6 +10,7 @@ import { turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import { kisiselListedenTopluluğaKopyala } from '../utils/liste.js'
 import { useTopluluklar } from '../hooks/useTopluluklar.js'
 import LetterboxdIceAktar from '../components/LetterboxdIceAktar.jsx'
+import ListedenEserEkle from '../components/ListedenEserEkle.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -34,6 +35,36 @@ export default function KisiselListeDetay() {
   const [uyeOlduklarim, setUyeOlduklarim] = useState([])
   const [hedefTopluluk, setHedefTopluluk] = useState('')
   const [kopyalaniyor, setKopyalaniyor] = useState(false)
+
+  // "Listeden Ekle" sekmesi — Dış Listeler (Letterboxd 500, IMDb 250, NYT 100
+  // vb.), bir festival/ödül sezonu ya da başka bir kişisel listenden TOPLU
+  // seçim yapıp bu listeye ekliyor (bkz. ListedenEserEkle.jsx — Haberler'deki
+  // aynı bileşen). Letterboxd CSV içe aktarımıyla aynı sıralı-ekleme deseni
+  // (bkz. LetterboxdIceAktar.jsx) izleniyor: ogeEkle her çağrıda liste
+  // nesnesinden `ogeSayisi`yi okuduğu için, sıradaki `sira` numarasını kendi
+  // döngümüzde elle ilerletiyoruz.
+  const [topluIceAktariliyor, setTopluIceAktariliyor] = useState(false)
+  const [topluIlerleme, setTopluIlerleme] = useState({ tamam: 0, toplam: 0 })
+
+  async function listedenTopluEkle(secilenler) {
+    setTopluIceAktariliyor(true)
+    setTopluIlerleme({ tamam: 0, toplam: secilenler.length })
+    let sonrakiSira = liste.ogeSayisi || 0
+    let guncelKapakUrl = liste.kapakUrl
+    for (const oge of secilenler) {
+      await ogeEkle(
+        { ...liste, ogeSayisi: sonrakiSira, kapakUrl: guncelKapakUrl },
+        { tur: oge.tur, disId: oge.disId, baslik: oge.baslik, alt: oge.altBaslik || oge.yil || '', posterUrl: oge.posterUrl }
+      )
+      sonrakiSira += 1
+      if (!guncelKapakUrl && oge.posterUrl) guncelKapakUrl = oge.posterUrl
+      setTopluIlerleme((onceki) => ({ ...onceki, tamam: onceki.tamam + 1 }))
+    }
+    setTopluIceAktariliyor(false)
+    setListe((onceki) => ({ ...onceki, ogeSayisi: sonrakiSira, kapakUrl: guncelKapakUrl }))
+    setFormuAcik(false)
+    yenidenYukle()
+  }
 
   useEffect(() => {
     listeGetir(listeId).then(setListe)
@@ -231,6 +262,12 @@ export default function KisiselListeDetay() {
             >
               Letterboxd'dan İçe Aktar
             </button>
+            <button
+              onClick={() => setSekme('liste')}
+              className={`rounded-sm px-3 py-1 font-govde text-xs ${sekme === 'liste' ? 'bg-murekkep text-kagit' : 'bg-kagit text-kraft ring-1 ring-cizgi'}`}
+            >
+              Listeden Ekle
+            </button>
           </div>
 
           {sekme === 'ara' && (
@@ -319,6 +356,15 @@ export default function KisiselListeDetay() {
               }}
             />
           )}
+
+          {sekme === 'liste' &&
+            (topluIceAktariliyor ? (
+              <p className="text-xs text-kraft">
+                Ekleniyor... {topluIlerleme.tamam}/{topluIlerleme.toplam}
+              </p>
+            ) : (
+              <ListedenEserEkle onEkle={listedenTopluEkle} onKapat={() => setFormuAcik(false)} />
+            ))}
         </div>
       )}
 
