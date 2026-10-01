@@ -22,6 +22,27 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
     setSatirlar(seansSatirlariniEslestir(parsed, filmler))
   }
 
+  // Otomatik eşleştirme metin benzerliğine dayanıyor — festival programı
+  // filmi Türkçe gösteriyorsa ("Kağıttan Kaplan") ama seçki TMDB'den
+  // geldiği için orijinal/İngilizce başlığı tutuyorsa ("Paper Tiger"),
+  // ikisi hiçbir zaman otomatik eşleşmez (dil farkı, yazım benzerliği
+  // sorunu değil). Bu yüzden eşleşmeyen her satıra elle seçim imkânı
+  // veriliyor — hangi sebepten eşleşmediğine bakılmaksızın çalışan tek
+  // çözüm bu.
+  function elleEslestir(i, filmId) {
+    setSatirlar((liste) =>
+      liste.map((s, idx) => {
+        if (idx !== i) return s
+        if (!filmId) {
+          const { filmId: _f, filmBasligi: _b, posterUrl: _p, elleDuzeltildi: _e, ...kalan } = s
+          return { ...kalan, eslesti: false, hata: `Seçkide eşleşen film yok: "${s.filmAdiHam}"` }
+        }
+        const film = filmler.find((f) => f.id === filmId)
+        return { ...s, eslesti: true, filmId: film.id, filmBasligi: film.filmBasligi, posterUrl: film.posterUrl || '', elleDuzeltildi: true, hata: undefined }
+      })
+    )
+  }
+
   async function iceAktar() {
     const eslesenler = satirlar.filter((s) => s.eslesti)
     if (eslesenler.length === 0) return
@@ -48,7 +69,11 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
         Film Adı{'\t'}Tarih{'\t'}Saat{'\t'}Salon{'\t'}Şehir{'\n'}
         {ORNEK_METIN}
       </pre>
-      <p className="text-[11px] text-kraft">Film adı, bu sezonun seçkisindeki (aşağıdaki film ızgarasındaki) başlıkla eşleşmeli.</p>
+      <p className="text-[11px] text-kraft">
+        Film adı, bu sezonun seçkisindeki (aşağıdaki film ızgarasındaki) başlıkla otomatik eşleşmeye çalışır — festival
+        programı Türkçe, seçki İngilizce/orijinal başlık tutuyorsa (TMDB'den geldiği için) otomatik eşleşmez; önizlemede
+        eşleşmeyen satırlara elle film seçebilirsin.
+      </p>
 
       <textarea
         value={metin}
@@ -76,20 +101,33 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
           <p className="text-xs text-kraft">
             {eslesenSayisi}/{satirlar.length} satır eşleşti. İçe aktarmadan önce kontrol et:
           </p>
-          <ul className="max-h-80 space-y-1 overflow-y-auto">
+          <ul className="max-h-96 space-y-1 overflow-y-auto">
             {satirlar.map((s, i) => (
-              <li
-                key={i}
-                className={`rounded-sm px-2 py-1.5 text-xs ${s.eslesti ? 'text-murekkep' : 'text-muhur opacity-80'}`}
-              >
+              <li key={i} className={`rounded-sm px-2 py-1.5 text-xs ${s.eslesti ? 'text-murekkep' : 'text-muhur'}`}>
                 {s.eslesti ? (
                   <>
-                    ✅ {s.filmBasligi} — {s.tarih} {s.saat} · {s.salon}, {s.sehir}
+                    {s.elleDuzeltildi ? '🔧' : '✅'} {s.filmBasligi} — {s.tarih} {s.saat} · {s.salon}, {s.sehir}
                   </>
                 ) : (
-                  <>
-                    ❌ {s.hata || 'Eşleşmedi'} <span className="text-kraft">({s.satirHam})</span>
-                  </>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span>
+                      ❌ "{s.filmAdiHam || s.satirHam}" — {s.tarih} {s.saat} · {s.salon}, {s.sehir}
+                    </span>
+                    {s.filmAdiHam && (
+                      <select
+                        defaultValue=""
+                        onChange={(e) => elleEslestir(i, e.target.value)}
+                        className="rounded-sm bg-kagit px-1.5 py-0.5 text-[11px] text-murekkep ring-1 ring-cizgi"
+                      >
+                        <option value="">— Elle eşleştir —</option>
+                        {filmler.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.filmBasligi}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                 )}
               </li>
             ))}
