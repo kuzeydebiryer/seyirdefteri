@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { httpsCallable } from 'firebase/functions'
 import { useAuth } from '../context/AuthContext.jsx'
+import { functions } from '../firebase.js'
 import { listeleriGetir, listeEkle, listeSil } from '../utils/disariListeler.js'
 import LetterboxdNoktalarIkon from '../components/ikonlar/LetterboxdNoktalarIkon.jsx'
 import CriterionIkon from '../components/ikonlar/CriterionIkon.jsx'
 import BinBirFilmIkon from '../components/ikonlar/BinBirFilmIkon.jsx'
+
+// "Ne İzlesem?" (RastgeleOneriWidget) rastgele öneri havuzu ayda bir Cloud
+// Function tarafından otomatik dolduruluyor (bkz. functions/index.js:
+// rastgeleOneriHavuzunuGuncelle) — burası, yeni bir liste eklenip 30 gün
+// beklemeden havuzu elle yenilemek isteyen yöneticiler için.
+const havuzuGuncelleCallable = httpsCallable(functions, 'rastgeleOneriHavuzunuGuncelleManuel')
 
 const STIL_ORNEKLERI = {
   imdb: { etiket: 'IMDb (sarı-siyah)', sinif: 'bg-[#F5C518] text-black' },
@@ -30,6 +38,9 @@ export default function DisListeler() {
   const [siraliMi, setSiraliMi] = useState(true)
   const [tur, setTur] = useState('sinema')
   const [kaydediliyor, setKaydediliyor] = useState(false)
+
+  const [havuzGuncelleniyor, setHavuzGuncelleniyor] = useState(false)
+  const [havuzSonuc, setHavuzSonuc] = useState(null)
 
   // Vitrin filtresi — Tümü / Film / Dizi. Liste sayısı arttıkça ikisini
   // karıştırmak yerine ayırt etmek isteyecekler.
@@ -62,6 +73,19 @@ export default function DisListeler() {
     if (!window.confirm(`"${liste.ad}" listesini (tüm filmleriyle birlikte) silmek istediğine emin misin?`)) return
     await listeSil(liste.id)
     setYenile((n) => n + 1)
+  }
+
+  async function havuzuSimdiGuncelle() {
+    setHavuzGuncelleniyor(true)
+    setHavuzSonuc(null)
+    try {
+      const { data } = await havuzuGuncelleCallable()
+      setHavuzSonuc(`✅ Güncellendi — havuzda ${data.ogeSayisi} eser var.`)
+    } catch (err) {
+      setHavuzSonuc(`❌ Güncellenemedi: ${err.message}`)
+    } finally {
+      setHavuzGuncelleniyor(false)
+    }
   }
 
   return (
@@ -169,6 +193,18 @@ export default function DisListeler() {
               </button>
             </form>
           )}
+
+          <div className="mt-3">
+            <button
+              onClick={havuzuSimdiGuncelle}
+              disabled={havuzGuncelleniyor}
+              className="text-xs text-deniz hover:underline disabled:opacity-40"
+              title="Ne İzlesem? widget'ının rastgele öneri havuzu normalde ayda bir kendiliğinden yenilenir — yeni bir liste ekledikten sonra beklemeden yenilemek için"
+            >
+              {havuzGuncelleniyor ? 'Güncelleniyor...' : '🔄 Ne İzlesem? Havuzunu Şimdi Güncelle (Yönetici)'}
+            </button>
+            {havuzSonuc && <p className="mt-1 text-[11px] text-kraft">{havuzSonuc}</p>}
+          </div>
         </div>
       )}
 

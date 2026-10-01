@@ -482,6 +482,60 @@ exports.platformYeniEklenenleriTespitEt = onSchedule({ schedule: '0 6 * * *', ti
   }
 })
 
+// "Ne İzlesem?" (RastgeleOneriWidget) — ÖNCEDEN her tıklamada rastgele
+// seçilen BİR dış listenin TÜM öğelerini okuyordu (Letterboxd 500 seçilirse
+// 500 okuma, IMDb 250 seçilirse 250 okuma... tıklama başına). Dış listeler
+// (Letterboxd 500, IMDb 250, NYT 100 Dizi vb.) pratikte SABİT içerik —
+// kullanıcı "30 günde bir kontrol etsek yeter" dedi — bu yüzden artık TÜM
+// dış listelerin TÜM öğeleri burada, ayda bir (+ istenince elle), TEK bir
+// önbellek belgesine (onbellek/rastgeleOneriHavuzu) toplanıyor. İstemci
+// (disariListeler.js: rastgeleEserGetir) artık tıklama başına SADECE 1
+// belge okuyor — liste sayısından/boyutundan tamamen bağımsız.
+async function rastgeleOneriHavuzunuDoldur() {
+  const listelerSnap = await db.collection('disariListeler').get()
+  const ogeler = []
+
+  for (const listeBelge of listelerSnap.docs) {
+    const liste = listeBelge.data()
+    const tur = liste.tur === 'dizi' ? 'dizi' : 'sinema'
+    const filmlerSnap = await db.collection('disariListeler').doc(listeBelge.id).collection('filmler').get()
+    filmlerSnap.docs.forEach((d) => {
+      const f = d.data()
+      ogeler.push({
+        id: d.id,
+        tur,
+        baslik: f.baslik || '',
+        yil: f.yil || '',
+        posterUrl: f.posterUrl || '',
+        listeAdi: liste.ad || '',
+      })
+    })
+  }
+
+  await db.collection('onbellek').doc('rastgeleOneriHavuzu').set({
+    ogeler,
+    ogeSayisi: ogeler.length,
+    guncellemeTarihi: FieldValue.serverTimestamp(),
+  })
+
+  return ogeler.length
+}
+
+// Ayda bir otomatik yenileme — dış listeler zaten nadiren değişiyor, 30
+// günlük bir gecikme kabul edilebilir bir maliyet/tazelik dengesi.
+exports.rastgeleOneriHavuzunuGuncelle = onSchedule({ schedule: '0 5 1 * *', timeZone: 'Europe/Istanbul' }, async () => {
+  await rastgeleOneriHavuzunuDoldur()
+})
+
+// Yeni bir dış liste eklendiğinde/değiştirildiğinde 30 gün beklemeden elle
+// tetiklemek için — Dış Listeler sayfasındaki "🔄 Öneri Havuzunu Şimdi
+// Güncelle" düğmesi (sadece yöneticilere görünür) bunu çağırıyor.
+exports.rastgeleOneriHavuzunuGuncelleManuel = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Giriş yapman gerekiyor')
+  const sayi = await rastgeleOneriHavuzunuDoldur()
+  return { ogeSayisi: sayi }
+})
+
 // Yakında Gelecekler → otomatik geçiş. Her gün 06:00'da (platform tespitiyle
 // aynı saatte), çıkış tarihi bugüne gelmiş ya da geçmiş duyuruları bulup,
 // hedefTuru'ye göre doğru listeye (platformYeniEklenenler ya da

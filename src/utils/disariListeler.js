@@ -99,18 +99,22 @@ export async function listeFilmleriGetir(listeId) {
 // tanımlı olursa olsun. Boş bir listeye denk gelinirse (ör. henüz içe
 // aktarılmamış) başka bir listeyle tekrar deneniyor.
 // tur: 'sinema' | 'dizi' | null (null = ikisi de olabilir)
+// "Ne İzlesem?" widget'ı için — ÖNCEDEN her tıklamada rastgele seçilen BİR
+// dış listenin TÜM öğelerini okuyordu (Letterboxd 500 seçilirse 500 okuma,
+// IMDb 250 seçilirse 250 okuma — tıklama başına). Dış listeler pratikte
+// SABİT içerik olduğundan (kullanıcı geri bildirimi: "30 günde bir kontrol
+// etsek yeter, amaç maliyeti çok çok aza indirmek"), artık bir Cloud
+// Function'ın ayda bir (+ istenince elle) doldurduğu TEK bir önbellek
+// belgesini (onbellek/rastgeleOneriHavuzu — bkz. functions/index.js)
+// okuyoruz. Sonuç: tıklama başına SADECE 1 okuma, liste
+// sayısından/boyutundan tamamen bağımsız — önceki ortalama ~250-350
+// okuma/tıklamadan 1 okuma/tıklamaya iniyor.
 export async function rastgeleEserGetir(tur = null) {
-  const listeler = (await listeleriGetir()).filter((l) => !tur || turuGetir(l) === tur)
-  if (listeler.length === 0) return null
-
-  const denenecekler = [...listeler].sort(() => Math.random() - 0.5)
-  for (const liste of denenecekler) {
-    const ogeler = await listeFilmleriGetir(liste.id)
-    if (ogeler.length === 0) continue
-    const secilen = ogeler[Math.floor(Math.random() * ogeler.length)]
-    return { id: secilen.id, baslik: secilen.baslik, yil: secilen.yil, posterUrl: secilen.posterUrl, tur: turuGetir(liste), listeAdi: liste.ad, listeId: liste.id }
-  }
-  return null
+  const belge = await getDoc(doc(db, 'onbellek', 'rastgeleOneriHavuzu'))
+  if (!belge.exists()) return null
+  const ogeler = (belge.data().ogeler || []).filter((o) => !tur || o.tur === tur)
+  if (ogeler.length === 0) return null
+  return ogeler[Math.floor(Math.random() * ogeler.length)]
 }
 
 // kayitlar: [{ tmdbId, siraNo, baslik, yil, posterUrl }]

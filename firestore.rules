@@ -88,6 +88,15 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // "Ne İzlesem?" rastgele öneri havuzu — tüm dış listelerin öğelerinin
+    // ayda bir (+ elle tetiklenince) Cloud Function tarafından toplandığı
+    // TEK önbellek belgesi (bkz. functions/index.js: rastgeleOneriHavuzunuDoldur).
+    // Herkes okuyabilir, sadece Cloud Function yazabilir.
+    match /onbellek/{belgeId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Platformlara yeni eklenenler — herkes okuyabilir (platform sayfasında
     // gösteriliyor), sadece Cloud Function yazabilir.
     match /platformYeniEklenenler/{belgeId} {
