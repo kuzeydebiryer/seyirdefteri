@@ -50,14 +50,21 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
     setIceAktariliyor(true)
     setHata('')
     try {
-      await seansToplueKaydet(sezonId, eslesenler)
-      setMetin('')
-      setSatirlar(null)
-      onTamamlandi()
+      const { eklenen, atlanan, hatalilar } = await seansToplueKaydet(sezonId, eslesenler)
+      if (hatalilar.length > 0) {
+        // Kısmi hata: önizlemeyi KASITLI OLARAK kapatmıyoruz — kullanıcı
+        // elle eşleştirdiği satırları kaybetmesin diye. "İçe Aktar"a tekrar
+        // basması yeterli: zaten kaydedilenler dedupe sayesinde tekrar
+        // eklenmiyor, sadece eksik kalanlar yeniden denenir.
+        setHata(
+          `${eklenen} seans kaydedildi${atlanan > 0 ? `, ${atlanan} zaten vardı` : ''}, ${hatalilar.length} seans kaydedilemedi: ${hatalilar.join(' · ')}. "Eşleşenleri İçe Aktar"a tekrar basarak yeniden deneyebilirsin.`
+        )
+      } else {
+        setMetin('')
+        setSatirlar(null)
+        onTamamlandi()
+      }
     } catch (err) {
-      // ÖNCEDEN burada hiç catch yoktu — bir satırda sorun olunca "hiçbir
-      // şey kaydedilmemiş gibi" görünüp kullanıcı neyin ters gittiğini hiç
-      // göremiyordu (bkz. festival.js: seansToplueKaydet'teki not).
       setHata(`Kaydedilemedi: ${err.message}`)
     } finally {
       setIceAktariliyor(false)

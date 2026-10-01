@@ -6,7 +6,7 @@
 // seçkileri için ücretsiz/açık bir API yok, ama Letterboxd'da sinefillerin
 // tuttuğu listeler zaten var.
 
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 export async function festivalSezonOlustur(kullanici, { festivalId, festivalAdi, yil }) {
@@ -165,32 +165,52 @@ export function seansSatirlariniEslestir(parsed, filmler) {
   })
 }
 
-// Firestore `undefined` bir alan değeri olarak KABUL ETMİYOR — batch
-// içindeki TEK bir satırda bile (ör. bir yerde filmBasligi boş kalmışsa)
-// bu olursa, o 400'lük PARÇANIN TAMAMI (batch.commit atomik) hiç
-// kaydedilmeden hata fırlatıyordu, ve FestivalSeansIceAktar.jsx'te bunu
-// yakalayan bir try/catch olmadığı için kullanıcı hiçbir hata görmeden
-// "hiçbir şey kaydedilmedi" durumuyla karşılaşıyordu. Burada her alana
-// güvenli bir varsayılan (boş metin) veriliyor — yakalama/gösterme tarafı
-// FestivalSeansIceAktar.jsx'te ayrıca düzeltildi.
+// ÖNCEDEN bu, writeBatch ile ATOMİK yazıyordu — batch içindeki TEK bir
+// satırda sorun olunca (ör. undefined bir alan) TÜM parça (400'e kadar
+// satır) hiç kaydedilmeden reddediliyordu, kullanıcı da elle eşleştirdiği
+// onlarca satırı bir anda kaybediyordu. Artık her seans TEK TEK,
+// birbirinden bağımsız kaydediliyor — biri başarısız olsa bile diğerleri
+// kaydedilmeye devam ediyor (bkz. festivalFilmEkle'deki aynı düzeltme).
+// Ayrıca aynı (film+tarih+saat+salon) zaten varsa atlıyor — bu sayede bir
+// "İçe Aktar" denemesi kısmen başarısız olursa, TEKRAR denemek zaten
+// kaydedilmiş olanları çoğaltmıyor.
 export async function seansToplueKaydet(sezonId, eslesenSatirlar) {
-  for (let i = 0; i < eslesenSatirlar.length; i += 400) {
-    const parca = eslesenSatirlar.slice(i, i + 400)
-    const batch = writeBatch(db)
-    parca.forEach((satir) => {
-      const ref = doc(collection(db, 'festivalSeanslari'))
-      batch.set(ref, {
+  let eklenen = 0
+  let atlanan = 0
+  const hatalilar = []
+
+  for (const satir of eslesenSatirlar) {
+    const filmBasligi = satir.filmBasligi || satir.filmAdiHam || ''
+    try {
+      const mevcutSorgu = query(
+        collection(db, 'festivalSeanslari'),
+        where('filmId', '==', satir.filmId || ''),
+        where('tarih', '==', satir.tarih || ''),
+        where('saat', '==', satir.saat || ''),
+        where('salon', '==', satir.salon || '')
+      )
+      const mevcutSnap = await getDocs(mevcutSorgu)
+      if (!mevcutSnap.empty) {
+        atlanan += 1
+        continue
+      }
+
+      await addDoc(collection(db, 'festivalSeanslari'), {
         sezonId,
         filmId: satir.filmId || '',
-        filmBasligi: satir.filmBasligi || satir.filmAdiHam || '',
+        filmBasligi,
         tarih: satir.tarih || '',
         saat: satir.saat || '',
         salon: satir.salon || '',
         sehir: satir.sehir || '',
       })
-    })
-    await batch.commit()
+      eklenen += 1
+    } catch (err) {
+      hatalilar.push(`${filmBasligi || satir.satirHam}: ${err.message}`)
+    }
   }
+
+  return { eklenen, atlanan, hatalilar }
 }
 
 export async function festivalSeanslariniGetir(sezonId) {
