@@ -53,6 +53,24 @@ export async function tmdbdeAra(isim, yil) {
   }
 }
 
+// Bilinen bir tmdbId için TMDB'nin TÜRKÇE başlığını getirir (ör. festival
+// seçkisi TMDB'den İngilizce/orijinal başlıkla eklenmiş olsa bile, "Paper
+// Tiger" için TMDB'nin kendi Türkçe çevirisi "Kağıttan Kaplan" olabilir).
+// Festival seanslarını toplu eşleştirirken kullanılıyor (bkz.
+// FestivalSeansIceAktar.jsx) — tmdbdeAra'nın tersi: isimden ID'ye değil,
+// ID'den (zaten doğruluğu bilinen) Türkçe isme gidiyor, bu yüzden YANLIŞ
+// filme eşleşme riski yok.
+export async function tmdbIdIleTurkceBaslikGetir(tmdbId) {
+  if (!TMDB_API_KEY || !tmdbId) return null
+  try {
+    const res = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}?api_key=${TMDB_API_KEY}&language=tr-TR`)
+    const data = await res.json()
+    return data.title || null
+  } catch {
+    return null
+  }
+}
+
 // Basit bir eş zamanlılık havuzu: yüzlerce/binlerce satırı teker teker (yavaş)
 // değil, aynı anda `esZamanlilik` kadarını işleyerek yürütür. 3000+ satırlık
 // bir ratings.csv'de bu, ~20 dakikayı ~2-3 dakikaya indiriyor.

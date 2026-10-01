@@ -155,11 +155,20 @@ function adiSadelestir(s) {
 // parseSeansMetni'nin çıktısını, o sezonun seçkisindeki filmlerle
 // (festivalFilmleri) eşleştirir — eşleşmeyenler içe aktarılmadan önce
 // yönetici tarafından görülüp düzeltilebilsin diye ayrı işaretleniyor.
+// `filmler` öğeleri isteğe bağlı bir `trBaslik` alanı taşıyabilir —
+// FestivalSeansIceAktar.jsx, "🌐 TMDB'den Türkçe Başlıkları Çek" ile bunu
+// doldurduğunda, seçkinin kendi başlığı (genelde İngilizce/orijinal, TMDB'den
+// geldiği için) eşleşmese bile TMDB'nin TÜRKÇE başlığıyla (festival
+// programının kullandığı dille) karşılaştırma yapılabiliyor. Bu, elle
+// bakım gerektiren bir çeviri sözlüğü yerine TMDB'nin KENDİ doğrulanmış
+// verisini kullanıyor — hem daha az iş hem de yanlış eşleşme riski yok
+// (çünkü trBaslik zaten doğruluğu bilinen bir tmdbId'den geliyor, serbest
+// metin aramasından değil).
 export function seansSatirlariniEslestir(parsed, filmler) {
   return parsed.map((satir) => {
     if (satir.hata) return { ...satir, eslesti: false }
     const sade = adiSadelestir(satir.filmAdiHam)
-    const film = filmler.find((f) => adiSadelestir(f.filmBasligi) === sade)
+    const film = filmler.find((f) => adiSadelestir(f.filmBasligi) === sade || (f.trBaslik && adiSadelestir(f.trBaslik) === sade))
     if (!film) return { ...satir, eslesti: false, hata: `Seçkide eşleşen film yok: "${satir.filmAdiHam}"` }
     return { ...satir, eslesti: true, filmId: film.id, filmBasligi: film.filmBasligi, posterUrl: film.posterUrl || '' }
   })

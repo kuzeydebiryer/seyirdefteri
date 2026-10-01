@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { parseSeansMetni, seansSatirlariniEslestir, seansToplueKaydet } from '../utils/festival.js'
+import { tmdbIdIleTurkceBaslikGetir, esZamanliIsle } from '../utils/letterboxdCsv.js'
+
+const ES_ZAMANLILIK = 6
 
 const ORNEK_METIN = `Köpek Günleri\t08.10.2026\t18:00\tAtlas\tİstanbul
 Köpek Günleri\t10.10.2026\t21:00\tKadıköy\tİstanbul
@@ -17,10 +20,34 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
   const [satirlar, setSatirlar] = useState(null)
   const [iceAktariliyor, setIceAktariliyor] = useState(false)
   const [hata, setHata] = useState('')
+  const [trBasliklar, setTrBasliklar] = useState(null) // filmId -> TMDB Türkçe başlığı
+  const [trCekiliyor, setTrCekiliyor] = useState(false)
+  const [trIlerleme, setTrIlerleme] = useState({ tamam: 0, toplam: 0 })
+
+  // Festival programı filmi Türkçe gösteriyor ("Kağıttan Kaplan") ama seçki
+  // TMDB'den İngilizce/orijinal başlıkla eklendiği için ("Paper Tiger") metin
+  // eşleştirme tek başına yetmiyor. Elle bir çeviri sözlüğü tutmak yerine —
+  // her festival için yeniden yazılması/bakımı gerekir, bu da iş yükünü
+  // AZALTMAZ artırır — TMDB'nin zaten o filme ait doğru Türkçe başlığını
+  // (varsa) kendisinden istiyoruz. Sadece seçkideki filmler için (tmdbId zaten
+  // biliniyor), bu yüzden yanlış film eşleşme riski yok.
+  async function turkceBasliklariCek() {
+    setTrCekiliyor(true)
+    setTrIlerleme({ tamam: 0, toplam: filmler.length })
+    const sonuclar = await esZamanliIsle(
+      filmler,
+      async (f) => [f.id, await tmdbIdIleTurkceBaslikGetir(f.tmdbId)],
+      ES_ZAMANLILIK,
+      (tamam, toplam) => setTrIlerleme({ tamam, toplam })
+    )
+    setTrBasliklar(new Map(sonuclar))
+    setTrCekiliyor(false)
+  }
 
   function onizle() {
     const parsed = parseSeansMetni(metin)
-    setSatirlar(seansSatirlariniEslestir(parsed, filmler))
+    const zenginlestirilmis = trBasliklar ? filmler.map((f) => ({ ...f, trBaslik: trBasliklar.get(f.id) })) : filmler
+    setSatirlar(seansSatirlariniEslestir(parsed, zenginlestirilmis))
   }
 
   // Otomatik eşleştirme metin benzerliğine dayanıyor — festival programı
@@ -84,10 +111,24 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
         {ORNEK_METIN}
       </pre>
       <p className="text-[11px] text-kraft">
-        Film adı, bu sezonun seçkisindeki (aşağıdaki film ızgarasındaki) başlıkla otomatik eşleşmeye çalışır — festival
-        programı Türkçe, seçki İngilizce/orijinal başlık tutuyorsa (TMDB'den geldiği için) otomatik eşleşmez; önizlemede
-        eşleşmeyen satırlara elle film seçebilirsin.
+        Film adı, bu sezonun seçkisindeki başlıkla otomatik eşleşmeye çalışır — festival programı Türkçe, seçki
+        İngilizce/orijinal başlık tutuyorsa (TMDB'den geldiği için) otomatik eşleşmeyebilir. Önce aşağıdaki düğmeyle
+        TMDB'nin o filmler için bildiği Türkçe başlıkları çekersen eşleşme oranı artar; yine de eşleşmeyen satırlara
+        önizlemede elle film seçebilirsin.
       </p>
+
+      <button
+        type="button"
+        onClick={turkceBasliklariCek}
+        disabled={trCekiliyor}
+        className="rounded-sm bg-kagit px-3 py-1.5 text-[11px] text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:opacity-40"
+      >
+        {trCekiliyor
+          ? `TMDB'den çekiliyor... ${trIlerleme.tamam}/${trIlerleme.toplam}`
+          : trBasliklar
+            ? `🌐 Türkçe Başlıklar Güncellendi (${trBasliklar.size}) — Tekrar Çek`
+            : "🌐 TMDB'den Türkçe Başlıkları Çek (eşleşmeyi iyileştirir)"}
+      </button>
 
       <textarea
         value={metin}
