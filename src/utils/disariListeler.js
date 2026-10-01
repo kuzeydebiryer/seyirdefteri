@@ -90,6 +90,29 @@ export async function listeFilmleriGetir(listeId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
+// Anasayfa'daki "🎲 Ne İzlesem?" widget'ı için — Dış Listeler'den (kalite
+// filtresinden geçmiş bir havuz, TMDB'nin tüm kataloğu değil) rastgele BİR
+// film/dizi getiriyor. Basit mantık, bilerek: her tıklamada TÜM listelerin
+// TÜM öğelerini çekip tek bir öğe seçmek yerine, önce filtreye uyan
+// listelerden rastgele biri seçiliyor, sonra sadece O listenin öğeleri
+// okunuyor — okuma maliyeti her zaman "bir liste" kadar, kaç dış liste
+// tanımlı olursa olsun. Boş bir listeye denk gelinirse (ör. henüz içe
+// aktarılmamış) başka bir listeyle tekrar deneniyor.
+// tur: 'sinema' | 'dizi' | null (null = ikisi de olabilir)
+export async function rastgeleEserGetir(tur = null) {
+  const listeler = (await listeleriGetir()).filter((l) => !tur || turuGetir(l) === tur)
+  if (listeler.length === 0) return null
+
+  const denenecekler = [...listeler].sort(() => Math.random() - 0.5)
+  for (const liste of denenecekler) {
+    const ogeler = await listeFilmleriGetir(liste.id)
+    if (ogeler.length === 0) continue
+    const secilen = ogeler[Math.floor(Math.random() * ogeler.length)]
+    return { id: secilen.id, baslik: secilen.baslik, yil: secilen.yil, posterUrl: secilen.posterUrl, tur: turuGetir(liste), listeAdi: liste.ad, listeId: liste.id }
+  }
+  return null
+}
+
 // kayitlar: [{ tmdbId, siraNo, baslik, yil, posterUrl }]
 export async function listeyeTopluKaydet(kullanici, listeId, kayitlar) {
   for (let i = 0; i < kayitlar.length; i += 400) {

@@ -19,6 +19,7 @@ import EtkinlikHabercisiOnizleme from '../components/EtkinlikHabercisiOnizleme.j
 import EtkinlikOneCikanlar from '../components/EtkinlikOneCikanlar.jsx'
 import BugununDusuncesiWidget from '../components/BugununDusuncesiWidget.jsx'
 import AnasayfaHaberVitrini from '../components/AnasayfaHaberVitrini.jsx'
+import RastgeleOneriWidget from '../components/RastgeleOneriWidget.jsx'
 import SonAlintilarBolumu from '../components/SonAlintilarBolumu.jsx'
 import SonYorumlarBolumu from '../components/SonYorumlarBolumu.jsx'
 
@@ -143,6 +144,8 @@ export default function Anasayfa() {
       />
 
       <PlatformYeniGelenlerBolumu siki />
+
+      <RastgeleOneriWidget />
 
       <TavsiyeBolumu
         tur="kitap"
