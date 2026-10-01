@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { FESTIVALLER } from '../data/festivaller.js'
@@ -11,9 +11,23 @@ import {
   festivalOduluGuncelle,
   festivalBanneriGetir,
   festivalBanneriGuncelle,
+  festivalSeanslariniGetir,
+  festivalSeansiSec,
+  festivalSecimimiKaldir,
+  festivalSecimlerimiGetir,
+  secimCakismalariniBul,
 } from '../utils/festival.js'
 import FestivalFilmIceAktar from '../components/FestivalFilmIceAktar.jsx'
+import FestivalSeansIceAktar from '../components/FestivalSeansIceAktar.jsx'
 import SohbetPaneli from '../components/SohbetPaneli.jsx'
+
+// "Ne zaman/nerede gösteriliyor" + "benim planım" — festivalplanner.co'dan
+// esinlenen özellik (kullanıcı geri bildirimi). Seans tarihini kısa Türkçe
+// biçimde göstermek için (ör. "8 Eki") — tarih YYYY-MM-DD saklanıyor.
+function seansTarihKisa(tarihISO) {
+  const [yil, ay, gun] = tarihISO.split('-').map(Number)
+  return new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short' }).format(new Date(yil, ay - 1, gun))
+}
 
 export default function Festivaller() {
   const { kullanici } = useAuth()
@@ -30,6 +44,11 @@ export default function Festivaller() {
   const [bannerDuzenleAcik, setBannerDuzenleAcik] = useState(false)
   const [bannerTaslak, setBannerTaslak] = useState('')
   const [bannerKaydediliyor, setBannerKaydediliyor] = useState(false)
+
+  const [seanslar, setSeanslar] = useState([])
+  const [seansIceAktarAcik, setSeansIceAktarAcik] = useState(false)
+  const [secimlerim, setSecimlerim] = useState([])
+  const [planAcik, setPlanAcik] = useState(false)
 
   const festival = FESTIVALLER.find((f) => f.id === seciliFestival)
 
@@ -55,9 +74,41 @@ export default function Festivaller() {
   }, [seciliFestival])
 
   useEffect(() => {
-    if (!seciliSezonId) return
+    if (!seciliSezonId) {
+      setSeanslar([])
+      setSecimlerim([])
+      return
+    }
     festivalFilmleriGetir(seciliSezonId).then(setFilmler)
-  }, [seciliSezonId])
+    festivalSeanslariniGetir(seciliSezonId).then(setSeanslar)
+    festivalSecimlerimiGetir(kullanici, seciliSezonId).then(setSecimlerim)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seciliSezonId, kullanici?.uid])
+
+  const seanslarByFilm = useMemo(() => {
+    const harita = new Map()
+    seanslar.forEach((s) => {
+      if (!harita.has(s.filmId)) harita.set(s.filmId, [])
+      harita.get(s.filmId).push(s)
+    })
+    return harita
+  }, [seanslar])
+
+  const secimByFilm = useMemo(() => new Map(secimlerim.map((s) => [s.filmId, s])), [secimlerim])
+  const cakisanSecimIdler = useMemo(() => secimCakismalariniBul(secimlerim), [secimlerim])
+
+  async function seansTiklandi(seans) {
+    if (!kullanici) return
+    const zatenSecili = secimByFilm.get(seans.filmId)?.seansId === seans.id
+    if (zatenSecili) {
+      await festivalSecimimiKaldir(kullanici, seans.filmId)
+      setSecimlerim((liste) => liste.filter((s) => s.filmId !== seans.filmId))
+    } else {
+      const film = filmler.find((f) => f.id === seans.filmId)
+      await festivalSeansiSec(kullanici, seciliSezonId, { ...seans, posterUrl: film?.posterUrl })
+      setSecimlerim((liste) => [...liste.filter((s) => s.filmId !== seans.filmId), { ...seans, posterUrl: film?.posterUrl }])
+    }
+  }
 
   async function sezonOlusturTiklandi(e) {
     e.preventDefault()
@@ -214,15 +265,23 @@ export default function Festivaller() {
               <SohbetPaneli konumId={`festival_${seciliSezonId}`} baslik="💬 Festival Sohbeti" />
 
               {kullanici && (
-                <div className="mb-4">
+                <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1">
                   <button
                     onClick={() => setIceAktarAcik((a) => !a)}
                     className="text-xs text-kraft hover:text-deniz hover:underline"
                   >
                     {iceAktarAcik ? '▲ Toplu İçe Aktarmayı Gizle' : '📋 Letterboxd Listesinden Toplu İçe Aktar'}
                   </button>
+                  {filmler.length > 0 && (
+                    <button
+                      onClick={() => setSeansIceAktarAcik((a) => !a)}
+                      className="text-xs text-kraft hover:text-deniz hover:underline"
+                    >
+                      {seansIceAktarAcik ? '▲ Seans İçe Aktarmayı Gizle' : '🗓️ Seansları Toplu Ekle'}
+                    </button>
+                  )}
                   {iceAktarAcik && (
-                    <div className="mt-2">
+                    <div className="mt-2 w-full">
                       <FestivalFilmIceAktar
                         sezonId={seciliSezonId}
                         mevcutFilmSayisi={filmler.length}
@@ -231,6 +290,53 @@ export default function Festivaller() {
                           setFilmler(await festivalFilmleriGetir(seciliSezonId))
                         }}
                       />
+                    </div>
+                  )}
+                  {seansIceAktarAcik && (
+                    <div className="mt-2 w-full">
+                      <FestivalSeansIceAktar
+                        sezonId={seciliSezonId}
+                        filmler={filmler}
+                        onTamamlandi={async () => {
+                          setSeansIceAktarAcik(false)
+                          setSeanslar(await festivalSeanslariniGetir(seciliSezonId))
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {secimlerim.length > 0 && (
+                <div className="mb-4">
+                  <button onClick={() => setPlanAcik((a) => !a)} className="text-xs text-deniz hover:underline">
+                    {planAcik ? '▲ Planımı Gizle' : `🗓️ Planım (${secimlerim.length})`}
+                  </button>
+                  {planAcik && (
+                    <div className="mt-2 space-y-1.5 rounded-sm bg-kagitKoyu p-3 ring-1 ring-cizgi">
+                      {[...secimlerim]
+                        .sort((a, b) => (a.tarih + a.saat).localeCompare(b.tarih + b.saat))
+                        .map((s) => (
+                          <div
+                            key={s.filmId}
+                            className={`flex items-center justify-between rounded-sm px-2 py-1.5 text-xs ${
+                              cakisanSecimIdler.has(s.id) ? 'bg-muhur/10 ring-1 ring-muhur' : 'bg-kagit'
+                            }`}
+                          >
+                            <span className="text-murekkep">
+                              {cakisanSecimIdler.has(s.id) && '⚠️ '}
+                              <strong>{seansTarihKisa(s.tarih)} {s.saat}</strong> · {s.filmBasligi} — {s.salon}, {s.sehir}
+                            </span>
+                            <button onClick={() => seansTiklandi(s)} className="shrink-0 pl-2 text-[10px] text-kraft hover:text-muhur">
+                              ✕ Kaldır
+                            </button>
+                          </div>
+                        ))}
+                      {cakisanSecimIdler.size > 0 && (
+                        <p className="pt-1 text-[11px] text-muhur">
+                          ⚠️ İşaretli seçimler aynı gün birbirine çok yakın saatlerde — ikisini birden yetiştiremeyebilirsin.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -248,6 +354,28 @@ export default function Festivaller() {
                       <p className="mt-1 truncate text-xs text-murekkep">{f.filmBasligi}</p>
                     </Link>
                     {f.odul && <p className="truncate text-[11px] text-gise">🏆 {f.odul}</p>}
+                    {seanslarByFilm.get(f.id)?.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-0.5">
+                        {seanslarByFilm.get(f.id).map((s) => {
+                          const secili = secimByFilm.get(f.id)?.seansId === s.id
+                          return (
+                            <button
+                              key={s.id}
+                              onClick={() => seansTiklandi(s)}
+                              disabled={!kullanici}
+                              title={`${s.salon}, ${s.sehir}${kullanici ? ' — seçmek/vazgeçmek için tıkla' : ''}`}
+                              className={`rounded-sm px-1 py-0.5 text-[9px] ${
+                                secili
+                                  ? 'bg-muhur text-kagit'
+                                  : 'bg-kagit text-kraft ring-1 ring-cizgi hover:text-murekkep disabled:hover:text-kraft'
+                              }`}
+                            >
+                              {seansTarihKisa(s.tarih)} {s.saat}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                     {kullanici && (
                       <>
                         {oduluDuzenlenenFilmId === f.id ? (
