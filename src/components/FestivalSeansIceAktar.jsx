@@ -16,6 +16,7 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
   const [metin, setMetin] = useState('')
   const [satirlar, setSatirlar] = useState(null)
   const [iceAktariliyor, setIceAktariliyor] = useState(false)
+  const [hata, setHata] = useState('')
 
   function onizle() {
     const parsed = parseSeansMetni(metin)
@@ -47,11 +48,17 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
     const eslesenler = satirlar.filter((s) => s.eslesti)
     if (eslesenler.length === 0) return
     setIceAktariliyor(true)
+    setHata('')
     try {
       await seansToplueKaydet(sezonId, eslesenler)
       setMetin('')
       setSatirlar(null)
       onTamamlandi()
+    } catch (err) {
+      // ÖNCEDEN burada hiç catch yoktu — bir satırda sorun olunca "hiçbir
+      // şey kaydedilmemiş gibi" görünüp kullanıcı neyin ters gittiğini hiç
+      // göremiyordu (bkz. festival.js: seansToplueKaydet'teki not).
+      setHata(`Kaydedilemedi: ${err.message}`)
     } finally {
       setIceAktariliyor(false)
     }
@@ -132,6 +139,8 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
               </li>
             ))}
           </ul>
+
+          {hata && <p className="text-xs text-muhur">{hata}</p>}
 
           <div className="flex gap-2">
             <button

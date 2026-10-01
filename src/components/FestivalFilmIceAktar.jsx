@@ -16,6 +16,7 @@ export default function FestivalFilmIceAktar({ sezonId, mevcutFilmSayisi, onTama
   const [ilerleme, setIlerleme] = useState({ tamam: 0, toplam: 0 })
   const [iceAktariliyor, setIceAktariliyor] = useState(false)
   const [hata, setHata] = useState('')
+  const [sonuc, setSonuc] = useState(null)
 
   function dosyaSecildi(e) {
     const dosya = e.target.files?.[0]
@@ -71,19 +72,40 @@ export default function FestivalFilmIceAktar({ sezonId, mevcutFilmSayisi, onTama
     if (secilenler.length === 0) return
     setIceAktariliyor(true)
     setIlerleme({ tamam: 0, toplam: secilenler.length })
+    setSonuc(null)
     let sonrakiSira = mevcutFilmSayisi || 0
+    let eklenen = 0
+    let atlanan = 0
+    const hatalilar = []
+    // ÖNCEDEN burada try/catch YOKTU: bir satırda sorun olursa (ağ
+    // kesintisi, geçici hata vb.) döngü anında duruyordu — kalan filmler
+    // hiç denenmeden içe aktarma "İçe aktarılıyor..." durumunda sonsuza dek
+    // takılı kalıyor, kullanıcıya hiçbir hata gösterilmiyordu. Kullanıcı
+    // bir filmin eksik kaldığını fark etmesi muhtemelen bu yüzden — şimdi
+    // bir satır başarısız olsa bile DİĞERLERİ denenmeye devam ediyor ve en
+    // sonda hangi filmlerin eklenemediği gösteriliyor. festivalFilmEkle de
+    // artık aynı tmdbId zaten eklenmişse atlıyor (bkz. festival.js) — bu
+    // sayede aynı CSV'yi güvenle TEKRAR içe aktarıp sadece eksik kalanları
+    // tamamlamak mümkün.
     for (const s of secilenler) {
-      await festivalFilmEkle(sezonId, {
-        tmdbId: s.eslesme.tmdbId,
-        filmBasligi: s.eslesme.baslik,
-        filmYili: s.eslesme.yil,
-        posterUrl: s.eslesme.posterUrl,
-        sira: sonrakiSira,
-      })
+      try {
+        const sonucTuru = await festivalFilmEkle(sezonId, {
+          tmdbId: s.eslesme.tmdbId,
+          filmBasligi: s.eslesme.baslik,
+          filmYili: s.eslesme.yil,
+          posterUrl: s.eslesme.posterUrl,
+          sira: sonrakiSira,
+        })
+        if (sonucTuru === 'atlandi') atlanan += 1
+        else eklenen += 1
+      } catch (err) {
+        hatalilar.push(`${s.eslesme.baslik}: ${err.message}`)
+      }
       sonrakiSira += 1
       setIlerleme((onceki) => ({ ...onceki, tamam: onceki.tamam + 1 }))
     }
     setIceAktariliyor(false)
+    setSonuc({ eklenen, atlanan, hatalilar })
     onTamamlandi()
   }
 
@@ -149,6 +171,26 @@ export default function FestivalFilmIceAktar({ sezonId, mevcutFilmSayisi, onTama
               ? `İçe aktarılıyor... ${ilerleme.tamam}/${ilerleme.toplam}`
               : `Seçilenleri İçe Aktar (${satirlar.filter((s) => s.secili).length})`}
           </button>
+
+          {sonuc && (
+            <div className="text-xs text-kraft">
+              <p>
+                ✅ {sonuc.eklenen} film eklendi
+                {sonuc.atlanan > 0 && ` · ${sonuc.atlanan} zaten vardı (atlandı)`}
+                {sonuc.hatalilar.length > 0 && ` · ❌ ${sonuc.hatalilar.length} eklenemedi`}
+              </p>
+              {sonuc.hatalilar.length > 0 && (
+                <>
+                  <p className="mt-1 text-muhur">Eklenemeyenler (aynı CSV'yi tekrar içe aktararak yeniden deneyebilirsin):</p>
+                  <ul className="list-disc pl-4 text-muhur">
+                    {sonuc.hatalilar.map((h, i) => (
+                      <li key={i}>{h}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

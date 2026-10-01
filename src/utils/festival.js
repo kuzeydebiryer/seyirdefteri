@@ -32,7 +32,18 @@ export async function festivalSezonSil(sezonId) {
   await deleteDoc(doc(db, 'festivalSezonlari', sezonId))
 }
 
+// ÖNEMLİ: içe aktarma sırasında TEK bir satır hata verirse (ağ kesintisi,
+// vb.) eski kod bütün döngüyü durduruyordu — kalan filmler hiç denenmeden
+// içe aktarma "takılı" kalıyordu, kullanıcıya hiçbir hata gösterilmeden
+// (bkz. FestivalFilmIceAktar.jsx'teki düzeltme). Bu yüzden aynı CSV'yi
+// GÜVENLE tekrar içe aktarabilmek (sadece eksik kalanları tamamlamak,
+// zaten eklenenleri tekrar eklemeden) için, eklemeden önce aynı sezonda
+// aynı tmdbId'ye sahip bir kayıt var mı diye bakılıyor.
 export async function festivalFilmEkle(sezonId, { tmdbId, filmBasligi, filmYili, posterUrl, sira }) {
+  const mevcutSorgu = query(collection(db, 'festivalFilmleri'), where('sezonId', '==', sezonId), where('tmdbId', '==', tmdbId))
+  const mevcutSnap = await getDocs(mevcutSorgu)
+  if (!mevcutSnap.empty) return 'atlandi'
+
   await addDoc(collection(db, 'festivalFilmleri'), {
     sezonId,
     tmdbId,
@@ -42,6 +53,7 @@ export async function festivalFilmEkle(sezonId, { tmdbId, filmBasligi, filmYili,
     odul: '', // "Altın Palmiye" gibi — sonuçlar açıklanınca elle girilir
     sira: sira ?? 0,
   })
+  return 'eklendi'
 }
 
 export async function festivalFilmleriGetir(sezonId) {
@@ -153,6 +165,14 @@ export function seansSatirlariniEslestir(parsed, filmler) {
   })
 }
 
+// Firestore `undefined` bir alan değeri olarak KABUL ETMİYOR — batch
+// içindeki TEK bir satırda bile (ör. bir yerde filmBasligi boş kalmışsa)
+// bu olursa, o 400'lük PARÇANIN TAMAMI (batch.commit atomik) hiç
+// kaydedilmeden hata fırlatıyordu, ve FestivalSeansIceAktar.jsx'te bunu
+// yakalayan bir try/catch olmadığı için kullanıcı hiçbir hata görmeden
+// "hiçbir şey kaydedilmedi" durumuyla karşılaşıyordu. Burada her alana
+// güvenli bir varsayılan (boş metin) veriliyor — yakalama/gösterme tarafı
+// FestivalSeansIceAktar.jsx'te ayrıca düzeltildi.
 export async function seansToplueKaydet(sezonId, eslesenSatirlar) {
   for (let i = 0; i < eslesenSatirlar.length; i += 400) {
     const parca = eslesenSatirlar.slice(i, i + 400)
@@ -161,12 +181,12 @@ export async function seansToplueKaydet(sezonId, eslesenSatirlar) {
       const ref = doc(collection(db, 'festivalSeanslari'))
       batch.set(ref, {
         sezonId,
-        filmId: satir.filmId,
-        filmBasligi: satir.filmBasligi,
-        tarih: satir.tarih,
-        saat: satir.saat,
-        salon: satir.salon,
-        sehir: satir.sehir,
+        filmId: satir.filmId || '',
+        filmBasligi: satir.filmBasligi || satir.filmAdiHam || '',
+        tarih: satir.tarih || '',
+        saat: satir.saat || '',
+        salon: satir.salon || '',
+        sehir: satir.sehir || '',
       })
     })
     await batch.commit()
