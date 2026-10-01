@@ -16,6 +16,7 @@ import {
   festivalSecimimiKaldir,
   festivalSecimlerimiGetir,
   secimCakismalariniBul,
+  ciftSeanslariTemizle,
 } from '../utils/festival.js'
 import FestivalFilmIceAktar from '../components/FestivalFilmIceAktar.jsx'
 import FestivalSeansIceAktar from '../components/FestivalSeansIceAktar.jsx'
@@ -47,6 +48,8 @@ export default function Festivaller() {
 
   const [seanslar, setSeanslar] = useState([])
   const [seansIceAktarAcik, setSeansIceAktarAcik] = useState(false)
+  const [ciftTemizleniyor, setCiftTemizleniyor] = useState(false)
+  const [ciftTemizlemeSonucu, setCiftTemizlemeSonucu] = useState('')
   const [secimlerim, setSecimlerim] = useState([])
   const [planAcik, setPlanAcik] = useState(false)
 
@@ -115,6 +118,18 @@ export default function Festivaller() {
       const film = filmler.find((f) => f.id === seans.filmId)
       await festivalSeansiSec(kullanici, seciliSezonId, { ...seans, posterUrl: film?.posterUrl })
       setSecimlerim((liste) => [...liste.filter((s) => s.filmId !== seans.filmId), { ...seans, posterUrl: film?.posterUrl }])
+    }
+  }
+
+  async function ciftleriTemizle() {
+    setCiftTemizleniyor(true)
+    setCiftTemizlemeSonucu('')
+    try {
+      const silinen = await ciftSeanslariTemizle(seciliSezonId)
+      setCiftTemizlemeSonucu(silinen > 0 ? `✅ ${silinen} çift kayıt silindi.` : 'Çift kayıt bulunamadı.')
+      setSeanslar(await festivalSeanslariniGetir(seciliSezonId))
+    } finally {
+      setCiftTemizleniyor(false)
     }
   }
 
@@ -288,6 +303,17 @@ export default function Festivaller() {
                       {seansIceAktarAcik ? '▲ Seans İçe Aktarmayı Gizle' : '🗓️ Seansları Toplu Ekle'}
                     </button>
                   )}
+                  {seanslar.length > 0 && (
+                    <button
+                      onClick={ciftleriTemizle}
+                      disabled={ciftTemizleniyor}
+                      title="Aynı film+tarih+saat+salon için birden fazla kayıt varsa (ör. çift tıklama yüzünden) fazlalıkları siler"
+                      className="text-xs text-kraft hover:text-deniz hover:underline disabled:opacity-40"
+                    >
+                      {ciftTemizleniyor ? 'Temizleniyor...' : '🧹 Çift Seans Kayıtlarını Temizle'}
+                    </button>
+                  )}
+                  {ciftTemizlemeSonucu && <p className="w-full text-[11px] text-kraft">{ciftTemizlemeSonucu}</p>}
                   {iceAktarAcik && (
                     <div className="mt-2 w-full">
                       <FestivalFilmIceAktar

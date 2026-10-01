@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { parseSeansMetni, seansSatirlariniEslestir, seansToplueKaydet } from '../utils/festival.js'
 import { tmdbIdIleTurkceBaslikGetir, esZamanliIsle } from '../utils/letterboxdCsv.js'
 
@@ -20,6 +20,15 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
   const [satirlar, setSatirlar] = useState(null)
   const [iceAktariliyor, setIceAktariliyor] = useState(false)
   const [hata, setHata] = useState('')
+  // "İçe Aktar" düğmesi state ile devre dışı bırakılıyor (disabled=
+  // {iceAktariliyor}), ama React state güncellemesi bir sonraki render'a
+  // kadar ekrana yansımıyor — bu kısa pencerede art arda/çift tıklama,
+  // İKİ eşzamanlı kaydetme çağrısı başlatabiliyordu. İkisi de "bu seans
+  // zaten var mı?" kontrolünü aynı anda (hiçbiri henüz yazmamışken)
+  // yapınca, ikisi de "yok" görüp aynı seansı İKİ KEZ ekliyordu — ekranda
+  // görülen çift kayıtların sebebi bu. ref, state'in aksine SENKRON ve
+  // anında güncellendiği için bu yarış durumunu tamamen kapatıyor.
+  const iceAktariliyorRef = useRef(false)
   const [trBasliklar, setTrBasliklar] = useState(null) // filmId -> TMDB Türkçe başlığı
   const [trCekiliyor, setTrCekiliyor] = useState(false)
   const [trIlerleme, setTrIlerleme] = useState({ tamam: 0, toplam: 0 })
@@ -101,8 +110,14 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
   const filmlerAlfabetik = [...filmler].sort((a, b) => a.filmBasligi.localeCompare(b.filmBasligi, 'tr'))
 
   async function iceAktar() {
+    if (iceAktariliyorRef.current) return
+    iceAktariliyorRef.current = true
+
     const eslesenler = satirlar.filter((s) => s.eslesti)
-    if (eslesenler.length === 0) return
+    if (eslesenler.length === 0) {
+      iceAktariliyorRef.current = false
+      return
+    }
     setIceAktariliyor(true)
     setHata('')
     try {
@@ -134,6 +149,7 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
       setHata(`Kaydedilemedi: ${err.message}`)
     } finally {
       setIceAktariliyor(false)
+      iceAktariliyorRef.current = false
     }
   }
 

@@ -232,6 +232,34 @@ export async function seansSil(seansId) {
   await deleteDoc(doc(db, 'festivalSeanslari', seansId))
 }
 
+// "İçe Aktar" düğmesine çift tıklanınca (ya da herhangi bir yarış durumunda
+// — bkz. FestivalSeansIceAktar.jsx'teki düzeltme) aynı seansın birden fazla
+// kopyası oluşabiliyordu. Bu, VAR OLAN çift kayıtları (aynı film+tarih+saat+
+// salon) tarayıp her grup için sadece BİRİNİ bırakıp diğerlerini siliyor —
+// yarış durumu ayrıca düzeltildiği için bunun bir kerelik bir temizlik
+// olması bekleniyor.
+export async function ciftSeanslariTemizle(sezonId) {
+  const snap = await getDocs(query(collection(db, 'festivalSeanslari'), where('sezonId', '==', sezonId)))
+  const tumSeanslar = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+
+  const gruplar = new Map()
+  tumSeanslar.forEach((s) => {
+    const anahtar = `${s.filmId}|${s.tarih}|${s.saat}|${s.salon}`
+    if (!gruplar.has(anahtar)) gruplar.set(anahtar, [])
+    gruplar.get(anahtar).push(s)
+  })
+
+  let silinen = 0
+  for (const grup of gruplar.values()) {
+    if (grup.length <= 1) continue
+    for (const fazlalik of grup.slice(1)) {
+      await deleteDoc(doc(db, 'festivalSeanslari', fazlalik.id))
+      silinen += 1
+    }
+  }
+  return silinen
+}
+
 // --- Kişisel Plan ------------------------------------------------------------
 //
 // Bir festival boyunca bir film normalde tek sefer izlenir, bu yüzden bir
