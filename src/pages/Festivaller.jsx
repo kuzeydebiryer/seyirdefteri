@@ -80,8 +80,16 @@ export default function Festivaller() {
       return
     }
     festivalFilmleriGetir(seciliSezonId).then(setFilmler)
-    festivalSeanslariniGetir(seciliSezonId).then(setSeanslar)
-    festivalSecimlerimiGetir(kullanici, seciliSezonId).then(setSecimlerim)
+    // .catch ile konsola yazdırıyoruz — ÖNCEDEN burada hiç hata yakalama
+    // yoktu, bu yüzden eksik bir Firestore indeksi (bkz. firestore.indexes.json)
+    // sorguyu sessizce başarısız kılıyordu ve seanslar/planım hiçbir zaman
+    // görünmüyordu, kullanıcıya hiçbir iz bırakmadan.
+    festivalSeanslariniGetir(seciliSezonId)
+      .then(setSeanslar)
+      .catch((err) => console.error('Festival seansları yüklenemedi:', err))
+    festivalSecimlerimiGetir(kullanici, seciliSezonId)
+      .then(setSecimlerim)
+      .catch((err) => console.error('Festival seçimlerim yüklenemedi:', err))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seciliSezonId, kullanici?.uid])
 

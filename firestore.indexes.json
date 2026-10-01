@@ -1,6 +1,15 @@
 {
   "indexes": [
     {
+      "collectionGroup": "festivalSeanslari",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sezonId", "order": "ASCENDING" },
+        { "fieldPath": "tarih", "order": "ASCENDING" },
+        { "fieldPath": "saat", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "kitaplar",
       "queryScope": "COLLECTION",
       "fields": [
