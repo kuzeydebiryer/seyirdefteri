@@ -57,10 +57,16 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
   // sorunu değil). Bu yüzden eşleşmeyen her satıra elle seçim imkânı
   // veriliyor — hangi sebepten eşleşmediğine bakılmaksızın çalışan tek
   // çözüm bu.
-  function elleEslestir(i, filmId) {
+  //
+  // Bir festival filmi genelde 3-4 kez (farklı tarih/saat/salonlarda)
+  // gösteriliyor, yani aynı isimsiz film birden fazla satır olarak
+  // karşımıza çıkıyor. ESKİDEN her satırı AYRI AYRI elle eşleştirmek
+  // gerekiyordu (aynı filmi 4 kez seçmek). Artık aynı film adına (filmAdiHam)
+  // sahip TÜM satırlar TEK bir seçimle birlikte eşleştiriliyor.
+  function grupEslestir(filmAdiHam, filmId) {
     setSatirlar((liste) =>
-      liste.map((s, idx) => {
-        if (idx !== i) return s
+      liste.map((s) => {
+        if (s.filmAdiHam !== filmAdiHam) return s
         if (!filmId) {
           const { filmId: _f, filmBasligi: _b, posterUrl: _p, elleDuzeltildi: _e, ...kalan } = s
           return { ...kalan, eslesti: false, hata: `Seçkide eşleşen film yok: "${s.filmAdiHam}"` }
@@ -70,6 +76,29 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
       })
     )
   }
+
+  // satirlar'ı filmAdiHam'a göre grupluyor — görünümde her film (kaç
+  // seansı olursa olsun) TEK satır kaplıyor. hata nedeniyle filmAdiHam'ı
+  // olmayan satırlar (ör. "Satırda 5 alan bulunamadı") gruplanamaz, kendi
+  // başlarına kalıyor.
+  function satirlariGrupla(liste) {
+    const gruplar = new Map()
+    const tekil = []
+    liste.forEach((s, i) => {
+      if (!s.filmAdiHam) {
+        tekil.push({ anahtar: `tekil-${i}`, satirlar: [s], indeksler: [i] })
+        return
+      }
+      if (!gruplar.has(s.filmAdiHam)) gruplar.set(s.filmAdiHam, { anahtar: s.filmAdiHam, satirlar: [], indeksler: [] })
+      const grup = gruplar.get(s.filmAdiHam)
+      grup.satirlar.push(s)
+      grup.indeksler.push(i)
+    })
+    // Eşleşmeyenler önce (dikkat gerektiren), eşleşenler sonra.
+    return [...gruplar.values(), ...tekil].sort((a, b) => Number(a.satirlar[0].eslesti) - Number(b.satirlar[0].eslesti))
+  }
+
+  const filmlerAlfabetik = [...filmler].sort((a, b) => a.filmBasligi.localeCompare(b.filmBasligi, 'tr'))
 
   async function iceAktar() {
     const eslesenler = satirlar.filter((s) => s.eslesti)
@@ -164,38 +193,48 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
       {satirlar && (
         <>
           <p className="text-xs text-kraft">
-            {eslesenSayisi}/{satirlar.length} satır eşleşti. İçe aktarmadan önce kontrol et:
+            {eslesenSayisi}/{satirlar.length} satır eşleşti. İçe aktarmadan önce kontrol et — aynı film birden fazla
+            seansta geçiyorsa TEK seçim hepsine uygulanır:
           </p>
           <ul className="max-h-96 space-y-1 overflow-y-auto">
-            {satirlar.map((s, i) => (
-              <li key={i} className={`rounded-sm px-2 py-1.5 text-xs ${s.eslesti ? 'text-murekkep' : 'text-muhur'}`}>
-                {s.eslesti ? (
-                  <>
-                    {s.elleDuzeltildi ? '🔧' : '✅'} {s.filmBasligi} — {s.tarih} {s.saat} · {s.salon}, {s.sehir}
-                  </>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span>
-                      ❌ "{s.filmAdiHam || s.satirHam}" — {s.tarih} {s.saat} · {s.salon}, {s.sehir}
-                    </span>
-                    {s.filmAdiHam && (
-                      <select
-                        defaultValue=""
-                        onChange={(e) => elleEslestir(i, e.target.value)}
-                        className="rounded-sm bg-kagit px-1.5 py-0.5 text-[11px] text-murekkep ring-1 ring-cizgi"
-                      >
-                        <option value="">— Elle eşleştir —</option>
-                        {filmler.map((f) => (
-                          <option key={f.id} value={f.id}>
-                            {f.filmBasligi}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                )}
-              </li>
-            ))}
+            {satirlariGrupla(satirlar).map((grup) => {
+              const ornek = grup.satirlar[0]
+              const seansOzeti = grup.satirlar.map((s) => `${s.tarih} ${s.saat} · ${s.salon}`).join(' — ')
+              return (
+                <li
+                  key={grup.anahtar}
+                  className={`rounded-sm px-2 py-1.5 text-xs ${ornek.eslesti ? 'text-murekkep' : 'text-muhur'}`}
+                >
+                  {ornek.eslesti ? (
+                    <>
+                      {ornek.elleDuzeltildi ? '🔧' : '✅'} {ornek.filmBasligi}
+                      {grup.satirlar.length > 1 && ` (${grup.satirlar.length} seans)`} — {seansOzeti}
+                    </>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span>
+                        ❌ "{ornek.filmAdiHam || ornek.satirHam}"
+                        {grup.satirlar.length > 1 && ` (${grup.satirlar.length} seans)`} — {seansOzeti}
+                      </span>
+                      {ornek.filmAdiHam && (
+                        <select
+                          defaultValue=""
+                          onChange={(e) => grupEslestir(ornek.filmAdiHam, e.target.value)}
+                          className="rounded-sm bg-kagit px-1.5 py-0.5 text-[11px] text-murekkep ring-1 ring-cizgi"
+                        >
+                          <option value="">— Elle eşleştir —</option>
+                          {filmlerAlfabetik.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.filmBasligi}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
 
           {hata && <p className="text-xs text-muhur">{hata}</p>}
