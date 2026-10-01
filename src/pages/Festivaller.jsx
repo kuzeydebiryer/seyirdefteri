@@ -297,8 +297,12 @@ export default function Festivaller() {
                       <FestivalSeansIceAktar
                         sezonId={seciliSezonId}
                         filmler={filmler}
-                        onTamamlandi={async () => {
-                          setSeansIceAktarAcik(false)
+                        onTamamlandi={async (tamamenBittiMi) => {
+                          // Kısmi bir içe aktarmada bile (bazı satırlar
+                          // hata verse de) kaydedilenler hemen görünsün
+                          // diye liste HER ZAMAN yenileniyor; panel ise
+                          // sadece hiç hata kalmayınca kapanıyor.
+                          if (tamamenBittiMi) setSeansIceAktarAcik(false)
                           setSeanslar(await festivalSeanslariniGetir(seciliSezonId))
                         }}
                       />

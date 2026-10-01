@@ -78,6 +78,17 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
     setHata('')
     try {
       const { eklenen, atlanan, hatalilar } = await seansToplueKaydet(sezonId, eslesenler)
+
+      // ÖNEMLİ: öncesinde onTamamlandi() SADECE hiç hata yoksa çağrılıyordu
+      // — yani kısmen başarılı bir içe aktarmada (ör. 10 kaydedildi, geri
+      // kalanı hata verdi) sayfa seans listesini YENİDEN ÇEKMİYORDU, o 10
+      // seans Firestore'a kaydedilmiş olsa bile ekranda hiç görünmüyordu.
+      // Artık kaydedilen HER ŞEY varsa (eklenen ya da atlanan>0) ekranı
+      // yeniliyoruz; önizleme panelini ise sadece TAM başarıda kapatıyoruz.
+      if (eklenen > 0 || atlanan > 0) {
+        await onTamamlandi(hatalilar.length === 0)
+      }
+
       if (hatalilar.length > 0) {
         // Kısmi hata: önizlemeyi KASITLI OLARAK kapatmıyoruz — kullanıcı
         // elle eşleştirdiği satırları kaybetmesin diye. "İçe Aktar"a tekrar
@@ -89,7 +100,6 @@ export default function FestivalSeansIceAktar({ sezonId, filmler, onTamamlandi }
       } else {
         setMetin('')
         setSatirlar(null)
-        onTamamlandi()
       }
     } catch (err) {
       setHata(`Kaydedilemedi: ${err.message}`)
