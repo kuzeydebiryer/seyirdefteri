@@ -126,8 +126,18 @@ function tarihNormallestir(ham) {
 // Türkçe büyük/küçük harf, boşluk ve noktalama farklarını yok sayarak
 // karşılaştırmak için — festival programındaki yazım, sitedeki TMDB
 // başlığıyla (ör. noktalama, "The" gibi takılar) birebir aynı olmayabilir.
+//
+// "ı" harfini de "i"ye eşitliyoruz: festival programları genelde TAMAMI
+// BÜYÜK HARF basılıyor, ve Türkçe küçük harfe çevirmede "I" harfi "ı"ya
+// dönüşüyor — ama "VIOLETTE", "PRIMETIME", "BUCKING FASTARD" gibi
+// yabancı dildeki başlıklarda bu harf aslında noktalı "i" olmalı. Büyük
+// harfli kaynak metinden hangisi olduğunu güvenilir şekilde anlamanın
+// yolu yok, bu yüzden eşleştirmede ikisi aynı sayılıyor.
 function adiSadelestir(s) {
-  return (s || '').toLocaleLowerCase('tr-TR').replace(/[^a-zçğıöşü0-9]/g, '')
+  return (s || '')
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i')
+    .replace(/[^a-zçğöşü0-9]/g, '')
 }
 
 // parseSeansMetni'nin çıktısını, o sezonun seçkisindeki filmlerle
