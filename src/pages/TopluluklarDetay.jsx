@@ -27,6 +27,22 @@ import SohbetPaneli from '../components/SohbetPaneli.jsx'
 import { oduluYolculuguFilmleriGetir } from '../utils/oscar.js'
 import { filmIzlemeYeriGetir } from '../utils/izlemeYeri.js'
 import { esZamanliIsle } from '../utils/letterboxdCsv.js'
+import { platformRengiGetir } from '../utils/platformlar.js'
+
+// "Oscar Yolculuğu Filmleri" rozetlerinin rengi — bkz. izlemeYeri.js'teki
+// `tur` alanı: tanıdık bir platformdaysa o platformun kendi tematik rengi
+// (ör. Netflix kırmızı, HBO Max mor — bkz. platformlar.js), değilse türe
+// göre sabit bir renk. "vizyon" ve "yok" (hiçbir bilgi yok) aynı sade/muğlak
+// rengi paylaşıyor — ikisi de "şu an TR'de izlenecek bir kaynak yok" demek.
+function rozetGorseliGetir(etiket) {
+  if (etiket.tur === 'platform') {
+    const renk = platformRengiGetir(etiket.platformAdi)
+    return renk ? { style: { backgroundColor: renk } } : { className: 'bg-murekkep/85' }
+  }
+  if (etiket.tur === 'dijital') return { className: 'bg-gise/85' }
+  if (etiket.tur === 'henuzTR') return { className: 'bg-deniz/85' }
+  return { className: 'bg-kraft/85' } // 'vizyon' | 'yok'
+}
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -779,21 +795,17 @@ export default function TopluluklarDetay() {
             <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
               {oduluYolculuguFilmleri.map((f) => {
                 const etiket = izlemeYerleri.get(f.tmdbId)
+                const rozet = etiket && rozetGorseliGetir(etiket)
                 return (
                   <Link key={f.tmdbId} to={`/film/${f.tmdbId}`} className="block">
                     <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
                       {f.posterUrl && <img src={f.posterUrl} alt={f.filmBasligi} className="h-full w-full object-cover" />}
-                      {etiket && (
+                      {rozet && (
                         <span
-                          className={`absolute bottom-1 left-1 rounded-full px-1.5 py-0.5 text-[9px] text-kagit ${
-                            etiket.startsWith('Kaynak yok')
-                              ? 'bg-kraft/85'
-                              : etiket.includes('Henüz TR')
-                                ? 'bg-deniz/85'
-                                : 'bg-murekkep/85'
-                          }`}
+                          className={`absolute bottom-1 left-1 rounded-full px-1.5 py-0.5 text-[9px] text-kagit ${rozet.className || ''}`}
+                          style={rozet.style}
                         >
-                          {etiket}
+                          {etiket.metin}
                         </span>
                       )}
                     </div>

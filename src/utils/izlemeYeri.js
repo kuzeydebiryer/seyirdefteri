@@ -1,17 +1,22 @@
 // Bir filmin TMDB'nin "watch providers" verisine göre Türkiye'de ŞU AN nerede
 // izlenebildiğini tespit eder — Topluluklar sayfasındaki "Oscar Yolculuğu
 // Filmleri" gibi bölümlerde, Platformlar sayfasındaki rozet mantığının
-// (bkz. platformlar.js) aynısını tek bir filme uygulamak için kullanılıyor:
-// tanıdık bir platformda abonelikle (flatrate) varsa o platformun adı; değilse
-// kirala/satın al ya da tanıdık olmayan bir platformda abonelikle varsa
-// "💻 Dijital"; TR'de hiçbiri yoksa ama film başka bir ülkede (ör. ABD)
-// dijital olarak çıkmışsa "🌍 Henüz TR'de değil" + o ülkedeki dijital çıkış
-// tarihi (ör. "🌍 Henüz TR'de değil (ABD: 15 Eyl 2026)"); hiçbir ülkede
-// dijital olarak yoksa ama bir vizyon (sinema) tarihi varsa (TR'de henüz
-// vizyonda/vizyona girecek, yoksa ABD'deki vizyon tarihi) "Kaynak yok
-// (TR vizyon: ...)" gibi onu da ekliyor — gerçekten hiçbir tarih bilgisi
-// yoksa düz "Kaynak yok". Hepsi bilgilendirme amaçlı; korsan/torrent
-// kaynaklarına yönlendirme YAPILMIYOR.
+// (bkz. platformlar.js) aynısını tek bir filme uygulamak için kullanılıyor.
+//
+// Dönüş değeri düz bir metin DEĞİL, { tur, metin, platformAdi } biçiminde —
+// çağıran taraf (TopluluklarDetay.jsx) rozetin rengini metne göre kırılgan
+// bir string eşleştirmesiyle değil, `tur` alanına göre seçiyor:
+//   'platform'  → tanıdık bir platformda abonelikle var; metin platform adı,
+//                 platformAdi de rengini (bkz. platformRengiGetir) bulmak için.
+//   'dijital'   → TR'de tanıdık olmayan bir platformda ya da kirala/satın al
+//                 olarak var; metin "💻 Dijital".
+//   'henuzTR'   → TR'de hiç yok ama başka bir ülkede (ör. ABD) dijital olarak
+//                 çıkmış; metin "🌍 Henüz TR'de değil (ABD: 15 Eyl 2026)" gibi.
+//   'vizyon'    → hiçbir yerde dijital yok ama bir vizyon (sinema) tarihi var;
+//                 metin sade biçimde "TR vizyon: 20 Kas 2026" — "Kaynak yok"
+//                 YAZMIYOR, ülke+tarih kendi başına yeterli bilgi.
+//   'yok'       → hiçbir bilgi yok; metin "Kaynak yok".
+// Hepsi bilgilendirme amaçlı; korsan/torrent kaynaklarına yönlendirme YAPILMIYOR.
 import { TANIDIK_PLATFORMLAR } from './platformlar.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -52,8 +57,10 @@ async function releaseDatesGetir(tmdbId) {
   }
 }
 
+const YOK_ROZETI = { tur: 'yok', metin: 'Kaynak yok' }
+
 export async function filmIzlemeYeriGetir(tmdbId) {
-  if (!TMDB_API_KEY || !tmdbId) return 'Kaynak yok'
+  if (!TMDB_API_KEY || !tmdbId) return YOK_ROZETI
   try {
     const res = await fetch(`https://api.themoviedb.org/3/movie/${tmdbId}/watch/providers?api_key=${TMDB_API_KEY}`)
     const data = await res.json()
@@ -65,8 +72,8 @@ export async function filmIzlemeYeriGetir(tmdbId) {
       const tanidikEslesme = flatrate.find((p) =>
         TANIDIK_PLATFORMLAR.some((ad) => p.provider_name.toLowerCase().includes(ad.toLowerCase()))
       )
-      if (tanidikEslesme) return tanidikEslesme.provider_name
-      if (dijitalSecenekVarMi(tr)) return '💻 Dijital'
+      if (tanidikEslesme) return { tur: 'platform', metin: tanidikEslesme.provider_name, platformAdi: tanidikEslesme.provider_name }
+      if (dijitalSecenekVarMi(tr)) return { tur: 'dijital', metin: '💻 Dijital' }
     }
 
     // TR'de dijital yok — bu noktadan sonra her durumda release_dates
@@ -78,20 +85,22 @@ export async function filmIzlemeYeriGetir(tmdbId) {
       const kayit = releaseDates.find((r) => r.iso_3166_1 === eslesenUlke)
       const tarih = enErkenTarih(kayit, [4])
       const ulkeAdi = ulkeAdiGetir(eslesenUlke)
-      return tarih ? `🌍 Henüz TR'de değil (${ulkeAdi}: ${tarihFormatla(tarih)})` : `🌍 Henüz TR'de değil (${ulkeAdi})`
+      const metin = tarih ? `🌍 Henüz TR'de değil (${ulkeAdi}: ${tarihFormatla(tarih)})` : `🌍 Henüz TR'de değil (${ulkeAdi})`
+      return { tur: 'henuzTR', metin }
     }
 
     // Hiçbir yerde dijital yok — en azından bir vizyon tarihi var mı diye
     // bakılıyor (önce TR, yoksa ABD/İngiltere) — "henüz vizyonda/vizyona
-    // girmedi" bilgisini veriyor, korsan kaynak önerilmiyor.
+    // girmedi" bilgisini sade biçimde (ülke+tarih) veriyor, "Kaynak yok"
+    // YAZMIYOR; korsan kaynak da önerilmiyor.
     for (const ulke of ['TR', 'US', 'GB']) {
       const kayit = releaseDates.find((r) => r.iso_3166_1 === ulke)
       const tarih = enErkenTarih(kayit, [2, 3])
-      if (tarih) return `Kaynak yok (${ulkeAdiGetir(ulke)} vizyon: ${tarihFormatla(tarih)})`
+      if (tarih) return { tur: 'vizyon', metin: `${ulkeAdiGetir(ulke)} vizyon: ${tarihFormatla(tarih)}` }
     }
 
-    return 'Kaynak yok'
+    return YOK_ROZETI
   } catch {
-    return 'Kaynak yok'
+    return YOK_ROZETI
   }
 }
