@@ -5,27 +5,10 @@ import TavsiyeBolumu from '../components/TavsiyeBolumu.jsx'
 import { useTavsiyeler } from '../hooks/useTavsiyeler.js'
 import YakindaGelecekler from '../components/YakindaGelecekler.jsx'
 import YakindaGelecekFormu from '../components/YakindaGelecekFormu.jsx'
+import { TANIDIK_PLATFORMLAR } from '../utils/platformlar.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_LOGO = 'https://image.tmdb.org/t/p/w200'
-
-// TMDB, Türkiye'de aktif OLAN her sağlayıcıyı döndürüyor — bunların çoğu
-// (küçük yerel VOD servisleri, TV kanalı uygulamaları vb.) kullanıcıların
-// aradığı "büyük" platformlar değil. Listeyi bilinen, tanıdık platformlarla
-// sınırlıyoruz — 40-50 satırlık bir kalabalık yerine, gerçekten arananlar.
-const TANIDIK_PLATFORMLAR = [
-  'Netflix',
-  'Amazon Prime Video',
-  'Disney Plus',
-  'Max',
-  'HBO Max',
-  'BluTV',
-  'Gain',
-  'MUBI',
-  'TOD',
-  'Apple TV',
-  'Apple TV+',
-]
 
 export default function Platformlar() {
   const [platformlar, setPlatformlar] = useState(null)

@@ -190,6 +190,29 @@ export async function kahinOlduguSezonlariGetir(uid) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
+// Topluluklar sayfasındaki "🏆 Oscar Yolculuğu Filmleri" bölümü için: aktif
+// sezonun TÜM adaylarından (hangi kategoride olursa olsun — En İyi Film kadar
+// En İyi Oyuncu/Yönetmen gibi kişi-bazlı kategoriler de) benzersiz film
+// listesini çıkarır. Oyunculuk/yönetmenlik kategorilerindeki her adayın da
+// hangi filmle ilişkili olduğu (tmdbId) kayıtlı olduğu için aynı mantık hepsi
+// için çalışıyor. Aynı film birden fazla kategoride aday olabildiği için
+// tmdbId'ye göre tekilleştiriliyor. Aktif sezon yoksa boş liste döner.
+export async function oduluYolculuguFilmleriGetir(torenTuru = 'oscar') {
+  const sezon = await aktifSezonuGetir(torenTuru)
+  if (!sezon) return { sezon: null, filmler: [] }
+  const adaylar = await adaylarGetir(sezon.id)
+  const benzersiz = new Map()
+  adaylar
+    .filter((a) => a.tmdbId && (a.tur || 'film') === 'film')
+    .forEach((a) => {
+      if (!benzersiz.has(a.tmdbId)) {
+        benzersiz.set(a.tmdbId, { tmdbId: a.tmdbId, filmBasligi: a.filmBasligi, filmYili: a.filmYili, posterUrl: a.posterUrl })
+      }
+    })
+  const filmler = [...benzersiz.values()].sort((a, b) => (a.filmBasligi || '').localeCompare(b.filmBasligi || '', 'tr'))
+  return { sezon, filmler }
+}
+
 // Eser sayfasında "🏆 Oscar Adayı" rozeti için: bu film hangi sezon(lar)ın
 // adayı — varsa hangi yıl(lar) gösterilecek.
 // Eser sayfasında "🏆 Oscar Adaylıkları" bölümü için: bu film hangi sezon(lar)da

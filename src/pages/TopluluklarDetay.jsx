@@ -24,6 +24,9 @@ import GelecekEtkinlikKarti from '../components/GelecekEtkinlikKarti.jsx'
 import EtkinlikOnerileriBolumu from '../components/EtkinlikOnerileriBolumu.jsx'
 import ListeOnizleme from '../components/ListeOnizleme.jsx'
 import SohbetPaneli from '../components/SohbetPaneli.jsx'
+import { oduluYolculuguFilmleriGetir } from '../utils/oscar.js'
+import { filmIzlemeYeriGetir } from '../utils/izlemeYeri.js'
+import { esZamanliIsle } from '../utils/letterboxdCsv.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w500'
@@ -92,6 +95,11 @@ export default function TopluluklarDetay() {
   const [istekVarMi, setIstekVarMi] = useState(false)
   const [istekler, setIstekler] = useState([])
   const [istekIsleniyor, setIstekIsleniyor] = useState(null) // işlenen istek uid'i
+
+  // Oscar Yolculuğu Filmleri — sadece Sinema topluluklarında gösteriliyor.
+  const [oduluYolculuguSezonu, setOduluYolculuguSezonu] = useState(null)
+  const [oduluYolculuguFilmleri, setOduluYolculuguFilmleri] = useState([])
+  const [izlemeYerleri, setIzlemeYerleri] = useState(new Map())
 
   // "Gelecek Etkinlikler" sorgusu tarihe göre filtrelemeden hepsini getiriyor
   // (bkz. useGelecekEtkinlikler.js) — geçmiş/gelecek ayrımını burada, istemci
@@ -163,6 +171,28 @@ export default function TopluluklarDetay() {
       iptal = true
     }
   }, [id, kullanici])
+
+  // Oscar Yolculuğu Filmleri: sadece Sinema topluluklarında, aktif Oscar
+  // sezonunun adaylığı olan filmler + her biri için "nerede izlenir" rozeti.
+  // Rozetler TMDB'ye film sayısı kadar ayrı çağrı gerektirdiğinden (watch
+  // providers endpoint'i tek seferde toplu alınamıyor) esZamanliIsle ile
+  // sınırlı eş zamanlılıkla çekiliyor — hepsini teker teker beklemek yerine.
+  useEffect(() => {
+    if (!topluluk || topluluk.tur !== 'Sinema') return
+    let iptal = false
+    oduluYolculuguFilmleriGetir('oscar').then(async ({ sezon, filmler }) => {
+      if (iptal) return
+      setOduluYolculuguSezonu(sezon)
+      setOduluYolculuguFilmleri(filmler)
+      if (filmler.length === 0) return
+      const yerler = await esZamanliIsle(filmler, (f) => filmIzlemeYeriGetir(f.tmdbId), 5, () => {})
+      if (iptal) return
+      setIzlemeYerleri(new Map(filmler.map((f, i) => [f.tmdbId, yerler[i]])))
+    })
+    return () => {
+      iptal = true
+    }
+  }, [topluluk?.id, topluluk?.tur])
 
   // Yönetici isem bekleyen istekleri ayrıca çekiyorum (herkes bunları görmemeli).
   useEffect(() => {
@@ -740,6 +770,39 @@ export default function TopluluklarDetay() {
       </div>
 
       <div className="defter-cizgi my-6" />
+
+      {topluluk.tur === 'Sinema' && oduluYolculuguFilmleri.length > 0 && (
+        <>
+          <div className="mb-8">
+            <h2 className="font-baslik text-lg text-murekkep mb-1">🏆 Oscar Yolculuğu Filmleri</h2>
+            {oduluYolculuguSezonu?.ad && <p className="mb-3 text-xs text-kraft">{oduluYolculuguSezonu.ad}</p>}
+            <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
+              {oduluYolculuguFilmleri.map((f) => {
+                const etiket = izlemeYerleri.get(f.tmdbId)
+                return (
+                  <Link key={f.tmdbId} to={`/film/${f.tmdbId}`} className="block">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
+                      {f.posterUrl && <img src={f.posterUrl} alt={f.filmBasligi} className="h-full w-full object-cover" />}
+                      {etiket && (
+                        <span
+                          className={`absolute bottom-1 left-1 rounded-full px-1.5 py-0.5 text-[9px] text-kagit ${
+                            etiket === 'Kaynak yok' ? 'bg-kraft/85' : 'bg-murekkep/85'
+                          }`}
+                        >
+                          {etiket}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 truncate text-xs text-murekkep">{f.filmBasligi}</p>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="defter-cizgi my-6" />
+        </>
+      )}
 
       <EtkinlikOnerileriBolumu topluluklId={id} topluluk={topluluk} uyeMi={uyeMi} yoneticiMiyim={yoneticiMiyim} />
 
