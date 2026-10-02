@@ -786,7 +786,11 @@ export default function TopluluklarDetay() {
                       {etiket && (
                         <span
                           className={`absolute bottom-1 left-1 rounded-full px-1.5 py-0.5 text-[9px] text-kagit ${
-                            etiket === 'Kaynak yok' ? 'bg-kraft/85' : 'bg-murekkep/85'
+                            etiket === 'Kaynak yok'
+                              ? 'bg-kraft/85'
+                              : etiket.includes('Henüz TR')
+                                ? 'bg-deniz/85'
+                                : 'bg-murekkep/85'
                           }`}
                         >
                           {etiket}
