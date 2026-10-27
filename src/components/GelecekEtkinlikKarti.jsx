@@ -11,6 +11,7 @@ import { kitapIcVeriTabanindaAra } from '../utils/kitapKatalog.js'
 import { turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import MedyaGomulusu from './MedyaGomulusu.jsx'
 import Avatar from './Avatar.jsx'
+import ElestirmenIzgarasi from './ElestirmenIzgarasi.jsx'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 
@@ -573,6 +574,8 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
           </button>
         </form>
       )}
+
+      {etkinlik.eserBaslik && etkinlik.eserTur !== 'kitap' && <ElestirmenIzgarasi etkinlik={etkinlik} />}
 
       <button onClick={() => setKaynaklarAcik((a) => !a)} className="mt-3 text-xs text-deniz hover:underline">
         {kaynaklarAcik ? 'Kaynakları gizle' : `Bunlara göz at (${kaynaklar.length})`}
