@@ -11,6 +11,7 @@ import OdullerVitrini from '../components/OdullerVitrini.jsx'
 import TopluluklarBildirimSeridi from '../components/TopluluklarBildirimSeridi.jsx'
 import BugunAktifOlanlarBolumu from '../components/BugunAktifOlanlarBolumu.jsx'
 import SeyirPanosuOnizleme from '../components/SeyirPanosuOnizleme.jsx'
+import KulupPuanVitrini from '../components/KulupPuanVitrini.jsx'
 import KulupEtkinlikleriOnizleme from '../components/KulupEtkinlikleriOnizleme.jsx'
 import GunlukKesif from '../components/GunlukKesif.jsx'
 import KitapDunyasiWidget from '../components/KitapDunyasiWidget.jsx'
@@ -127,6 +128,8 @@ export default function Anasayfa() {
           )}
         </div>
       )}
+
+      <KulupPuanVitrini />
 
       <TopluluklarBildirimSeridi />
 

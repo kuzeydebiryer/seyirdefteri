@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { ELESTIRI_KELIME_SINIRI, elestiriKaydet, elestiriSil, elestirileriGetir, kelimeSay } from '../utils/elestiri.js'
+import { ELESTIRI_KELIME_SINIRI, elestiriKaydet, elestiriSil, kelimeSay } from '../utils/elestiri.js'
+import { kulupPuanlariniGetir } from '../utils/kulupPuanlari.js'
 import Avatar from './Avatar.jsx'
 import YildizPuan from './YildizPuan.jsx'
 import YildizSecici from './YildizSecici.jsx'
@@ -22,12 +23,13 @@ export default function ElestirmenIzgarasi({ etkinlik }) {
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [hata, setHata] = useState('')
 
-  const benimki = kullanici ? elestiriler.find((e) => e.id === kullanici.uid) : null
+  const benimKayit = kullanici ? elestiriler.find((e) => e.kullaniciId === kullanici.uid) : null
+  const benimki = benimKayit?.elestiriVar ? benimKayit : null
   const kelimeSayisi = kelimeSay(cumle)
   const limitAsildi = kelimeSayisi > ELESTIRI_KELIME_SINIRI
 
   useEffect(() => {
-    elestirileriGetir(etkinlik.id)
+    kulupPuanlariniGetir(etkinlik)
       .then(setElestiriler)
       .catch((err) => console.error('Eleştiriler yüklenemedi:', err))
   }, [etkinlik.id])
@@ -45,7 +47,7 @@ export default function ElestirmenIzgarasi({ etkinlik }) {
   }, [kullanici, etkinlik.topluluklId])
 
   function formuAc() {
-    setPuan(benimki?.puan || 0)
+    setPuan(benimKayit?.puan || 0)
     setCumle(benimki?.cumle || '')
     setHata('')
     setFormAcik(true)
@@ -60,7 +62,7 @@ export default function ElestirmenIzgarasi({ etkinlik }) {
     setHata('')
     try {
       await elestiriKaydet(etkinlik.id, { kullanici, profil, puan, cumle })
-      setElestiriler(await elestirileriGetir(etkinlik.id))
+      setElestiriler(await kulupPuanlariniGetir(etkinlik))
       setFormAcik(false)
     } catch (err) {
       setHata(`Kaydedilemedi: ${err.message}`)
@@ -72,11 +74,12 @@ export default function ElestirmenIzgarasi({ etkinlik }) {
   async function sil() {
     if (!window.confirm('Eleştirini silmek istediğine emin misin?')) return
     await elestiriSil(etkinlik.id, kullanici.uid)
-    setElestiriler((liste) => liste.filter((e) => e.id !== kullanici.uid))
+    setElestiriler(await kulupPuanlariniGetir(etkinlik))
     setFormAcik(false)
   }
 
-  const ortalama = elestiriler.length > 0 ? elestiriler.reduce((t, e) => t + (e.puan || 0), 0) / elestiriler.length : null
+  const puanlilar = elestiriler.filter((e) => e.puan != null)
+  const ortalama = puanlilar.length > 0 ? puanlilar.reduce((t, e) => t + e.puan, 0) / puanlilar.length : null
 
   return (
     <div className="mt-3 border-t border-cizgi pt-3">
@@ -85,7 +88,7 @@ export default function ElestirmenIzgarasi({ etkinlik }) {
           🎭 Eleştirmenler
           {ortalama != null && (
             <span className="ml-2 font-govde text-[11px] text-kraft">
-              ⭐ {(ortalama * 2).toFixed(1)}/10 · {elestiriler.length} eleştirmen
+              ⭐ {(ortalama * 2).toFixed(1)}/10 · {puanlilar.length} eleştirmen
             </span>
           )}
         </p>
@@ -141,7 +144,7 @@ export default function ElestirmenIzgarasi({ etkinlik }) {
       ) : (
         <div className="grid grid-cols-2 gap-2">
           {elestiriler.map((e) => (
-            <div key={e.id} className="flex flex-col rounded-sm bg-kagit p-2.5 ring-1 ring-cizgi">
+            <div key={e.kullaniciId} className="flex flex-col rounded-sm bg-kagit p-2.5 ring-1 ring-cizgi">
               <Link to={`/profil/${e.kullaniciId}`} className="flex items-center gap-1.5">
                 <Avatar adSoyad={e.kullaniciAdi} avatarUrl={e.avatarUrl} boyut="h-6 w-6" />
                 <span className="min-w-0 leading-tight">
@@ -150,9 +153,9 @@ export default function ElestirmenIzgarasi({ etkinlik }) {
                 </span>
               </Link>
               <div className="mt-1.5">
-                <YildizPuan puan={e.puan} boyut="text-sm" />
+                {e.puan != null ? <YildizPuan puan={e.puan} boyut="text-sm" /> : <span className="text-xs text-kraft">-</span>}
               </div>
-              <p className="mt-1 font-baslik text-xs italic leading-snug text-murekkep">“{e.cumle}”</p>
+              {e.cumle && <p className="mt-1 font-baslik text-xs italic leading-snug text-murekkep">“{e.cumle}”</p>}
             </div>
           ))}
         </div>

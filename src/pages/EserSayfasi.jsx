@@ -54,6 +54,7 @@ import { alintiEkle, alintiBegenDegistir, alintiSil, kitapAlintilariGetir } from
 import { useKisiselListeler } from '../hooks/useKisiselListeler.js'
 import { ogeEkle as listeyeOgeEkle, esereAitListeleriGetir } from '../utils/kisiselListe.js'
 import { filmOscarBilgisiGetir } from '../utils/oscar.js'
+import KulupElestirmenPaneli from '../components/KulupElestirmenPaneli.jsx'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import { ilgiliEserEkle, ilgiliEserleriGetir, ilgiliEserSil } from '../utils/ilgiliEser.js'
 import { kitaptanFilmOner, filmdenKitapOner, filmTriviaGetir, paraFormatla } from '../utils/wikidata.js'
@@ -2864,6 +2865,8 @@ export default function EserSayfasi({ tur }) {
           )}
         </div>
       )}
+
+      {(tur === 'sinema' || tur === 'dizi') && <KulupElestirmenPaneli tur={tur} tmdbId={id} detay={detay} />}
 
       {tur === 'sinema' && (
         <FilmMuzigiWidget
