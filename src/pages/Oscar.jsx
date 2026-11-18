@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { gorunenAdGetir } from '../utils/gorunenAd.js'
 import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import SohbetPaneli from '../components/SohbetPaneli.jsx'
+import KulupOscarSeridi from '../components/KulupOscarSeridi.jsx'
 import WikidataIceAktar from '../components/WikidataIceAktar.jsx'
 import {
   sezonOlustur,
@@ -655,7 +656,7 @@ export default function Oscar({
         </p>
       )}
 
-      
+      <KulupOscarSeridi adaylar={adaylar} />
 
       <SohbetPaneli konumId={`oscar_${sezon.id}`} baslik={`💬 ${baslik.replace(' Yolculuğu', '')} Sohbeti`} />
 
