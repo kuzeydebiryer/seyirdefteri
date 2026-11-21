@@ -575,6 +575,11 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
         </form>
       )}
 
+      {etkinlik.eserBaslik && etkinlik.eserTur === 'sinema' && (
+        <Link to={`/inceleme/${etkinlik.id}`} className="mt-3 inline-block rounded-full bg-gise px-3 py-1 font-govde text-[11px] text-murekkep">
+          📓 İnceleme Defteri
+        </Link>
+      )}
       {etkinlik.eserBaslik && etkinlik.eserTur !== 'kitap' && <ElestirmenIzgarasi etkinlik={etkinlik} />}
 
       <button onClick={() => setKaynaklarAcik((a) => !a)} className="mt-3 text-xs text-deniz hover:underline">

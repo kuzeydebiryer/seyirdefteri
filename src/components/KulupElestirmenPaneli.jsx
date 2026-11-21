@@ -152,9 +152,11 @@ export default function KulupElestirmenPaneli({ tur, tmdbId, detay }) {
                   ))}
                 </ul>
               )}
-              <Link to="/etkinlikler" className="mt-2 inline-block text-xs text-deniz hover:underline">
-                Etkinlik kartında cümle yaz ›
-              </Link>
+              {tur === 'sinema' && (
+                <Link to={`/inceleme/${etkinlik.id}`} className="mt-3 inline-block rounded-full bg-gise px-3 py-1 font-govde text-[11px] text-murekkep">
+                  📓 İnceleme Defterini Aç
+                </Link>
+              )}
             </div>
           )}
         </div>

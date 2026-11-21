@@ -806,6 +806,41 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
         allow delete: if request.auth != null && request.auth.uid == uid;
       }
+
+      // İnceleme Defteri (film etkinliği için ortak yazı alanları): sadece etkinliğin
+      // topluluğunun üyeleri okur/yazar. Her bölüm ayrı belge (bolumId).
+      match /incelemeNotlari/{bolumId} {
+        allow read, delete: if request.auth != null
+          && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+        allow create, update: if request.auth != null
+          && request.resource.data.metin is string
+          && request.resource.data.metin.size() <= 6000
+          && request.resource.data.guncelleyenId == request.auth.uid
+          && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+      }
+
+      // Yakın Okuma (sahne notu + Zoom sorusu): üye başına bir belge. Topluluk
+      // üyeleri hepsini okur, ama herkes yalnızca KENDİ belgesini yazar.
+      match /sahneNotlari/{uid} {
+        allow read: if request.auth != null
+          && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+        allow create, update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.kullaniciId == request.auth.uid
+          && request.resource.data.sahne is string && request.resource.data.sahne.size() <= 600
+          && request.resource.data.gordugum is string && request.resource.data.gordugum.size() <= 2000
+          && request.resource.data.etki is string && request.resource.data.etki.size() <= 2000
+          && request.resource.data.baska is string && request.resource.data.baska.size() <= 2000
+          && request.resource.data.soru is string && request.resource.data.soru.size() <= 1000
+          && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+        allow delete: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // Kişisel notlar: sadece sahibi.
+      match /kisiselNotlar/{uid} {
+        allow read, delete: if request.auth != null && request.auth.uid == uid;
+        allow create, update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.metin is string && request.resource.data.metin.size() <= 6000;
+      }
     }
 
     // Liste öğeleri (bir listedeki her film/dizi/kitap) — üst seviye koleksiyon

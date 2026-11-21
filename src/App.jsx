@@ -29,6 +29,7 @@ const Profil = lazy(() => import('./pages/Profil.jsx'))
 const TakipEdilenler = lazy(() => import('./pages/TakipEdilenler.jsx'))
 const Kullanicilar = lazy(() => import('./pages/Kullanicilar.jsx'))
 const Etkinlikler = lazy(() => import('./pages/Etkinlikler.jsx'))
+const IncelemeDefteri = lazy(() => import('./pages/IncelemeDefteri.jsx'))
 const Topluluklar = lazy(() => import('./pages/Topluluklar.jsx'))
 const TopluluklarDetay = lazy(() => import('./pages/TopluluklarDetay.jsx'))
 const ListeDetay = lazy(() => import('./pages/ListeDetay.jsx'))
@@ -145,6 +146,7 @@ export default function App() {
             <Route path="/profil/:uid/takip-edilenler" element={<TakipEdilenler />} />
             <Route path="/kullanicilar" element={<OzelRota><Kullanicilar /></OzelRota>} />
             <Route path="/etkinlikler" element={<OzelRota><Etkinlikler /></OzelRota>} />
+            <Route path="/inceleme/:etkinlikId" element={<OzelRota><IncelemeDefteri /></OzelRota>} />
             <Route path="/topluluklar" element={<OzelRota><Topluluklar /></OzelRota>} />
             <Route path="/topluluk/:id" element={<OzelRota><TopluluklarDetay /></OzelRota>} />
             <Route path="/topluluk/:topluluklId/liste/:listeId" element={<OzelRota><ListeDetay /></OzelRota>} />
