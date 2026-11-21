@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, onSnapshot, runTransaction, serverTimestamp, setDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, onSnapshot, runTransaction, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
 
 // Film kulübünün "İnceleme Defteri": bir film etkinliği için ortak yazı alanları.
@@ -68,6 +68,19 @@ export async function incelemeBolumuKaydet(etkinlikId, bolumId, metin, taban, ku
   })
 }
 
+// Tek seferlik okuma (özet sayfası, Kulüp Hafızası araması).
+export async function incelemeBolumleriniGetir(etkinlikId) {
+  const snap = await getDocs(collection(db, 'gelecekEtkinlikler', etkinlikId, 'incelemeNotlari'))
+  const sonuc = {}
+  snap.docs.forEach((d) => (sonuc[d.id] = d.data()))
+  return sonuc
+}
+
+export async function sahneNotlariniGetir(etkinlikId) {
+  const snap = await getDocs(collection(db, 'gelecekEtkinlikler', etkinlikId, 'sahneNotlari'))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
+
 export function sahneNotlariniDinle(etkinlikId, cb, hataCb) {
   return onSnapshot(
     collection(db, 'gelecekEtkinlikler', etkinlikId, 'sahneNotlari'),
@@ -108,6 +121,7 @@ export async function filmKunyesiGetir(tmdbId) {
       ulkeler: (d.production_countries || []).map((c) => c.name),
       yonetmenler: ekip.filter((k) => k.job === 'Director').map((k) => k.name),
       senaristler: [...new Set(ekip.filter((k) => ['Screenplay', 'Writer', 'Story'].includes(k.job)).map((k) => k.name))].slice(0, 3),
+      bestekar: ekip.find((k) => k.job === 'Original Music Composer')?.name || '',
       oyuncular: (d.credits?.cast || []).slice(0, 6).map((k) => k.name),
       ozet: d.overview || '',
     }

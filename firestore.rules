@@ -835,6 +835,28 @@ service cloud.firestore {
         allow delete: if request.auth != null && request.auth.uid == uid;
       }
 
+      // Medya Kutusu (kare / kesit / müzik / paylaşım bağlantıları): topluluk üyeleri okur ve ekler;
+      // düzenleme (sadece başlık) ve silme yalnızca ekleyen kişiye açık.
+      match /medya/{medyaId} {
+        allow read: if request.auth != null
+          && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+        allow create: if request.auth != null
+          && request.resource.data.ekleyenId == request.auth.uid
+          && request.resource.data.tur in ['kare', 'video', 'muzik', 'sosyal']
+          && request.resource.data.url is string
+          && request.resource.data.url.matches('https://.*')
+          && request.resource.data.url.size() <= 1500
+          && request.resource.data.baslik is string && request.resource.data.baslik.size() <= 300
+          && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+        allow update: if request.auth != null
+          && resource.data.ekleyenId == request.auth.uid
+          && request.resource.data.ekleyenId == request.auth.uid
+          && request.resource.data.url == resource.data.url
+          && request.resource.data.tur == resource.data.tur
+          && request.resource.data.baslik is string && request.resource.data.baslik.size() <= 300;
+        allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+      }
+
       // Kişisel notlar: sadece sahibi.
       match /kisiselNotlar/{uid} {
         allow read, delete: if request.auth != null && request.auth.uid == uid;

@@ -570,6 +570,11 @@ export default function TopluluklarDetay() {
       <div className="mb-8">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h2 className="font-baslik text-lg text-murekkep">Gelecek Etkinlikler</h2>
+          {uyeMi && topluluk.tur === 'Sinema' && (
+            <Link to={`/topluluk/${id}/hafiza`} className="shrink-0 whitespace-nowrap rounded-full bg-kagitKoyu px-3 py-1 font-govde text-xs text-murekkep ring-1 ring-cizgi">
+              📚 Kulüp Hafızası
+            </Link>
+          )}
           {uyeMi && (
             <button
               onClick={() => setEtkinlikFormuAcik((a) => !a)}

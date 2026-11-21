@@ -18,6 +18,9 @@ import {
 import { kulupPuanlariniGetir } from '../utils/kulupPuanlari.js'
 import ElestirmenIzgarasi from '../components/ElestirmenIzgarasi.jsx'
 import IncelemeYazdirma from '../components/IncelemeYazdirma.jsx'
+import TartismaModu from '../components/TartismaModu.jsx'
+import IncelemeMedya from '../components/IncelemeMedya.jsx'
+import { medyaDinle } from '../utils/incelemeMedya.js'
 
 // Bir film etkinliğinin "İnceleme Defteri": kulübün ortak yazı alanları (konu,
 // temalar, görsel dil…), kişisel notlar, puanlama ve A4 yazdırma şablonu.
@@ -175,10 +178,15 @@ export default function IncelemeDefteri() {
   const [kunye, setKunye] = useState(null)
   const [bolumler, setBolumler] = useState({})
   const [sahneKayitlari, setSahneKayitlari] = useState([])
+  const [medya, setMedya] = useState([])
+  const [uyari, setUyari] = useState('')
+  const [kunyeYuklendi, setKunyeYuklendi] = useState(false)
   const [kisiselNot, setKisiselNot] = useState('')
   const [kisiselKayitli, setKisiselKayitli] = useState('')
   const [kisiselDurum, setKisiselDurum] = useState('')
   const [yazdirModu, setYazdirModu] = useState(null)
+  const [tartismaAcik, setTartismaAcik] = useState(false)
+  const [tartismaPuanlari, setTartismaPuanlari] = useState([])
   const [yazdirmaVerisi, setYazdirmaVerisi] = useState({ puanlar: [] })
   const [hata, setHata] = useState('')
   const [yukleniyor, setYukleniyor] = useState(true)
@@ -202,12 +210,16 @@ export default function IncelemeDefteri() {
       setUyeMi(uye.exists())
       if (!uye.exists()) return
       // Ortak bölümler ve sahne notları canlı: başka üye yazınca burada da belirir.
-      const hataGoster = (err) => setHata(`Yüklenemedi: ${err.message}`)
+      // Canlı dinleyici hataları (ör. yeni Firestore kuralları henüz yayınlanmadıysa) sayfayı
+      // bozmasın: üstte uyarı gösterilir, diğer bölümler çalışmaya devam eder.
+      const hataGoster = (err) => setUyari(`Bazı bölümler yüklenemedi: ${err.message}. Firestore kuralları yayınlandı mı? (firebase deploy --only firestore:rules)`)
       aboneler.push(incelemeBolumleriniDinle(etkinlikId, (b) => !iptal && setBolumler(b), hataGoster))
       aboneler.push(sahneNotlariniDinle(etkinlikId, (l) => !iptal && setSahneKayitlari(l), hataGoster))
+      aboneler.push(medyaDinle(etkinlikId, (l) => !iptal && setMedya(l), hataGoster))
       const [k, n] = await Promise.all([filmKunyesiGetir(e.eserTmdbId), kisiselNotGetir(etkinlikId, kullanici.uid)])
       if (iptal) return
       setKunye(k)
+      setKunyeYuklendi(true)
       setKisiselNot(n)
       setKisiselKayitli(n)
     }
@@ -235,6 +247,12 @@ export default function IncelemeDefteri() {
     }
     setYazdirModu(mod)
     setTimeout(() => window.print(), 500) // afiş görselinin yüklenmesi için kısa bekleme
+  }
+
+  async function tartismayiAc() {
+    setTartismaAcik(true)
+    // Puanlar slaytı için en güncel puanları çek (açıldıktan sonra gelir, slayt kendiliğinden güncellenir).
+    kulupPuanlariniGetir(etkinlik).then(setTartismaPuanlari).catch(() => {})
   }
 
   async function bolumKaydet(bolumId, metin, taban) {
@@ -270,6 +288,7 @@ export default function IncelemeDefteri() {
 
   return (
     <div>
+      {uyari && <p className="mb-2 rounded-sm bg-muhur/10 p-2 text-xs text-muhur">{uyari}</p>}
       <Link to={`/topluluk/${etkinlik.topluluklId}`} className="mb-2 inline-block text-xs text-kraft hover:text-deniz">
         ← {etkinlik.topluluklAd}
       </Link>
@@ -296,6 +315,17 @@ export default function IncelemeDefteri() {
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
+        <button onClick={tartismayiAc} className="rounded-full bg-murekkep px-4 py-1.5 font-govde text-xs text-yellow-300">
+          🎤 Tartışma Modu (Zoom)
+        </button>
+        {etkinlik.zoomLinki && (
+          <a href={etkinlik.zoomLinki} target="_blank" rel="noreferrer" className="rounded-full bg-deniz px-4 py-1.5 font-govde text-xs text-kagit">
+            🔗 Toplantıya Katıl
+          </a>
+        )}
+        <Link to={`/inceleme/${etkinlik.id}/ozet`} className="rounded-full bg-kagitKoyu px-4 py-1.5 font-govde text-xs text-murekkep ring-1 ring-cizgi">
+          📄 Kulüp Özeti
+        </Link>
         <button onClick={() => yazdir('bos')} className="rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-murekkep">
           🖨️ Boş Şablonu Yazdır
         </button>
@@ -305,6 +335,8 @@ export default function IncelemeDefteri() {
       </div>
 
       <SahneBolumu kullanici={kullanici} adim={adim} kayitlar={sahneKayitlari} onKaydet={sahneKaydet} />
+
+      <IncelemeMedya etkinlik={etkinlik} kullanici={kullanici} adim={adim} kayitlar={medya} kunye={kunye} kunyeYuklendi={kunyeYuklendi} />
 
       {/* Ortak bölümler */}
       <h2 className="mb-2 mt-6 font-baslik text-lg text-murekkep">📓 Ortak Defter</h2>
@@ -340,6 +372,17 @@ export default function IncelemeDefteri() {
       {/* Puanlama */}
       <h2 className="mb-1 mt-6 font-baslik text-lg text-murekkep">⭐ Puanlama</h2>
       <ElestirmenIzgarasi etkinlik={etkinlik} />
+
+      <TartismaModu
+        acik={tartismaAcik}
+        kapat={() => setTartismaAcik(false)}
+        etkinlik={etkinlik}
+        kunye={kunye}
+        sahneKayitlari={sahneKayitlari}
+        bolumler={bolumler}
+        medya={medya}
+        puanlar={tartismaPuanlari}
+      />
 
       <IncelemeYazdirma
         mod={yazdirModu}
