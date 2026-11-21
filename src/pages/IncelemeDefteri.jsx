@@ -21,6 +21,8 @@ import IncelemeYazdirma from '../components/IncelemeYazdirma.jsx'
 import TartismaModu from '../components/TartismaModu.jsx'
 import IncelemeMedya from '../components/IncelemeMedya.jsx'
 import { medyaDinle } from '../utils/incelemeMedya.js'
+import AltyaziAraci from '../components/AltyaziAraci.jsx'
+import { anNotlariniDinle } from '../utils/altyazi.js'
 
 // Bir film etkinliğinin "İnceleme Defteri": kulübün ortak yazı alanları (konu,
 // temalar, görsel dil…), kişisel notlar, puanlama ve A4 yazdırma şablonu.
@@ -179,6 +181,7 @@ export default function IncelemeDefteri() {
   const [bolumler, setBolumler] = useState({})
   const [sahneKayitlari, setSahneKayitlari] = useState([])
   const [medya, setMedya] = useState([])
+  const [anNotlari, setAnNotlari] = useState([])
   const [uyari, setUyari] = useState('')
   const [kunyeYuklendi, setKunyeYuklendi] = useState(false)
   const [kisiselNot, setKisiselNot] = useState('')
@@ -216,6 +219,7 @@ export default function IncelemeDefteri() {
       aboneler.push(incelemeBolumleriniDinle(etkinlikId, (b) => !iptal && setBolumler(b), hataGoster))
       aboneler.push(sahneNotlariniDinle(etkinlikId, (l) => !iptal && setSahneKayitlari(l), hataGoster))
       aboneler.push(medyaDinle(etkinlikId, (l) => !iptal && setMedya(l), hataGoster))
+      aboneler.push(anNotlariniDinle(etkinlikId, kullanici.uid, (l) => !iptal && setAnNotlari(l), hataGoster))
       const [k, n] = await Promise.all([filmKunyesiGetir(e.eserTmdbId), kisiselNotGetir(etkinlikId, kullanici.uid)])
       if (iptal) return
       setKunye(k)
@@ -338,6 +342,8 @@ export default function IncelemeDefteri() {
 
       <IncelemeMedya etkinlik={etkinlik} kullanici={kullanici} adim={adim} kayitlar={medya} kunye={kunye} kunyeYuklendi={kunyeYuklendi} />
 
+      <AltyaziAraci etkinlik={etkinlik} kullanici={kullanici} adim={adim} anNotlari={anNotlari} medya={medya} />
+
       {/* Ortak bölümler */}
       <h2 className="mb-2 mt-6 font-baslik text-lg text-murekkep">📓 Ortak Defter</h2>
       <p className="mb-3 text-xs text-kraft">
@@ -381,6 +387,7 @@ export default function IncelemeDefteri() {
         sahneKayitlari={sahneKayitlari}
         bolumler={bolumler}
         medya={medya}
+        anNotlari={anNotlari}
         puanlar={tartismaPuanlari}
       />
 

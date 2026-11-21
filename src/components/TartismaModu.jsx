@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { INCELEME_BOLUMLERI } from '../utils/incelemeDefteri.js'
 import { videoGomuGetir } from '../utils/incelemeMedya.js'
+import { zamanFormatla } from '../utils/altyazi.js'
 
 // Zoom Tartışma Modu: etkinlik sırasında ekran paylaşımı için tam ekran, büyük puntolu
 // slayt görünümü. Slaytlar defterdeki canlı veriden kurulur (biri yazınca burada da güncellenir):
 // kapak → her üyenin Yakın Okuma sahnesi → ortak defter bölümleri → Zoom soruları → puanlar.
 // Kontroller: ← → / boşluk (gezin), F (tam ekran), + − (yazı boyutu), Esc (kapat).
 
-function slaytlariKur({ etkinlik, sahneKayitlari, bolumler, medya }) {
+function slaytlariKur({ etkinlik, sahneKayitlari, bolumler, medya, anNotlari }) {
   const slaytlar = [{ tur: 'kapak', etiket: 'Kapak' }]
   const sirali = [...sahneKayitlari].sort((a, b) => (a.kullaniciAdi || '').localeCompare(b.kullaniciAdi || '', 'tr'))
 
@@ -21,6 +22,13 @@ function slaytlariKur({ etkinlik, sahneKayitlari, bolumler, medya }) {
   ;(medya || [])
     .filter((m) => m.tur === 'video' && videoGomuGetir(m))
     .forEach((m, i) => slaytlar.push({ tur: 'video', kayit: m, etiket: `🎬 Kesit ${i + 1}` }))
+
+  // Altyazıdan / zaman kodundan "Tartışmaya ekle" denen anlar (zaman sırasıyla). Sadece kulüple
+  // paylaşılanlar; yorum slayta ancak üye izin verdiyse ve tıklayınca açılır.
+  ;(anNotlari || [])
+    .filter((n) => n.slaytta && n.gorunurluk === 'kulup')
+    .sort((a, b) => (a.hedefMs ?? 0) - (b.hedefMs ?? 0))
+    .forEach((n) => slaytlar.push({ tur: 'an', kayit: n, etiket: `⏱ ${zamanFormatla(n.hedefMs)}` }))
 
   INCELEME_BOLUMLERI.filter((b) => bolumler?.[b.id]?.metin?.trim()).forEach((b) =>
     slaytlar.push({ tur: 'bolum', bolum: b, metin: bolumler[b.id].metin, ad: bolumler[b.id].guncelleyenAd, etiket: `${b.ikon} ${b.baslik}` })
@@ -40,15 +48,16 @@ function ortalamaGoster(puanlar) {
   return ort.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
-export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitlari, bolumler, medya, puanlar }) {
+export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitlari, bolumler, medya, anNotlari, puanlar }) {
   const [sira, setSira] = useState(0)
   const [olcek, setOlcek] = useState(1)
+  const [acikYorumlar, setAcikYorumlar] = useState({}) // an notu id → yorum açıldı mı
   const kok = useRef(null)
   const dokunmaX = useRef(null)
 
   const slaytlar = useMemo(
-    () => slaytlariKur({ etkinlik, sahneKayitlari, bolumler, medya }),
-    [etkinlik, sahneKayitlari, bolumler, medya]
+    () => slaytlariKur({ etkinlik, sahneKayitlari, bolumler, medya, anNotlari }),
+    [etkinlik, sahneKayitlari, bolumler, medya, anNotlari]
   )
   const guvenliSira = Math.min(sira, slaytlar.length - 1)
   const slayt = slaytlar[guvenliSira]
@@ -194,6 +203,47 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
             🎬 {m.baslik}
           </p>
         )}
+      </div>
+    )
+  } else if (slayt.tur === 'an') {
+    const n = slayt.kayit
+    const m = n.medyaId ? (medya || []).find((x) => x.id === n.medyaId) : null
+    const gomu = m?.tur === 'video' ? videoGomuGetir(m) : null
+    icerik = (
+      <div className="flex flex-col items-center text-center">
+        <p className="font-mono font-bold text-yellow-300" style={{ fontSize: `${2.6 * olcek}rem` }}>⏱ {zamanFormatla(n.hedefMs)}</p>
+        {n.replik && (
+          <p className="mt-3 max-w-4xl whitespace-pre-wrap font-baslik italic text-white" style={{ fontSize: `${2.2 * olcek}rem`, lineHeight: 1.3 }}>
+            “{n.replik}”
+          </p>
+        )}
+        {m?.tur === 'kare' && <img src={m.url} alt={m.baslik || ''} className="mt-4 max-h-[34vh] max-w-full rounded-sm object-contain ring-2 ring-yellow-400/40" />}
+        {gomu?.tip === 'dosya' && <video src={gomu.src} controls className="mt-4 max-h-[34vh] max-w-full rounded-sm bg-black" />}
+        {gomu?.tip === 'iframe' && (
+          <div className="mt-4 aspect-video w-full max-w-3xl overflow-hidden rounded-sm bg-black" style={{ maxHeight: '34vh' }}>
+            <iframe src={gomu.src} title={m.baslik || 'Kesit'} className="h-full w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />
+          </div>
+        )}
+        {n.soru && (
+          <p className="mt-5 max-w-4xl rounded-sm bg-white/10 px-5 py-4 text-yellow-100" style={{ fontSize: `${1.5 * olcek}rem`, lineHeight: 1.4 }}>
+            💬 {n.soru}
+          </p>
+        )}
+        {n.yorumAcik && n.yorum && (
+          <div className="mt-4 max-w-4xl">
+            {acikYorumlar[n.id] ? (
+              <p className="whitespace-pre-wrap text-white/90" style={{ fontSize: `${1.15 * olcek}rem` }}>
+                <span className="text-white/50" style={etiketStil}>{n.kullaniciAdi || 'Üye'} yorumu: </span>
+                {n.yorum}
+              </p>
+            ) : (
+              <button onClick={() => setAcikYorumlar((a) => ({ ...a, [n.id]: true }))} className="rounded-full bg-white/10 px-4 py-1.5 text-white/80" style={etiketStil}>
+                {n.kullaniciAdi || 'Üye'} yorumunu aç
+              </button>
+            )}
+          </div>
+        )}
+        <p className="mt-4 text-white/40" style={etiketStil}>{n.kullaniciAdi || 'Üye'}{n.altyaziEtiketi ? ` · ${n.altyaziEtiketi}` : ''}</p>
       </div>
     )
   } else if (slayt.tur === 'bolum') {

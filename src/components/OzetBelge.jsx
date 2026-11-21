@@ -1,4 +1,5 @@
 import { INCELEME_BOLUMLERI, SAHNE_ALANLARI } from '../utils/incelemeDefteri.js'
+import { zamanFormatla } from '../utils/altyazi.js'
 
 // Toplantı sonrası "Kulüp Özeti" belgesi: künye, puanlar, her üyenin Yakın Okuma notları,
 // Zoom soruları ve ortak defter. Renkler sabit (tema bağımsız): hem ekranda beyaz bir
@@ -18,7 +19,7 @@ const STIL = `
 
 const tr = (t) => (t || '').toLocaleUpperCase('tr-TR')
 
-export default function OzetBelge({ etkinlik, kunye, puanlar, sahneKayitlari, bolumler, medya }) {
+export default function OzetBelge({ etkinlik, kunye, puanlar, sahneKayitlari, bolumler, medya, anNotlari }) {
   const tarih = etkinlik.tarih
     ? new Date(etkinlik.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
     : ''
@@ -28,6 +29,8 @@ export default function OzetBelge({ etkinlik, kunye, puanlar, sahneKayitlari, bo
   const sirali = [...(sahneKayitlari || [])].sort((a, b) => (a.kullaniciAdi || '').localeCompare(b.kullaniciAdi || '', 'tr'))
   const sahneliler = sirali.filter((k) => ['sahne', 'gordugum', 'etki', 'baska'].some((a) => k[a]))
   const sorulular = sirali.filter((k) => k.soru?.trim())
+  // Özete yalnızca tartışmaya taşınan, kulüple paylaşılmış anlar girer; yorum ancak üye izin verdiyse.
+  const anlar = (anNotlari || []).filter((n) => n.slaytta && n.gorunurluk === 'kulup')
   const kareler = (medya || []).filter((m) => m.tur === 'kare')
   const kaynaklar = (medya || []).filter((m) => m.tur !== 'kare')
   const KAYNAK_IKON = { video: '🎬', muzik: '🎵', sosyal: '📣' }
@@ -109,6 +112,22 @@ export default function OzetBelge({ etkinlik, kunye, puanlar, sahneKayitlari, bo
         </div>
       ))}
 
+      {/* Tartışmaya taşınan anlar */}
+      {anlar.length > 0 && <div className="oz-baslik">⏱ TARTIŞMAYA TAŞINAN ANLAR</div>}
+      {anlar.map((n) => (
+        <div key={n.id} className="oz-kutu" style={{ borderColor: '#1565C0' }}>
+          <div className="oz-kutu-b" style={{ background: '#1565C0' }}>
+            <span>⏱ {zamanFormatla(n.hedefMs)}</span>
+            <small>{n.kullaniciAdi}</small>
+          </div>
+          <div className="oz-metin">
+            {n.replik && <div style={{ fontStyle: 'italic' }}>“{n.replik}”</div>}
+            {n.soru && <div style={{ marginTop: 3 }}><b>Soru:</b> {n.soru}</div>}
+            {n.yorumAcik && n.yorum && <div style={{ marginTop: 3, color: '#374151' }}><b>Yorum:</b> {n.yorum}</div>}
+          </div>
+        </div>
+      ))}
+
       {/* Kareler */}
       {kareler.length > 0 && <div className="oz-baslik">🖼️ KARELER</div>}
       {kareler.length > 0 && (
@@ -145,7 +164,7 @@ export default function OzetBelge({ etkinlik, kunye, puanlar, sahneKayitlari, bo
         </div>
       ))}
 
-      {sahneliler.length === 0 && sorulular.length === 0 && doluBolumler.length === 0 && kareler.length === 0 && kaynaklar.length === 0 && (
+      {sahneliler.length === 0 && sorulular.length === 0 && doluBolumler.length === 0 && kareler.length === 0 && kaynaklar.length === 0 && anlar.length === 0 && (
         <p style={{ marginTop: 16, fontSize: 12, color: '#6b7280' }}>Bu etkinlik için henüz defter notu yazılmamış.</p>
       )}
     </div>

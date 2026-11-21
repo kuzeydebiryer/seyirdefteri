@@ -857,6 +857,56 @@ service cloud.firestore {
         allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
       }
 
+      // Altyazı dizini (İnceleme Defteri "Repliği Bul"): .srt içeriği küçük bir bilgi belgesi
+      // (altyazilar/{aid}) + ayrı bir içerik belgesi (altyazilar/{aid}/icerik/ana). Sadece topluluk
+      // üyeleri okur/ekler; silmeyi yalnızca yükleyen yapar. Belgeler hiç GÜNCELLENMEZ (her yükleme yeni belge),
+      // böylece eski notlar sessizce başka bir altyazıya bağlanamaz.
+      match /altyazilar/{aid} {
+        allow read: if request.auth != null
+          && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+        allow create: if request.auth != null
+          && request.resource.data.ekleyenId == request.auth.uid
+          && request.resource.data.satirSayisi is number
+          && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+        allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+
+        match /icerik/{belge} {
+          allow read: if request.auth != null
+            && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+          allow create: if request.auth != null
+            && request.resource.data.ekleyenId == request.auth.uid
+            && request.resource.data.satirlarJson is string
+            && request.resource.data.satirlarJson.size() <= 1000000
+            && exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+          allow delete: if request.auth != null && resource.data.ekleyenId == request.auth.uid;
+        }
+      }
+
+      // An notları (altyazı satırına ya da elle girilen zaman koduna bağlı gözlem/soru): üye başına.
+      // "ozel" notu sadece yazan görür, "kulup" notunu topluluk üyeleri görür; "Tartışmaya ekle"
+      // (slaytta) ancak kulüple paylaşılmış notta olabilir. Başkasının notunu kimse değiştiremez.
+      match /anNotlari/{nid} {
+        function anNotuGecerli(d, uid) {
+          return d.kullaniciId == uid
+            && d.hedefMs is number && d.hedefMs >= 0
+            && d.replik is string && d.replik.size() <= 700
+            && d.yorum is string && d.yorum.size() <= 2000
+            && d.soru is string && d.soru.size() <= 500
+            && d.gorunurluk in ['ozel', 'kulup']
+            && d.slaytta is bool && d.yorumAcik is bool
+            && (d.slaytta == false || d.gorunurluk == 'kulup');
+        }
+        function uyeMi() {
+          return exists(/databases/$(database)/documents/topluluklar/$(get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data.topluluklId)/uyeler/$(request.auth.uid));
+        }
+        allow read: if request.auth != null && uyeMi()
+          && (resource.data.kullaniciId == request.auth.uid || resource.data.gorunurluk == 'kulup');
+        allow create: if request.auth != null && uyeMi() && anNotuGecerli(request.resource.data, request.auth.uid);
+        allow update: if request.auth != null && resource.data.kullaniciId == request.auth.uid
+          && anNotuGecerli(request.resource.data, request.auth.uid);
+        allow delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+      }
+
       // Kişisel notlar: sadece sahibi.
       match /kisiselNotlar/{uid} {
         allow read, delete: if request.auth != null && request.auth.uid == uid;

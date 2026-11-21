@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { filmKunyesiGetir, incelemeBolumleriniGetir, sahneNotlariniGetir } from '../utils/incelemeDefteri.js'
 import { kulupPuanlariniGetir } from '../utils/kulupPuanlari.js'
 import { medyaGetir } from '../utils/incelemeMedya.js'
+import { anNotlariniGetir } from '../utils/altyazi.js'
 import OzetBelge from '../components/OzetBelge.jsx'
 
 // Toplantı sonrası kulüp özeti: tek sayfada puanlar, herkesin sahne notları, sorular ve ortak defter.
@@ -46,14 +47,15 @@ export default function IncelemeOzeti() {
         setVeri({ etkinlik })
         return
       }
-      const [kunye, bolumler, sahneKayitlari, puanlar, medya] = await Promise.all([
+      const [kunye, bolumler, sahneKayitlari, puanlar, medya, anNotlari] = await Promise.all([
         filmKunyesiGetir(etkinlik.eserTmdbId),
         incelemeBolumleriniGetir(etkinlikId),
         sahneNotlariniGetir(etkinlikId),
         kulupPuanlariniGetir(etkinlik).catch(() => []),
         medyaGetir(etkinlikId).catch(() => []),
+        anNotlariniGetir(etkinlikId, kullanici.uid).catch(() => []),
       ])
-      if (!iptal) setVeri({ etkinlik, kunye, bolumler, sahneKayitlari, puanlar, medya })
+      if (!iptal) setVeri({ etkinlik, kunye, bolumler, sahneKayitlari, puanlar, medya, anNotlari })
     }
     yukle().catch((err) => setHata(`Yüklenemedi: ${err.message}`))
     return () => {
@@ -65,7 +67,7 @@ export default function IncelemeOzeti() {
   if (!veri) return <p className="text-sm text-kraft">Yükleniyor…</p>
   if (uyeMi === false) return <p className="text-sm text-kraft">Bu özet yalnızca {veri.etkinlik.topluluklAd} üyelerine açık.</p>
 
-  const belge = <OzetBelge etkinlik={veri.etkinlik} kunye={veri.kunye} puanlar={veri.puanlar} sahneKayitlari={veri.sahneKayitlari} bolumler={veri.bolumler} medya={veri.medya} />
+  const belge = <OzetBelge etkinlik={veri.etkinlik} kunye={veri.kunye} puanlar={veri.puanlar} sahneKayitlari={veri.sahneKayitlari} bolumler={veri.bolumler} medya={veri.medya} anNotlari={veri.anNotlari} />
 
   return (
     <div>
