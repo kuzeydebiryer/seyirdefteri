@@ -1,6 +1,6 @@
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
-import { eserIstatistikGuncelle } from './eserIstatistik.js'
+import { eserIstatistikGuncelle, eserIstatistiktenPuanCikar } from './eserIstatistik.js'
 
 // Bir esere (günce yazmadan) doğrudan verilen puan. Doküman ID'si
 // `${tur}_${disId}_${uid}` olarak sabit — bir kullanıcı bir esere tek puan verebiliyor,
@@ -63,4 +63,19 @@ export async function eserPuaniGetir(tur, disId, uid) {
 export async function eserPuanindaGunlukVarIsaretle(tur, disId, uid) {
   const disIdNormal = tur === 'kitap' ? disId : Number(disId)
   await updateDoc(doc(db, 'eserPuanlari', `${tur}_${disIdNormal}_${uid}`), { gunlukVar: true })
+}
+
+// Kullanıcının bir esere doğrudan verdiği puanı kaldırır. Kayıt SİLİNMEZ, puanı boşaltılır:
+// eser "İzlediklerim/Okuduklarım"da puansız olarak kalır (izlenme tarihi, günce işareti korunur).
+// Özet istatistikten de eski puan ve sayaç düşülür.
+// Dönüş: true = kaldırıldı, false = doğrudan puan yoktu (puan bir günceden/listeden geliyor olabilir).
+export async function eserPuaniniKaldir(tur, disId, uid) {
+  const disIdNormal = tur === 'kitap' ? disId : Number(disId)
+  const ref = doc(db, 'eserPuanlari', `${tur}_${disIdNormal}_${uid}`)
+  const snap = await getDoc(ref)
+  const eskiPuan = snap.exists() ? snap.data().puan : null
+  if (eskiPuan == null) return false
+  await updateDoc(ref, { puan: null })
+  await eserIstatistiktenPuanCikar(tur, disIdNormal, eskiPuan)
+  return true
 }

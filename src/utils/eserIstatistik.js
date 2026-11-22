@@ -35,3 +35,13 @@ export async function eserIstatistikGuncelle(tur, disId, { baslik, alt, posterUr
     { merge: true }
   )
 }
+
+// Bir kullanıcı puanını kaldırınca özet kayıttan o puanı ve sayacı düşer.
+export async function eserIstatistiktenPuanCikar(tur, disId, eskiPuan) {
+  if (eskiPuan == null) return
+  await setDoc(
+    doc(db, 'eserIstatistikleri', `${tur}_${disId}`),
+    { puanToplam: increment(-eskiPuan), puanSayisi: increment(-1) },
+    { merge: true }
+  )
+}

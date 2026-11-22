@@ -31,7 +31,7 @@ import {
   baslangicTarihiniDuzelt,
   izlenecekPosterleriniSenkronizeEt,
 } from '../utils/izlenecek.js'
-import { eserPuanla, eserPuanindaGunlukVarIsaretle } from '../utils/eserPuani.js'
+import { eserPuanla, eserPuanindaGunlukVarIsaretle, eserPuaniniKaldir } from '../utils/eserPuani.js'
 import { gunlukKaydiEkle, gunlukKaydiGuncelle, gunlukKaydiAyniGunGetir, kullanicininSonKaydiGetir } from '../utils/gunluk.js'
 import { tavsiyePosterleriniSenkronizeEt } from '../utils/tavsiye.js'
 import YildizPuan from '../components/YildizPuan.jsx'
@@ -1381,6 +1381,23 @@ export default function EserSayfasi({ tur }) {
     }
   }
 
+  async function puaniKaldir() {
+    if (!kullanici || kullanicininPuani == null) return
+    if (!window.confirm('Bu esere verdiğin puan kaldırılsın mı? (Eser izlediklerinde/okuduklarında puansız olarak kalır.)')) return
+    setPuanKaydediliyor(true)
+    try {
+      const kaldirildi = await eserPuaniniKaldir(tur, id, kullanici.uid)
+      if (!kaldirildi) {
+        window.alert('Bu puan bir günceden ya da listeden geliyor. Kaldırmak için o günceyi/listeyi düzenleyebilirsin.')
+      }
+      puanlariYenidenYukle()
+    } catch (e) {
+      window.alert(`Puan kaldırılamadı: ${e.message}`)
+    } finally {
+      setPuanKaydediliyor(false)
+    }
+  }
+
   async function puanGonder(puan) {
     if (girisGerekiyorsaYonlendir(kullanici, navigate)) return
     setPuanKaydediliyor(true)
@@ -2219,6 +2236,16 @@ export default function EserSayfasi({ tur }) {
             {kullanici ? (
               <>
                 <YildizSecici deger={kullanicininPuani} onSec={puanGonder} boyut="text-3xl" />
+                {kullanicininPuani != null && !puanKaydediliyor && (
+                  <button
+                    type="button"
+                    onClick={puaniKaldir}
+                    className="rounded-full px-2 py-0.5 text-[11px] text-kraft ring-1 ring-cizgi hover:text-muhur"
+                    title="Verdiğin puanı kaldır"
+                  >
+                    ✕ Puanımı kaldır
+                  </button>
+                )}
                 {puanKaydediliyor && <span className="text-xs text-kraft">kaydediliyor...</span>}
               </>
             ) : (
