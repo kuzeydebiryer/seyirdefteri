@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.94.0",
     "firebase": "^10.12.2",
     "jspdf": "^4.2.1",
     "papaparse": "^5.4.1",

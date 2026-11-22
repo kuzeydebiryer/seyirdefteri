@@ -322,6 +322,11 @@ export default function IncelemeDefteri() {
         <button onClick={tartismayiAc} className="rounded-full bg-murekkep px-4 py-1.5 font-govde text-xs text-kagit">
           🎤 Tartışma Modu (Zoom)
         </button>
+        {etkinlik.topluluklId && (
+          <Link to={`/toplanti/${etkinlik.id}`} className="rounded-full px-4 py-1.5 font-govde text-xs font-bold text-[#0b0b10]" style={{ background: '#C9A227' }}>
+            🎬 Sinema Odası
+          </Link>
+        )}
         {etkinlik.zoomLinki && (
           <a href={etkinlik.zoomLinki} target="_blank" rel="noreferrer" className="rounded-full bg-deniz px-4 py-1.5 font-govde text-xs text-kagit">
             🔗 Toplantıya Katıl

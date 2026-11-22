@@ -124,6 +124,17 @@ export async function filmKunyesiGetir(tmdbId) {
       bestekar: ekip.find((k) => k.job === 'Original Music Composer')?.name || '',
       oyuncular: (d.credits?.cast || []).slice(0, 6).map((k) => k.name),
       ozet: d.overview || '',
+      // Sinema Odası için ek alanlar (künye çekmecesi, ambiyans zemini)
+      slogan: d.tagline || '',
+      goruntuYonetmenleri: ekip.filter((k) => k.job === 'Director of Photography').map((k) => k.name),
+      kurgucular: ekip.filter((k) => k.job === 'Editor').map((k) => k.name).slice(0, 2),
+      kadro: (d.credits?.cast || []).slice(0, 12).map((k) => ({
+        ad: k.name,
+        karakter: k.character || '',
+        foto: k.profile_path ? `https://image.tmdb.org/t/p/w185${k.profile_path}` : '',
+      })),
+      backdropUrl: d.backdrop_path ? `https://image.tmdb.org/t/p/w1280${d.backdrop_path}` : '',
+      posterUrl: d.poster_path ? `https://image.tmdb.org/t/p/w342${d.poster_path}` : '',
     }
   } catch {
     return null

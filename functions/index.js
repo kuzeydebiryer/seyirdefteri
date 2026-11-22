@@ -1035,3 +1035,105 @@ exports.kitapKapaklariniTopluDoldur = onCall({ timeoutSeconds: 540 }, async (req
 
   return sonuc
 })
+
+// ---------------------------------------------------------------------------
+// 🎬 Sinema Odası (site içi görüntülü toplantı) — Daily.co
+// ---------------------------------------------------------------------------
+// Her etkinliğin kendi ÖZEL (private) Daily odası olur: sd-<etkinlikId>.
+// Odaya yalnızca bu fonksiyonun ürettiği kişiye özel giriş anahtarıyla
+// (meeting token) girilir; anahtar tarayıcıya inmeyen DAILY_API_KEY ile imzalanır.
+// - Yalnızca topluluk üyeleri (ve kurucu) girebilir.
+// - Moderatör: etkinliği açan kişi, topluluk kurucusu ya da "moderator" rolündeki üye.
+//   Moderatör Daily'de "owner" olur (susturma, çıkarma vb.).
+// - Üyeler etkinlik saatinden 3 saat önce ile 8 saat sonrası arasında girebilir;
+//   moderatör her zaman (deneme için) girebilir.
+// - Kayıt (recording) kapalı. Oda ve anahtar 4 saat sonra kendiliğinden kapanır.
+const DAILY_API_KEY = defineSecret('DAILY_API_KEY')
+const DAILY_API = 'https://api.daily.co/v1'
+const ODA_SURESI_SN = 4 * 60 * 60
+
+async function dailyIstek(apiKey, yol, { method = 'GET', govde } = {}) {
+  const res = await fetch(`${DAILY_API}${yol}`, {
+    method,
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: govde ? JSON.stringify(govde) : undefined,
+  })
+  const veri = await res.json().catch(() => ({}))
+  return { ok: res.ok, status: res.status, veri }
+}
+
+exports.toplantiGirisi = onCall({ secrets: [DAILY_API_KEY] }, async (request) => {
+  const uid = request.auth?.uid
+  if (!uid) throw new HttpsError('unauthenticated', 'Giriş yapmalısın.')
+  const etkinlikId = String(request.data?.etkinlikId || '')
+  if (!/^[A-Za-z0-9_-]{1,60}$/.test(etkinlikId)) throw new HttpsError('invalid-argument', 'Geçersiz etkinlik.')
+
+  const eSnap = await db.collection('gelecekEtkinlikler').doc(etkinlikId).get()
+  if (!eSnap.exists) throw new HttpsError('not-found', 'Etkinlik bulunamadı.')
+  const etkinlik = eSnap.data()
+  if (!etkinlik.topluluklId) throw new HttpsError('failed-precondition', 'Bu etkinlik bir topluluğa bağlı değil.')
+
+  const [tSnap, uyeSnap, profilSnap] = await Promise.all([
+    db.collection('topluluklar').doc(etkinlik.topluluklId).get(),
+    db.collection('topluluklar').doc(etkinlik.topluluklId).collection('uyeler').doc(uid).get(),
+    db.collection('kullanicilar').doc(uid).get(),
+  ])
+  const kurucuMu = tSnap.exists && tSnap.data().kurucuId === uid
+  if (!uyeSnap.exists && !kurucuMu) throw new HttpsError('permission-denied', 'Sinema odası yalnızca topluluk üyelerine açık.')
+  const moderatorMu = kurucuMu || etkinlik.olusturanId === uid || (uyeSnap.exists && uyeSnap.data().rol === 'moderator')
+
+  const simdi = Date.now()
+  const baslangic = etkinlik.tarih ? new Date(etkinlik.tarih).getTime() : NaN
+  if (!moderatorMu && Number.isFinite(baslangic)) {
+    if (simdi < baslangic - 3 * 3600e3) throw new HttpsError('failed-precondition', 'Oda, etkinlikten 3 saat önce açılır.')
+    if (simdi > baslangic + 8 * 3600e3) throw new HttpsError('failed-precondition', 'Bu etkinliğin odası kapandı.')
+  }
+
+  const apiKey = DAILY_API_KEY.value()
+  const odaAdi = `sd-${etkinlikId}`.slice(0, 60)
+  const exp = Math.floor(simdi / 1000) + ODA_SURESI_SN
+  const ozellikler = {
+    exp,
+    eject_at_room_exp: true,
+    max_participants: 25,
+    enable_chat: true,
+    enable_screenshare: true,
+    enable_prejoin_ui: true,
+    enable_recording: false,
+    lang: 'tr',
+  }
+
+  // Oda varsa süresini uzat; yoksa (ya da süresi dolduğu için "yok" sayılıyorsa) oluştur.
+  let oda = await dailyIstek(apiKey, `/rooms/${odaAdi}`, { method: 'POST', govde: { properties: ozellikler } })
+  if (!oda.ok) {
+    oda = await dailyIstek(apiKey, '/rooms', { method: 'POST', govde: { name: odaAdi, privacy: 'private', properties: ozellikler } })
+  }
+  if (!oda.ok || !oda.veri?.url) {
+    console.error('Daily oda hatası', oda.status, oda.veri)
+    throw new HttpsError('unavailable', 'Toplantı odası şu an açılamadı.')
+  }
+
+  const p = profilSnap.exists ? profilSnap.data() : {}
+  const ad = (p.gorunumTercihi === 'kullaniciAdi' && p.kullaniciAdi) || p.adSoyad || 'Üye'
+  const jeton = await dailyIstek(apiKey, '/meeting-tokens', {
+    method: 'POST',
+    govde: {
+      properties: {
+        room_name: odaAdi,
+        user_name: String(ad).slice(0, 60),
+        user_id: uid,
+        is_owner: moderatorMu,
+        exp,
+        eject_at_token_exp: true,
+        enable_recording: false,
+        lang: 'tr',
+      },
+    },
+  })
+  if (!jeton.ok || !jeton.veri?.token) {
+    console.error('Daily token hatası', jeton.status, jeton.veri)
+    throw new HttpsError('unavailable', 'Giriş anahtarı üretilemedi.')
+  }
+
+  return { url: oda.veri.url, token: jeton.veri.token, moderatorMu, bitisMs: exp * 1000 }
+})

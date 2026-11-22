@@ -12,6 +12,7 @@ import { turkceKitaptanKaydet } from '../utils/turkceKitapVeriTabani.js'
 import MedyaGomulusu from './MedyaGomulusu.jsx'
 import Avatar from './Avatar.jsx'
 import ElestirmenIzgarasi from './ElestirmenIzgarasi.jsx'
+import { odaAcikMi } from '../utils/toplantiOdasi.js'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 
@@ -575,6 +576,11 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
         </form>
       )}
 
+      {etkinlik.eserBaslik && etkinlik.eserTur === 'sinema' && etkinlik.topluluklId && odaAcikMi(etkinlik) && (
+        <Link to={`/toplanti/${etkinlik.id}`} className="mr-2 mt-3 inline-block rounded-full px-3 py-1 font-govde text-[11px] font-bold text-[#0b0b10]" style={{ background: '#C9A227' }}>
+          🎬 Sinema Odasına Gir
+        </Link>
+      )}
       {etkinlik.eserBaslik && etkinlik.eserTur === 'sinema' && (
         <Link to={`/inceleme/${etkinlik.id}`} className="mt-3 inline-block rounded-full bg-gise px-3 py-1 font-govde text-[11px] text-kagit">
           📓 İnceleme Defteri
