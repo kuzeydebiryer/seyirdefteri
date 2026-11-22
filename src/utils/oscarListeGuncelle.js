@@ -49,12 +49,27 @@ export function satirCoz(satir, kisiBirincil) {
   return { kisiAdi: '', filmAdi: sol, etiket: sag.replace(/^[“"']+|[”"']+$/g, '') }
 }
 
-// Numaralı biçim (1. … / 1) …) ya da eski boş-satırlı blok biçimi.
+// "En İyi Film (İlk 20)" → "En İyi Film"
+const kategoriAdiTemizle = (ad) => ad.replace(/\s*\((?:[iİIı]lk|top)\s*\d+\)\s*$/i, '').replace(/[:：]\s*$/, '').trim()
+// Numarasız listelerde kategori başlığı satırı: "En İyi …", "Best …" ya da "(İlk N)" içeren satır.
+const baslikMi = (s) => /^(en i̇yi|en iyi|best)\b/i.test(s.toLocaleLowerCase('tr-TR')) || /\((ilk|i̇lk|top)\s*\d+\)/i.test(s.toLocaleLowerCase('tr-TR'))
+
+// Üç biçim: numaralı (1. … / 1) …), numarasız başlıklı (aralarda boş satır olsa da olur)
+// ya da eski boş-satırlı blok biçimi.
 export function listeyiCoz(metin) {
   const satirlar = metin.split('\n').map(temizle).filter(Boolean)
   const numarali = satirlar.filter((s) => /^\d+[.)]\s+\S/.test(s)).length >= 2
+  const basliklar = satirlar.filter(baslikMi).length
   const kategoriler = []
-  if (numarali) {
+  if (!numarali && basliklar >= 1 && satirlar.length > basliklar) {
+    let su = null
+    for (const s of satirlar) {
+      if (baslikMi(s)) {
+        su = { ad: s, satirlar: [] }
+        kategoriler.push(su)
+      } else if (su) su.satirlar.push(s)
+    }
+  } else if (numarali) {
     let su = null
     for (const s of satirlar) {
       const m = s.match(/^\d+[.)]\s+(.+)$/)
@@ -76,7 +91,7 @@ export function listeyiCoz(metin) {
     .filter((k) => k.satirlar.length > 0)
     .map((k) => {
       const kb = kisiBirincilMi(k.ad)
-      return { ad: k.ad, kisiBirincil: kb, adaylar: k.satirlar.map((s) => satirCoz(s, kb)) }
+      return { ad: kategoriAdiTemizle(k.ad), kisiBirincil: kb, adaylar: k.satirlar.map((s) => satirCoz(s, kb)) }
     })
 }
 
@@ -156,17 +171,19 @@ export async function adayiCoz(aday, kisiBirincil, tur, torenYili) {
 // Yeni aday mevcut adaylardan hangisine denk? (önce TMDB kimliği, sonra ad)
 export function eslesenMevcut(cozulen, mevcutlar, kisiBirincil, kullanilan) {
   const y = cozulen.alanlar
+  const filmAyni = (a) =>
+    (y.tmdbId && a.tmdbId && String(y.tmdbId) === String(a.tmdbId)) ||
+    normal(a.filmBasligi) === normal(y.filmBasligi) ||
+    normal(a.filmBasligi) === normal(cozulen.ham.filmAdi)
+  const kisiAyni = (a) => (y.kisiTmdbId && a.kisiTmdbId && y.kisiTmdbId === a.kisiTmdbId) || (normal(a.kisiAdi) && normal(a.kisiAdi) === normal(y.kisiAdi))
+  if (kisiBirincil) {
+    // Aynı kişi iki filmle aday olabilir (Sandra Hüller – Fatherland / Project Hail Mary): önce kişi+film birlikte.
+    const bos = mevcutlar.filter((a) => !kullanilan.has(a.id) && kisiAyni(a))
+    return bos.find(filmAyni) || bos.find((a) => !a.filmBasligi) || (bos.length === 1 && !cozulen.ham.filmAdi ? bos[0] : null) || null
+  }
   const adayMi = (a) => {
     if (kullanilan.has(a.id)) return false
-    if (kisiBirincil) {
-      const kisiAyni = (y.kisiTmdbId && a.kisiTmdbId && y.kisiTmdbId === a.kisiTmdbId) || (normal(a.kisiAdi) && normal(a.kisiAdi) === normal(y.kisiAdi))
-      return kisiAyni
-    }
-    return (
-      (y.tmdbId && a.tmdbId && String(y.tmdbId) === String(a.tmdbId)) ||
-      normal(a.filmBasligi) === normal(y.filmBasligi) ||
-      normal(a.filmBasligi) === normal(cozulen.ham.filmAdi)
-    )
+    return filmAyni(a)
   }
   return mevcutlar.find(adayMi) || null
 }
