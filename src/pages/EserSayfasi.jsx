@@ -1517,6 +1517,11 @@ export default function EserSayfasi({ tur }) {
         </div>
       )}
 
+      {/* Kulüp Eleştirmenleri şeridi: afişin hemen altında (hero varsa), puanlamanın üstünde. */}
+      {heroAktifMi && (tur === 'sinema' || tur === 'dizi') && (
+        <KulupElestirmenPaneli tur={tur} tmdbId={id} detay={detay} className="mb-4" />
+      )}
+
       {posterBuyukAcik && (
         <div
           onClick={() => setPosterBuyukAcik(false)}
@@ -2207,6 +2212,9 @@ export default function EserSayfasi({ tur }) {
           {/* Tek yıldız satırı: giriş yapmışsan kendi (tıklanabilir) puanın, yanında
               topluluk ortalaması sadece metin olarak — iki ayrı yıldız satırı yerine.
               İlginç Bilgiler'in üstüne taşındı, sayfanın çok aşağısında kalmasın diye. */}
+          {!heroAktifMi && (tur === 'sinema' || tur === 'dizi') && (
+            <KulupElestirmenPaneli tur={tur} tmdbId={id} detay={detay} className="mt-3" />
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-3">
             {kullanici ? (
               <>
@@ -2866,7 +2874,6 @@ export default function EserSayfasi({ tur }) {
         </div>
       )}
 
-      {(tur === 'sinema' || tur === 'dizi') && <KulupElestirmenPaneli tur={tur} tmdbId={id} detay={detay} />}
 
       {tur === 'sinema' && (
         <FilmMuzigiWidget

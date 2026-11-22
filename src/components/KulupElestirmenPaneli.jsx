@@ -27,7 +27,7 @@ function Delikler() {
   )
 }
 
-export default function KulupElestirmenPaneli({ tur, tmdbId, detay }) {
+export default function KulupElestirmenPaneli({ tur, tmdbId, detay, className = 'mt-6' }) {
   const { kullanici, profil } = useAuth()
   const [acik, setAcik] = useState(false)
   const [topluluklar, setTopluluklar] = useState([])
@@ -149,7 +149,7 @@ export default function KulupElestirmenPaneli({ tur, tmdbId, detay }) {
   }
 
   return (
-    <div className="mt-6">
+    <div className={className}>
       <button
         type="button"
         onClick={() => setAcik((a) => !a)}
@@ -244,9 +244,18 @@ export default function KulupElestirmenPaneli({ tur, tmdbId, detay }) {
                 </div>
               )}
               {tur === 'sinema' && (
-                <Link to={`/inceleme/${etkinlik.id}`} className="mt-3 inline-block rounded-full bg-gise px-3 py-1 font-govde text-[11px] text-kagit">
-                  📓 İnceleme Defterini Aç
-                </Link>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link to={`/inceleme/${etkinlik.id}`} className="inline-block rounded-full bg-gise px-3 py-1 font-govde text-[11px] text-kagit">
+                    📓 İnceleme Defterini Aç
+                  </Link>
+                  <Link
+                    to={`/toplanti/${etkinlik.id}`}
+                    className="inline-block rounded-full px-3 py-1 font-govde text-[11px] font-bold text-[#0b0b10]"
+                    style={{ background: '#C9A227' }}
+                  >
+                    🎬 Sinema Odası
+                  </Link>
+                </div>
               )}
             </div>
           )}
