@@ -11,6 +11,9 @@ export async function toplantiGirisiAl(etkinlikId) {
     return data // { url, token, moderatorMu, bitisMs }
   } catch (err) {
     // HttpsError mesajları Türkçe ve kullanıcıya gösterilebilir.
+    if (err?.code === 'functions/internal' || err?.code === 'functions/not-found') {
+      throw new Error('Sunucuya ulaşılamadı. Biraz sonra tekrar dene; sürerse yöneticiye haber ver.')
+    }
     throw new Error(err?.message || 'Odaya bağlanılamadı.')
   }
 }

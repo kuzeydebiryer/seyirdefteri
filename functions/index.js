@@ -1089,7 +1089,8 @@ exports.toplantiGirisi = onCall({ secrets: [DAILY_API_KEY] }, async (request) =>
     if (simdi > baslangic + 8 * 3600e3) throw new HttpsError('failed-precondition', 'Bu etkinliğin odası kapandı.')
   }
 
-  const apiKey = DAILY_API_KEY.value()
+  const apiKey = String(DAILY_API_KEY.value() || '').trim()
+  if (!apiKey) throw new HttpsError('failed-precondition', 'Video servisi anahtarı tanımlı değil.')
   const odaAdi = `sd-${etkinlikId}`.slice(0, 60)
   const exp = Math.floor(simdi / 1000) + ODA_SURESI_SN
   const ozellikler = {
@@ -1099,7 +1100,6 @@ exports.toplantiGirisi = onCall({ secrets: [DAILY_API_KEY] }, async (request) =>
     enable_chat: true,
     enable_screenshare: true,
     enable_prejoin_ui: true,
-    enable_recording: false,
     lang: 'tr',
   }
 
@@ -1109,8 +1109,9 @@ exports.toplantiGirisi = onCall({ secrets: [DAILY_API_KEY] }, async (request) =>
     oda = await dailyIstek(apiKey, '/rooms', { method: 'POST', govde: { name: odaAdi, privacy: 'private', properties: ozellikler } })
   }
   if (!oda.ok || !oda.veri?.url) {
-    console.error('Daily oda hatası', oda.status, oda.veri)
-    throw new HttpsError('unavailable', 'Toplantı odası şu an açılamadı.')
+    console.error('Daily oda hatası', oda.status, JSON.stringify(oda.veri))
+    const neden = oda.status === 401 ? 'video servisi anahtarı geçersiz' : oda.veri?.info || oda.veri?.error || `kod ${oda.status}`
+    throw new HttpsError('unavailable', `Toplantı odası açılamadı (${neden}).`)
   }
 
   const p = profilSnap.exists ? profilSnap.data() : {}
@@ -1125,14 +1126,13 @@ exports.toplantiGirisi = onCall({ secrets: [DAILY_API_KEY] }, async (request) =>
         is_owner: moderatorMu,
         exp,
         eject_at_token_exp: true,
-        enable_recording: false,
         lang: 'tr',
       },
     },
   })
   if (!jeton.ok || !jeton.veri?.token) {
-    console.error('Daily token hatası', jeton.status, jeton.veri)
-    throw new HttpsError('unavailable', 'Giriş anahtarı üretilemedi.')
+    console.error('Daily token hatası', jeton.status, JSON.stringify(jeton.veri))
+    throw new HttpsError('unavailable', `Giriş anahtarı üretilemedi (${jeton.veri?.info || jeton.veri?.error || `kod ${jeton.status}`}).`)
   }
 
   return { url: oda.veri.url, token: jeton.veri.token, moderatorMu, bitisMs: exp * 1000 }
