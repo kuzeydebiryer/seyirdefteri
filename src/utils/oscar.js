@@ -38,7 +38,8 @@ export async function aktifSezonuGetir(torenTuru = 'oscar') {
 }
 
 export async function kategoriEkle(sezonId, { ad, sira }) {
-  await addDoc(collection(db, 'oscarKategorileri'), { sezonId, ad, sira: sira ?? 0 })
+  const ref = await addDoc(collection(db, 'oscarKategorileri'), { sezonId, ad, sira: sira ?? 0 })
+  return { id: ref.id }
 }
 
 export async function kategoriSil(kategoriId) {
@@ -75,6 +76,11 @@ export async function adayEkle(sezonId, kategoriId, { tmdbId, tur, filmBasligi, 
     sira: sira ?? 0,
   })
   return { id: ref.id }
+}
+
+// Listeyi Güncelle: kalan adayın sırası/etiketi (ör. senarist, şarkı adı, ülke) güncellenir.
+export async function adayGuncelle(adayId, alanlar) {
+  await updateDoc(doc(db, 'oscarAdaylari', adayId), alanlar)
 }
 
 export async function adaySil(adayId) {

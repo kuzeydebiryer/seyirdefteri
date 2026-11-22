@@ -6,6 +6,7 @@ import OscarHeykelIkon from '../components/ikonlar/OscarHeykelIkon.jsx'
 import SohbetPaneli from '../components/SohbetPaneli.jsx'
 import KulupOscarSeridi from '../components/KulupOscarSeridi.jsx'
 import WikidataIceAktar from '../components/WikidataIceAktar.jsx'
+import OscarListeGuncelle from '../components/OscarListeGuncelle.jsx'
 import {
   sezonOlustur,
   tumSezonlariGetir,
@@ -254,6 +255,7 @@ export default function Oscar({
   const [bitirmeIsleniyor, setBitirmeIsleniyor] = useState(false)
   const [topluAcik, setTopluAcik] = useState(false)
   const [wikidataAcik, setWikidataAcik] = useState(false)
+  const [guncelleAcik, setGuncelleAcik] = useState(false)
   const [sezonDuzenleAcik, setSezonDuzenleAcik] = useState(false)
   const [sezonDuzenleAdi, setSezonDuzenleAdi] = useState('')
   const [sezonDuzenleTarihi, setSezonDuzenleTarihi] = useState('')
@@ -584,8 +586,16 @@ export default function Oscar({
   }))
 
   const kendiTahminlerim = {} // kategoriId -> adayId
+  const dusenTahminlerim = {} // kategoriId -> true (tahmin ettiğin aday listeden çıktı)
   if (kullanici) {
-    tahminler.filter((t) => t.kullaniciId === kullanici.uid).forEach((t) => (kendiTahminlerim[t.kategoriId] = t.adayId))
+    // Listeden çıkarılmış bir adaya verilmiş tahmin sayılmaz (Listeyi Güncelle sonrası).
+    const adayVar = new Set(adaylar.map((a) => a.id))
+    tahminler
+      .filter((t) => t.kullaniciId === kullanici.uid)
+      .forEach((t) => {
+        if (adayVar.has(t.adayId)) kendiTahminlerim[t.kategoriId] = t.adayId
+        else dusenTahminlerim[t.kategoriId] = true
+      })
   }
   const tahminVerilenKategoriSayisi = Object.keys(kendiTahminlerim).length
   const skorTablosu = sezon.kilitli ? skorTablosuHesapla(kategoriler, tahminler) : []
@@ -735,6 +745,15 @@ export default function Oscar({
             >
               📋 Toplu Ekle
             </button>
+            {kategoriler.length > 0 && (
+              <button
+                onClick={() => setGuncelleAcik((a) => !a)}
+                className="rounded-sm bg-deniz px-3 py-1.5 font-govde text-xs text-kagit"
+                title="Güncel tahmin listesini yapıştır; kalanlar korunur, yeniler eklenir, düşenler çıkar"
+              >
+                🔄 Listeyi Güncelle
+              </button>
+            )}
             <button
               onClick={() => setWikidataAcik((a) => !a)}
               className="rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi"
@@ -742,6 +761,17 @@ export default function Oscar({
               🔗 Wikidata'dan Çek
             </button>
           </div>
+
+          {guncelleAcik && (
+            <OscarListeGuncelle
+              sezon={sezon}
+              kategoriler={kategoriler}
+              adaylar={adaylar}
+              tahminler={tahminler}
+              tur={torenTuru === 'emmy' ? 'dizi' : 'film'}
+              onBitti={hepsiniYukle}
+            />
+          )}
 
           {wikidataAcik && (
             <WikidataIceAktar
@@ -827,6 +857,11 @@ export default function Oscar({
 
           return (
             <div key={k.id}>
+              {dusenTahminlerim[k.id] && !kendiTahminim && !sezon.kilitli && (
+                <p className="mb-1 rounded-sm bg-muhur/10 px-2 py-1 text-[11px] text-muhur ring-1 ring-muhur/30">
+                  ⚠ Bu kategoride tahmin ettiğin aday güncel listeden çıktı — yeniden seçebilirsin.
+                </p>
+              )}
               <div className="mb-2 flex items-center justify-between">
                 <h2 className="font-baslik text-lg text-murekkep">{k.ad}</h2>
                 <div className="flex items-center gap-2">
