@@ -8,36 +8,36 @@ import { zamanFormatla } from '../utils/altyazi.js'
 // kapak → her üyenin Yakın Okuma sahnesi → ortak defter bölümleri → Zoom soruları → puanlar.
 // Kontroller: ← → / boşluk (gezin), F (tam ekran), + − (yazı boyutu), Esc (kapat).
 
-function slaytlariKur({ etkinlik, sahneKayitlari, bolumler, medya, anNotlari }) {
-  const slaytlar = [{ tur: 'kapak', etiket: 'Kapak' }]
+export function slaytlariKur({ etkinlik, sahneKayitlari, bolumler, medya, anNotlari }) {
+  const slaytlar = [{ tur: 'kapak', anahtar: 'kapak', etiket: 'Kapak' }]
   const sirali = [...sahneKayitlari].sort((a, b) => (a.kullaniciAdi || '').localeCompare(b.kullaniciAdi || '', 'tr'))
 
   sirali
     .filter((k) => ['sahne', 'gordugum', 'etki', 'baska'].some((a) => k[a]))
-    .forEach((k) => slaytlar.push({ tur: 'sahne', kayit: k, etiket: `🎞️ ${(k.kullaniciAdi || 'Üye').split(' ')[0]}` }))
+    .forEach((k) => slaytlar.push({ tur: 'sahne', anahtar: `sahne:${k.id}`, kayit: k, etiket: `🎞️ ${(k.kullaniciAdi || 'Üye').split(' ')[0]}` }))
 
   // Eklenen kareler ve videolar (kendi slaytları): sahne konuşması sırasında ekranda gösterilir.
   const kareler = (medya || []).filter((m) => m.tur === 'kare')
-  kareler.forEach((m, i) => slaytlar.push({ tur: 'kare', kayit: m, no: i + 1, toplam: kareler.length, etiket: `🖼️ Kare ${i + 1}` }))
+  kareler.forEach((m, i) => slaytlar.push({ tur: 'kare', anahtar: `kare:${m.id}`, kayit: m, no: i + 1, toplam: kareler.length, etiket: `🖼️ Kare ${i + 1}` }))
   ;(medya || [])
     .filter((m) => m.tur === 'video' && videoGomuGetir(m))
-    .forEach((m, i) => slaytlar.push({ tur: 'video', kayit: m, etiket: `🎬 Kesit ${i + 1}` }))
+    .forEach((m, i) => slaytlar.push({ tur: 'video', anahtar: `video:${m.id}`, kayit: m, etiket: `🎬 Kesit ${i + 1}` }))
 
   // Altyazıdan / zaman kodundan "Tartışmaya ekle" denen anlar (zaman sırasıyla). Sadece kulüple
   // paylaşılanlar; yorum slayta ancak üye izin verdiyse ve tıklayınca açılır.
   ;(anNotlari || [])
     .filter((n) => n.slaytta && n.gorunurluk === 'kulup')
     .sort((a, b) => (a.hedefMs ?? 0) - (b.hedefMs ?? 0))
-    .forEach((n) => slaytlar.push({ tur: 'an', kayit: n, etiket: `⏱ ${zamanFormatla(n.hedefMs)}` }))
+    .forEach((n) => slaytlar.push({ tur: 'an', anahtar: `an:${n.id}`, kayit: n, etiket: `⏱ ${zamanFormatla(n.hedefMs)}` }))
 
   INCELEME_BOLUMLERI.filter((b) => bolumler?.[b.id]?.metin?.trim()).forEach((b) =>
-    slaytlar.push({ tur: 'bolum', bolum: b, metin: bolumler[b.id].metin, ad: bolumler[b.id].guncelleyenAd, etiket: `${b.ikon} ${b.baslik}` })
+    slaytlar.push({ tur: 'bolum', anahtar: `bolum:${b.id}`, bolum: b, metin: bolumler[b.id].metin, ad: bolumler[b.id].guncelleyenAd, etiket: `${b.ikon} ${b.baslik}` })
   )
 
   const sorulu = sirali.filter((k) => k.soru?.trim())
-  sorulu.forEach((k, i) => slaytlar.push({ tur: 'soru', kayit: k, no: i + 1, toplam: sorulu.length, etiket: `💬 Soru ${i + 1}` }))
+  sorulu.forEach((k, i) => slaytlar.push({ tur: 'soru', anahtar: `soru:${k.id}`, kayit: k, no: i + 1, toplam: sorulu.length, etiket: `💬 Soru ${i + 1}` }))
 
-  slaytlar.push({ tur: 'puan', etiket: '⭐ Puanlar' })
+  slaytlar.push({ tur: 'puan', anahtar: 'puan', etiket: '⭐ Puanlar' })
   return slaytlar
 }
 
@@ -48,64 +48,9 @@ function ortalamaGoster(puanlar) {
   return ort.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
-export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitlari, bolumler, medya, anNotlari, puanlar }) {
-  const [sira, setSira] = useState(0)
-  const [olcek, setOlcek] = useState(1)
-  const [acikYorumlar, setAcikYorumlar] = useState({}) // an notu id → yorum açıldı mı
-  const kok = useRef(null)
-  const dokunmaX = useRef(null)
-
-  const slaytlar = useMemo(
-    () => slaytlariKur({ etkinlik, sahneKayitlari, bolumler, medya, anNotlari }),
-    [etkinlik, sahneKayitlari, bolumler, medya, anNotlari]
-  )
-  const guvenliSira = Math.min(sira, slaytlar.length - 1)
-  const slayt = slaytlar[guvenliSira]
-
-  const git = (n) => setSira(Math.max(0, Math.min(slaytlar.length - 1, n)))
-
-  async function tamEkranDegistir() {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen()
-      else await kok.current?.requestFullscreen?.()
-    } catch {
-      /* tam ekran desteklenmiyorsa overlay zaten sayfayı kaplıyor */
-    }
-  }
-
-  useEffect(() => {
-    if (!acik) return
-    setSira(0)
-    const oncekiOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = oncekiOverflow
-      if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
-    }
-  }, [acik])
-
-  useEffect(() => {
-    if (!acik) return
-    function tus(e) {
-      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return
-      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
-        e.preventDefault()
-        setSira((s) => Math.min(slaytlar.length - 1, s + 1))
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        e.preventDefault()
-        setSira((s) => Math.max(0, s - 1))
-      } else if (e.key === 'Escape') kapat()
-      else if (e.key === 'f' || e.key === 'F') tamEkranDegistir()
-      else if (e.key === '+' || e.key === '=') setOlcek((o) => Math.min(1.8, +(o + 0.1).toFixed(1)))
-      else if (e.key === '-') setOlcek((o) => Math.max(0.7, +(o - 0.1).toFixed(1)))
-    }
-    window.addEventListener('keydown', tus)
-    return () => window.removeEventListener('keydown', tus)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [acik, slaytlar.length])
-
-  if (!acik) return null
-
+// Tek bir slaydın içeriği — hem tam ekran Tartışma Modu hem Sinema Odası'ndaki
+// senkron ortak sunum kullanır. Renkler sabit (koyu zemin).
+export function SlaytGovdesi({ slayt, etkinlik, kunye, medya, puanlar, olcek = 1, acikYorumlar = {}, yorumAc }) {
   const govde = { fontSize: `${1.35 * olcek}rem`, lineHeight: 1.5 }
   const etiketStil = { fontSize: `${0.95 * olcek}rem`, fontWeight: 700 }
 
@@ -236,8 +181,10 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
                 <span className="text-gray-100" style={etiketStil}>{n.kullaniciAdi || 'Üye'} yorumu: </span>
                 {n.yorum}
               </p>
+            ) : !yorumAc ? (
+              <p className="text-gray-100" style={etiketStil}>💬 {n.kullaniciAdi || 'Üye'} yorumu moderatör açınca görünecek</p>
             ) : (
-              <button onClick={() => setAcikYorumlar((a) => ({ ...a, [n.id]: true }))} className="rounded-full bg-white/20 ring-1 ring-white/30 px-4 py-1.5 text-gray-100" style={etiketStil}>
+              <button onClick={() => yorumAc(n.id)} className="rounded-full bg-white/20 ring-1 ring-white/30 px-4 py-1.5 text-gray-100" style={etiketStil}>
                 {n.kullaniciAdi || 'Üye'} yorumunu aç
               </button>
             )}
@@ -299,6 +246,80 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
       </div>
     )
   }
+
+  return icerik
+}
+
+export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitlari, bolumler, medya, anNotlari, puanlar }) {
+  const [sira, setSira] = useState(0)
+  const [olcek, setOlcek] = useState(1)
+  const [acikYorumlar, setAcikYorumlar] = useState({}) // an notu id → yorum açıldı mı
+  const kok = useRef(null)
+  const dokunmaX = useRef(null)
+
+  const slaytlar = useMemo(
+    () => slaytlariKur({ etkinlik, sahneKayitlari, bolumler, medya, anNotlari }),
+    [etkinlik, sahneKayitlari, bolumler, medya, anNotlari]
+  )
+  const guvenliSira = Math.min(sira, slaytlar.length - 1)
+  const slayt = slaytlar[guvenliSira]
+
+  const git = (n) => setSira(Math.max(0, Math.min(slaytlar.length - 1, n)))
+
+  async function tamEkranDegistir() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen()
+      else await kok.current?.requestFullscreen?.()
+    } catch {
+      /* tam ekran desteklenmiyorsa overlay zaten sayfayı kaplıyor */
+    }
+  }
+
+  useEffect(() => {
+    if (!acik) return
+    setSira(0)
+    const oncekiOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = oncekiOverflow
+      if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
+    }
+  }, [acik])
+
+  useEffect(() => {
+    if (!acik) return
+    function tus(e) {
+      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault()
+        setSira((s) => Math.min(slaytlar.length - 1, s + 1))
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault()
+        setSira((s) => Math.max(0, s - 1))
+      } else if (e.key === 'Escape') kapat()
+      else if (e.key === 'f' || e.key === 'F') tamEkranDegistir()
+      else if (e.key === '+' || e.key === '=') setOlcek((o) => Math.min(1.8, +(o + 0.1).toFixed(1)))
+      else if (e.key === '-') setOlcek((o) => Math.max(0.7, +(o - 0.1).toFixed(1)))
+    }
+    window.addEventListener('keydown', tus)
+    return () => window.removeEventListener('keydown', tus)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acik, slaytlar.length])
+
+  if (!acik) return null
+
+  const icerik = (
+    <SlaytGovdesi
+      slayt={slayt}
+      etkinlik={etkinlik}
+      kunye={kunye}
+      medya={medya}
+      puanlar={puanlar}
+      olcek={olcek}
+      acikYorumlar={acikYorumlar}
+      yorumAc={(id) => setAcikYorumlar((a) => ({ ...a, [id]: true }))}
+    />
+  )
 
   const bos = slaytlar.length <= 2 && !slaytlar.some((s) => s.tur !== 'kapak' && s.tur !== 'puan')
 

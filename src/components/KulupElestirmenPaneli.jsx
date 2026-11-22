@@ -4,6 +4,8 @@ import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firesto
 import { db } from '../firebase.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { filmEtkinligiGetir, filmEtkinligiKaydet, kulupPuanlariniGetir } from '../utils/kulupPuanlari.js'
+import { oneriEkle } from '../utils/etkinlikOnerisi.js'
+import { gorunenAdGetir } from '../utils/gorunenAd.js'
 
 // Film/dizi sayfasındaki "🎭 Kulüp Eleştirmenleri" paneli: kulüp etkinliğinin
 // tarih/saatini girince etkinliği oluşturur (varsa tarihini günceller) ve
@@ -36,6 +38,8 @@ export default function KulupElestirmenPaneli({ tur, tmdbId, detay }) {
   const [yukleniyor, setYukleniyor] = useState(false)
   const [kaydediliyor, setKaydediliyor] = useState(false)
   const [mesaj, setMesaj] = useState('')
+  const [adayMi, setAdayMi] = useState(null) // null = bilinmiyor
+  const [adayMesgul, setAdayMesgul] = useState(false)
 
   // Kullanıcının üyesi olduğu Sinema topluluklarını bul.
   useEffect(() => {
@@ -67,6 +71,43 @@ export default function KulupElestirmenPaneli({ tur, tmdbId, detay }) {
       setPuanlar(e ? await kulupPuanlariniGetir(e) : [])
     } finally {
       setYukleniyor(false)
+    }
+  }
+
+  // Bu yapım kulübün aday havuzunda (Etkinlik Önerileri) mı?
+  useEffect(() => {
+    if (!acik || !seciliId) return
+    let iptal = false
+    setAdayMi(null)
+    getDocs(query(collection(db, 'etkinlikOnerileri'), where('topluluklId', '==', seciliId), where('eserTmdbId', '==', Number(tmdbId))))
+      .then((s) => !iptal && setAdayMi(!s.empty))
+      .catch(() => !iptal && setAdayMi(false))
+    return () => {
+      iptal = true
+    }
+  }, [acik, seciliId, tmdbId])
+
+  async function adayOner() {
+    setAdayMesgul(true)
+    try {
+      await oneriEkle(seciliId, {
+        eser: {
+          eserTur: tur,
+          eserTmdbId: Number(tmdbId),
+          eserBaslik: detay.baslik,
+          eserYil: detay.yil || '',
+          eserPosterUrl: detay.posterUrl || '',
+          yonetmen: (detay.yonetmenler || []).map((y) => y.name).join(', '),
+        },
+        not: '',
+        topluluk,
+        kullanici: { uid: kullanici.uid, displayName: gorunenAdGetir(profil, kullanici.displayName) },
+      })
+      setAdayMi(true)
+    } catch (err) {
+      setMesaj(`Aday önerilemedi: ${err.message}`)
+    } finally {
+      setAdayMesgul(false)
     }
   }
 
@@ -144,6 +185,24 @@ export default function KulupElestirmenPaneli({ tur, tmdbId, detay }) {
             </select>
           )}
           {topluluklar.length === 1 && <p className="text-xs text-kraft">🏛 {topluluk?.ad}</p>}
+
+          {!etkinlik && (
+            <div className="flex flex-wrap items-center gap-2">
+              {adayMi ? (
+                <span className="rounded-full bg-kagit px-3 py-1.5 text-xs text-murekkep ring-1 ring-cizgi">✓ Kulübün aday havuzunda</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={adayOner}
+                  disabled={adayMesgul || adayMi === null}
+                  className="rounded-full bg-gise px-3 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
+                >
+                  {adayMesgul ? 'Öneriliyor…' : '🗳️ Kulübe aday öner'}
+                </button>
+              )}
+              <span className="text-[11px] text-kraft">Adaylar Sinema Odası’nda oylanır.</span>
+            </div>
+          )}
 
           <form onSubmit={kaydet} className="space-y-2">
             <label className="block text-xs text-kraft">Etkinlik tarihi ve saati</label>

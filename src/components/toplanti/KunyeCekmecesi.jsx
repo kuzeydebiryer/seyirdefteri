@@ -10,7 +10,7 @@ function Satir({ etiket, deger }) {
   )
 }
 
-export default function KunyeCekmecesi({ etkinlik, kunye }) {
+export default function KunyeCekmecesi({ etkinlik, kunye, adayliklar }) {
   const liste = (a) => (a && a.length ? a.join(', ') : '')
   const meta = [etkinlik?.eserYil, kunye?.sureDk && `${kunye.sureDk} dk`, liste(kunye?.turler)].filter(Boolean).join(' · ')
   return (
@@ -45,6 +45,33 @@ export default function KunyeCekmecesi({ etkinlik, kunye }) {
             <Satir etiket="Müzik" deger={kunye.bestekar} />
             <Satir etiket="Ülke" deger={liste(kunye.ulkeler)} />
           </div>
+
+          {adayliklar?.toplam > 0 && (
+            <div>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-[#C9A227]">🏆 Ödül adaylıkları ({adayliklar.toplam})</p>
+              {adayliklar.sezonlar.map((sz) => (
+                <div key={sz.sezonId} className="mb-2">
+                  <p className="text-[11px] text-[#d9d2c3]">{sz.sezonAd}</p>
+                  <ul className="mt-1 space-y-1">
+                    {sz.kategoriler.map((k) => {
+                      const bu = k.adaylar.filter((a) => a.buFilm)
+                      const rakip = k.adaylar.length - bu.length
+                      return (
+                        <li key={k.id} className="rounded-sm bg-white/5 px-2 py-1 text-[12px] leading-snug ring-1 ring-white/10">
+                          <span className="text-white">
+                            {bu.some((a) => a.id === k.kazananAdayId) && '🏆 '}
+                            {k.ad}
+                          </span>
+                          {bu.some((a) => a.kisiAdi) && <span className="text-[#ffd84d]"> · {bu.map((a) => a.kisiAdi).filter(Boolean).join(', ')}</span>}
+                          <span className="text-[#b9b2a3]"> · {rakip} rakip</span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
 
           {kunye.ozet && (
             <div>

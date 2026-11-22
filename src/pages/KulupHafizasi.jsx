@@ -170,6 +170,11 @@ export default function KulupHafizasi() {
                 <p className="text-[11px] text-kraft">
                   {new Date(e.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
+                {e.kulupOrtalamasi?.puan != null && (
+                  <p className="text-[11px] font-bold text-murekkep" title={`${e.kulupOrtalamasi.oySayisi || 0} oy · Sinema Odası puanlama töreni`}>
+                    ⭐ Kulüp: {Number(e.kulupOrtalamasi.puan).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}/10
+                  </p>
+                )}
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   <Link to={`/inceleme/${e.id}`} className="rounded-full bg-gise px-2 py-0.5 text-[10px] text-kagit">
                     📓 Defter

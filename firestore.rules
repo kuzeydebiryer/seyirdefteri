@@ -789,6 +789,91 @@ service cloud.firestore {
         resource.data.olusturanId == request.auth.uid || topluluklaYoneticiMi(resource.data.topluluklId)
       );
 
+      // 🎬 Sinema Odası (Faz 2): canlı oda durumu, klaket sırası, gizli puanlama.
+      function odaEtkinligi() {
+        return get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)).data;
+      }
+      function odaUyesiMi() {
+        let tid = odaEtkinligi().topluluklId;
+        return request.auth != null && (
+          exists(/databases/$(database)/documents/topluluklar/$(tid)/uyeler/$(request.auth.uid)) ||
+          get(/databases/$(database)/documents/topluluklar/$(tid)).data.kurucuId == request.auth.uid
+        );
+      }
+      function odaModeratoruMu() {
+        let e = odaEtkinligi();
+        return request.auth != null && (e.olusturanId == request.auth.uid || topluluklaYoneticiMi(e.topluluklId));
+      }
+      function oylamaSurerMi(turId) {
+        let d = get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)/oda/durum).data;
+        return d.puanlama.durum == 'oylama' && d.puanlama.turId == turId;
+      }
+      function puanlarAcikMi() {
+        return get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)/oda/durum).data.puanlama.durum == 'acik';
+      }
+
+      // oda/durum: sunum slaytı + puanlama aşaması. Üyeler okur, yalnızca moderatör yazar.
+      match /oda/{belge} {
+        allow read: if odaUyesiMi();
+        allow create, update, delete: if belge == 'durum' && odaModeratoruMu();
+        // oda/ekran: "Ekrana Yansıt" — her üye bir yapım, liste ya da aday oylamasını
+        // ortak ekrana yansıtabilir (son yansıtan ekranı değiştirir).
+        allow create, update: if belge == 'ekran' && odaUyesiMi()
+          && request.resource.data.yansitanId == request.auth.uid
+          && request.resource.data.keys().hasOnly(['tur', 'yansitanId', 'yansitanAd', 'zaman', 'eser', 'liste', 'vurgu', 'odul', 'video', 'oynatma'])
+          && request.resource.data.tur in ['yok', 'eser', 'liste', 'aday', 'odul', 'video']
+          && request.resource.data.yansitanAd is string && request.resource.data.yansitanAd.size() <= 60
+          && request.resource.data.get('liste', {}).get('ogeler', []).size() <= 60;
+
+        // Klaketle söz isteme: herkes kendi kaydını açar/geri çeker; moderatör sıradan düşürür.
+        match /klaket/{uid} {
+          allow read: if odaUyesiMi();
+          allow create: if request.auth != null && request.auth.uid == uid && odaUyesiMi()
+            && request.resource.data.keys().hasOnly(['ad', 'zaman'])
+            && request.resource.data.ad is string && request.resource.data.ad.size() <= 60;
+          allow delete: if request.auth != null && (request.auth.uid == uid || odaModeratoruMu());
+        }
+
+        // Kim oy verdi (puansız): tören sırasında "?" kartları için herkese açık.
+        match /oyVerenler/{uid} {
+          allow read: if odaUyesiMi();
+          allow create, update: if request.auth != null && request.auth.uid == uid && odaUyesiMi()
+            && request.resource.data.keys().hasOnly(['ad', 'turId', 'zaman'])
+            && request.resource.data.ad is string && request.resource.data.ad.size() <= 60
+            && oylamaSurerMi(request.resource.data.turId);
+          allow delete: if odaModeratoruMu();
+        }
+      }
+
+      // Gelecek film oylaması (tek oy): aday = etkinlikOnerileri kaydı. Oylar açık
+      // (canlı çubuklar); oy yalnızca moderatör oylamayı açmışken verilir/değiştirilir/geri çekilir.
+      function adayOylamasiAcikMi() {
+        return get(/databases/$(database)/documents/gelecekEtkinlikler/$(etkinlikId)/oda/durum).data.adayOylamasi.durum == 'acik';
+      }
+      match /adayOylari/{uid} {
+        allow read: if odaUyesiMi();
+        allow create, update: if request.auth != null && request.auth.uid == uid && odaUyesiMi()
+          && request.resource.data.keys().hasOnly(['oneriId', 'ad', 'zaman'])
+          && request.resource.data.oneriId is string && request.resource.data.oneriId.size() <= 64
+          && request.resource.data.ad is string && request.resource.data.ad.size() <= 60
+          && adayOylamasiAcikMi();
+        allow delete: if request.auth != null && ((request.auth.uid == uid && adayOylamasiAcikMi()) || odaModeratoruMu());
+      }
+
+      // Gizli oylar: moderatör "Puanları Aç" diyene kadar oyu YALNIZCA sahibi okur.
+      // Oy sadece oylama sürerken verilir/değiştirilir; 1–10 arası, 0,5 adımlı.
+      match /oylar/{uid} {
+        allow read: if request.auth != null && (request.auth.uid == uid || (odaUyesiMi() && puanlarAcikMi()));
+        allow create, update: if request.auth != null && request.auth.uid == uid && odaUyesiMi()
+          && request.resource.data.keys().hasOnly(['kullaniciId', 'ad', 'puan', 'turId', 'zaman'])
+          && request.resource.data.kullaniciId == uid
+          && request.resource.data.ad is string && request.resource.data.ad.size() <= 60
+          && request.resource.data.puan is number
+          && request.resource.data.puan >= 1 && request.resource.data.puan <= 10
+          && request.resource.data.puan * 2 == math.floor(request.resource.data.puan * 2)
+          && oylamaSurerMi(request.resource.data.turId);
+      }
+
       match /kaynaklar/{kaynakId} {
         allow read: if true;
         allow create: if request.auth != null && request.resource.data.ekleyenId == request.auth.uid;
