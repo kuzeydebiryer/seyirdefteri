@@ -76,7 +76,7 @@ export default function KulupOscarSeridi({ adaylar }) {
                 {e.eserPosterUrl && <img src={e.eserPosterUrl} alt={e.eserBaslik} className="h-full w-full object-cover" />}
                 <span
                   className={`absolute inset-x-0 top-0 py-0.5 text-center font-govde text-[9px] font-bold ${
-                    siradaki ? 'bg-gise text-murekkep' : yaklasanMi ? 'bg-deniz/90 text-kagit' : 'bg-murekkep/80 text-kagit'
+                    siradaki ? 'bg-gise text-kagit' : yaklasanMi ? 'bg-deniz/90 text-kagit' : 'bg-murekkep/80 text-kagit'
                   }`}
                 >
                   {siradaki ? 'SIRADAKİ · ' : ''}
@@ -101,7 +101,7 @@ export default function KulupOscarSeridi({ adaylar }) {
                 <div className={`relative aspect-[2/3] overflow-hidden rounded-sm bg-kagitKoyu ${i === 0 ? 'ring-2 ring-gise' : 'ring-1 ring-cizgi'}`}>
                   {e.eserPosterUrl && <img src={e.eserPosterUrl} alt={e.eserBaslik} className="h-full w-full object-cover" />}
                   <span className="absolute left-1 top-1 rounded-full bg-murekkep/85 px-1.5 py-0.5 font-govde text-[10px] font-bold text-kagit">{i + 1}</span>
-                  <span className="absolute bottom-1 right-1 rounded-sm bg-gise px-1.5 py-0.5 font-govde text-sm font-bold leading-none text-murekkep">
+                  <span className="absolute bottom-1 right-1 rounded-sm bg-gise px-1.5 py-0.5 font-govde text-sm font-bold leading-none text-kagit">
                     {Number.isInteger(ort) ? ort : ort.toFixed(1)}
                   </span>
                   <span className="absolute bottom-1 left-1 rounded-full bg-murekkep/80 px-1 py-0.5 font-govde text-[9px] text-kagit">{sayi} 🎭</span>

@@ -76,7 +76,7 @@ export default function IncelemeOzeti() {
         <Link to={`/inceleme/${etkinlikId}`} className="text-xs text-kraft hover:text-deniz">
           ← İnceleme Defteri
         </Link>
-        <button onClick={() => window.print()} className="ml-auto rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-murekkep">
+        <button onClick={() => window.print()} className="ml-auto rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-kagit">
           🖨️ Yazdır / PDF Olarak Kaydet
         </button>
       </div>

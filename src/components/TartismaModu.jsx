@@ -107,13 +107,13 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
   if (!acik) return null
 
   const govde = { fontSize: `${1.35 * olcek}rem`, lineHeight: 1.5 }
-  const etiketStil = { fontSize: `${0.8 * olcek}rem` }
+  const etiketStil = { fontSize: `${0.95 * olcek}rem`, fontWeight: 700 }
 
   function Etiketli({ ad, metin }) {
     if (!metin) return null
     return (
       <div>
-        <p className="font-bold uppercase tracking-widest text-yellow-300/90" style={etiketStil}>{ad}</p>
+        <p className="font-bold uppercase tracking-widest text-[#ffd84d]" style={etiketStil}>{ad}</p>
         <p className="mt-1 whitespace-pre-wrap text-white" style={govde}>{metin}</p>
       </div>
     )
@@ -127,20 +127,20 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
           <img src={etkinlik.eserPosterUrl} alt="" className="h-72 rounded-sm object-cover ring-4 ring-yellow-400/70 md:h-96" />
         )}
         <div>
-          <p className="uppercase tracking-[0.3em] text-yellow-300" style={etiketStil}>🎬 {etkinlik.topluluklAd}</p>
+          <p className="uppercase tracking-[0.3em] text-[#ffd84d]" style={etiketStil}>🎬 {etkinlik.topluluklAd}</p>
           <h1 className="mt-2 font-baslik text-white" style={{ fontSize: `${3 * olcek}rem`, lineHeight: 1.1 }}>
             {etkinlik.eserBaslik}
           </h1>
-          <p className="mt-2 text-yellow-200" style={{ fontSize: `${1.2 * olcek}rem` }}>
+          <p className="mt-2 text-[#ffd84d]" style={{ fontSize: `${1.2 * olcek}rem` }}>
             {[etkinlik.eserYil, kunye?.sureDk && `${kunye.sureDk} dk`, kunye?.turler?.join(', ')].filter(Boolean).join(' · ')}
           </p>
           {kunye?.yonetmenler?.length > 0 && (
-            <p className="mt-3 text-white/90" style={govde}>
+            <p className="mt-3 text-gray-100" style={govde}>
               Yönetmen: {kunye.yonetmenler.join(', ')}
             </p>
           )}
           {kunye?.oyuncular?.length > 0 && (
-            <p className="text-white/70" style={{ fontSize: `${1 * olcek}rem` }}>
+            <p className="text-gray-100" style={{ fontSize: `${1 * olcek}rem` }}>
               {kunye.oyuncular.join(' · ')}
             </p>
           )}
@@ -152,7 +152,7 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
     icerik = (
       <div className="space-y-6">
         <div>
-          <p className="uppercase tracking-[0.25em] text-yellow-300" style={etiketStil}>🎞️ {k.kullaniciAdi || 'Üye'} · Yakın Okuma</p>
+          <p className="uppercase tracking-[0.25em] text-[#ffd84d]" style={etiketStil}>🎞️ {k.kullaniciAdi || 'Üye'} · Yakın Okuma</p>
           {k.sahne && (
             <h2 className="mt-1 font-baslik text-white" style={{ fontSize: `${2.2 * olcek}rem`, lineHeight: 1.2 }}>
               {k.sahne}
@@ -165,7 +165,7 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
           <Etiketli ad="Başka nasıl okunabilir?" metin={k.baska} />
         </div>
         {k.soru && (
-          <p className="rounded-sm bg-white/10 px-4 py-3 text-yellow-100" style={{ fontSize: `${1.1 * olcek}rem` }}>
+          <p className="rounded-sm bg-white/15 px-4 py-3 text-white" style={{ fontSize: `${1.1 * olcek}rem` }}>
             💬 {k.soru}
           </p>
         )}
@@ -181,7 +181,7 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
             {m.baslik}
           </p>
         )}
-        <p className="mt-1 text-white/50" style={etiketStil}>
+        <p className="mt-1 text-gray-100" style={etiketStil}>
           🖼️ Kare {slayt.no}/{slayt.toplam}{m.kaynak !== 'tmdb' && m.ekleyenAd ? ` · ${m.ekleyenAd}` : ''}
         </p>
       </div>
@@ -211,7 +211,7 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
     const gomu = m?.tur === 'video' ? videoGomuGetir(m) : null
     icerik = (
       <div className="flex flex-col items-center text-center">
-        <p className="font-mono font-bold text-yellow-300" style={{ fontSize: `${2.6 * olcek}rem` }}>⏱ {zamanFormatla(n.hedefMs)}</p>
+        <p className="font-mono font-bold text-[#ffd84d]" style={{ fontSize: `${2.6 * olcek}rem` }}>⏱ {zamanFormatla(n.hedefMs)}</p>
         {n.replik && (
           <p className="mt-3 max-w-4xl whitespace-pre-wrap font-baslik italic text-white" style={{ fontSize: `${2.2 * olcek}rem`, lineHeight: 1.3 }}>
             “{n.replik}”
@@ -225,25 +225,25 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
           </div>
         )}
         {n.soru && (
-          <p className="mt-5 max-w-4xl rounded-sm bg-white/10 px-5 py-4 text-yellow-100" style={{ fontSize: `${1.5 * olcek}rem`, lineHeight: 1.4 }}>
+          <p className="mt-5 max-w-4xl rounded-sm bg-white/20 ring-1 ring-white/30 px-5 py-4 text-white" style={{ fontSize: `${1.5 * olcek}rem`, lineHeight: 1.4 }}>
             💬 {n.soru}
           </p>
         )}
         {n.yorumAcik && n.yorum && (
           <div className="mt-4 max-w-4xl">
             {acikYorumlar[n.id] ? (
-              <p className="whitespace-pre-wrap text-white/90" style={{ fontSize: `${1.15 * olcek}rem` }}>
-                <span className="text-white/50" style={etiketStil}>{n.kullaniciAdi || 'Üye'} yorumu: </span>
+              <p className="whitespace-pre-wrap text-gray-100" style={{ fontSize: `${1.15 * olcek}rem` }}>
+                <span className="text-gray-100" style={etiketStil}>{n.kullaniciAdi || 'Üye'} yorumu: </span>
                 {n.yorum}
               </p>
             ) : (
-              <button onClick={() => setAcikYorumlar((a) => ({ ...a, [n.id]: true }))} className="rounded-full bg-white/10 px-4 py-1.5 text-white/80" style={etiketStil}>
+              <button onClick={() => setAcikYorumlar((a) => ({ ...a, [n.id]: true }))} className="rounded-full bg-white/20 ring-1 ring-white/30 px-4 py-1.5 text-gray-100" style={etiketStil}>
                 {n.kullaniciAdi || 'Üye'} yorumunu aç
               </button>
             )}
           </div>
         )}
-        <p className="mt-4 text-white/40" style={etiketStil}>{n.kullaniciAdi || 'Üye'}{n.altyaziEtiketi ? ` · ${n.altyaziEtiketi}` : ''}</p>
+        <p className="mt-4 text-gray-100" style={etiketStil}>{n.kullaniciAdi || 'Üye'}{n.altyaziEtiketi ? ` · ${n.altyaziEtiketi}` : ''}</p>
       </div>
     )
   } else if (slayt.tur === 'bolum') {
@@ -255,21 +255,21 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
         <p className="mt-5 whitespace-pre-wrap text-white" style={{ ...govde, fontSize: `${1.6 * olcek}rem` }}>
           {slayt.metin}
         </p>
-        {slayt.ad && <p className="mt-4 text-white/50" style={etiketStil}>Yazan: {slayt.ad}</p>}
+        {slayt.ad && <p className="mt-4 text-gray-100" style={etiketStil}>Yazan: {slayt.ad}</p>}
       </div>
     )
   } else if (slayt.tur === 'soru') {
     const k = slayt.kayit
     icerik = (
       <div className="text-center">
-        <p className="uppercase tracking-[0.3em] text-yellow-300" style={etiketStil}>
+        <p className="uppercase tracking-[0.3em] text-[#ffd84d]" style={etiketStil}>
           💬 Soru {slayt.no}/{slayt.toplam} · {k.kullaniciAdi || 'Üye'}
         </p>
         <p className="mx-auto mt-5 max-w-4xl font-baslik text-white" style={{ fontSize: `${2.4 * olcek}rem`, lineHeight: 1.3 }}>
           “{k.soru}”
         </p>
         {k.sahne && (
-          <p className="mt-6 text-white/70" style={{ fontSize: `${1 * olcek}rem` }}>
+          <p className="mt-6 text-gray-100" style={{ fontSize: `${1 * olcek}rem` }}>
             Bağlı sahne: {k.sahne}
           </p>
         )}
@@ -280,18 +280,18 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
     const dolu = (puanlar || []).filter((p) => p.puan != null || p.cumle)
     icerik = (
       <div>
-        <p className="uppercase tracking-[0.3em] text-yellow-300" style={etiketStil}>⭐ Kulüp Puanları{ort ? ` · Ortalama ${ort}/10` : ''}</p>
+        <p className="uppercase tracking-[0.3em] text-[#ffd84d]" style={etiketStil}>⭐ Kulüp Puanları{ort ? ` · Ortalama ${ort}/10` : ''}</p>
         {dolu.length === 0 ? (
-          <p className="mt-4 text-white/70" style={govde}>Henüz puan veren yok.</p>
+          <p className="mt-4 text-gray-100" style={govde}>Henüz puan veren yok.</p>
         ) : (
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             {dolu.map((p) => (
-              <div key={p.kullaniciId} className="rounded-sm bg-white/10 p-4">
+              <div key={p.kullaniciId} className="rounded-sm bg-white/20 ring-1 ring-white/30 p-4">
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="font-baslik text-white" style={{ fontSize: `${1.3 * olcek}rem` }}>{p.kullaniciAdi}</span>
-                  <span className="font-baslik text-yellow-300" style={{ fontSize: `${2 * olcek}rem` }}>{p.puan != null ? p.puan * 2 : '-'}</span>
+                  <span className="font-baslik text-[#ffd84d]" style={{ fontSize: `${2 * olcek}rem` }}>{p.puan != null ? p.puan * 2 : '-'}</span>
                 </div>
-                {p.cumle && <p className="mt-1 italic text-white/80" style={{ fontSize: `${1.05 * olcek}rem` }}>“{p.cumle}”</p>}
+                {p.cumle && <p className="mt-1 italic text-gray-100" style={{ fontSize: `${1.05 * olcek}rem` }}>“{p.cumle}”</p>}
               </div>
             ))}
           </div>
@@ -306,7 +306,7 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
     <div
       ref={kok}
       className="fixed inset-0 z-[100] flex flex-col"
-      style={{ background: 'linear-gradient(135deg,#0d0d16 0%,#241635 55%,#4a1414 100%)' }}
+      style={{ background: '#0a0a10' }}
       onTouchStart={(e) => (dokunmaX.current = e.touches[0].clientX)}
       onTouchEnd={(e) => {
         if (dokunmaX.current == null) return
@@ -316,12 +316,12 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
       }}
     >
       {/* Üst çubuk */}
-      <div className="flex items-center justify-between gap-2 px-4 py-2 text-xs text-white/80">
+      <div className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-white">
         <span className="truncate">🎬 {etkinlik.eserBaslik} · {guvenliSira + 1}/{slaytlar.length}</span>
         <div className="flex shrink-0 items-center gap-1">
-          <button onClick={() => setOlcek((o) => Math.max(0.7, +(o - 0.1).toFixed(1)))} className="rounded-sm bg-white/10 px-2 py-1" title="Yazıyı küçült (−)">A−</button>
-          <button onClick={() => setOlcek((o) => Math.min(1.8, +(o + 0.1).toFixed(1)))} className="rounded-sm bg-white/10 px-2 py-1" title="Yazıyı büyüt (+)">A+</button>
-          <button onClick={tamEkranDegistir} className="rounded-sm bg-white/10 px-2 py-1" title="Tam ekran (F)">⛶ Tam ekran</button>
+          <button onClick={() => setOlcek((o) => Math.max(0.7, +(o - 0.1).toFixed(1)))} className="rounded-sm bg-white/20 ring-1 ring-white/30 px-2 py-1" title="Yazıyı küçült (−)">A−</button>
+          <button onClick={() => setOlcek((o) => Math.min(1.8, +(o + 0.1).toFixed(1)))} className="rounded-sm bg-white/20 ring-1 ring-white/30 px-2 py-1" title="Yazıyı büyüt (+)">A+</button>
+          <button onClick={tamEkranDegistir} className="rounded-sm bg-white/20 ring-1 ring-white/30 px-2 py-1" title="Tam ekran (F)">⛶ Tam ekran</button>
           <button onClick={kapat} className="rounded-sm bg-yellow-400 px-2 py-1 font-bold text-black" title="Kapat (Esc)">✕ Kapat</button>
         </div>
       </div>
@@ -331,7 +331,7 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
         <div className="mx-auto flex min-h-full max-w-6xl flex-col justify-center">
           {icerik}
           {bos && (
-            <p className="mt-8 text-center text-white/60" style={{ fontSize: `${1 * olcek}rem` }}>
+            <p className="mt-8 text-center text-gray-100" style={{ fontSize: `${1 * olcek}rem` }}>
               Henüz sahne notu ya da soru yazılmamış. Defterde “Yakın Okuma” kartını doldurunca burada belirir.
             </p>
           )}
@@ -340,7 +340,7 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
 
       {/* Gezinme */}
       <div className="flex items-center gap-2 px-4 py-3">
-        <button onClick={() => git(guvenliSira - 1)} disabled={guvenliSira === 0} className="rounded-sm bg-white/10 px-3 py-1.5 text-sm text-white disabled:opacity-30">← Önceki</button>
+        <button onClick={() => git(guvenliSira - 1)} disabled={guvenliSira === 0} className="rounded-sm bg-white/20 ring-1 ring-white/30 px-3 py-1.5 text-sm text-white disabled:opacity-40">← Önceki</button>
         <div className="flex flex-1 items-center justify-center gap-1 overflow-x-auto">
           {slaytlar.map((s, i) => (
             <button
@@ -351,7 +351,7 @@ export default function TartismaModu({ acik, kapat, etkinlik, kunye, sahneKayitl
             />
           ))}
         </div>
-        <button onClick={() => git(guvenliSira + 1)} disabled={guvenliSira === slaytlar.length - 1} className="rounded-sm bg-yellow-400 px-3 py-1.5 text-sm font-bold text-black disabled:opacity-30">Sonraki →</button>
+        <button onClick={() => git(guvenliSira + 1)} disabled={guvenliSira === slaytlar.length - 1} className="rounded-sm bg-yellow-400 px-3 py-1.5 text-sm font-bold text-black disabled:opacity-40">Sonraki →</button>
       </div>
     </div>
   )

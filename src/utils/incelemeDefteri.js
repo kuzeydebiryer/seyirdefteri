@@ -7,7 +7,7 @@ import { db } from '../firebase.js'
 // Kişisel notlar ise kisiselNotlar/{uid} altında, sadece sahibi okur/yazar.
 // Bölüm listesi hem ekrandaki defterin hem yazdırılan şablonun TEK kaynağı.
 export const INCELEME_BOLUMLERI = [
-  { id: 'konu', baslik: 'Hikâyenin Hareketi', ikon: '📖', renk: '#B7791F', ipucu: 'Başta kurulan çatışma neydi? Hangi anda yön değiştirdi (ya da değiştirmedi)? Bir-iki cümle yeter.' },
+  { id: 'konu', baslik: 'Hikâyenin Hareketi', ikon: '📖', renk: '#8A5A00', ipucu: 'Başta kurulan çatışma neydi? Hangi anda yön değiştirdi (ya da değiştirmedi)? Bir-iki cümle yeter.' },
   { id: 'temalar', baslik: 'Temalar ve Olası Okumalar', ikon: '💭', renk: '#C0392B', ipucu: 'Film hangi gerilimi görünür kılıyor? Hangi sahne yorumunu destekliyor, hangisi zorluyor?' },
   { id: 'karakterler', baslik: 'Karakterler ve Oyunculuk', ikon: '👥', renk: '#1F6F8B', ipucu: 'Kim ne istiyor? Bir bakış, duraklama ya da jest bunu nasıl gösteriyor veya gizliyor?' },
   { id: 'gorsel', baslik: 'Görsel Dil ve Sinematografi', ikon: '🎥', renk: '#7B3F9E', ipucu: 'Kadraj bize neyi gösteriyor, neyi dışarıda bırakıyor? Işık, renk, kamera hareketi sahneye ne yapıyor?' },

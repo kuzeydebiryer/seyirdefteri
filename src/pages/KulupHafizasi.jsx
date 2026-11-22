@@ -127,7 +127,7 @@ export default function KulupHafizasi() {
           <button
             onClick={notlariOku}
             disabled={indeksYukleniyor || etkinlikler.length === 0}
-            className="rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-murekkep disabled:opacity-40"
+            className="rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40"
           >
             {indeksYukleniyor ? 'Notlar okunuyor…' : '🔎 Notlarda da ara'}
           </button>
@@ -171,7 +171,7 @@ export default function KulupHafizasi() {
                   {new Date(e.tarih).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1">
-                  <Link to={`/inceleme/${e.id}`} className="rounded-full bg-gise px-2 py-0.5 text-[10px] text-murekkep">
+                  <Link to={`/inceleme/${e.id}`} className="rounded-full bg-gise px-2 py-0.5 text-[10px] text-kagit">
                     📓 Defter
                   </Link>
                   <Link to={`/inceleme/${e.id}/ozet`} className="rounded-full bg-kagit px-2 py-0.5 text-[10px] text-murekkep ring-1 ring-cizgi">

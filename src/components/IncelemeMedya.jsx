@@ -198,7 +198,7 @@ function LinkFormu({ tur, yerTutucu, onEkle }) {
           placeholder="Başlık / not (isteğe bağlı)"
           className="min-w-0 flex-1 rounded-sm bg-kagit px-2 py-1.5 text-sm text-murekkep ring-1 ring-cizgi"
         />
-        <button type="submit" disabled={yukleniyor} className="shrink-0 rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-murekkep disabled:opacity-40">
+        <button type="submit" disabled={yukleniyor} className="shrink-0 rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40">
           {yukleniyor ? '…' : '+ Ekle'}
         </button>
       </div>
@@ -300,7 +300,7 @@ export default function IncelemeMedya({ etkinlik, kullanici, adim, kayitlar, kun
           <button
             key={s.id}
             onClick={() => setSekme(s.id)}
-            className={`rounded-full px-3 py-1 font-govde text-xs ${sekme === s.id ? 'bg-murekkep text-yellow-300' : 'bg-kagitKoyu text-murekkep ring-1 ring-cizgi'}`}
+            className={`rounded-full px-3 py-1 font-govde text-xs ${sekme === s.id ? 'bg-murekkep text-kagit' : 'bg-kagitKoyu text-murekkep ring-1 ring-cizgi'}`}
           >
             {s.etiket}
             {sayi(s.id) > 0 && <span className="ml-1 opacity-70">({sayi(s.id)})</span>}
@@ -315,7 +315,7 @@ export default function IncelemeMedya({ etkinlik, kullanici, adim, kayitlar, kun
         <div className="space-y-3">
           <div className="flex flex-wrap items-start gap-2">
             {etkinlik.eserTmdbId && tmdbKareleri === null && (
-              <button onClick={kareleriGetir} disabled={kareYukleniyor} className="rounded-sm bg-gise px-3 py-1.5 text-xs text-murekkep disabled:opacity-40">
+              <button onClick={kareleriGetir} disabled={kareYukleniyor} className="rounded-sm bg-gise px-3 py-1.5 text-xs text-kagit disabled:opacity-40">
                 {kareYukleniyor ? 'Getiriliyor…' : '🎞️ Filmin Resmi Karelerini Getir (TMDB)'}
               </button>
             )}
@@ -387,7 +387,7 @@ export default function IncelemeMedya({ etkinlik, kullanici, adim, kayitlar, kun
                     <button
                       key={v.id}
                       onClick={() => setSeciliFragman(seciliFragman === v.id ? null : v.id)}
-                      className={`rounded-full px-2.5 py-1 text-[11px] ${seciliFragman === v.id ? 'bg-murekkep text-yellow-300' : 'bg-kagitKoyu text-murekkep ring-1 ring-cizgi'}`}
+                      className={`rounded-full px-2.5 py-1 text-[11px] ${seciliFragman === v.id ? 'bg-murekkep text-kagit' : 'bg-kagitKoyu text-murekkep ring-1 ring-cizgi'}`}
                     >
                       {v.tur === 'Trailer' ? '🎬' : '🎞️'} {v.ad.length > 36 ? `${v.ad.slice(0, 36)}…` : v.ad}
                     </button>

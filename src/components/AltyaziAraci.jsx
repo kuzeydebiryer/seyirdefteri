@@ -140,12 +140,12 @@ function AnNotuFormu({ form, setForm, medya, kaydet, vazgec, mesgul, hata }) {
 
       {/* Paylaşım önizlemesi: slayta tam olarak ne taşınacak */}
       {form.slaytta && (
-        <div className="mt-3 rounded-sm bg-murekkep p-3 text-white">
-          <p className="mb-1 text-[10px] uppercase tracking-widest text-yellow-300">Slayta taşınacaklar (önizleme)</p>
+        <div className="mt-3 rounded-sm bg-murekkep p-3 text-kagit">
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-kagit">Slayta taşınacaklar (önizleme)</p>
           <p className="text-sm">⏱ {hedefMs != null ? zamanFormatla(hedefMs) : '— zaman kodu eksik —'}</p>
           {form.replik && <p className="text-sm italic">“{form.replik}”</p>}
-          <p className="text-sm">{form.soru ? `💬 ${form.soru}` : <span className="text-white/60">Soru yazmadın: slaytta sadece zaman kodu ve replik görünür.</span>}</p>
-          <p className="text-xs text-white/70">
+          <p className="text-sm">{form.soru ? `💬 ${form.soru}` : <span className="text-kagit/80">Soru yazmadın: slaytta sadece zaman kodu ve replik görünür.</span>}</p>
+          <p className="text-xs text-kagit/90">
             {form.yorumAcik ? 'Yorumun: slaytta gizli, tıklayınca sorudan sonra açılır.' : 'Yorumun slayta GİRMEZ.'}
             {' '}Notun diğer üyelere de görünür olacak.
           </p>
@@ -154,10 +154,86 @@ function AnNotuFormu({ form, setForm, medya, kaydet, vazgec, mesgul, hata }) {
 
       {hata && <p className="mt-2 text-xs text-muhur">{hata}</p>}
       <div className="mt-3 flex gap-2">
-        <button onClick={kaydet} disabled={mesgul} className="rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-murekkep disabled:opacity-40">
+        <button onClick={kaydet} disabled={mesgul} className="rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40">
           {mesgul ? 'Kaydediliyor…' : form.id ? 'Güncelle' : 'Kaydet'}
         </button>
         <button onClick={vazgec} className="rounded-full bg-kagit px-4 py-1.5 font-govde text-xs text-kraft ring-1 ring-cizgi">Vazgeç</button>
+      </div>
+    </div>
+  )
+}
+
+// "İçeriği Göster" penceresi: bulunan satırın öncesi ve sonrası 10'ar satır (genişletilebilir).
+// Bir replik birkaç satıra bölünmüş olabilir; satırlara tıklayarak aralık seçilir (ilk tık başlangıç,
+// ikinci tık bitiş), sonra seçili satırlarla not ya da Tartışma slaytı oluşturulur.
+// Renkler sabit (siyah zemin / beyaz yazı): site teması koyu da olsa açık da olsa aynı okunur.
+function AltyaziPenceresi({ icerik, p, setP, etiket, kapat, notEkle }) {
+  const bas = Math.max(0, p.bas - p.once)
+  const son = Math.min(icerik.length - 1, p.son + p.sonra)
+  const secBas = Math.min(p.secBas, p.secSon)
+  const secSon = Math.max(p.secBas, p.secSon)
+  const [ilkTik, setIlkTik] = useState(null) // aralık seçerken ilk tıklanan satır
+
+  function satirTikla(i) {
+    if (ilkTik == null) {
+      setIlkTik(i)
+      setP({ ...p, secBas: i, secSon: i })
+    } else {
+      setP({ ...p, secBas: ilkTik, secSon: i })
+      setIlkTik(null)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/80 p-3" onClick={kapat}>
+      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-sm bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-2 px-4 py-2">
+          <p className="font-bold text-[#1d4f7c]">Altyazı içeriği{etiket ? ` · ${etiket}` : ''}</p>
+          <button type="button" onClick={kapat} className="rounded-sm bg-[#1d4f7c] px-3 py-1 text-sm font-bold text-white">Kapat</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto bg-black px-3 py-2 font-mono text-[15px] leading-relaxed text-white">
+          {bas > 0 && (
+            <button type="button" onClick={() => setP({ ...p, once: p.once + 10 })} className="mb-2 w-full rounded-sm bg-[#1d4f7c] py-1.5 text-center font-sans text-sm font-bold text-white">
+              ▲ 10 satır daha önce
+            </button>
+          )}
+          {icerik.slice(bas, son + 1).map((s, k) => {
+            const i = bas + k
+            const eslesen = i >= p.bas && i <= p.son
+            const secili = i >= secBas && i <= secSon
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => satirTikla(i)}
+                className={`mb-1 block w-full rounded-sm px-2 py-1 text-left ${secili ? 'bg-[#1d4f7c] text-white ring-2 ring-[#ffd84d]' : eslesen ? 'bg-[#3a3000] text-[#ffe680]' : 'text-white hover:bg-white/15'}`}
+              >
+                <span className="block text-[13px] text-[#7fd4ff]">{zamanFormatla(s[0])} → {zamanFormatla(s[1])}</span>
+                <span className="block whitespace-pre-wrap">{s[2]}</span>
+              </button>
+            )
+          })}
+          {son < icerik.length - 1 && (
+            <button type="button" onClick={() => setP({ ...p, sonra: p.sonra + 10 })} className="mt-1 w-full rounded-sm bg-[#1d4f7c] py-1.5 text-center font-sans text-sm font-bold text-white">
+              ▼ 10 satır daha sonra
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2 bg-white px-4 py-3">
+          <p className="text-xs text-[#374151]">
+            {ilkTik != null
+              ? 'Aralığın son satırına dokun…'
+              : secBas === secSon
+              ? `Seçili satır: ${zamanFormatla(icerik[secBas][0])}. Birden çok satır için başlangıç ve bitiş satırına sırayla dokun.`
+              : `Seçili: ${secSon - secBas + 1} satır (${zamanFormatla(icerik[secBas][0])} → ${zamanFormatla(icerik[secSon][1])})`}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => notEkle(secBas, secSon, false)} className="rounded-full bg-[#7a4a14] px-4 py-1.5 text-sm font-bold text-white">📌 Seçili satırlara not ekle</button>
+            <button type="button" onClick={() => notEkle(secBas, secSon, true)} className="rounded-full bg-[#14141f] px-4 py-1.5 text-sm font-bold text-[#ffd84d]">🎤 Tartışmaya ekle</button>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -171,7 +247,7 @@ export default function AltyaziAraci({ etkinlik, kullanici, adim, anNotlari, med
   const [icerik, setIcerik] = useState(null)
   const [icerikHatasi, setIcerikHatasi] = useState('')
   const [sorgu, setSorgu] = useState('')
-  const [baglam, setBaglam] = useState({}) // sonuç başlangıç satırı → bağlam satır sayısı
+  const [pencere, setPencere] = useState(null) // "İçeriği Göster" penceresi: { bas, son, once, sonra, secBas, secSon }
   const [form, setForm] = useState(null)
   const [formHata, setFormHata] = useState('')
   const [mesgul, setMesgul] = useState(false)
@@ -203,7 +279,7 @@ export default function AltyaziAraci({ etkinlik, kullanici, adim, anNotlari, med
   useEffect(() => {
     setIcerik(null)
     setIcerikHatasi('')
-    setBaglam({})
+    setPencere(null)
     if (!secili) return
     let iptal = false
     altyaziIcerigiGetir(etkinlikId, secili)
@@ -373,7 +449,7 @@ export default function AltyaziAraci({ etkinlik, kullanici, adim, anNotlari, med
                 ))}
               </select>
               <input value={surum} onChange={(e) => setSurum(e.target.value)} maxLength={120} placeholder="Film sürümü (örn. BluRay 1080p, 24 fps)" className="min-w-[12rem] flex-1 rounded-sm bg-kagit px-2 py-1 text-xs text-murekkep ring-1 ring-cizgi" />
-              <button onClick={yukle} disabled={yukleniyor} className="rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-murekkep disabled:opacity-40">
+              <button onClick={yukle} disabled={yukleniyor} className="rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-kagit disabled:opacity-40">
                 {yukleniyor ? 'Yükleniyor…' : 'Altyazıyı Yükle'}
               </button>
             </>
@@ -406,35 +482,27 @@ export default function AltyaziAraci({ etkinlik, kullanici, adim, anNotlari, med
             </p>
           )}
           <div className="mt-2 space-y-2">
-            {sonuclar.map((r) => {
-              const n = baglam[r.bas] || 0
-              const bas = Math.max(0, r.bas - n)
-              const son = Math.min(icerik.length - 1, r.son + n)
-              return (
-                <div key={r.bas} className="rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
-                  {icerik.slice(bas, son + 1).map((s, k) => {
-                    const i = bas + k
-                    const eslesen = i >= r.bas && i <= r.son
-                    return (
-                      <div key={i} className={`flex items-start gap-2 py-0.5 text-sm ${eslesen ? 'text-murekkep' : 'text-kraft'}`}>
-                        <span className="w-16 shrink-0 font-mono text-xs text-deniz">{zamanFormatla(s[0])}</span>
-                        <span className={`min-w-0 flex-1 whitespace-pre-wrap ${eslesen ? 'font-bold' : ''}`}>{s[2]}</span>
-                        {!eslesen && (
-                          <button type="button" onClick={() => satirdanForm(i, i)} title="Bu satıra not ekle" className="shrink-0 text-[10px] text-deniz hover:underline">📌</button>
-                        )}
-                      </div>
-                    )
-                  })}
-                  <div className="mt-1 flex flex-wrap gap-2 text-[11px]">
-                    <button type="button" onClick={() => satirdanForm(r.bas, r.son)} className="rounded-full bg-gise px-2.5 py-0.5 text-murekkep">📌 Bu ana not ekle</button>
-                    <button type="button" onClick={() => satirdanForm(r.bas, r.son, true)} className="rounded-full bg-murekkep px-2.5 py-0.5 text-yellow-300">🎤 Tartışmaya ekle</button>
-                    <button type="button" onClick={() => setBaglam((b) => ({ ...b, [r.bas]: n === 0 ? 2 : n < 6 ? n + 3 : 0 }))} className="text-deniz hover:underline">
-                      {n === 0 ? '↕ Bağlamı aç' : n < 6 ? '↕ Daha fazla' : '↕ Kapat'}
-                    </button>
+            {sonuclar.map((r) => (
+              <div key={r.bas} className="rounded-sm bg-kagitKoyu p-2 ring-1 ring-cizgi">
+                {icerik.slice(r.bas, r.son + 1).map((s, k) => (
+                  <div key={r.bas + k} className="flex items-start gap-2 py-0.5 text-sm text-murekkep">
+                    <span className="w-16 shrink-0 font-mono text-xs text-deniz">{zamanFormatla(s[0])}</span>
+                    <span className="min-w-0 flex-1 whitespace-pre-wrap font-bold">{s[2]}</span>
                   </div>
+                ))}
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
+                  <button type="button" onClick={() => satirdanForm(r.bas, r.son)} className="rounded-full bg-gise px-2.5 py-1 text-kagit">📌 Bu ana not ekle</button>
+                  <button type="button" onClick={() => satirdanForm(r.bas, r.son, true)} className="rounded-full bg-murekkep px-2.5 py-1 text-kagit">🎤 Tartışmaya ekle</button>
+                  <button
+                    type="button"
+                    onClick={() => setPencere({ bas: r.bas, son: r.son, once: 10, sonra: 10, secBas: r.bas, secSon: r.son })}
+                    className="rounded-full bg-kagit px-2.5 py-1 text-murekkep ring-1 ring-cizgi"
+                  >
+                    📖 İçeriği Göster
+                  </button>
                 </div>
-              )
-            })}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -484,6 +552,19 @@ export default function AltyaziAraci({ etkinlik, kullanici, adim, anNotlari, med
         </div>
       )}
       {formHata && !form && <p className="mt-2 text-xs text-muhur">{formHata}</p>}
+      {pencere && icerik && (
+        <AltyaziPenceresi
+          icerik={icerik}
+          p={pencere}
+          setP={setPencere}
+          etiket={seciliAltyazi ? etiketle(seciliAltyazi) : ''}
+          kapat={() => setPencere(null)}
+          notEkle={(bas, son, slaytta) => {
+            setPencere(null)
+            satirdanForm(bas, son, slaytta)
+          }}
+        />
+      )}
     </div>
   )
 }

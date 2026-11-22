@@ -128,7 +128,7 @@ function SahneBolumu({ kullanici, adim, kayitlar, onKaydet }) {
         Sahne seç → ne gördüğünü tarif et → etkisini yorumla → başka okuma var mı diye sor. Hepsini doldurmak gerekmiyor: bir sahne ve bir soru yeter.
       </p>
       <div className="overflow-hidden rounded-sm bg-kagitKoyu ring-2 ring-gise">
-        <div className="bg-murekkep px-3 py-1.5 font-baslik text-sm text-yellow-300">✍️ {adim} — senin sahne notun</div>
+        <div className="bg-murekkep px-3 py-1.5 font-baslik text-sm text-kagit">✍️ {adim} — senin sahne notun</div>
         <div className="grid gap-3 p-3 md:grid-cols-2">
           {SAHNE_ALANLARI.map((a) => (
             <div key={a.id} className={a.id === 'sahne' || a.id === 'soru' ? 'md:col-span-2' : ''}>
@@ -155,7 +155,7 @@ function SahneBolumu({ kullanici, adim, kayitlar, onKaydet }) {
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           {digerleri.map((k) => (
             <div key={k.id} className="overflow-hidden rounded-sm bg-kagitKoyu ring-1 ring-cizgi">
-              <div className="bg-deniz px-3 py-1.5 font-baslik text-sm text-white">🎬 {k.kullaniciAdi || 'Üye'}</div>
+              <div className="bg-deniz px-3 py-1.5 font-baslik text-sm text-kagit">🎬 {k.kullaniciAdi || 'Üye'}</div>
               <div className="space-y-2 p-3 text-sm text-murekkep">
                 {SAHNE_ALANLARI.filter((a) => k[a.id]).map((a) => (
                   <div key={a.id}>
@@ -319,7 +319,7 @@ export default function IncelemeDefteri() {
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <button onClick={tartismayiAc} className="rounded-full bg-murekkep px-4 py-1.5 font-govde text-xs text-yellow-300">
+        <button onClick={tartismayiAc} className="rounded-full bg-murekkep px-4 py-1.5 font-govde text-xs text-kagit">
           🎤 Tartışma Modu (Zoom)
         </button>
         {etkinlik.zoomLinki && (
@@ -330,7 +330,7 @@ export default function IncelemeDefteri() {
         <Link to={`/inceleme/${etkinlik.id}/ozet`} className="rounded-full bg-kagitKoyu px-4 py-1.5 font-govde text-xs text-murekkep ring-1 ring-cizgi">
           📄 Kulüp Özeti
         </Link>
-        <button onClick={() => yazdir('bos')} className="rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-murekkep">
+        <button onClick={() => yazdir('bos')} className="rounded-full bg-gise px-4 py-1.5 font-govde text-xs text-kagit">
           🖨️ Boş Şablonu Yazdır
         </button>
         <button onClick={() => yazdir('dolu')} className="rounded-full bg-kagitKoyu px-4 py-1.5 font-govde text-xs text-murekkep ring-1 ring-cizgi">

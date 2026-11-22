@@ -576,7 +576,7 @@ export default function GelecekEtkinlikKarti({ etkinlik }) {
       )}
 
       {etkinlik.eserBaslik && etkinlik.eserTur === 'sinema' && (
-        <Link to={`/inceleme/${etkinlik.id}`} className="mt-3 inline-block rounded-full bg-gise px-3 py-1 font-govde text-[11px] text-murekkep">
+        <Link to={`/inceleme/${etkinlik.id}`} className="mt-3 inline-block rounded-full bg-gise px-3 py-1 font-govde text-[11px] text-kagit">
           📓 İnceleme Defteri
         </Link>
       )}

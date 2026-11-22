@@ -9,6 +9,22 @@ import { filmEtkinligiGetir, filmEtkinligiKaydet, kulupPuanlariniGetir } from '.
 // tarih/saatini girince etkinliği oluşturur (varsa tarihini günceller) ve
 // üyelerin bu esere ZATEN verdiği puanları kendiliğinden çeker. Yaklaşan
 // etkinlik anasayfa vitrininde "YARIN"/"BUGÜN" bandıyla görünür.
+// Film şeridi görünümü: koyu şerit + üstte/altta delikler. Renkler sabit (tema bağımsız).
+function Delikler() {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        height: 12,
+        backgroundImage: 'linear-gradient(90deg, #f5f0e1 9px, transparent 9px)',
+        backgroundSize: '18px 8px',
+        backgroundRepeat: 'repeat-x',
+        backgroundPosition: '4px center',
+      }}
+    />
+  )
+}
+
 export default function KulupElestirmenPaneli({ tur, tmdbId, detay }) {
   const { kullanici, profil } = useAuth()
   const [acik, setAcik] = useState(false)
@@ -94,14 +110,26 @@ export default function KulupElestirmenPaneli({ tur, tmdbId, detay }) {
   return (
     <div className="mt-6">
       <button
+        type="button"
         onClick={() => setAcik((a) => !a)}
-        className="rounded-full bg-kagitKoyu px-4 py-2 font-govde text-sm text-murekkep ring-1 ring-cizgi hover:ring-deniz/50"
+        aria-expanded={acik}
+        className="block w-full max-w-xl overflow-hidden rounded-sm text-left shadow ring-1 ring-black/30"
+        style={{ background: '#14141f' }}
       >
-        🎭 Kulüp Eleştirmenleri {acik ? '▴' : '▾'}
+        <Delikler />
+        <span className="flex items-center justify-between gap-3 px-4 py-2">
+          <span className="font-baslik text-base tracking-wide" style={{ color: '#ffd84d' }}>
+            🎞️ Kulüp Eleştirmenleri
+          </span>
+          <span className="text-sm font-bold text-white">{acik ? '▴ Kapat' : '▾ Aç'}</span>
+        </span>
+        <Delikler />
       </button>
 
       {acik && (
-        <div className="mt-3 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
+        <div className="mt-2 overflow-hidden rounded-sm shadow ring-1 ring-black/30" style={{ background: '#14141f' }}>
+        <Delikler />
+        <div className="m-2 space-y-3 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
           {topluluklar.length > 1 && (
             <select
               value={seciliId}
@@ -143,22 +171,28 @@ export default function KulupElestirmenPaneli({ tur, tmdbId, detay }) {
               ) : puanlar.length === 0 ? (
                 <p className="text-xs text-kraft">Henüz kimse bu filme puan vermedi. Puanlar film sayfasındaki yıldızlardan otomatik gelir.</p>
               ) : (
-                <ul className="space-y-0.5">
+                <div className="flex gap-2 overflow-x-auto rounded-sm p-2" style={{ background: '#14141f' }}>
                   {puanlar.map((p) => (
-                    <li key={p.kullaniciId} className="text-sm text-murekkep">
-                      {p.kullaniciAdi}: <span className="font-bold text-gise">{p.puan != null ? p.puan * 2 : '-'}</span>
-                      {p.cumle && <span className="text-xs italic text-kraft"> — “{p.cumle}”</span>}
-                    </li>
+                    <div key={p.kullaniciId} className="w-36 shrink-0 rounded-sm p-2" style={{ background: '#1f1f2e', border: '2px solid #f5f0e1' }}>
+                      <p className="truncate text-xs font-bold text-white">{p.kullaniciAdi}</p>
+                      <p className="font-baslik text-3xl leading-none" style={{ color: '#ffd84d' }}>
+                        {p.puan != null ? p.puan * 2 : '-'}
+                        <span className="text-xs text-white">/10</span>
+                      </p>
+                      {p.cumle && <p className="mt-1 text-[11px] italic leading-snug text-gray-100">“{p.cumle}”</p>}
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
               {tur === 'sinema' && (
-                <Link to={`/inceleme/${etkinlik.id}`} className="mt-3 inline-block rounded-full bg-gise px-3 py-1 font-govde text-[11px] text-murekkep">
+                <Link to={`/inceleme/${etkinlik.id}`} className="mt-3 inline-block rounded-full bg-gise px-3 py-1 font-govde text-[11px] text-kagit">
                   📓 İnceleme Defterini Aç
                 </Link>
               )}
             </div>
           )}
+        </div>
+        <Delikler />
         </div>
       )}
     </div>

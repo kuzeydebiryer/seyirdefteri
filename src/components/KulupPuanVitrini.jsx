@@ -137,7 +137,7 @@ export default function KulupPuanVitrini() {
                 <div className="relative h-28 w-[4.5rem] shrink-0 overflow-hidden rounded-sm bg-kagit ring-1 ring-cizgi">
                   {e.eserPosterUrl && <img src={e.eserPosterUrl} alt={e.eserBaslik} className="h-full w-full object-cover" />}
                   {yaklasanMi && (
-                    <span className="absolute inset-x-0 top-0 bg-gise py-0.5 text-center font-govde text-[10px] font-bold text-murekkep">
+                    <span className="absolute inset-x-0 top-0 bg-gise py-0.5 text-center font-govde text-[10px] font-bold text-kagit">
                       {bantMetni(e.tarih)}
                     </span>
                   )}
