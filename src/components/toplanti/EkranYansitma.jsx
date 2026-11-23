@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { eserSayfaYolu } from '../../utils/odaEkrani.js'
 import OdulGorunumu from './OdulGorunumu.jsx'
+import MedyaGomulusu from '../MedyaGomulusu.jsx'
 import SenkronOynatici from './SenkronOynatici.jsx'
 
 // 📺 Ortak ekrana yansıtılan içerik: bir yapım, bir liste, gelecek film oylaması,
@@ -157,6 +158,21 @@ export default function EkranYansitma({ ekran, adaySonuc, adayOylamasi, onKapat,
           {ekran.tur === 'liste' && <ListeGorunumu liste={ekran.liste} vurgu={ekran.vurgu ?? null} onVurgu={onVurgu} />}
           {ekran.tur === 'aday' && <AdayGorunumu sonuc={adaySonuc} oylama={adayOylamasi} />}
           {ekran.tur === 'odul' && <OdulGorunumu odul={ekran.odul} vurgu={ekran.vurgu ?? null} onVurgu={onVurgu} />}
+          {ekran.tur === 'sosyal' && ekran.sosyal?.url && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#ffd84d]">📱 Paylaşım</p>
+              {ekran.sosyal.baslik && <h2 className="mt-1 font-baslik text-2xl text-white">{ekran.sosyal.baslik}</h2>}
+              <p className="mb-4 text-xs text-[#d9d2c3]">
+                Herkesin ekranında açıldı. Video varsa herkes kendi ekranında oynatır (senkron değildir).{' '}
+                <a href={ekran.sosyal.url} target="_blank" rel="noreferrer" className="text-[#ffd84d] underline">
+                  Kaynağında aç ↗
+                </a>
+              </p>
+              <div className="mx-auto max-w-[560px] rounded-md bg-[#f5f0e1] p-2">
+                <MedyaGomulusu url={ekran.sosyal.url} paylasanAdi={ekran.sosyal.paylasanAdi} />
+              </div>
+            </div>
+          )}
           {ekran.tur === 'video' && ekran.video && (
             <SenkronOynatici
               video={ekran.video}

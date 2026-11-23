@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { kullaniciListeleriGetir, listeOgeleriGetir } from '../../utils/kisiselListe.js'
 import { yansitilacakEser } from '../../utils/odaEkrani.js'
-import { linkCoz, tmdbVideolariGetir } from '../../utils/incelemeMedya.js'
+import { linkCoz, linkHatasi, tmdbVideolariGetir } from '../../utils/incelemeMedya.js'
 import { odulYansitmaVerisi } from '../../utils/odulAdayliklari.js'
 import YapimArama from './YapimArama.jsx'
 
@@ -16,6 +16,7 @@ export default function YansitPaneli({ etkinlik, benimUid, adim, ekran, yansit, 
   const [hata, setHata] = useState('')
   const [fragmanlar, setFragmanlar] = useState(null)
   const [link, setLink] = useState('')
+  const [sosyalLink, setSosyalLink] = useState('')
 
   useEffect(() => {
     if (!benimUid) return
@@ -57,6 +58,19 @@ export default function YansitPaneli({ etkinlik, benimUid, adim, ekran, yansit, 
     if (c.tip !== 'youtube') return setHata('Senkron oynatma için bir YouTube bağlantısı yapıştır.')
     videoYansit({ tip: 'youtube', id: c.id, baslik: 'YouTube videosu', baslangic: c.baslangic || 0 })
     setLink('')
+  }
+
+  // Paylaşımlar: Medya Kutusu'ndaki Instagram/X/TikTok/YouTube paylaşımları ya da yapıştırılan bağlantı.
+  const paylasimlar = medya.filter((m) => m.tur === 'sosyal' && m.url)
+  const platform = (u) => (/instagram/.test(u) ? 'Instagram' : /tiktok/.test(u) ? 'TikTok' : /(twitter|x\.com)/.test(u) ? 'X' : /youtu/.test(u) ? 'YouTube' : 'Bağlantı')
+  const sosyalYansit = (url, baslik, paylasanAdi) =>
+    calistir(`sosyal-${url}`, () => yansit({ tur: 'sosyal', sosyal: { url, baslik: baslik || '', paylasanAdi: paylasanAdi || adim } }))
+  function sosyalLinktenYansit(e) {
+    e.preventDefault()
+    const h = linkHatasi('sosyal', sosyalLink)
+    if (h) return setHata(h)
+    sosyalYansit(sosyalLink.trim(), '', adim)
+    setSosyalLink('')
   }
 
   const eserYansit = (eser) => calistir(`eser-${eser.eserTmdbId}`, async () => yansit({ tur: 'eser', eser: await yansitilacakEser(eser) }))
@@ -155,6 +169,38 @@ export default function YansitPaneli({ etkinlik, benimUid, adim, ekran, yansit, 
         />
         <button type="submit" disabled={!link.trim()} className="shrink-0 rounded-sm px-2.5 text-[11px] font-bold text-[#0b0b10] disabled:opacity-40" style={{ background: '#C9A227' }}>
           ▶
+        </button>
+      </form>
+
+      <Baslik>Paylaşımlar (Instagram, X, TikTok)</Baslik>
+      {paylasimlar.length > 0 && (
+        <ul className="mb-2 space-y-1">
+          {paylasimlar.map((m) => (
+            <li key={m.id} className="flex items-center gap-2 rounded-sm bg-white/5 p-1.5 ring-1 ring-white/10">
+              <span className="w-16 shrink-0 text-[10px] uppercase tracking-wider text-[#b9b2a3]">{platform(m.url)}</span>
+              <span className="min-w-0 flex-1 truncate text-xs text-white">{m.baslik || m.ekleyenAd || m.url}</span>
+              <button
+                type="button"
+                disabled={!!mesgul}
+                onClick={() => sosyalYansit(m.url, m.baslik, m.ekleyenAd)}
+                className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold text-[#0b0b10] disabled:opacity-50"
+                style={{ background: '#C9A227' }}
+              >
+                📺 Yansıt
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={sosyalLinktenYansit} className="flex gap-1">
+        <input
+          value={sosyalLink}
+          onChange={(e) => setSosyalLink(e.target.value)}
+          placeholder="Instagram / X / TikTok bağlantısı yapıştır"
+          className="min-w-0 flex-1 rounded-sm bg-white/10 px-2 py-1.5 text-xs text-white placeholder-[#b9b2a3] ring-1 ring-white/20"
+        />
+        <button type="submit" disabled={!sosyalLink.trim() || !!mesgul} className="shrink-0 rounded-sm px-2.5 text-[11px] font-bold text-[#0b0b10] disabled:opacity-40" style={{ background: '#C9A227' }}>
+          📺
         </button>
       </form>
 

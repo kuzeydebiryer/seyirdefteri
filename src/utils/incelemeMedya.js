@@ -64,7 +64,7 @@ function zamanSaniye(s) {
   return m ? (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0) : 0
 }
 
-// Yapıştırılan linkin ne olduğunu anlar: youtube | spotify | vimeo | sosyal (Instagram/X) | diger
+// Yapıştırılan linkin ne olduğunu anlar: youtube | spotify | vimeo | sosyal (Instagram/X/TikTok) | diger
 export function linkCoz(url) {
   const u = (url || '').trim()
   let m = u.match(/(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/)
@@ -76,7 +76,7 @@ export function linkCoz(url) {
   if (m) return { tip: 'spotify', tur: m[1], id: m[2] }
   m = u.match(/vimeo\.com\/(?:video\/)?(\d+)/)
   if (m) return { tip: 'vimeo', id: m[1] }
-  if (/(instagram\.com|twitter\.com|x\.com)\//.test(u)) return { tip: 'sosyal' }
+  if (/(instagram\.com|twitter\.com|x\.com|tiktok\.com)\//.test(u)) return { tip: 'sosyal' }
   return { tip: 'diger' }
 }
 
@@ -86,7 +86,7 @@ export function linkHatasi(tur, url) {
   const c = linkCoz(url)
   if (tur === 'video' && !['youtube', 'vimeo'].includes(c.tip)) return 'Kesit için YouTube ya da Vimeo bağlantısı yapıştır (ya da video yükle).'
   if (tur === 'muzik' && !['spotify', 'youtube'].includes(c.tip)) return 'Müzik için Spotify ya da YouTube bağlantısı yapıştır.'
-  if (tur === 'sosyal' && !['sosyal', 'youtube'].includes(c.tip)) return 'Instagram, X (Twitter) ya da YouTube paylaşım bağlantısı yapıştır.'
+  if (tur === 'sosyal' && !['sosyal', 'youtube'].includes(c.tip)) return 'Instagram, X (Twitter), TikTok ya da YouTube paylaşım bağlantısı yapıştır.'
   return ''
 }
 

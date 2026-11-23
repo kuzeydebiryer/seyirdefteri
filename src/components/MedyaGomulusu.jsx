@@ -1,6 +1,7 @@
 import InstagramGomulusu from './InstagramGomulusu.jsx'
 import YoutubeGomulusu from './YoutubeGomulusu.jsx'
 import TwitterGomulusu from './TwitterGomulusu.jsx'
+import TikTokGomulusu from './TikTokGomulusu.jsx'
 
 // Sitenin "link yapıştır, gömülü göster" yapılan HER yerinde (Seyir Panosu,
 // Etkinlik Habercisi, Kulüp etkinlikleri, eser sayfalarındaki ilgili
@@ -16,6 +17,9 @@ export default function MedyaGomulusu({ url, paylasanAdi, kompakt = false }) {
   }
   if (/(twitter\.com|x\.com)/.test(url)) {
     return <TwitterGomulusu url={url} paylasanAdi={paylasanAdi} kompakt={kompakt} />
+  }
+  if (url.includes('tiktok.com')) {
+    return <TikTokGomulusu url={url} paylasanAdi={paylasanAdi} kompakt={kompakt} />
   }
   if (url.includes('instagram.com')) {
     return <InstagramGomulusu url={url} paylasanAdi={paylasanAdi} kompakt={kompakt} />

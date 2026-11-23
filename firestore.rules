@@ -820,8 +820,8 @@ service cloud.firestore {
         // ortak ekrana yansıtabilir (son yansıtan ekranı değiştirir).
         allow create, update: if belge == 'ekran' && odaUyesiMi()
           && request.resource.data.yansitanId == request.auth.uid
-          && request.resource.data.keys().hasOnly(['tur', 'yansitanId', 'yansitanAd', 'zaman', 'eser', 'liste', 'vurgu', 'odul', 'video', 'oynatma'])
-          && request.resource.data.tur in ['yok', 'eser', 'liste', 'aday', 'odul', 'video']
+          && request.resource.data.keys().hasOnly(['tur', 'yansitanId', 'yansitanAd', 'zaman', 'eser', 'liste', 'vurgu', 'odul', 'video', 'oynatma', 'sosyal'])
+          && request.resource.data.tur in ['yok', 'eser', 'liste', 'aday', 'odul', 'video', 'sosyal']
           && request.resource.data.yansitanAd is string && request.resource.data.yansitanAd.size() <= 60
           && request.resource.data.get('liste', {}).get('ogeler', []).size() <= 60;
 
