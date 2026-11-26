@@ -4,12 +4,13 @@ import { ODA_TEMASI } from '../../utils/toplantiOdasi.js'
 // Daily Prebuilt'i (kamera, mikrofon, ekran paylaşımı, sohbet) verilen kutuya gömer.
 // Kamera/mikrofon testi Daily'nin kendi "katılmadan önce" ekranında yapılır.
 // Katılımcı listesi değiştikçe onKatilimcilar([{ uid, ad, yerel }]) çağrılır.
-export default function VideoSahnesi({ giris, onAyrildi, onKatilimcilar, onHata }) {
+// onCagri(cagri|null): mikrofon kontrolü için Daily örneği; onMikrofon(açık mı): yerel mikrofon durumu.
+export default function VideoSahnesi({ giris, onAyrildi, onKatilimcilar, onHata, onCagri, onMikrofon }) {
   const kutu = useRef(null)
   const cagri = useRef(null)
   // Geri çağrıları ref'te tut ki efekt yeniden çalışmasın (tek Daily örneği şart).
-  const geri = useRef({ onAyrildi, onKatilimcilar, onHata })
-  geri.current = { onAyrildi, onKatilimcilar, onHata }
+  const geri = useRef({ onAyrildi, onKatilimcilar, onHata, onCagri, onMikrofon })
+  geri.current = { onAyrildi, onKatilimcilar, onHata, onCagri, onMikrofon }
 
   useEffect(() => {
     if (!giris?.url || !kutu.current) return
@@ -31,9 +32,11 @@ export default function VideoSahnesi({ giris, onAyrildi, onKatilimcilar, onHata 
         theme: ODA_TEMASI,
       })
       cagri.current = c
+      geri.current.onCagri?.(c)
 
       const listele = () => {
         const p = c.participants() || {}
+        if (p.local) geri.current.onMikrofon?.(!!p.local.audio)
         geri.current.onKatilimcilar?.(
           Object.values(p).map((k) => ({ uid: k.user_id || k.session_id, ad: k.user_name || 'Misafir', yerel: !!k.local }))
         )
@@ -53,6 +56,7 @@ export default function VideoSahnesi({ giris, onAyrildi, onKatilimcilar, onHata 
       iptal = true
       const c = cagri.current
       cagri.current = null
+      geri.current.onCagri?.(null)
       if (c) c.destroy().catch(() => {})
     }
   }, [giris?.url, giris?.token])

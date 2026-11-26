@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase.js'
@@ -102,6 +102,10 @@ export default function ToplantiOdasi() {
   const [adayOylari, setAdayOylari] = useState([])
   const [notlarAcik, setNotlarAcik] = useState(false)
   const [adayliklar, setAdayliklar] = useState(null) // ödül adaylıkları (Oscar vb.)
+  // Yankı önlemleri: Daily örneği + yerel mikrofon durumu + kısa bildirim
+  const cagriRef = useRef(null)
+  const [mikAcik, setMikAcik] = useState(false)
+  const [bildirim, setBildirim] = useState('')
   const [defter, setDefter] = useState({ sahneKayitlari: [], bolumler: {}, medya: [], anNotlari: [], puanlar: [] })
   const adim = gorunenAdGetir(profil, kullanici?.displayName)
   const benimUid = kullanici?.uid
@@ -244,6 +248,46 @@ export default function ToplantiOdasi() {
     setNotlarAcik(false)
   }, [etkinlikId, benimUid])
   const videoHatasi = useCallback((m) => setHata(m), [])
+  const cagriAl = useCallback((c) => (cagriRef.current = c), [])
+
+  // --- Yankı önlemleri ---
+  const bildir = useCallback((m) => {
+    setBildirim(m)
+    clearTimeout(bildir.t)
+    bildir.t = setTimeout(() => setBildirim(''), 6000)
+  }, [])
+  const mikrofonuKapat = useCallback(
+    (neden) => {
+      const c = cagriRef.current
+      if (!c || !c.localAudio?.()) return
+      c.setLocalAudio(false)
+      if (neden) bildir(neden)
+    },
+    [bildir]
+  )
+  const mikrofonuAc = () => cagriRef.current?.setLocalAudio(true)
+  const herkesiSustur = () => {
+    try {
+      cagriRef.current?.updateParticipants({ '*': { setAudio: false } })
+      bildir('🔇 Herkesin mikrofonu kapatıldı.')
+    } catch {
+      setHata('Mikrofonlar kapatılamadı.')
+    }
+  }
+
+  // 1) Senkron video oynamaya başlayınca herkesin mikrofonu kapanır (film sesi mikrofona girmesin).
+  const videoOynuyor = ekran.tur === 'video' && !!ekran.oynatma?.oynuyor
+  useEffect(() => {
+    if (videoOynuyor) mikrofonuKapat('🎬 Video oynarken yankı olmasın diye mikrofonun kapatıldı.')
+  }, [videoOynuyor, mikrofonuKapat])
+
+  // 2) Söz sırası bitince (moderatör "✓ Konuştu" deyince ya da vazgeçince) mikrofon kapanır.
+  const oncekiSira = useRef(-1)
+  useEffect(() => {
+    if (oncekiSira.current >= 0 && siradakiIndeks < 0) mikrofonuKapat('✓ Sözün bitti, mikrofonun kapatıldı.')
+    oncekiSira.current = siradakiIndeks
+  }, [siradakiIndeks, mikrofonuKapat])
+  const sozSende = !!giris && siradakiIndeks === 0 && !mikAcik
 
   const arkaPlan = kunye?.backdropUrl || etkinlik?.eserPosterUrl || ''
   const tarihMetni = etkinlik?.tarih
@@ -415,6 +459,11 @@ export default function ToplantiOdasi() {
             </button>
           )}
           {giris && moderatorMu && (
+            <Dugme onClick={herkesiSustur} title="Herkesin mikrofonunu kapat (yankı/gürültü olunca)">
+              🔇<span className="hidden sm:inline"> Herkesi Sustur</span>
+            </Dugme>
+          )}
+          {giris && moderatorMu && (
             <Dugme aktif={durum.sunum.acik} onClick={() => {
                 if (!durum.sunum.acik && ekranAktif) ekranKapat()
                 durumYaz({ sunum: { acik: !durum.sunum.acik } }).catch((e) => setHata(e.message))
@@ -470,7 +519,7 @@ export default function ToplantiOdasi() {
           )}
           {giris ? (
             <div className={sunumAcik || ekranAktif ? 'h-44 shrink-0 sm:h-56 lg:h-auto lg:w-[34%]' : 'min-h-0 flex-1'}>
-              <VideoSahnesi giris={giris} onAyrildi={ayril} onKatilimcilar={setKatilimcilar} onHata={videoHatasi} />
+              <VideoSahnesi giris={giris} onAyrildi={ayril} onKatilimcilar={setKatilimcilar} onHata={videoHatasi} onCagri={cagriAl} onMikrofon={setMikAcik} />
             </div>
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-4 overflow-y-auto p-6 text-center">
@@ -517,6 +566,8 @@ export default function ToplantiOdasi() {
                   ) : (
                     <p className="max-w-md text-xs leading-relaxed text-[#b9b2a3]">
                       Kamera ve mikrofon izni istenecek; girmeden önce görüntünü ve sesini deneyebilirsin. Oda yalnızca kulüp üyelerine açık, kayıt alınmaz.
+                      <br />
+                      <span className="text-[#ffd84d]">🎧 Yankı olmaması için kulaklık tak; aynı odadan iki cihazla bağlanma. Mikrofonun kapalı başlar, konuşurken aç.</span>
                     </p>
                   )}
                 </>
@@ -547,6 +598,19 @@ export default function ToplantiOdasi() {
                 />
               </div>
             </div>
+          )}
+          {giris && sozSende && (
+            <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full bg-[#0b0b10]/95 px-4 py-2 shadow-2xl ring-2 ring-[#ffd84d]">
+              <span className="text-sm font-bold text-[#ffd84d]">🎬 Söz sende!</span>
+              <button type="button" onClick={mikrofonuAc} className="rounded-full px-3 py-1 text-xs font-bold text-[#0b0b10]" style={{ background: '#ffd84d' }}>
+                🎙️ Mikrofonumu aç
+              </button>
+            </div>
+          )}
+          {giris && bildirim && !sozSende && (
+            <p className="absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-full bg-[#0b0b10]/95 px-4 py-2 text-xs text-white shadow-xl ring-1 ring-white/20">
+              {bildirim}
+            </p>
           )}
           {giris && hata && (
             <p className="absolute inset-x-3 bottom-3 rounded-sm bg-[#9b1c1c]/90 px-3 py-2 text-sm text-white">{hata}</p>

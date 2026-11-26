@@ -1100,6 +1100,8 @@ exports.toplantiGirisi = onCall({ secrets: [DAILY_API_KEY] }, async (request) =>
     enable_chat: true,
     enable_screenshare: true,
     enable_prejoin_ui: true,
+    // Yankıyı azaltmak için herkes odaya mikrofonu KAPALI girer; konuşurken açar.
+    start_audio_off: true,
     lang: 'tr',
   }
 
