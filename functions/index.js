@@ -1139,3 +1139,190 @@ exports.toplantiGirisi = onCall({ secrets: [DAILY_API_KEY] }, async (request) =>
 
   return { url: oda.veri.url, token: jeton.veri.token, moderatorMu, bitisMs: exp * 1000 }
 })
+
+// ---------------------------------------------------------------------------
+// 📺 Stremio / Nuvio katalog eklentisi
+// ---------------------------------------------------------------------------
+// Adres: https://seyirdefteri.net/stremio/<anahtar>/manifest.json  (Vercel → bu fonksiyon)
+// <anahtar>: üyenin profilinden aldığı, tahmin edilemeyen kişisel anahtar
+// (stremioAnahtarlari/{anahtar} → { kullaniciId }). Kataloglar:
+//   • İzleyeceklerim (film + dizi)          • Listelerim (her kişisel liste ayrı raf)
+//   • Dış listeler (Letterboxd 500, IMDb 250…) • Oscar adayları (son Oscar sezonu)
+// YALNIZCA KATALOG verir (ad, afiş, yıl). Hiçbir yayın/bağlantı içermez; filme tıklanınca
+// künyeyi Stremio'nun kendi meta servisi (Cinemeta) gösterir. Stremio IMDb kimliği (tt…)
+// istediği için TMDB→IMDb eşlemesi bir kez yapılıp tmdbImdbEslesme koleksiyonunda saklanır.
+const { onRequest } = require('firebase-functions/v2/https')
+const STREMIO_SAYFA = 100
+
+function stremioTipi(tur) {
+  return tur === 'dizi' ? 'series' : tur === 'sinema' || tur === 'film' || !tur ? 'movie' : null
+}
+
+async function imdbKimlikleri(apiKey, ogeler) {
+  // ogeler: [{ tur:'sinema'|'dizi', tmdbId }] → Map("tur_tmdbId" → "tt…" | null)
+  const sonuc = new Map()
+  const anahtarlar = [...new Set(ogeler.map((o) => `${o.tur === 'dizi' ? 'dizi' : 'sinema'}_${o.tmdbId}`))]
+  const refs = anahtarlar.map((a) => db.collection('tmdbImdbEslesme').doc(a))
+  const mevcut = refs.length ? await db.getAll(...refs) : []
+  const eksik = []
+  mevcut.forEach((s, i) => (s.exists ? sonuc.set(anahtarlar[i], s.data().imdb || null) : eksik.push(anahtarlar[i])))
+  // Eksikleri TMDB'den çöz (aynı anda 8 istek).
+  let sira = 0
+  async function isci() {
+    while (sira < eksik.length) {
+      const a = eksik[sira++]
+      const [tur, id] = a.split('_')
+      let imdb = null
+      try {
+        const r = await fetch(`https://api.themoviedb.org/3/${tur === 'dizi' ? 'tv' : 'movie'}/${id}/external_ids?api_key=${apiKey}`)
+        if (r.ok) imdb = (await r.json()).imdb_id || null
+      } catch {
+        /* geçici hata: kaydetmeden geç */
+        continue
+      }
+      sonuc.set(a, imdb)
+      await db.collection('tmdbImdbEslesme').doc(a).set({ imdb, tarih: FieldValue.serverTimestamp() })
+    }
+  }
+  await Promise.all(Array.from({ length: 8 }, isci))
+  return sonuc
+}
+
+// Katalog tanımlarını ve öğe kaynaklarını kur.
+async function stremioKataloglari(uid) {
+  const kataloglar = []
+  // İzleyeceklerim (film ve dizi ayrı raf)
+  kataloglar.push({ id: 'sd-izleyeceklerim-film', type: 'movie', name: 'İzleyeceklerim', kaynak: { tip: 'izlenecek', tur: 'sinema' } })
+  kataloglar.push({ id: 'sd-izleyeceklerim-dizi', type: 'series', name: 'İzleyeceklerim', kaynak: { tip: 'izlenecek', tur: 'dizi' } })
+
+  const [listeler, dislar, sezonlar] = await Promise.all([
+    db.collection('kisiselListeler').where('kullaniciId', '==', uid).get(),
+    db.collection('disariListeler').orderBy('sira', 'asc').get(),
+    db.collection('oscarSezonlari').get(),
+  ])
+  // Listelerim: içinde film/dizi olan her liste. Karışık listeler iki rafa ayrılır.
+  for (const l of listeler.docs) {
+    const ogeler = await db.collection('kisiselListeOgeleri').where('listeId', '==', l.id).select('tur').get()
+    const turler = new Set(ogeler.docs.map((d) => d.data().tur))
+    const ad = `${l.data().baslik || 'Liste'}`
+    if (turler.has('sinema')) kataloglar.push({ id: `sd-liste-${l.id}-film`, type: 'movie', name: ad, kaynak: { tip: 'liste', listeId: l.id, tur: 'sinema' } })
+    if (turler.has('dizi')) kataloglar.push({ id: `sd-liste-${l.id}-dizi`, type: 'series', name: ad, kaynak: { tip: 'liste', listeId: l.id, tur: 'dizi' } })
+  }
+  // Dış listeler
+  dislar.docs.forEach((d) => {
+    const v = d.data()
+    const tur = v.tur === 'dizi' ? 'dizi' : 'sinema'
+    kataloglar.push({ id: `sd-dis-${d.id}`, type: stremioTipi(tur), name: v.ad || v.kisaAd || 'Liste', kaynak: { tip: 'dis', listeId: d.id, tur } })
+  })
+  // Oscar: en yeni Oscar sezonu (oluşturulma ya da tören tarihine göre)
+  const oscarlar = sezonlar.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((s) => (s.torenTuru || 'oscar') === 'oscar')
+    .sort((a, b) => String(b.torenTarihi || b.olusturma?.toMillis?.() || '').localeCompare(String(a.torenTarihi || a.olusturma?.toMillis?.() || '')))
+  if (oscarlar[0]) {
+    kataloglar.push({ id: `sd-oscar-${oscarlar[0].id}`, type: 'movie', name: `${oscarlar[0].ad || 'Oscar'} · Adaylar`, kaynak: { tip: 'oscar', sezonId: oscarlar[0].id } })
+  }
+  return kataloglar
+}
+
+// Bir kataloğun sıralı öğeleri: [{ tur, tmdbId, ad, yil, poster }]
+async function stremioOgeleri(uid, kaynak) {
+  if (kaynak.tip === 'izlenecek') {
+    const s = await db.collection('izlenecekler').where('kullaniciId', '==', uid).where('tur', '==', kaynak.tur).get()
+    return s.docs
+      .map((d) => d.data())
+      .filter((o) => o.durum !== 'tamamlandi')
+      .sort((a, b) => (b.eklemeTarihi?.toMillis?.() || 0) - (a.eklemeTarihi?.toMillis?.() || 0))
+      .map((o) => ({ tur: o.tur, tmdbId: o.disId, ad: o.baslik, yil: o.alt, poster: o.posterUrl }))
+  }
+  if (kaynak.tip === 'liste') {
+    const l = await db.collection('kisiselListeler').doc(kaynak.listeId).get()
+    if (!l.exists || l.data().kullaniciId !== uid) return []
+    const s = await db.collection('kisiselListeOgeleri').where('listeId', '==', kaynak.listeId).get()
+    return s.docs
+      .map((d) => d.data())
+      .filter((o) => o.tur === kaynak.tur)
+      .sort((a, b) => (a.sira ?? 0) - (b.sira ?? 0))
+      .map((o) => ({ tur: o.tur, tmdbId: o.disId, ad: o.baslik, yil: o.alt, poster: o.posterUrl }))
+  }
+  if (kaynak.tip === 'dis') {
+    const s = await db.collection('disariListeler').doc(kaynak.listeId).collection('filmler').orderBy('siraNo', 'asc').get()
+    return s.docs.map((d) => ({ tur: kaynak.tur, tmdbId: d.id, ad: d.data().baslik, yil: d.data().yil, poster: d.data().posterUrl }))
+  }
+  if (kaynak.tip === 'oscar') {
+    const s = await db.collection('oscarAdaylari').where('sezonId', '==', kaynak.sezonId).get()
+    const sayac = new Map()
+    s.docs.forEach((d) => {
+      const a = d.data()
+      if ((a.tur || 'film') !== 'film' || !a.tmdbId) return
+      const k = String(a.tmdbId)
+      const v = sayac.get(k) || { tur: 'sinema', tmdbId: k, ad: a.filmBasligi, yil: a.filmYili, poster: a.posterUrl, adaylik: 0 }
+      v.adaylik++
+      sayac.set(k, v)
+    })
+    // En çok adaylık alan film başta.
+    return [...sayac.values()].sort((a, b) => b.adaylik - a.adaylik)
+  }
+  return []
+}
+
+exports.stremio = onRequest({ secrets: [TMDB_API_KEY], timeoutSeconds: 120, memory: '512MiB', cors: true }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*')
+  res.set('Access-Control-Allow-Headers', '*')
+  if (req.method === 'OPTIONS') return res.status(204).send('')
+  // Yol: /<anahtar>/manifest.json  |  /<anahtar>/catalog/<tip>/<id>.json  |  /<anahtar>/catalog/<tip>/<id>/skip=100.json
+  const parcalar = req.path.replace(/^\/+/, '').replace(/^stremio\//, '').split('/').map(decodeURIComponent)
+  const anahtar = parcalar[0] || ''
+  if (!/^[A-Za-z0-9]{20,64}$/.test(anahtar)) return res.status(404).json({ err: 'Geçersiz adres' })
+  const aSnap = await db.collection('stremioAnahtarlari').doc(anahtar).get()
+  if (!aSnap.exists) return res.status(404).json({ err: 'Bu adres iptal edilmiş ya da hiç oluşturulmamış.' })
+  const uid = aSnap.data().kullaniciId
+
+  try {
+    const kataloglar = await stremioKataloglari(uid)
+    if (parcalar[1] === 'manifest.json') {
+      res.set('Cache-Control', 'public, max-age=900')
+      return res.json({
+        id: 'net.seyirdefteri.katalog',
+        version: '1.0.0',
+        name: 'Seyirdefteri',
+        description: 'Seyirdefteri listelerin, izleyeceklerin ve Oscar adayları — yalnızca katalog.',
+        logo: 'https://seyirdefteri.net/icons/icon-512.png',
+        resources: ['catalog'],
+        types: ['movie', 'series'],
+        idPrefixes: ['tt'],
+        catalogs: kataloglar.map((k) => ({ id: k.id, type: k.type, name: k.name, extra: [{ name: 'skip', isRequired: false }] })),
+        behaviorHints: { configurable: false },
+      })
+    }
+    if (parcalar[1] === 'catalog') {
+      const id = (parcalar[3] || '').replace(/\.json$/, '')
+      const skip = Number(((parcalar[4] || '').match(/skip=(\d+)/) || [])[1] || 0)
+      const k = kataloglar.find((x) => x.id === id && x.type === parcalar[2])
+      if (!k) return res.json({ metas: [] })
+      const tum = await stremioOgeleri(uid, k.kaynak)
+      const sayfa = tum.slice(skip, skip + STREMIO_SAYFA)
+      const imdb = await imdbKimlikleri(TMDB_API_KEY.value(), sayfa)
+      const metas = sayfa
+        .map((o) => {
+          const tt = imdb.get(`${o.tur === 'dizi' ? 'dizi' : 'sinema'}_${o.tmdbId}`)
+          if (!tt) return null
+          return {
+            id: tt,
+            type: k.type,
+            name: o.ad || '',
+            poster: o.poster || undefined,
+            posterShape: 'poster',
+            releaseInfo: o.yil ? String(o.yil).slice(0, 4) : undefined,
+          }
+        })
+        .filter(Boolean)
+      res.set('Cache-Control', 'public, max-age=600')
+      return res.json({ metas })
+    }
+    return res.status(404).json({ err: 'Bilinmeyen istek' })
+  } catch (e) {
+    console.error('stremio hata', e)
+    return res.status(500).json({ err: 'Katalog hazırlanamadı' })
+  }
+})

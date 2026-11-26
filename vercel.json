@@ -1,3 +1,4 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/stremio/:path*", "destination": "https://europe-west1-seyirdefteri-d92c1.cloudfunctions.net/stremio/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }]
 }

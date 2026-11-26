@@ -441,6 +441,14 @@ service cloud.firestore {
     // Kişisel Listeler (Letterboxd tarzı, topluluklardaki ortak izleme
     // listesinden ayrı) — sahibi dışında kimse düzenleyemez/silemez;
     // "herkeseAcik: false" olan listeler sadece sahibine görünür.
+    // 📺 Stremio/Nuvio katalog eklentisi: kişisel adres anahtarı (yalnızca sahibi görür/siler).
+    match /stremioAnahtarlari/{anahtar} {
+      allow read, delete: if request.auth != null && resource.data.kullaniciId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['kullaniciId', 'olusturma'])
+        && anahtar.matches('^[A-Za-z0-9]{32}$');
+    }
+
     match /kisiselListeler/{listeId} {
       allow read: if resource.data.herkeseAcik == true || (request.auth != null && resource.data.kullaniciId == request.auth.uid);
       allow create: if request.auth != null && request.resource.data.kullaniciId == request.auth.uid;

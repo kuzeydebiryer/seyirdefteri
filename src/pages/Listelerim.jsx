@@ -38,6 +38,9 @@ export default function Listelerim() {
           {formuAcik ? 'Vazgeç' : '+ Yeni Liste'}
         </button>
       </div>
+      <Link to="/katalog-eklentisi" className="mb-3 inline-flex items-center gap-1 rounded-sm bg-kagitKoyu px-3 py-1.5 font-govde text-xs text-murekkep ring-1 ring-cizgi hover:text-deniz">
+        📺 Listelerimi Stremio / Nuvio'da kullan
+      </Link>
       <p className="mb-6 text-xs text-kraft">
         Film, dizi ve kitaplardan kendi temalı listelerini oluştur — "En Sevdiğim Distopyalar", "2026'da İzledklerim" gibi.
       </p>
