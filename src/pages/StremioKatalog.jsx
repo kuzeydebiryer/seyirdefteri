@@ -62,6 +62,8 @@ export default function StremioKatalog() {
       <div className="mt-4 rounded-sm bg-kagitKoyu p-4 ring-1 ring-cizgi">
         <p className="mb-2 text-xs font-bold uppercase tracking-wider text-murekkep">Katalogda neler var?</p>
         <ul className="space-y-1 text-sm text-murekkep">
+          <li>🆕 <b>Dijitalde Yeni Çıkanlar</b>: sitedeki bölümle aynı, en yeni başta</li>
+          <li>📡 <b>Platformlarda Yeni</b>: son 30 günde Netflix, MUBI, HBO Max… her platforma eklenenler ayrı rafta</li>
           <li>📌 <b>İzleyeceklerim</b>: film ve dizi ayrı raflarda</li>
           <li>📋 <b>Listelerim</b>: her listen ayrı bir raf (film/dizi öğeleri)</li>
           <li>🏅 <b>Dış listeler</b>: Letterboxd 500, IMDb 250 vb.</li>

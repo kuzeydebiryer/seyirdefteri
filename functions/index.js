@@ -1148,6 +1148,8 @@ exports.toplantiGirisi = onCall({ secrets: [DAILY_API_KEY] }, async (request) =>
 // (stremioAnahtarlari/{anahtar} → { kullaniciId }). Kataloglar:
 //   • İzleyeceklerim (film + dizi)          • Listelerim (her kişisel liste ayrı raf)
 //   • Dış listeler (Letterboxd 500, IMDb 250…) • Oscar adayları (son Oscar sezonu)
+//   • Dijitalde Yeni Çıkanlar (sitedeki bölümle aynı, en yeni başta)
+//   • Platformlarda Yeni: son 30 günde her platforma eklenenler (Netflix · Yeni, MUBI · Yeni…)
 // YALNIZCA KATALOG verir (ad, afiş, yıl). Hiçbir yayın/bağlantı içermez; filme tıklanınca
 // künyeyi Stremio'nun kendi meta servisi (Cinemeta) gösterir. Stremio IMDb kimliği (tt…)
 // istediği için TMDB→IMDb eşlemesi bir kez yapılıp tmdbImdbEslesme koleksiyonunda saklanır.
@@ -1191,6 +1193,34 @@ async function imdbKimlikleri(apiKey, ogeler) {
 // Katalog tanımlarını ve öğe kaynaklarını kur.
 async function stremioKataloglari(uid) {
   const kataloglar = []
+  // Dijitalde Yeni Çıkanlar (sitedeki bölüm) — en üst raf. Dizi kaydı varsa ayrı raf.
+  kataloglar.push({ id: 'sd-dijital-film', type: 'movie', name: 'Dijitalde Yeni Çıkanlar', kaynak: { tip: 'dijital', tur: 'sinema' } })
+  const dijitalDizi = await db.collection('dijitalYeniCikanlar').where('tur', '==', 'dizi').limit(1).get()
+  if (!dijitalDizi.empty) kataloglar.push({ id: 'sd-dijital-dizi', type: 'series', name: 'Dijitalde Yeni Çıkanlar', kaynak: { tip: 'dijital', tur: 'dizi' } })
+  // Platformlarda Yeni: son 30 günde kaydı olan her platform+tür ayrı raf (en çok yenisi olan önce).
+  const platformSinir = new Date(Date.now() - 30 * 86400e3)
+  const platformYeni = await db.collection('platformYeniEklenenler').where('tespitTarihi', '>=', platformSinir).select('platformId', 'platformAdi', 'tur').get()
+  const platformSayac = new Map()
+  platformYeni.docs.forEach((d) => {
+    const v = d.data()
+    const tip = stremioTipi(v.tur)
+    if (!tip || !v.platformId) return
+    const k = `${v.platformId}|${v.tur}`
+    const o = platformSayac.get(k) || { platformId: String(v.platformId), ad: v.platformAdi || 'Platform', tur: v.tur, tip, sayi: 0 }
+    o.sayi++
+    platformSayac.set(k, o)
+  })
+  ;[...platformSayac.values()]
+    .sort((a, b) => b.sayi - a.sayi)
+    .forEach((p) =>
+      kataloglar.push({
+        id: `sd-platform-${p.platformId}-${p.tur === 'dizi' ? 'dizi' : 'film'}`,
+        type: p.tip,
+        name: `${p.ad} · Yeni`,
+        kaynak: { tip: 'platform', platformId: p.platformId, tur: p.tur },
+      })
+    )
+
   // İzleyeceklerim (film ve dizi ayrı raf)
   kataloglar.push({ id: 'sd-izleyeceklerim-film', type: 'movie', name: 'İzleyeceklerim', kaynak: { tip: 'izlenecek', tur: 'sinema' } })
   kataloglar.push({ id: 'sd-izleyeceklerim-dizi', type: 'series', name: 'İzleyeceklerim', kaynak: { tip: 'izlenecek', tur: 'dizi' } })
@@ -1227,6 +1257,24 @@ async function stremioKataloglari(uid) {
 
 // Bir kataloğun sıralı öğeleri: [{ tur, tmdbId, ad, yil, poster }]
 async function stremioOgeleri(uid, kaynak) {
+  if (kaynak.tip === 'platform') {
+    const sinir = new Date(Date.now() - 30 * 86400e3)
+    const s = await db.collection('platformYeniEklenenler').where('platformId', '==', kaynak.platformId).where('tur', '==', kaynak.tur).where('tespitTarihi', '>=', sinir).orderBy('tespitTarihi', 'desc').get()
+    const gorulen = new Set()
+    return s.docs
+      .map((d) => d.data())
+      .filter((o) => o.disId && !gorulen.has(String(o.disId)) && gorulen.add(String(o.disId)))
+      .map((o) => ({ tur: o.tur, tmdbId: o.disId, ad: o.baslik, poster: o.posterUrl }))
+  }
+  if (kaynak.tip === 'dijital') {
+    const s = await db.collection('dijitalYeniCikanlar').where('tur', '==', kaynak.tur).get()
+    const gorulen = new Set()
+    return s.docs
+      .map((d) => d.data())
+      .sort((a, b) => (b.tarih?.toMillis?.() || 0) - (a.tarih?.toMillis?.() || 0))
+      .filter((o) => o.disId && !gorulen.has(String(o.disId)) && gorulen.add(String(o.disId)))
+      .map((o) => ({ tur: o.tur, tmdbId: o.disId, ad: o.baslik, yil: o.alt, poster: o.posterUrl }))
+  }
   if (kaynak.tip === 'izlenecek') {
     const s = await db.collection('izlenecekler').where('kullaniciId', '==', uid).where('tur', '==', kaynak.tur).get()
     return s.docs
@@ -1284,9 +1332,9 @@ exports.stremio = onRequest({ secrets: [TMDB_API_KEY], timeoutSeconds: 120, memo
       res.set('Cache-Control', 'public, max-age=900')
       return res.json({
         id: 'net.seyirdefteri.katalog',
-        version: '1.0.0',
+        version: '1.2.0',
         name: 'Seyirdefteri',
-        description: 'Seyirdefteri listelerin, izleyeceklerin ve Oscar adayları — yalnızca katalog.',
+        description: 'Seyirdefteri: Dijitalde Yeni Çıkanlar, platformlarda yeni, izleyeceklerin, listelerin ve Oscar adayları — yalnızca katalog.',
         logo: 'https://seyirdefteri.net/icons/icon-512.png',
         resources: ['catalog'],
         types: ['movie', 'series'],
